@@ -71,12 +71,22 @@ if(COGMASTER_BUILD_RUNNER)
   target_include_directories(cogmaster-host PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/host)
   cogmaster_warnings(cogmaster-host)
 
-  add_executable(cogmaster-run
+  # The runner's sources, also built into the tests' signal-hook runner.
+  # _POSIX_C_SOURCE makes clock_gettime and getrusage visible under -std=c17
+  # without other extensions.
+  set(COGMASTER_RUNNER_SOURCES
     runner/main.c
+    runner/bench.c
+    runner/clock.c
     runner/crc32.c
     runner/png.c
-    runner/sha256.c)
+    runner/rss.c
+    runner/sha256.c
+    runner/stop.c)
+  list(TRANSFORM COGMASTER_RUNNER_SOURCES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/)
+  add_executable(cogmaster-run ${COGMASTER_RUNNER_SOURCES})
   target_link_libraries(cogmaster-run PRIVATE cogmaster::cogmaster cogmaster-host)
+  target_compile_definitions(cogmaster-run PRIVATE _POSIX_C_SOURCE=200809L)
   cogmaster_warnings(cogmaster-run)
   install(TARGETS cogmaster-run RUNTIME DESTINATION bin COMPONENT runner)
 endif()

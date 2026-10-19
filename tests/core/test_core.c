@@ -7,6 +7,7 @@
 
 #include "cogmaster.h"
 #include "internal.h"
+#include "state.h"
 #include "../check.h"
 
 #define FIELD_W 256u
@@ -709,6 +710,46 @@ static void test_allocator(void)
     cogmaster_destroy(NULL);
 }
 
+/* After load, 600 frames with a frame copy each, then a state save and a
+   state load into buffers the caller owns, make no allocator call at all:
+   the frame loop never allocates. */
+static void test_no_alloc_after_load(void)
+{
+    counts c;
+    memset(&c, 0, sizeof c);
+    cogmaster_config cfg = make_config();
+    cfg.allocator.alloc = count_alloc;
+    cfg.allocator.free = count_free;
+    cfg.allocator.user = &c;
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    cogmaster_media media = make_media(COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    size_t size = cogmaster__state_size(m);
+    CHECK(size > 0u);
+    uint8_t *state = (uint8_t *)malloc(size);
+    CHECK(state != NULL);
+    if (m == NULL || state == NULL) {
+        free(state);
+        cogmaster_destroy(m);
+        return;
+    }
+    uint32_t allocs = c.allocs;
+    uint32_t frees = c.frees;
+    for (uint32_t i = 0; i < 600u; i++) {
+        CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+        cogmaster_frame io = frame_io(pixels, FIELD_W * 2u, 0u);
+        CHECK_EQ_U64(cogmaster_get_frame(m, &io), COGMASTER_STATUS_OK);
+    }
+    CHECK_EQ_U64(cogmaster__state_save(m, state, size), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster__state_load(m, state, size), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(c.allocs - allocs, 0);
+    CHECK_EQ_U64(c.frees - frees, 0);
+    free(state);
+    cogmaster_destroy(m);
+    CHECK_EQ_U64(c.frees, c.allocs);
+}
+
 /* Each struct at the size it was first released with, derived here from its
    documented layout: inputs and outputs are accepted at exactly that size,
    one byte less is refused and an output struct is left untouched. */
@@ -814,6 +855,7 @@ static const struct {
     {"frame.pitch_wide", test_pitch_wide},
     {"info", test_info},
     {"load.profile_rejected", test_profile_rejected},
+    {"no_alloc_after_load", test_no_alloc_after_load},
     {"testcard.all_colours", test_all_colours},
     {"testcard.boundaries", test_boundaries},
     {"testcard.full_field", test_full_field},

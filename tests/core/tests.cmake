@@ -16,6 +16,13 @@ foreach(case IN ITEMS testcard.static testcard.boundaries testcard.all_colours t
     LABELS core portable TIMEOUT 10)
 endforeach()
 
+# Fault prevented: a frame, frame copy or state save and load that calls the
+# allocator after load, which a host running a frame from an audio callback
+# or a fixed-memory target cannot accept.
+cogmaster_add_test(NAME core.no_alloc_after_load
+  COMMAND cogmaster-test-core no_alloc_after_load
+  LABELS perf portable TIMEOUT 10)
+
 # The internal state visitor and the first-fault recorder, called directly:
 # the library has no public state API, and nothing records a fault yet.
 add_executable(cogmaster-test-state ${CMAKE_CURRENT_LIST_DIR}/test_state.c)

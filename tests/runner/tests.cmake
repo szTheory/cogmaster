@@ -14,6 +14,15 @@ if(CMAKE_SCRIPT_MODE_FILE)
     endif()
   endfunction()
 
+  # Runs one case of the bench and stop unit tests.
+  function(unit case)
+    execute_process(COMMAND ${EMULATOR} ${UNIT} ${case} RESULT_VARIABLE rc
+      OUTPUT_VARIABLE out ERROR_VARIABLE out)
+    if(NOT rc STREQUAL "0")
+      message(FATAL_ERROR "cogmaster-test-bench ${case}: exit ${rc}\n${out}")
+    endif()
+  endfunction()
+
   if(CASE STREQUAL "png_file")
     # The decode check runs first, so the pinned digest is only ever
     # compared for a file whose IHDR and every pixel are already known good.
@@ -45,6 +54,39 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(EXISTS "${OUT}")
       message(FATAL_ERROR "a refused --png wrote ${OUT}")
     endif()
+  elseif(CASE STREQUAL "bench_format")
+    # The report's text from fixed samples, then the runner's own report:
+    # every line present, in order, as a whole number. Times are never
+    # compared, as they vary from run to run.
+    unit(format)
+    set(num "[0-9]+")
+    set(report "frames 30\np50_us ${num}\np90_us ${num}\np99_us ${num}\np99[.]9_us ${num}\n"
+      "p99[.]99_us ${num}\np99[.]999_us ${num}\nmax_us ${num}\nmax_rss_kib ${num}\n")
+    string(CONCAT report ${report})
+    expect_exit(0 "^${report}$" --bench 30)
+    # One frame: every percentile is the one sample, so all seven times are
+    # equal.
+    execute_process(COMMAND ${EMULATOR} ${RUN} --bench 1 RESULT_VARIABLE rc OUTPUT_VARIABLE out)
+    string(REGEX MATCHALL "_us [0-9]+" times "${out}")
+    list(REMOVE_DUPLICATES times)
+    list(LENGTH times n)
+    if(NOT rc STREQUAL "0" OR NOT out MATCHES "^frames 1\n" OR NOT n EQUAL 1)
+      message(FATAL_ERROR "--bench 1: expected exit 0 and seven equal times, got exit ${rc}\n${out}")
+    endif()
+  elseif(CASE STREQUAL "bench_bytes")
+    # The sample buffer is sized exactly up to the cap; a count above the cap
+    # is refused before anything runs, never a wrapped allocation.
+    unit(bytes)
+    expect_exit(2 "usage" --bench 1073741824)
+    expect_exit(2 "usage" --bench 4294967295)
+    expect_exit(2 "usage" --bench 0)
+  elseif(CASE STREQUAL "stop")
+    # The flag, then a runner built to raise SIGTERM inside frame 3: the run
+    # ends after that frame, still prints what was asked, and exits 0.
+    unit(stop)
+    set(RUN ${HOOKED})
+    expect_exit(0 "^frame 3 sha256 ${EXPECTED}\n$" --frames 60 --hash)
+    expect_exit(0 "^frames 3\n.*max_rss_kib [0-9]+\n$" --bench 60)
   else()
     message(FATAL_ERROR "unknown CASE '${CASE}'")
   endif()
@@ -120,3 +162,48 @@ cogmaster_add_test(NAME runner.usage.png_syntax
   COMMAND ${runner_check} -DCASE=png_syntax -DOUT=${PROJECT_BINARY_DIR}/tests/refused.png
     -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS runner portable TIMEOUT 30)
+
+# The bench statistics and the stop flag, tested directly, and a runner built
+# with a hook that raises SIGTERM from inside frame 3.
+add_executable(cogmaster-test-bench
+  ${CMAKE_CURRENT_LIST_DIR}/test_runner.c
+  ${PROJECT_SOURCE_DIR}/runner/bench.c
+  ${PROJECT_SOURCE_DIR}/runner/stop.c)
+set_target_properties(cogmaster-test-bench PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-bench)
+
+add_executable(cogmaster-test-run-stop ${COGMASTER_RUNNER_SOURCES})
+target_link_libraries(cogmaster-test-run-stop PRIVATE cogmaster::cogmaster cogmaster-host)
+target_compile_definitions(cogmaster-test-run-stop PRIVATE _POSIX_C_SOURCE=200809L
+  COGMASTER_RUN_RAISE_AT=3)
+set_target_properties(cogmaster-test-run-stop PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-run-stop)
+
+set(bench_check ${runner_check} -DUNIT=$<TARGET_FILE:cogmaster-test-bench>)
+
+# Fault prevented: a percentile that interpolates, picks the wrong rank or
+# reads unsorted samples, so the report names a time no frame took.
+cogmaster_add_test(NAME runner.bench.percentile
+  COMMAND cogmaster-test-bench percentile
+  LABELS bench portable runner TIMEOUT 10)
+
+# Fault prevented: a bench report missing a line, out of order or not in
+# whole units, which the nightly trend parser would misread.
+cogmaster_add_test(NAME runner.bench.format
+  COMMAND ${bench_check} -DCASE=bench_format -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS bench portable runner TIMEOUT 30)
+
+# Fault prevented: a sample count whose buffer size wraps to a small
+# allocation, so the frame loop writes past it.
+cogmaster_add_test(NAME runner.bench.bytes
+  COMMAND ${bench_check} -DCASE=bench_bytes -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS bench portable runner TIMEOUT 30)
+
+# Fault prevented: SIGINT or SIGTERM killing the run mid-frame or losing the
+# output already asked for, so an interrupted CI job reports nothing.
+cogmaster_add_test(NAME runner.stop
+  COMMAND ${bench_check} -DHOOKED=$<TARGET_FILE:cogmaster-test-run-stop>
+    -DEXPECTED=${COGMASTER_TESTCARD_SHA256_SMS} -DCASE=stop -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 30)
