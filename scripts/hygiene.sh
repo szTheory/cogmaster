@@ -96,8 +96,8 @@ check_files() {
 }
 
 # GSD runs one step per command in this project. The live config governs, so
-# the working-tree file is checked. COGMASTER_ALLOW_CHAIN=1 bypasses this for a
-# run the owner has chosen to chain.
+# the working-tree file is checked. COGMASTER_ALLOW_CHAIN=1 is a bypass for the
+# owner's own shell, never set by an agent (AGENTS rule 9).
 check_stop_policy() {
   [ "${COGMASTER_ALLOW_CHAIN:-0}" = 1 ] && return 0
   [ -f .planning/config.json ] || return 0

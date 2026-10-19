@@ -31,8 +31,8 @@ evidence. Lessons from the sibling emulators are in `.planning/LESSONS.md`; re-r
    catch recurring regressions; a check with no recurring value is run once by the agent and recorded as a
    command and an exit status. The agent makes the judgement calls itself: it reads docs against the code, views
    images and screenshots, and runs RetroArch. What only a merge can show is confirmed at ship (rule 9), not in
-   UAT. Ask the owner only for identity-bound consent (the App key, admin settings, a merge) or a run on their
-   own hardware, and say why.
+   UAT. Ask the owner only for identity-bound consent (the App key, admin settings, a merge that rule 10's
+   auto-merge cannot make) or a run on their own hardware, and say why.
 7. **Proportional gates.** Repository-check code is CMake `-P` or POSIX sh and, from phase 3, stays under a
    tenth of `src/` lines. Real-host end-to-end test code (RetroArch) stays under 300 lines in total, checked by a
    test. Every gate names the fault it prevents. At most two code-review fix rounds and one gap round per
