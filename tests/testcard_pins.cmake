@@ -7,4 +7,4 @@ set(COGMASTER_TESTCARD_SHA256_GG 7404ed4adc74d6ccbe99f0e157fe0db873e788958347991
 # SHA-256 of the file cogmaster-run --frames 60 --png 60:FILE writes for the SMS
 # card: 256 x 192 RGB, each RGB444 channel times 0x11. runner.png_file checks
 # the IHDR and decodes every pixel back to the card before comparing it.
-set(COGMASTER_TESTCARD_PNG_SHA256_SMS 0000000000000000000000000000000000000000000000000000000000000000)
+set(COGMASTER_TESTCARD_PNG_SHA256_SMS c4d1160ffb76d0d18c6866687250392f54bd685dae4fe222731d516fbe7a5460)
