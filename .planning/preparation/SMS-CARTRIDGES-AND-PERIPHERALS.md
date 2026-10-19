@@ -107,7 +107,7 @@ Count command, run from a MAME checkout at that pin: `for f in hash/sms.xml hash
 | List (entries) | Sega / none | Codemasters | Korean family | EEPROM | SG-1000 boards | Other | Battery |
 |---|---|---|---|---|---|---|---|
 | sms (653) | 615 (94.2%) | 5 (0.8%) | 33 (5.1%): hicom 9, zemina 8, korean 6, korean_nb 5, 4pak, 188in1, janggun, nemesis, seojin | 0 | 0 | 0 | 27 |
-| gamegear (823) | 795 (96.6%) | 17 (2.1%) | 0 | 7 (0.9%) | 0 | xterminator 2, mgear 2 | 38 (+3 marked `batt` blank or `??`) |
+| gamegear (823) | 795 (96.6%) | 17 (2.1%) | 0 | 7 (0.9%) | 0 | xterminator 2, mgear 2 | 37 `battery="yes"` (+3 marked `batt` blank or `??`; recounted 2026-10-18) |
 | sg1000 (214) | 191 (89.3%) | 0 | 0 | 0 | 23 (10.7%): dahjee A 11, B 5, othello 2, level3 2, castle, terebi | cardcatcher 1 | 0 |
 
 Sizes: sms 32 KB 95, 48 KB 6, 64 KB 7, 128 KB 180, 256 KB 264, 512 KB 92, 1 MB 7 (plus one 432 KB and one 800 KB); gamegear 256 KB 290, 512 KB 362, 1 MB 10, and odd homebrew sizes 368/502/510/511 KB; sg1000 8–48 KB only. So v1.0's three boards cover 620/653 SMS (94.9%) and 812/823 GG (98.7%) entries; SMS+GG together 1432/1476 (97.0%).
@@ -162,7 +162,7 @@ Ports $01 data (7 pins, TL/TR double as TXD/RXD), $02 direction, $03 TxDATA, $04
 
 ## 4. Saves
 ### 4.1 Battery RAM [CART.11][CART.12][CART.02]
-All 27 SMS and 38 GG battery entries use the Sega mapper's slot-2 window (§2.1). Sizes: 8 KB (Phantasy Star ×6, Ys ×2, Golden Axe Warrior, Miracle Warriors, Monopoly, Penguin Land, Doki Doki Penguin Land, Golfamania, Haja no Fuuin, Ultima IV, most GG RPGs), 16 KB (Shining Force Gaiden), 24 KB (Moldorian), 32 KB (Shining Force II and Final Conflict, Flight of Pigarus homebrew). Non-battery RAM: Desert Speedtrap, The Flash (8 KB), The Terminator (32 KB), Ernie Els Golf (8 KB, Codemasters). MAME loaded raw allocates 32 KB and saves only if the game ever set $FFFC b3 [CART.10].
+All 27 SMS and 37 GG `battery="yes"` entries use the Sega mapper's slot-2 window (§2.1). Sizes: 8 KB (Phantasy Star ×6, Ys ×2, Golden Axe Warrior, Miracle Warriors, Monopoly, Penguin Land, Doki Doki Penguin Land, Golfamania, Haja no Fuuin, Ultima IV, most GG RPGs), 16 KB (Shining Force Gaiden), 24 KB (Moldorian), 32 KB (Shining Force II and Final Conflict, Flight of Pigarus homebrew). Non-battery RAM: Desert Speedtrap, The Flash (8 KB), The Terminator (32 KB), Ernie Els Golf (8 KB, Codemasters). MAME loaded raw allocates 32 KB and saves only if the game ever set $FFFC b3 [CART.10].
 
 ### 4.2 File conventions
 | Emulator | File | Facts |

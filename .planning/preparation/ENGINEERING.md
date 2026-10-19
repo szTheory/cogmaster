@@ -53,7 +53,7 @@ Apt-installable on 26.04 ("resolute"), not preinstalled [ENG.13]: Valgrind 3.26.
 
 `create-github-app-token` takes `client-id` (`app-id` deprecated) and `permission-<name>: write` inputs that narrow the token [ENG.11]; `actions/attest` with no predicate makes SLSA build provenance and accepts `subject-checksums` [ENG.12].
 
-**release-please**: the action's `package-lock.json` resolves `release-please` 17.6.1 (`^17.6.1`); the library is at 17.11.2 (2026-08-24). The 17.6.1 → 17.11.2 changelog touches dependencies and other strategies, not `simple`, the pre-major bump options, `initial-version`, `draft` or `force-tag-creation`, so muhtari's reading of 17.6.0 still holds for what the action runs [ENG.05][ENG.06]:
+**release-please**: the action's `package.json` depends on `release-please` `^17.6.0` and its `package-lock.json` resolves 17.6.0 (re-read at v5.0.0 on 2026-10-18); the library is at 17.11.2 (2026-08-24). The 17.6.0 → 17.11.2 changelog touches dependencies and other strategies, not `simple`, the pre-major bump options, `initial-version`, `draft` or `force-tag-creation`, so muhtari's reading of 17.6.0 is exactly what the action runs [ENG.05][ENG.06]:
 | Option | Behaviour |
 |---|---|
 | `release-type: simple` | edits `version.txt` (must exist) and `CHANGELOG.md`; the manifest releaser edits `.release-please-manifest.json` |
@@ -313,7 +313,7 @@ Do `vars` resolve in Dependabot-triggered runs, and does an App merge of a workf
 | ENG.03 | T1 | actions/runner-images announcements #13045, #14602, #14747, #14748 | accessed 2026-10-18 | Intel end, 26.04 GA, label moves |
 | ENG.04 | T1 | GitHub REST `releases/latest` and `git/ref/tags` for the eight actions (https://api.github.com) | accessed 2026-10-18 (tested) | tags, SHAs, no newer releases |
 | ENG.05 | T1 | googleapis/release-please `src/strategies/simple.ts`, `src/versioning-strategies/default.ts`, `src/manifest.ts`, `CHANGELOG.md` (https://github.com/googleapis/release-please) | v17.6.0 (712fcf01effd); changelog to v17.11.2, accessed 2026-10-18 | option semantics unchanged |
-| ENG.06 | T1 | googleapis/release-please-action `package.json`, `package-lock.json` | v5.0.0 (45996ed1f6d0), accessed 2026-10-18 | bundles release-please 17.6.1 |
+| ENG.06 | T1 | googleapis/release-please-action `package.json`, `package-lock.json` | v5.0.0 (45996ed1f6d0), accessed 2026-10-18 | bundles release-please 17.6.0 (`^17.6.0`) |
 | ENG.07 | T1 | github/docs `data/reusables/actions/actions-do-not-trigger-workflows.md`, `content/actions/concepts/security/github_token.md` | dae83f7d28f3 | token trigger rules |
 | ENG.08 | T1 | github/docs `content/code-security/reference/supply-chain-security/dependabot-on-actions.md` | dae83f7d28f3 | Dependabot restrictions |
 | ENG.09 | T1 | github/docs `content/code-security/concepts/supply-chain-security/immutable-releases.md` | dae83f7d28f3, accessed 2026-10-18 (tested) | tag lock, no reuse, editable notes, release attestation |

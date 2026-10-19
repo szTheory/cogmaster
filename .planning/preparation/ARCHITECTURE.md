@@ -42,7 +42,7 @@ The core never opens a window, an audio or input device or a file, reads a clock
 | Tick = one VDP clock (crystal/5; GG crystal/3) | 10,738,635 Hz | 10,640,684.8 Hz | [ARCH.01 C1] |
 | Z80 T-state = 3 ticks; pixel = 2; PSG step = 48; YM2413 sample = 216 | 3,579,545 Hz | 3,546,895 Hz | [ARCH.01 §1][ARCH.03 §1] |
 | Line = 684 ticks = 342 pixels = 228 T-states | 15,699.76 Hz | 15,556.56 Hz | [ARCH.01 §1] |
-| Frame = 262 / 313 lines | 179,208 ticks, 3,579,545/59,736 Hz | 214,092 ticks, 13,300,856/267,615 Hz | [ARCH.01 §1][ARCH.05 §1] |
+| Frame = 262 / 313 lines | 179,208 ticks, 1,640,625/27,379 Hz (= (315,000,000/88)/59,736) | 214,092 ticks, 13,300,856/267,615 Hz | [ARCH.01 §1][ARCH.05 §1] |
 
 | Tick in line | Event fired by the dispatcher (one table in `vdp.c`) | Source |
 |---|---|---|

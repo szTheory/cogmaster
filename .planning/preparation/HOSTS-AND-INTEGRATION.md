@@ -7,7 +7,7 @@ updated: 2026-10-18
 
 # Hosts and integration
 
-Markers: (tested) run here on 2026-10-18, (derived), (untested), (unverified). "Lnnn" = line of libretro.h at RetroArch v1.22.2 [HI.01]. Milestone labels follow muhtari's pack (v1.0 core + runner, v2.0 saves + library breadth, v3.0 states + movies + continuation, v4.0 accuracy + FM, v5.0 tools/AI, v6.0 ports); GSD-HANDOFF may renumber. Another console appears only as labelled precedent.
+Markers: (tested) run here on 2026-10-18, (derived), (untested), (unverified). "Lnnn" = line of libretro.h at RetroArch v1.22.2 [HI.01]. Milestone labels follow muhtari's pack (v1.0 core + runner + PSG and YM2413 sound (DEC.08), v2.0 saves + library breadth, v3.0 states + movies + continuation, v4.0 measured accuracy, v5.0 tools/AI, v6.0 ports); GSD-HANDOFF may renumber. Another console appears only as labelled precedent.
 
 ## Where to look
 | Question | Section |
@@ -40,7 +40,7 @@ Markers: (tested) run here on 2026-10-18, (derived), (untested), (unverified). "
 | `cogmaster_machine` | auto (header region code / extension), sms, sms2, gg, gg_sms_mode (GPGX `system_hw`, Gearsystem `system`) | yes | v1.0 |
 | `cogmaster_region` | auto, ntsc-u, ntsc-j, pal (GPGX `region_detect`, smsplus `region`; rcheevos forbids `pal` on both, §2) | yes | v1.0 |
 | `cogmaster_boot` | fast (HLE hand-off), bios (file missing → fast + OSD; Gearsystem exposes `bios_sms`/`bios_gg` toggles) | yes | v1.0 |
-| `cogmaster_fm` | auto (header/known list), off, on (GPGX `ym2413`, Gearsystem `ym2413`) | yes | v4.0 |
+| `cogmaster_fm` | auto (header/known list), off, on (GPGX `ym2413`, Gearsystem `ym2413`) | yes | v1.0 phase 4 (DEC.08; SND-02) |
 | `cogmaster_gg_screen` | lcd (160×144), full (256×192 field; GPGX `gg_extra`) | no (adapter crop) | v1.0 |
 | `cogmaster_border` | off, top_bottom, full_284, full_320 (Gearsystem `overscan`; GPGX `overscan`) | no (host filter, §7) | v2.0 |
 | `cogmaster_left_column` | auto (crop when the VDP masks it), never, always (Gearsystem `hide_left_bar`, GPGX `left_border`) | no | v2.0 |

@@ -33,7 +33,7 @@ Coordinates: a line is 684 ticks; tick 0 = first active pixel (pixel 0), the ori
 | Line | 342 pixels = 684 ticks = 228 Z80 cycles = 63.70 µs | 684 ticks = 64.28 µs | 684 ticks | [SYS.10][SYS.11][SYS.29] |
 | Frame | 262 lines = 179,208 ticks = 59,736 cycles | 313 lines = 214,092 ticks = 71,364 cycles | 262 lines | [SYS.10][SYS.11] |
 | Line rate | 10,738,635/684 = 15,699.76 Hz | 15,556.56 Hz | 15,699.76 Hz | derived |
-| Frame rate | 3,579,545/59,736 = 59.922743 Hz | 13,300,856/267,615 = 49.701459 Hz | 59.922743 Hz | derived; Charles measured ≈ 59.92 Hz with mclk 10.738580 MHz [SYS.11] |
+| Frame rate | (315,000,000/88)/59,736 = 1,640,625/27,379 = 59.922751 Hz (the reported rational, DEC.05; the nominal 3,579,545 Hz tick gives 59.922743, 0.13 ppm lower) | 13,300,856/267,615 = 49.701459 Hz | 1,640,625/27,379 Hz | derived; Charles measured ≈ 59.92 Hz with mclk 10.738580 MHz [SYS.11] |
 | Brazil PAL-M, Argentina PAL-N | VDP 10,726,833 Hz (nominal 10,726,834) and 10,746,168 Hz, NTSC line count | | | [SYS.25]; PAL-M counts as NTSC for TV detection [SYS.06] |
 
 - The Z80 cycle grid never drifts against the line: 684 = 3 × 228, and a frame is a whole number of cycles in both regions, so the phase between CPU and VDP is fixed for ever from power-on (derived). This is the biggest timing simplification relative to the 7800 sibling.

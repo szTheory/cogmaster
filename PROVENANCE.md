@@ -50,7 +50,7 @@ IDs resolve in §10.
 | nesturbator `9f9386c661f6` [PV.05] | MIT; every commit by the owner's account or its release bot | All of it, except its third-party files (`libretro.h`, vectors and test ROMs keep their own notices) and NES facts |
 | muhtari `952fce970117` [PV.06] | MIT; same owner | All of it, except its third-party files (`libretro.h`, the a7800 palette) and 7800 facts |
 | devkitSMS `533ae572c897` [PV.07] | `LICENSES.txt`: SMSlib, PSGlib, SGlib, MBMlib, ihx2sms, assets2banks, folder2c public domain (Unlicense); `crt0/*.s` GPL-2 with a special exception; SMSlib embeds ZX7 and aPLib routines with their own terms | Read for facts about hardware use. Not linked into fixtures: fixtures are pure WLA-DX assembly so no runtime enters the image |
-| WLA-DX `7ae11df1657d` (v10.7) [PV.08] | GPL-2.0-or-later (tool) | As a tool only, built in CI from the pinned source tarball; its output belongs to the author of the source it assembles |
+| WLA-DX `91c52b1f4ef3` (tag v10.7; `master` was `7ae11df1657d` on 2026-10-07) [PV.08] | GPL-2.0-or-later (tool) | As a tool only, built in CI from the pinned source tarball; its output belongs to the author of the source it assembles |
 | MiSTer SMS core `8443a0d19a88` [PV.10] | No `LICENSE` file; `rtl/T80/*` BSD (Daniel Wallner), `rtl/jt89` GPL-3 (Jotego), `rtl/VM2413` and the rest unmarked; framework `sys/` GPL | **Facts only**: VDP, mapper and I/O behaviour read from docs and commit messages; no RTL is opened past its header except T80, which is not needed (the Z80 is own code against the vectors) |
 | SMS Power! wiki and documents [PV.11] | No site licence stated; documents carry their authors' names and sometimes their own terms | Facts in our own words with a citation; a short quote with attribution; prose and tables are not copied |
 | Sega official documents [PV.12] | Copyright Sega; archived scans | Facts in our own words with a citation |
@@ -142,7 +142,7 @@ claim; the asset policy handles that side by keeping game and firmware bytes out
 | PV.05 | T1 | github.com/szTheory/nesturbator `PROVENANCE.md`, `THIRD-PARTY-NOTICES.md`, git authors | `9f9386c661f6` | same-owner seeds |
 | PV.06 | T1 | github.com/szTheory/muhtari `PROVENANCE.md`, `AGENTS.md`, git authors | `952fce970117` | template; same-owner seeds |
 | PV.07 | T1 | github.com/sverx/devkitSMS `LICENSES.txt` | `533ae572c897` | per-component licences |
-| PV.08 | T1 | github.com/vhelin/wla-dx `LICENSE` (GPL-2.0-or-later), release `v10.7` | `7ae11df1657d` | tool licence and pin |
+| PV.08 | T1 | github.com/vhelin/wla-dx `LICENSE` (GPL-2.0-or-later), release `v10.7` (tag object `6632a12acf46` → commit `91c52b1f4ef3`; tarball SHA-256 in SMSPOWER-EXTRACTS 7) | `91c52b1f4ef3` (v10.7); `master` `7ae11df1657d` | tool licence and pin |
 | PV.09 | T1 | nesturbator `.planning/preparation/DECISIONS.md` DEC.04 (relicensing precedent) | `8ae2c6e32e7f` | AI-assistance rule |
 | PV.10 | T1 | github.com/MiSTer-devel/SMS_MiSTer: no `LICENSE`; `rtl/` listing (T80, jt89, VM2413); github.com/jotego/jt89 licence GPL-3 | `8443a0d19a88` | facts-only status |
 | PV.11 | T2 | smspower.org `Development/Documents`, `Development/Index` | accessed 2026-10-18 | document inventory; no site licence |

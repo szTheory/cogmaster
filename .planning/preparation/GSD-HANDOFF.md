@@ -172,14 +172,46 @@ Subagent reasoning effort comes from the owner's global GSD agent install, not f
 
 ## 8. What was checked
 
-All on 2026-10-18, against `@opengsd/gsd-core` 1.17.0. (Filled in by the preparation session's final checks; see
-the "Verification" section of the session's plan.)
-- **Config.** Written by GSD's own writer with `GSD_HOME` pointing at an empty directory; read back with
-  `config-get` (mode interactive, coarse, inherit/omit, both chain flags false, the test command, branching none,
-  create_tag false, community hooks on). No `preferences`, `effort` or model IDs reached the file. Diff against
-  muhtari's config: only `test_gate_timeout` (900 vs its measured 3) and the absent `code_review_depth_overrides`.
-- **Resume state, roadmapper dry runs, hygiene self-test, fact-check, fresh-eyes review, public pins:** recorded
-  below when run.
+All on 2026-10-18, against `@opengsd/gsd-core` 1.17.0.
+- **Config.** Written by GSD's own writer (`query config-new-project`) with `GSD_HOME` pointing at an empty
+  directory; read back with `config-get` (mode interactive, coarse, inherit/omit, both chain flags false, the test
+  command, branching none, create_tag false, community hooks on). No `preferences`, `effort` or model IDs reached
+  the file. Diff against muhtari's config: only `test_gate_timeout` (900 vs its measured 3) and the absent
+  `code_review_depth_overrides`.
+- **Resume state.** `query init.new-project` on a copy of this tree: `project_exists` true, `init_incomplete`
+  true, `is_brownfield` false, `needs_codebase_map` false.
+- **Roadmapper, run twice on copies** (GSD's `gsd-roadmapper` agent with the kickoff step's prompt, standard
+  mode): four phases named as in SUMMARY; 26/26 requirements mapped once, 0 orphaned, both times; the `## v1.0 …`
+  heading recognised by `roadmap analyze` and `init progress`; `validate consistency` passed with no error or
+  warning; `list-seeds` reads eight seeds; no `**Mode:**` line; "UI hint: no" and "Canonical refs" on every
+  phase; five success criteria per phase, each traced to a requirement. The second run followed the fresh-eyes
+  fixes to FRAME-06, 07, 09 and GAME-03, 06.
+- **Hygiene.** `scripts/hygiene.sh --tree` passes on this tree. In a scratch repository it rejected a planted
+  home path, an e-mail address (while `@example.com` passed), GPL text in code, a binary not in the manifest, a
+  non-interactive config with a chain flag, a commit on `main` with a remote, and a non-noreply identity; a clean
+  control passed. Staged `.sms` images were caught by name and by the `TMR SEGA` signature at `$7FF0`.
+  `sh -n` and a dash parse are clean.
+- **Public pins.** Every seed, reference and fixture pin in PROVENANCE, CONFORMANCE and SMSPOWER-EXTRACTS answered
+  200 from `gh api repos/<o>/<r>/commits/<sha>` (MAME, ares, ymfm, SingleStepTests, nesturbator, muhtari,
+  devkitSMS, WLA-DX master and v10.7, MiSTer SMS, zexall-sms, SmsVdpTest, dragon-blaster, Snepzhen-Solitaire).
+  The WLA-DX v10.7 tarball digest was recomputed and matches.
+- **Fact-check** by a fresh agent: 58 load-bearing claims re-fetched from primary sources (clocks and rationals,
+  counter tables, interrupt ticks as attributed, paging bits, header offsets, port maps, PSG and YM2413 facts,
+  BIOS digests, hash-list counts and licences, every licence at its pin, rcheevos IDs and hash rule, libretro
+  BIOS names, RetroArch DMG digest, action SHAs and runner images, GSD behaviours, six sibling-lesson
+  attributions): 50 held, 7 corrected in place (release-please 17.6.0 not 17.6.1; the WLA-DX row pinned to the
+  tag commit; the NTSC frame-rate rational stated as 1,640,625/27,379 everywhere; Maxim's attenuation-7 value
+  noted against the 2 dB law; GG battery count 37; FM placed in v1.0 phase 4 across HOSTS and ECOSYSTEM),
+  1 not re-fetched (TV-type loop counts; not load-bearing).
+- **Fresh-eyes review** of the files GSD reads: 12 findings. Applied: FRAME-06, FRAME-07 and GAME-06 reworded
+  so nothing needs a published release or the owner's hardware; FRAME-09 states the Ir/frame gate is report-only
+  until the budgeted follow-up arms it; GAME-03 and SND-02 tightened; the wasm32 lane added to FRAME-02;
+  AGENTS rule 6 clarified against rule 10; a gap-round sentence that could read as chaining removed; the first
+  commits' author identity (copied from a sibling's release bot) rewritten to the owner's noreply address before
+  the first merge. Noted, not changed: the milestone heading uses no dash (the parser needs only the version).
+- **Commits.** Each preparation stage is its own commit on `prep/pack`, merged to `main` by pull request.
+- **Not checked:** a complete `/gsd-new-project` session (only its init query and its roadmapper, on copies);
+  WLA-DX builds on Windows; anything on real hardware.
 
 ## Sources
 
