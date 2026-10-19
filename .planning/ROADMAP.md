@@ -25,7 +25,7 @@ merging each phase.
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: A test frame in RetroArch** - The library, runner and libretro core deliver a hashed test card on every platform, installed into RetroArch by the README line, released by merging
+- [x] **Phase 1: A test frame in RetroArch** - The library, runner and libretro core deliver a hashed test card on every platform, installed into RetroArch by the README line, released by merging (completed 2026-10-19)
 - [ ] **Phase 2: The CPU matches the public vectors** - An own Z80 matches SingleStepTests on every cycle, with the tick-lattice bus, the Sega and Codemasters mappers, ports, Pause and the first-fault trace
 - [ ] **Phase 3: Games play in RetroArch** - VDP mode 4, the Game Gear window, two pads, regions and battery saves make fixtures playable on both machines, with the ledger ratcheting
 - [ ] **Phase 4: Sound** - The PSG with Game Gear stereo and the YM2413 play through the runner and RetroArch with transition and PCM hashes identical on every platform
@@ -44,7 +44,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. The pull request's prerelease rehearsal produces exactly 18 version-free archives, `SHA256SUMS` and verified attestations and then deletes itself; a packaging test finds `LICENSE` and `THIRD-PARTY-NOTICES.md` in each archive (FRAME-06).
   5. The README install line, run in CI against the built macOS arm64 libretro archive, verifies the checksum and installs the core and its `.info` where RetroArch 1.22.2 finds it; the hosted macOS job's RetroArch screenshot equals the runner's frame, and its one-byte negative control fails (FRAME-07).
 
-**Plans**: 12/12 plans executed, 01-01 to 01-12, one sequential chain (waves 1–12)
+**Plans**: 12/12 plans complete, 01-01 to 01-12, one sequential chain (waves 1–12)
 - [x] 01-01-PLAN.md
 - [x] 01-02-PLAN.md
 - [x] 01-03-PLAN.md
@@ -116,7 +116,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. A test frame in RetroArch | 12/12 | In Progress | - |
+| 1. A test frame in RetroArch | 12/12 | Complete    | 2026-10-19 |
 | 2. The CPU matches the public vectors | 0/TBD | Not started | - |
 | 3. Games play in RetroArch | 0/TBD | Not started | - |
 | 4. Sound | 0/TBD | Not started | - |
