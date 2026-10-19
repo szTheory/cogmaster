@@ -71,13 +71,19 @@ install(FILES include/cogmaster.h ${PROJECT_BINARY_DIR}/generated/cogmaster_vers
 
 # The headless runner, built as ISO C17. It lands at the top of the build
 # directory: build/<preset>/cogmaster-run.
-if(COGMASTER_BUILD_RUNNER)
-  # Host helpers shared by the runner, the libretro core and the tests. They
-  # are outside the core's determinism boundary: nothing here is hashed.
+# Host helpers shared by the runner, the libretro core and the tests. They
+# are outside the core's determinism boundary: nothing here is hashed. Built
+# position-independent and hidden, as the libretro module links them.
+if(COGMASTER_BUILD_RUNNER OR COGMASTER_BUILD_LIBRETRO)
   add_library(cogmaster-host STATIC host/palette.c)
   target_include_directories(cogmaster-host PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/host)
+  set_target_properties(cogmaster-host PROPERTIES
+    C_VISIBILITY_PRESET hidden
+    POSITION_INDEPENDENT_CODE ON)
   cogmaster_warnings(cogmaster-host)
+endif()
 
+if(COGMASTER_BUILD_RUNNER)
   # The runner's sources, also built into the tests' signal-hook runner.
   # _POSIX_C_SOURCE makes clock_gettime and getrusage visible under -std=c17
   # without other extensions.
@@ -96,6 +102,11 @@ if(COGMASTER_BUILD_RUNNER)
   target_compile_definitions(cogmaster-run PRIVATE _POSIX_C_SOURCE=200809L)
   cogmaster_warnings(cogmaster-run)
   install(TARGETS cogmaster-run RUNTIME DESTINATION bin COMPONENT runner)
+endif()
+
+# The libretro core: build/<preset>/libretro/cogmaster_libretro.<ext>.
+if(COGMASTER_BUILD_LIBRETRO)
+  add_subdirectory(libretro)
 endif()
 
 # Tests. COGMASTER_TIMEOUT_SCALE multiplies every test's timeout on slow
