@@ -5,8 +5,8 @@
 
 ## v1 Requirements
 
-Milestone v1.0. Each category is one phase; its pull request builds the release archives, and merging it publishes
-them (FRAME-06). A platform is one of six: Linux x64, Linux arm64, macOS arm64, macOS x64, Windows x64, Windows
+Milestone v1.0. Each category is one phase; its pull request builds and rehearses the release archives (FRAME-06), and
+merging it publishes them, which is confirmed at ship (AGENTS rule 6). A platform is one of six: Linux x64, Linux arm64, macOS arm64, macOS x64, Windows x64, Windows
 arm64; "every platform" means all six plus the big-endian lane. Expected values in tests cite their source document
 (`.planning/preparation/*`). Acceptance is on exit status and tolerant regexes, never on exact tool output.
 
@@ -16,10 +16,10 @@ arm64; "every platform" means all six plus the big-endian lane. Expected values 
 - [ ] **FRAME-03**: A CTest loads the libretro core in an in-process host, runs 60 frames, and compares the delivered frame with the runner's byte for byte; `retro_get_system_av_info` reports the NTSC rate 1,640,625/27,379 Hz and the SMS or GG geometry.
 - [ ] **FRAME-04**: `nm`-based CTests prove the core exports only `cogmaster_*` symbols, has no mutable globals, imports only the four C memory functions (plus the per-OS helper allowlist), links no floating point, and that `include/cogmaster.h` compiles as C17 and C++17; the header stays under 24 KB and the README under 12 KB.
 - [ ] **FRAME-05**: `scripts/hygiene.sh --tree`, the title check, the timeout-comment check, the SHA-pin check and the no-self-skip policy run in CI, each with a negative control that fails with its named message.
-- [ ] **FRAME-06**: Merging the phase's pull request runs release-please with the App token and publishes a release with exactly 18 version-free archives, `SHA256SUMS`, verified attestations, `LICENSE` and `THIRD-PARTY-NOTICES.md` in each archive; a prerelease rehearsal on the pull request exercised every publish step first.
-- [ ] **FRAME-07**: The README install line downloads the macOS arm64 libretro archive from `releases/latest/download/`, verifies the checksum, and installs the core and its `.info` where RetroArch 1.22.2 (Metal) finds it; a hosted macOS job runs RetroArch with the core and no content and compares its screenshot with the runner's frame, with a one-byte negative control.
+- [ ] **FRAME-06**: The pull request's prerelease rehearsal runs every publish step with the App token and produces exactly 18 version-free archives, `SHA256SUMS` and verified attestations, then deletes itself; a packaging test shows `LICENSE` and `THIRD-PARTY-NOTICES.md` in each archive; release-please is configured so that merging publishes the same set with no manual step (the real publish is confirmed at ship).
+- [ ] **FRAME-07**: The README install line, run in CI against the built macOS arm64 libretro archive (and against `releases/latest/download/` once a release exists), verifies the checksum and installs the core and its `.info` where RetroArch 1.22.2 (Metal) finds it; a hosted macOS job runs RetroArch with the core and no content and compares its screenshot with the runner's frame, with a one-byte negative control.
 - [ ] **FRAME-08**: An installed-package C consumer, a C++ header consumer and an `add_subdirectory` embed (with tests, runner and libretro off) build in CI on every platform.
-- [ ] **FRAME-09**: `cogmaster-run --bench` reports frame-time p50/p99/p99.9/p99.99/p99.999 and max RSS; a Cachegrind instructions-per-frame measurement runs on every pull request and the gate is armed after two zero-spread control runs; a test proves zero allocations after load and that the core never reads a host clock.
+- [ ] **FRAME-09**: `cogmaster-run --bench` reports frame-time p50/p99/p99.9/p99.99/p99.999 and max RSS; a Cachegrind instructions-per-frame measurement runs on every pull request against its merge base with the +1 % gate present and report-only until two zero-spread control runs arm it (the budgeted `ci:` follow-up, GSD-HANDOFF 3 step 8); a test proves zero allocations after load and that the core never reads a host clock.
 
 ### The CPU matches the public vectors
 - [ ] **CPU-01**: `ctest -L vectors` runs the committed sample of the SingleStepTests `z80` set (the first 100 tests of each of the 1,604 files at `ebe1875d48f3`) and every test matches on final state (including MEMPTR, Q, R, IFF1/2, IM) and on every bus cycle; a nightly lane runs the full set.
@@ -31,15 +31,15 @@ arm64; "every platform" means all six plus the big-endian lane. Expected values 
 ### Games play in RetroArch
 - [ ] **GAME-01**: VDP mode 4 renders name table, 8×8 and 8×16 sprites, zoom, priority, flips, the left-column mask, scroll locks and the 192/224/240-line modes; frame hashes of the `boot_to_play` and `vdp_lines` fixtures are identical on every platform.
 - [ ] **GAME-02**: Frame and line interrupts, the H and V counters (NTSC and PAL tables) and the status flags follow SMS-VDP 4 at dot-exact ticks; the `vdp_lines` fixture's mailbox values match `expected.csv` and a test shows a status read that clears the flags.
-- [ ] **GAME-03**: The `gg` profile renders the 160×144 window with 12-bit CRAM, GG ports, Start and the SMS-compat mode; `boot_to_play.gg` plays with the same oracle as the SMS fixture and the libretro core reports the GG geometry.
+- [ ] **GAME-03**: The `gg` profile renders the 160×144 window with 12-bit CRAM, GG ports, Start and the SMS-compat mode; `boot_to_play.gg` plays with the same oracle as the SMS fixture, and the hosted job's GG screenshot matches the runner's crop.
 - [ ] **GAME-04**: Two pads, Pause and region/TV profiles work end to end: the `boot_to_play` fixtures prove that a button press changes a visible counter, a scroll register and the frame hash, and that a frame with no port read is counted as a lag frame.
 - [ ] **GAME-05**: Battery RAM is exported as a raw span with a generation counter; `cogmaster-run --save-dir` writes atomically on exit and on SIGTERM; the `battery` fixture continues from its saved value in a fresh process, with missing-save and wrong-save controls that differ.
-- [ ] **GAME-06**: `tests/compat/ledger.csv` and the generated `docs/compatibility.md` exist with the fixture rows and the ratchet check; the local `library` preset runs the owner's dumps against the ledger without any new hash leaving the machine; the libretro `.info` carries `is_experimental` until v2.0.
+- [ ] **GAME-06**: `tests/compat/ledger.csv` and the generated `docs/compatibility.md` exist with the fixture rows and the ratchet check; the local `library` preset (never registered in `ci`) runs every image in `COGMASTER_ROM_DIR` against the ledger and writes only locally, shown by a test that points it at a fixture in a temporary directory; the libretro `.info` carries `is_experimental` until v2.0.
 - [ ] **GAME-07**: One integrated session in RetroArch (hosted job, ≤ 300 lines of e2e code in total) boots `boot_to_play.sms`, an input changes play, the picture scrolls, and the screenshot matches the runner's frame.
 
 ### Sound
 - [ ] **SND-01**: `ctest -L psg` steps every tone, volume and noise setting of the SN76489 model (16-bit LFSR, taps 0 and 3, reset on write, period 0 as 1, 2 dB steps) against SMS-AUDIO 1 and JoppyFurr's MIT test ROM, and the GG stereo register routes channels per SMS-AUDIO 2.
-- [ ] **SND-02**: The YM2413 plays for the Japanese profile at Z80/72 Hz with port `$F2` selecting PSG/FM/none/both, seeded from ymfm or ares with its notice, and `ctest -L fm` passes JoppyFurr's MIT YM2413 test ROM checks.
+- [ ] **SND-02**: The YM2413 plays for the Japanese profile at Z80/72 Hz with port `$F2` selecting PSG/FM/none/both, seeded from the permissive OPLL chosen at phase 4 planning (DEC.22) with its notice, and `ctest -L fm` passes JoppyFurr's MIT YM2413 test ROM checks.
 - [ ] **SND-03**: `cogmaster-run --hash-audio` prints transition-stream and PCM hashes for the `psg_sweep` and `boot_to_play` fixtures, identical on every platform, with exactly 3,504,512/4,375 samples per NTSC frame at 48 kHz and no clipping.
 - [ ] **SND-04**: The libretro batch and single-sample audio paths deliver PCM equal to the runner's (stereo on GG, duplicated mono on SMS), and the hosted RetroArch session records non-silent audio.
 - [ ] **SND-05**: A test renders reference tones through the synthesiser and shows the largest non-harmonic peak below 16 kHz under −80 dB; synthesis cost per output sample stays bounded under a register-hammering fixture.
