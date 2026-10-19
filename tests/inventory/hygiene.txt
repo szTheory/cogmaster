@@ -1,0 +1,10 @@
+# Every test the hygiene preset registers: name<TAB>labels.
+# Sorted; configure fails when this differs from what is registered.
+hygiene.analyzer	hygiene
+hygiene.format	hygiene
+hygiene.no_float	hygiene
+hygiene.no_float.self_test	hygiene
+hygiene.tree	hygiene
+hygiene.tree.self_test	hygiene
+policy.pins	hygiene,policy
+policy.pins.self_test	hygiene,policy
