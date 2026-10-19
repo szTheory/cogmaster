@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 01
 current_phase_name: A test frame in RetroArch
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-10-19T21:08:53.460Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-10-19T21:21:24.493Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 01 execution started
-state_head: c53bae9e229615760dd7a35c4ea851e292b50c65
+state_head: 2a4a53c5f3fde2f3fec486c4ac65e70f8fdaa10b
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 12
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 01 (A test frame in RetroArch) — EXECUTING
-Plan: 2 of 12
+Plan: 3 of 12
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 01 execution started
 
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 01 P01 | 12min | 3 tasks | 25 files |
+| Phase 01 P02 | 13min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,9 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 01]: get_info before a successful load returns ERR_NO_CONTENT
 - [Phase 01]: get_frame refuses pitch_bytes above 65536 with ERR_ARGUMENT
 - [Phase 01]: Pinned card hashes equal the planning oracle (SMS e14d77ce, GG 7404ed4a); wrong-pin control runs through expect_fail.cmake
+- [Phase 01]: State visitor header carries frame, ticks and the packed profile once; a state loads only into an instance of the same machine
+- [Phase 01]: Internal state load refuses everything with ERR_ARGUMENT (ERR_NO_CONTENT before a load) until the public state API brings state statuses
+- [Phase 01]: cogmaster_get_fault is OK with present 0 before a load; reset POWER also zeroes the counters, SOFT keeps them
 
 ### Pending Todos
 
@@ -105,6 +109,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T21:08:53.446Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-10-19T21:21:24.476Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None
