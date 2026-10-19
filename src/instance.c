@@ -48,7 +48,7 @@ cogmaster_status cogmaster_get_versions(cogmaster_versions *out)
     if (out == NULL) {
         return COGMASTER_STATUS_ERR_ARGUMENT;
     }
-    cogmaster_status st = cogmaster__check_out_size(out, (uint32_t)sizeof *out);
+    cogmaster_status st = cogmaster__check_out_size(out, COGMASTER__FIRST_SIZE_VERSIONS);
     if (st != COGMASTER_STATUS_OK) {
         return st;
     }
@@ -71,7 +71,8 @@ cogmaster_status cogmaster_create(const cogmaster_config *cfg, cogmaster **out)
     if (cfg == NULL || out == NULL) {
         return COGMASTER_STATUS_ERR_ARGUMENT;
     }
-    cogmaster_status st = cogmaster__check_size(cfg, (uint32_t)sizeof *cfg, (uint32_t)sizeof *cfg);
+    cogmaster_status st =
+        cogmaster__check_size(cfg, COGMASTER__FIRST_SIZE_CONFIG, (uint32_t)sizeof *cfg);
     if (st != COGMASTER_STATUS_OK) {
         return st;
     }
@@ -82,7 +83,7 @@ cogmaster_status cogmaster_create(const cogmaster_config *cfg, cogmaster **out)
     }
     cogmaster *m = (cogmaster *)a.alloc(a.user, sizeof *m);
     if (m == NULL) {
-        return COGMASTER_STATUS_ERR_ARGUMENT;
+        return COGMASTER_STATUS_ERR_NO_MEMORY;
     }
     memset(m, 0, sizeof *m);
     m->allocator = a;
@@ -105,7 +106,7 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
         return COGMASTER_STATUS_ERR_ARGUMENT;
     }
     cogmaster_status st =
-        cogmaster__check_size(media, (uint32_t)sizeof *media, (uint32_t)sizeof *media);
+        cogmaster__check_size(media, COGMASTER__FIRST_SIZE_MEDIA, (uint32_t)sizeof *media);
     if (st != COGMASTER_STATUS_OK) {
         return st;
     }
@@ -138,12 +139,12 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out)
     if (m == NULL || out == NULL) {
         return COGMASTER_STATUS_ERR_ARGUMENT;
     }
-    cogmaster_status st = cogmaster__check_out_size(out, (uint32_t)sizeof *out);
+    cogmaster_status st = cogmaster__check_out_size(out, COGMASTER__FIRST_SIZE_INFO);
     if (st != COGMASTER_STATUS_OK) {
         return st;
     }
     if (!m->loaded) {
-        return COGMASTER_STATUS_ERR_ARGUMENT;
+        return COGMASTER_STATUS_ERR_NO_CONTENT;
     }
     cogmaster_info info;
     memset(&info, 0, sizeof info);

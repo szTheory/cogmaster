@@ -16,12 +16,6 @@
 #define TAG_MAX 4096u /* the largest input size tag the core accepts */
 #define P ((uint32_t)sizeof(void *))
 
-/* The values the public header gives the out-of-memory, buffer-too-small and
-   no-content statuses. */
-#define TEST_STATUS_ERR_NO_MEMORY 3u
-#define TEST_STATUS_ERR_BUFFER_TOO_SMALL 4u
-#define TEST_STATUS_ERR_NO_CONTENT 5u
-
 /* The card's colours, RGB444 0000BBBBGGGGRRRR. */
 #define WHITE 0x0FFFu
 #define BLACK 0x0000u
@@ -618,10 +612,10 @@ static void test_statuses(void)
     cogmaster_info info;
     memset(&info, 0, sizeof info);
     info.size = (uint32_t)sizeof info;
-    CHECK_EQ_U64(cogmaster_run_frame(m, &result), TEST_STATUS_ERR_NO_CONTENT);
-    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), TEST_STATUS_ERR_NO_CONTENT);
-    CHECK_EQ_U64(cogmaster_get_frame(m, &io), TEST_STATUS_ERR_NO_CONTENT);
-    CHECK_EQ_U64(cogmaster_get_info(m, &info), TEST_STATUS_ERR_NO_CONTENT);
+    CHECK_EQ_U64(cogmaster_run_frame(m, &result), COGMASTER_STATUS_ERR_NO_CONTENT);
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_ERR_NO_CONTENT);
+    CHECK_EQ_U64(cogmaster_get_frame(m, &io), COGMASTER_STATUS_ERR_NO_CONTENT);
+    CHECK_EQ_U64(cogmaster_get_info(m, &info), COGMASTER_STATUS_ERR_NO_CONTENT);
 
     cogmaster_media media = make_media(COGMASTER_MACHINE_GG);
     CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
@@ -630,7 +624,7 @@ static void test_statuses(void)
     /* One byte short of a row: the buffer is left as it was. */
     memset(pixels, POISON, sizeof pixels);
     io = frame_io(pixels, GG_W * 2u - 1u, 0u);
-    CHECK_EQ_U64(cogmaster_get_frame(m, &io), TEST_STATUS_ERR_BUFFER_TOO_SMALL);
+    CHECK_EQ_U64(cogmaster_get_frame(m, &io), COGMASTER_STATUS_ERR_BUFFER_TOO_SMALL);
     uint32_t touched = 0;
     for (size_t i = 0; i < sizeof pixels; i++) {
         if (((const uint8_t *)pixels)[i] != POISON) {
@@ -639,7 +633,7 @@ static void test_statuses(void)
     }
     CHECK_EQ_U64(touched, 0);
     io = frame_io(pixels, FIELD_W * 2u - 1u, COGMASTER_FRAME_FULL_FIELD);
-    CHECK_EQ_U64(cogmaster_get_frame(m, &io), TEST_STATUS_ERR_BUFFER_TOO_SMALL);
+    CHECK_EQ_U64(cogmaster_get_frame(m, &io), COGMASTER_STATUS_ERR_BUFFER_TOO_SMALL);
     /* A pitch above 65536 bytes, or no buffer, is an argument error. */
     io = frame_io(pixels, 65537u, 0u);
     CHECK_EQ_U64(cogmaster_get_frame(m, &io), COGMASTER_STATUS_ERR_ARGUMENT);
@@ -688,7 +682,7 @@ static void test_allocator(void)
     CHECK(m == marker);
 
     c.fail = 1;
-    CHECK_EQ_U64(cogmaster_create(&cfg, &m), TEST_STATUS_ERR_NO_MEMORY);
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_ERR_NO_MEMORY);
     CHECK_EQ_U64(c.allocs, 1);
     CHECK(m == marker);
 

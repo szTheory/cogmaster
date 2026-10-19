@@ -97,6 +97,23 @@ _Static_assert(offsetof(cogmaster_run_result, stop) == 4, "run_result.stop");
 _Static_assert(offsetof(cogmaster_run_result, overshoot_ticks) == 8, "run_result.overshoot_ticks");
 _Static_assert(sizeof(cogmaster_run_result) == 12, "run_result size");
 
+/* The size of each struct as first released. A caller's size tag below it
+   is refused; each is pinned to the layout above, so appending a field later
+   cannot move it. */
+#define COGMASTER__FIRST_SIZE_CONFIG ((uint32_t)(4 * COGMASTER__P))
+#define COGMASTER__FIRST_SIZE_MEDIA ((uint32_t)(4 * COGMASTER__P))
+#define COGMASTER__FIRST_SIZE_FRAME ((uint32_t)(2 * COGMASTER__P + 32))
+#define COGMASTER__FIRST_SIZE_INFO 48u
+#define COGMASTER__FIRST_SIZE_VERSIONS 32u
+#define COGMASTER__FIRST_SIZE_RUN_RESULT 12u
+_Static_assert(COGMASTER__FIRST_SIZE_CONFIG == sizeof(cogmaster_config), "config first size");
+_Static_assert(COGMASTER__FIRST_SIZE_MEDIA == sizeof(cogmaster_media), "media first size");
+_Static_assert(COGMASTER__FIRST_SIZE_FRAME == sizeof(cogmaster_frame), "frame first size");
+_Static_assert(COGMASTER__FIRST_SIZE_INFO == sizeof(cogmaster_info), "info first size");
+_Static_assert(COGMASTER__FIRST_SIZE_VERSIONS == sizeof(cogmaster_versions), "versions first size");
+_Static_assert(COGMASTER__FIRST_SIZE_RUN_RESULT == sizeof(cogmaster_run_result),
+               "run_result first size");
+
 /* Input structs: OK when the size tag at s is at least first and at most
    4096, and every byte past ours is zero; ERR_STRUCT_SIZE otherwise. */
 cogmaster_status cogmaster__check_size(const void *s, uint32_t first, uint32_t ours);

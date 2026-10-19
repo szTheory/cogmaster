@@ -27,13 +27,13 @@ cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out)
         return COGMASTER_STATUS_ERR_ARGUMENT;
     }
     if (out != NULL) {
-        cogmaster_status st = cogmaster__check_out_size(out, (uint32_t)sizeof *out);
+        cogmaster_status st = cogmaster__check_out_size(out, COGMASTER__FIRST_SIZE_RUN_RESULT);
         if (st != COGMASTER_STATUS_OK) {
             return st;
         }
     }
     if (!m->loaded) {
-        return COGMASTER_STATUS_ERR_ARGUMENT;
+        return COGMASTER_STATUS_ERR_NO_CONTENT;
     }
     for (uint32_t y = 0; y < COGMASTER__FIELD_H; y++) {
         for (uint32_t x = 0; x < COGMASTER__FIELD_W; x++) {
@@ -58,12 +58,13 @@ cogmaster_status cogmaster_get_frame(const cogmaster *m, cogmaster_frame *io)
     if (m == NULL || io == NULL) {
         return COGMASTER_STATUS_ERR_ARGUMENT;
     }
-    cogmaster_status st = cogmaster__check_size(io, (uint32_t)sizeof *io, (uint32_t)sizeof *io);
+    cogmaster_status st =
+        cogmaster__check_size(io, COGMASTER__FIRST_SIZE_FRAME, (uint32_t)sizeof *io);
     if (st != COGMASTER_STATUS_OK) {
         return st;
     }
     if (!m->loaded) {
-        return COGMASTER_STATUS_ERR_ARGUMENT;
+        return COGMASTER_STATUS_ERR_NO_CONTENT;
     }
     if ((io->flags & ~COGMASTER_FRAME_FULL_FIELD) != 0u || io->pixels == NULL ||
         io->pitch_bytes > COGMASTER__PITCH_MAX) {
@@ -79,7 +80,7 @@ cogmaster_status cogmaster_get_frame(const cogmaster *m, cogmaster_frame *io)
         r = cogmaster__crop(m->machine);
     }
     if (io->pitch_bytes < r.w * 2u) {
-        return COGMASTER_STATUS_ERR_ARGUMENT;
+        return COGMASTER_STATUS_ERR_BUFFER_TOO_SMALL;
     }
     uint8_t *dst = (uint8_t *)io->pixels;
     for (uint32_t row = 0; row < r.h; row++) {
