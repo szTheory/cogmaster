@@ -129,6 +129,9 @@ original evidence columns.
 | XFER-074 | GSD's secret-read guard blocks agents from `.env.local` and key files; secret setup is an owner command. | muhtari MU-GSD-008 | adopted (GSD-HANDOFF 7) |
 | XFER-075 | GitHub's App manifest flow makes the release App one owner command: a local page posts the manifest, the conversion response carries the key, a helper pipes it into `gh secret set` for Actions and Dependabot. | muhtari MU-REL-004 | adopted (GSD-HANDOFF 7) |
 | XFER-076 | A hygiene rule that scans for a header signature must not contain the signature itself as text, or every copy of the script matches. | muhtari hygiene (ATARI7800 compared as hex) | adopted (`scripts/hygiene.sh` compares `TMR SEGA` as hex) |
+| XFER-077 | Hosted ASan outgrew job and per-test timeouts; scale sanitizer timeouts in one pass after registration, per CMake directory. | gabbaboy GB-CI-004, GB-CI-005 | adopted (ENGINEERING 3: `policy.timeout_scaled`) |
+| XFER-078 | CMake embeds the git revision at configure time; reconfigure after committing or the build reports a stale revision. | gabbaboy GB-GSD-020 | adopted (ENGINEERING 2: `build.revision_matches_head`) |
+| XFER-079 | A failing negative control leaks under LSan, which replaces its exit code; run controls with leak detection off and free before failing. | gabbaboy GB-CGB-002 | adopted (ENGINEERING 3: `expect_fail.cmake`) |
 
 ## Lessons learned here
 
