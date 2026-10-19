@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 01
 current_phase_name: A test frame in RetroArch
 status: executing
-stopped_at: Completed 01-03-PLAN.md
-last_updated: "2026-10-19T21:28:16.034Z"
+stopped_at: Completed 01-04-PLAN.md
+last_updated: "2026-10-19T21:39:01.104Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 01 execution started
-state_head: cce96b6a57bb37fe952c85855506f3d7f7aa292d
+state_head: 8c5b5c28bcd2e1f0a8585e93ea41b433d39ae09c
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 12
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 01 (A test frame in RetroArch) — EXECUTING
-Plan: 4 of 12
+Plan: 5 of 12
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 01 execution started
 
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P01 | 12min | 3 tasks | 25 files |
 | Phase 01 P02 | 13min | 2 tasks | 13 files |
 | Phase 01 P03 | 5min | 1 tasks | 15 files |
+| Phase 01 P04 | 8min | 2 tasks | 22 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,9 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 01]: cogmaster_get_fault is OK with present 0 before a load; reset POWER also zeroes the counters, SOFT keeps them
 - [Phase 01]: PNG encoder fills a caller buffer (png_size, png_write); runner writes each PNG with one fwrite and removes a partial file
 - [Phase 01]: Host colour helpers build as the cogmaster-host static library inside the runner block, outside the hash
+- [Phase 01]: The bench report has exactly nine lines (frames, p50_us to p99.999_us, max_us, max_rss_kib); --bench caps N at 1073741823 and exits 2 above it
+- [Phase 01]: Signal handling is proven by a second runner build compiled with COGMASTER_RUN_RAISE_AT; the installed runner has no test hook
+- [Phase 01]: perf_compare.cmake takes MODE=gate|report; report mode prints the verdict and exits 0
 
 ### Pending Todos
 
@@ -112,6 +116,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T21:28:16.018Z
-Stopped at: Completed 01-03-PLAN.md
+Last session: 2026-10-19T21:39:01.088Z
+Stopped at: Completed 01-04-PLAN.md
 Resume file: None

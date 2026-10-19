@@ -44,11 +44,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. The pull request's prerelease rehearsal produces exactly 18 version-free archives, `SHA256SUMS` and verified attestations and then deletes itself; a packaging test finds `LICENSE` and `THIRD-PARTY-NOTICES.md` in each archive (FRAME-06).
   5. The README install line, run in CI against the built macOS arm64 libretro archive, verifies the checksum and installs the core and its `.info` where RetroArch 1.22.2 finds it; the hosted macOS job's RetroArch screenshot equals the runner's frame, and its one-byte negative control fails (FRAME-07).
 
-**Plans**: 3/12 plans executed, 01-01 to 01-12, one sequential chain (waves 1–12)
+**Plans**: 4/12 plans executed, 01-01 to 01-12, one sequential chain (waves 1–12)
 - [x] 01-01-PLAN.md
 - [x] 01-02-PLAN.md
 - [x] 01-03-PLAN.md
-- [ ] 01-04-PLAN.md
+- [x] 01-04-PLAN.md
 - [ ] 01-05-PLAN.md
 - [ ] 01-06-PLAN.md
 - [ ] 01-07-PLAN.md
@@ -116,7 +116,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. A test frame in RetroArch | 3/12 | In Progress | - |
+| 1. A test frame in RetroArch | 4/12 | In Progress | - |
 | 2. The CPU matches the public vectors | 0/TBD | Not started | - |
 | 3. Games play in RetroArch | 0/TBD | Not started | - |
 | 4. Sound | 0/TBD | Not started | - |
