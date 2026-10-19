@@ -42,7 +42,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. A CTest loads the libretro core in an in-process host, runs 60 frames, and the delivered frame equals the runner's byte for byte; `retro_get_system_av_info` reports 1,640,625/27,379 Hz and the SMS or GG geometry (FRAME-03).
   4. The pull request's prerelease rehearsal produces exactly 18 version-free archives, `SHA256SUMS` and verified attestations and then deletes itself; a packaging test finds `LICENSE` and `THIRD-PARTY-NOTICES.md` in each archive (FRAME-06).
   5. The README install line, run in CI against the built macOS arm64 libretro archive, verifies the checksum and installs the core and its `.info` where RetroArch 1.22.2 finds it; the hosted macOS job's RetroArch screenshot equals the runner's frame, and its one-byte negative control fails (FRAME-07).
-**Plans**: TBD
+**Plans**: 12 plans, 01-01 to 01-12, one sequential chain (waves 1–12)
 **UI hint**: no
 **Canonical refs:** `.planning/preparation/ENGINEERING.md`, `.planning/preparation/HOSTS-AND-INTEGRATION.md`, `.planning/preparation/ARCHITECTURE.md`, `PROVENANCE.md`
 
