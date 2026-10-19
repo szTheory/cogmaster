@@ -12,11 +12,11 @@ arm64; "every platform" means all six plus the big-endian lane. Expected values 
 
 ### A test frame in RetroArch
 
-- [ ] **FRAME-01**: `cmake --workflow --preset ci` (`ci-msvc` on Windows) configures, builds, tests and packages the library, `cogmaster-run` and the libretro core on every platform, with the exact test inventory in `tests/inventory/ci.txt` executed once each and no skipped test.
+- [x] **FRAME-01**: `cmake --workflow --preset ci` (`ci-msvc` on Windows) configures, builds, tests and packages the library, `cogmaster-run` and the libretro core on every platform, with the exact test inventory in `tests/inventory/ci.txt` executed once each and no skipped test.
 - [x] **FRAME-02**: `cogmaster-run --frames 60 --hash` with no cartridge prints a frame hash of the built-in test card (SMS 256×192 and, with `--machine gg`, GG 160×144 showing all 4,096 RGB444 colours) that is byte-identical on every platform, including the `be32` lane under qemu; the report-only `wasm32` lane under wasmtime prints the same hash.
 - [x] **FRAME-03**: A CTest loads the libretro core in an in-process host, runs 60 frames, and compares the delivered frame with the runner's byte for byte; `retro_get_system_av_info` reports the NTSC rate 1,640,625/27,379 Hz and the SMS or GG geometry.
 - [x] **FRAME-04**: `nm`-based CTests prove the core exports only `cogmaster_*` symbols, has no mutable globals, imports only the four C memory functions (plus the per-OS helper allowlist), links no floating point, and that `include/cogmaster.h` compiles as C17 and C++17; the header stays under 24 KB and the README under 12 KB.
-- [ ] **FRAME-05**: `scripts/hygiene.sh --tree`, the title check, the timeout-comment check, the SHA-pin check and the no-self-skip policy run in CI, each with a negative control that fails with its named message.
+- [x] **FRAME-05**: `scripts/hygiene.sh --tree`, the title check, the timeout-comment check, the SHA-pin check and the no-self-skip policy run in CI, each with a negative control that fails with its named message.
 - [x] **FRAME-06**: The pull request's prerelease rehearsal runs every publish step with the App token and produces exactly 18 version-free archives, `SHA256SUMS` and verified attestations, then deletes itself; a packaging test shows `LICENSE` and `THIRD-PARTY-NOTICES.md` in each archive; release-please is configured so that merging publishes the same set with no manual step (the real publish is confirmed at ship).
 - [x] **FRAME-07**: The README install line, run in CI against the built macOS arm64 libretro archive (and against `releases/latest/download/` once a release exists), verifies the checksum and installs the core and its `.info` where RetroArch 1.22.2 (Metal) finds it; a hosted macOS job runs RetroArch with the core and no content and compares its screenshot with the runner's frame, with a one-byte negative control.
 - [x] **FRAME-08**: An installed-package C consumer, a C++ header consumer and an `add_subdirectory` embed (with tests, runner and libretro off) build in CI on every platform.
@@ -95,11 +95,11 @@ Later milestones. Each has a seed in `.planning/seeds/` that says when it comes 
 
 | Requirement | Phase | Status |
 |---|---|---|
-| FRAME-01 | Phase 1 | Pending |
+| FRAME-01 | Phase 1 | Complete |
 | FRAME-02 | Phase 1 | Complete |
 | FRAME-03 | Phase 1 | Complete |
 | FRAME-04 | Phase 1 | Complete |
-| FRAME-05 | Phase 1 | Pending |
+| FRAME-05 | Phase 1 | Complete |
 | FRAME-06 | Phase 1 | Complete |
 | FRAME-07 | Phase 1 | Complete |
 | FRAME-08 | Phase 1 | Complete |

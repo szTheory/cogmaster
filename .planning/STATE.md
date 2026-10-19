@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 01
 current_phase_name: A test frame in RetroArch
-status: executing
-stopped_at: Completed 01-11-PLAN.md
-last_updated: "2026-10-19T22:38:24.588Z"
+status: verifying
+stopped_at: Completed 01-12-PLAN.md
+last_updated: "2026-10-19T22:58:34.431Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 01 execution started
-state_head: bc256f2c1bb73c46574aa4d247a04461a8b5495b
+state_head: 851a8903604cf3c98aa58a19df4dbbfb1720e7ee
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 12
-  completed_plans: 11
+  completed_plans: 12
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 
 Phase: 01 (A test frame in RetroArch) — EXECUTING
 Plan: 12 of 12
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-19 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -69,6 +69,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P09 | 12min | 2 tasks | 12 files |
 | Phase 01 P10 | 25min | 2 tasks | 9 files |
 | Phase 01 P11 | 13min | 2 tasks | 1 files |
+| Phase 01 P12 | 20min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -110,6 +111,9 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 01]: release.yml keeps the seed's concurrency queue: max though actionlint 1.7.12 rejects it (green on muhtari run 38983378877)
 - [Phase 01]: MSVC's own constant names (??_C@_, __xmm@) and the x64 vectorizer's __isa_available pair are exempt from the link-surface checks on Windows only; __real@ stays forbidden
 - [Phase 01]: Hosted CI green on draft PR #3 (run 39335167905); the merge ref is accepted as the rehearsal's target_commitish
+- [Phase 01]: 01-12: Timeouts are twice the slowest successful run here; the 5-minute floor also covers asan and perf (apt) and cleanup (API); all provisional until ten samples
+- [Phase 01]: 01-12: be32 timeout scale 8 and wasm32 scale 5, measured against the Linux x64 leg
+- [Phase 01]: 01-12: workflow.test_gate_timeout 4 s, twice the slowest clean local ci workflow run (1.61 s)
 
 ### Pending Todos
 
@@ -142,6 +146,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T22:38:24.570Z
-Stopped at: Completed 01-11-PLAN.md
+Last session: 2026-10-19T22:58:34.413Z
+Stopped at: Completed 01-12-PLAN.md
 Resume file: None
