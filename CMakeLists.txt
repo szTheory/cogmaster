@@ -19,6 +19,13 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 option(COGMASTER_BUILD_RUNNER "Build the cogmaster-run command" ${PROJECT_IS_TOP_LEVEL})
 option(COGMASTER_BUILD_TESTS "Register the tests" ${PROJECT_IS_TOP_LEVEL})
+# The libretro core is a module the frontend loads at run time; WASI has no
+# dynamic loading, so it is off there.
+set(cogmaster_libretro_default ${PROJECT_IS_TOP_LEVEL})
+if(CMAKE_SYSTEM_NAME STREQUAL "WASI")
+  set(cogmaster_libretro_default OFF)
+endif()
+option(COGMASTER_BUILD_LIBRETRO "Build the libretro core" ${cogmaster_libretro_default})
 
 # The warning set, applied only when this is the top-level project so an
 # embedder's older or console compiler never meets an unknown flag. Presets
