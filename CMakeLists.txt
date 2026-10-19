@@ -135,6 +135,11 @@ if(COGMASTER_BUILD_LIBRETRO)
   add_subdirectory(libretro)
 endif()
 
+# Release archives, one per install component.
+if(PROJECT_IS_TOP_LEVEL)
+  include(cmake/packaging.cmake)
+endif()
+
 # Tests. COGMASTER_TIMEOUT_SCALE multiplies every test's timeout on slow
 # lanes; COGMASTER_INVENTORY names the tests/inventory/<name>.txt the
 # registered tests must equal.

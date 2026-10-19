@@ -56,6 +56,13 @@ perf.gate.unstable	perf
 policy.no_skip	policy
 policy.no_skip.self_test	policy
 policy.notices	policy
+release.archive_contents	release
+release.archive_contents.self_test	release
+release.floor	release
+release.floor.self_test	release
+release.single_version_source	policy
+release.single_version_source.next	policy
+release.single_version_source.self_test	policy
 runner.bench.bytes	bench,portable,runner
 runner.bench.format	bench,portable,runner
 runner.bench.percentile	bench,portable,runner
