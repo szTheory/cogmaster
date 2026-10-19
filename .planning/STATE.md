@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 01
 current_phase_name: A test frame in RetroArch
 status: executing
-stopped_at: Completed 01-04-PLAN.md
-last_updated: "2026-10-19T21:39:01.104Z"
+stopped_at: Completed 01-05-PLAN.md
+last_updated: "2026-10-19T21:47:01.942Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 01 execution started
-state_head: 8c5b5c28bcd2e1f0a8585e93ea41b433d39ae09c
+state_head: d55645924b24902046e8dd769b6322b6f1c78664
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 12
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 01 (A test frame in RetroArch) — EXECUTING
-Plan: 5 of 12
+Plan: 6 of 12
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 01 execution started
 
@@ -62,6 +62,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P02 | 13min | 2 tasks | 13 files |
 | Phase 01 P03 | 5min | 1 tasks | 15 files |
 | Phase 01 P04 | 8min | 2 tasks | 22 files |
+| Phase 01 P05 | 6min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,9 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 01]: The bench report has exactly nine lines (frames, p50_us to p99.999_us, max_us, max_rss_kib); --bench caps N at 1073741823 and exits 2 above it
 - [Phase 01]: Signal handling is proven by a second runner build compiled with COGMASTER_RUN_RAISE_AT; the installed runner has no test hook
 - [Phase 01]: perf_compare.cmake takes MODE=gate|report; report mode prints the verdict and exits 0
+- [Phase 01]: libretro core: one instance from retro_init to retro_deinit; av_info and audio length from cogmaster_get_info (48000 x fps_den / fps_num per frame, carried as a remainder)
+- [Phase 01]: cogmaster-host builds for the runner or the libretro core, PIC and hidden
+- [Phase 01]: Test-only modules cogmaster_libretro_rgb565 and cogmaster_libretro_gg cover RGB565 with single-sample audio and the GG geometry; .info claims only supports_no_game, supported_extensions empty
 
 ### Pending Todos
 
@@ -116,6 +120,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T21:39:01.088Z
-Stopped at: Completed 01-04-PLAN.md
+Last session: 2026-10-19T21:47:01.927Z
+Stopped at: Completed 01-05-PLAN.md
 Resume file: None
