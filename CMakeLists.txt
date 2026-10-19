@@ -140,11 +140,61 @@ if(PROJECT_IS_TOP_LEVEL)
   include(cmake/packaging.cmake)
 endif()
 
+# The hygiene lane registers only the repository checks (formatting, the
+# integer-only text scan, the analyzer, scripts/hygiene.sh and the policy
+# scripts) and finds its own tools, so no one sets PATH: clang-format and
+# clang-tidy 21 by their Debian names, in Homebrew's keg-only llvm@21 or in
+# Ubuntu's llvm-21 directory, then on PATH. A missing tool fails configure
+# naming it; no test skips itself.
+option(COGMASTER_HYGIENE "Register only the hygiene tests" OFF)
+if(COGMASTER_HYGIENE)
+  set(hints /opt/homebrew/opt/llvm@21/bin /usr/local/opt/llvm@21/bin /usr/lib/llvm-21/bin)
+  find_program(COGMASTER_CLANG_FORMAT NAMES clang-format-21 clang-format HINTS ${hints} REQUIRED)
+  find_program(COGMASTER_CLANG_TIDY NAMES clang-tidy-21 clang-tidy HINTS ${hints} REQUIRED)
+  foreach(tool IN ITEMS COGMASTER_CLANG_FORMAT COGMASTER_CLANG_TIDY)
+    execute_process(COMMAND ${${tool}} --version OUTPUT_VARIABLE version ERROR_QUIET)
+    if(NOT version MATCHES "version 21\\.")
+      string(REGEX MATCH "version [0-9.]+" found "${version}")
+      message(FATAL_ERROR "hygiene: ${${tool}} is ${found}, not 21 "
+        "(macOS: brew install llvm@21; Ubuntu: apt install clang-format-21 clang-tidy-21)")
+    endif()
+  endforeach()
+  find_program(COGMASTER_JQ jq REQUIRED)
+  find_program(COGMASTER_SH sh REQUIRED)
+  find_package(Git REQUIRED)
+endif()
+
+# The nofp lane proves the core integer-only by machine code, not text: GCC's
+# -mgeneral-regs-only rejects any floating-point type in the core and in the
+# abi fixtures, which copy the core's options. It registers only the abi tests.
+option(COGMASTER_NOFP "Build the core with general registers only; register only the abi tests" OFF)
+if(COGMASTER_NOFP)
+  if(NOT CMAKE_C_COMPILER_ID STREQUAL "GNU")
+    message(FATAL_ERROR "nofp: -mgeneral-regs-only needs GCC, not ${CMAKE_C_COMPILER_ID}")
+  endif()
+  target_compile_options(cogmaster PRIVATE -mgeneral-regs-only)
+endif()
+
 # Tests. COGMASTER_TIMEOUT_SCALE multiplies every test's timeout on slow
 # lanes; COGMASTER_INVENTORY names the tests/inventory/<name>.txt the
 # registered tests must equal.
 set(COGMASTER_TIMEOUT_SCALE 1 CACHE STRING "Multiplier for every test timeout")
-set(COGMASTER_INVENTORY ci CACHE STRING "Test inventory file under tests/inventory")
+set(inventory ci)
+if(COGMASTER_HYGIENE)
+  set(inventory hygiene)
+elseif(COGMASTER_NOFP)
+  set(inventory nofp)
+endif()
+set(COGMASTER_INVENTORY ${inventory} CACHE STRING "Test inventory file under tests/inventory")
+# Fault prevented: every wasm32 test failing on a missing runtime, with a
+# message that does not say where the runtime comes from.
+if(COGMASTER_BUILD_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "WASI")
+  list(GET CMAKE_CROSSCOMPILING_EMULATOR 0 emulator)
+  if(NOT EXISTS "${emulator}")
+    message(FATAL_ERROR "wasm32: the test runtime '${emulator}' is missing; fetch it with\n"
+      "  scripts/fetch-pin.sh wasmtime-<arch>-linux build/pins/wasmtime")
+  endif()
+endif()
 if(COGMASTER_BUILD_TESTS)
   if(NOT COGMASTER_BUILD_RUNNER)
     message(FATAL_ERROR "COGMASTER_BUILD_TESTS needs COGMASTER_BUILD_RUNNER: the tests run cogmaster-run")

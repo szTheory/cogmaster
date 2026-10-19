@@ -173,6 +173,37 @@ cogmaster_add_test(NAME runner.hash.self_test
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
   LABELS runner TIMEOUT 30)
 
+# Fault prevented: a lane whose hashes are never compared with the others.
+# Writes build/<preset>/hashes.txt with the SMS and Game Gear hash lines,
+# the file CI collects from every lane and compares byte for byte.
+string(REPLACE ";" "$<SEMICOLON>" runner_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
+set(runner_hashes ${PROJECT_SOURCE_DIR}/tests/cmake/hashes.cmake)
+cogmaster_add_test(NAME runner.hashes_file
+  COMMAND ${CMAKE_COMMAND} -DMODE=write -DRUN=$<TARGET_FILE:cogmaster-run>
+    "-DEMULATOR=${runner_emulator}" -DOUT=${PROJECT_BINARY_DIR} -P ${runner_hashes}
+  LABELS runner portable TIMEOUT 30)
+
+# Fault prevented: a comparison that passes lanes which differ, or a lane
+# that silently drops out. Two files one hex digit apart must fail, and two
+# files where three are required must fail.
+set(runner_fixture ${PROJECT_BINARY_DIR}/tests/hashes)
+file(WRITE ${runner_fixture}/a.txt "frame 60 sha256 00\n")
+file(WRITE ${runner_fixture}/b.txt "frame 60 sha256 01\n")
+# CMake wraps long messages, so the regexes allow a break between words.
+foreach(case IN ITEMS "count;3;a;expected 3 files,[^/]*got 2" "byte;2;b;b.txt[^/]*differs")
+  list(GET case 0 name)
+  list(GET case 1 count)
+  list(GET case 2 second)
+  list(GET case 3 regex)
+  set(cmd ${CMAKE_COMMAND} "-DFILES=${runner_fixture}/a.txt\\;${runner_fixture}/${second}.txt"
+    -DCOUNT=${count} -DMODE=compare -P ${runner_hashes})
+  string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+  cogmaster_add_test(NAME runner.hashes_compare.${name}.self_test
+    COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=${regex}"
+      -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+    LABELS runner TIMEOUT 10)
+endforeach()
+
 # The PNG encoder and its checksums, checked by an independent parse. The
 # same program decodes the runner's PNG for runner.png_file.
 add_executable(cogmaster-test-runner
@@ -191,7 +222,6 @@ cogmaster_add_test(NAME runner.png
   COMMAND cogmaster-test-runner png
   LABELS runner portable TIMEOUT 10)
 
-string(REPLACE ";" "$<SEMICOLON>" runner_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
 set(runner_check ${CMAKE_COMMAND} -DRUN=$<TARGET_FILE:cogmaster-run>
   "-DEMULATOR=${runner_emulator}")
 

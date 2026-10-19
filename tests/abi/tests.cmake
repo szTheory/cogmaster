@@ -104,3 +104,19 @@ foreach(abi_lang IN ITEMS c17 cxx17)
     LABELS abi TIMEOUT 120)
   set_tests_properties(abi.header.${abi_lang} PROPERTIES RESOURCE_LOCK build_tree)
 endforeach()
+
+# On the nofp lane, a fixture holding one double division must fail to build
+# under -mgeneral-regs-only with GCC's own diagnostic (AArch64 names the
+# option; x86-64 refuses the SSE register a double travels in). Fault
+# prevented: a flag that stopped rejecting floating point, so the lane passes
+# on a core that uses it. The fixture is built only inside this test.
+if(COGMASTER_NOFP)
+  set(abi_cmd ${CMAKE_C_COMPILER} -std=c17 -mgeneral-regs-only
+    -c ${CMAKE_CURRENT_LIST_DIR}/nofp_fixture.c -o ${PROJECT_BINARY_DIR}/tests/abi/nofp_fixture.o)
+  string(REPLACE ";" "$<SEMICOLON>" abi_cmd "${abi_cmd}")
+  cogmaster_add_test(NAME abi.nofp_fixture
+    COMMAND ${CMAKE_COMMAND} "-DCMD=${abi_cmd}" -DCODE=1
+      "-DREGEX=general-regs-only[^ ]* is incompatible with the use of floating-point.types|SSE register (return|argument) with SSE disabled"
+      -P ${abi_scripts}/expect_fail.cmake
+    LABELS abi TIMEOUT 30)
+endif()
