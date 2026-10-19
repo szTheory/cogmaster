@@ -65,10 +65,18 @@ install(FILES include/cogmaster.h ${PROJECT_BINARY_DIR}/generated/cogmaster_vers
 # The headless runner, built as ISO C17. It lands at the top of the build
 # directory: build/<preset>/cogmaster-run.
 if(COGMASTER_BUILD_RUNNER)
+  # Host helpers shared by the runner, the libretro core and the tests. They
+  # are outside the core's determinism boundary: nothing here is hashed.
+  add_library(cogmaster-host STATIC host/palette.c)
+  target_include_directories(cogmaster-host PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/host)
+  cogmaster_warnings(cogmaster-host)
+
   add_executable(cogmaster-run
     runner/main.c
+    runner/crc32.c
+    runner/png.c
     runner/sha256.c)
-  target_link_libraries(cogmaster-run PRIVATE cogmaster::cogmaster)
+  target_link_libraries(cogmaster-run PRIVATE cogmaster::cogmaster cogmaster-host)
   cogmaster_warnings(cogmaster-run)
   install(TARGETS cogmaster-run RUNTIME DESTINATION bin COMPONENT runner)
 endif()
