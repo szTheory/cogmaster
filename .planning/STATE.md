@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 01
 current_phase_name: A test frame in RetroArch
 status: executing
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-10-19T21:21:24.493Z"
+stopped_at: Completed 01-03-PLAN.md
+last_updated: "2026-10-19T21:28:16.034Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 01 execution started
-state_head: 2a4a53c5f3fde2f3fec486c4ac65e70f8fdaa10b
+state_head: cce96b6a57bb37fe952c85855506f3d7f7aa292d
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 12
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 01 (A test frame in RetroArch) — EXECUTING
-Plan: 3 of 12
+Plan: 4 of 12
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 01 execution started
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 |------|----------|-------|-------|
 | Phase 01 P01 | 12min | 3 tasks | 25 files |
 | Phase 01 P02 | 13min | 2 tasks | 13 files |
+| Phase 01 P03 | 5min | 1 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,8 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 01]: State visitor header carries frame, ticks and the packed profile once; a state loads only into an instance of the same machine
 - [Phase 01]: Internal state load refuses everything with ERR_ARGUMENT (ERR_NO_CONTENT before a load) until the public state API brings state statuses
 - [Phase 01]: cogmaster_get_fault is OK with present 0 before a load; reset POWER also zeroes the counters, SOFT keeps them
+- [Phase 01]: PNG encoder fills a caller buffer (png_size, png_write); runner writes each PNG with one fwrite and removes a partial file
+- [Phase 01]: Host colour helpers build as the cogmaster-host static library inside the runner block, outside the hash
 
 ### Pending Todos
 
@@ -109,6 +112,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T21:21:24.476Z
-Stopped at: Completed 01-02-PLAN.md
+Last session: 2026-10-19T21:28:16.018Z
+Stopped at: Completed 01-03-PLAN.md
 Resume file: None
