@@ -87,6 +87,54 @@ if(CMAKE_SCRIPT_MODE_FILE)
     set(RUN ${HOOKED})
     expect_exit(0 "^frame 3 sha256 ${EXPECTED}\n$" --frames 60 --hash)
     expect_exit(0 "^frames 3\n.*max_rss_kib [0-9]+\n$" --bench 60)
+  elseif(CASE STREQUAL "exit_failure")
+    # A --png path that cannot be opened is a failure, not a usage error.
+    expect_exit(1 "cannot write" --frames 1 --png "1:${OUT}.missing/x.png")
+  elseif(CASE STREQUAL "no_args")
+    expect_exit(2 "usage")
+  elseif(CASE STREQUAL "unknown")
+    # Options a later release adds are refused now, and --help does not
+    # mention them; --help and --version take nothing else.
+    foreach(opt --probe --trace --region --expect --port1 --port2 --input --hash-audio
+        --capabilities --boot --bios)
+      expect_exit(2 "unknown option" --frames 1 ${opt})
+      expect_exit(2 "unknown option" --frames 1 ${opt} x)
+    endforeach()
+    expect_exit(2 "usage" --help --version)
+    expect_exit(2 "usage" --frames 1 --help)
+    expect_exit(2 "usage" --version x)
+    execute_process(COMMAND ${EMULATOR} ${RUN} --help RESULT_VARIABLE rc OUTPUT_VARIABLE out)
+    if(NOT rc STREQUAL "0" OR out MATCHES "--(probe|trace|region|expect|port|input|hash-audio|capabilities|boot|bios)")
+      message(FATAL_ERROR "--help: expected exit 0 and no later option, got exit ${rc}\n${out}")
+    endif()
+  elseif(CASE STREQUAL "positional")
+    # This release loads no cartridge, so a file name is a usage error.
+    expect_exit(2 "unexpected argument" --frames 1 content.sms)
+    expect_exit(2 "unexpected argument" content.sms)
+  elseif(CASE STREQUAL "frame_range")
+    expect_exit(2 "usage" --frames 0)
+    expect_exit(2 "usage" --frames -1)
+    expect_exit(2 "usage" --frames 1x)
+    expect_exit(2 "usage" --frames 4294967296)
+    expect_exit(2 "usage" --frames)
+    expect_exit(2 "usage" --bench 0)
+    expect_exit(2 "usage" --frames 1 --bench 1)
+    expect_exit(2 "usage" --frames 1 --frames 1)
+  elseif(CASE STREQUAL "hash_repeat")
+    # The card does not change between frames, so the first and the 60th
+    # frame hash alike, and the line names the frame.
+    execute_process(COMMAND ${EMULATOR} ${RUN} --frames 1 --hash RESULT_VARIABLE rc1 OUTPUT_VARIABLE out1)
+    execute_process(COMMAND ${EMULATOR} ${RUN} --frames 60 --hash RESULT_VARIABLE rc60 OUTPUT_VARIABLE out60)
+    if(NOT rc1 STREQUAL "0" OR NOT rc60 STREQUAL "0"
+        OR NOT out1 MATCHES "^frame 1 sha256 ([0-9a-f]+)\n$")
+      message(FATAL_ERROR "--frames 1 --hash: exit ${rc1}\n${out1}--frames 60 --hash: exit ${rc60}\n${out60}")
+    endif()
+    set(first ${CMAKE_MATCH_1})
+    if(NOT out60 STREQUAL "frame 60 sha256 ${first}\n")
+      message(FATAL_ERROR "frame 1 and frame 60 differ:\n${out1}${out60}")
+    endif()
+  elseif(CASE STREQUAL "version")
+    expect_exit(0 "^cogmaster-run [0-9]+\\.[0-9]+\\.[0-9]+\n$" --version)
   else()
     message(FATAL_ERROR "unknown CASE '${CASE}'")
   endif()
@@ -206,4 +254,38 @@ cogmaster_add_test(NAME runner.bench.bytes
 cogmaster_add_test(NAME runner.stop
   COMMAND ${bench_check} -DHOOKED=$<TARGET_FILE:cogmaster-test-run-stop>
     -DEXPECTED=${COGMASTER_TESTCARD_SHA256_SMS} -DCASE=stop -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 30)
+
+# Fault prevented: the exit statuses in docs/runner.md drifting from the ones
+# --help prints.
+cogmaster_add_test(NAME runner.exit.table
+  COMMAND ${runner_check} -DDOC=${PROJECT_SOURCE_DIR}/docs/runner.md
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/exit_table.cmake
+  LABELS runner TIMEOUT 30)
+
+# Fault prevented: a runner that exits 0 after failing to write a file, or
+# calls a failure a usage error.
+cogmaster_add_test(NAME runner.exit.failure
+  COMMAND ${runner_check} -DCASE=exit_failure -DOUT=${PROJECT_BINARY_DIR}/tests/failure.png
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 30)
+
+# Fault prevented: a command line that runs something it should refuse: no
+# arguments, an option a later release adds, a file name, or a frame count
+# that is zero, negative, malformed, too large or given twice.
+foreach(case no_args unknown positional frame_range)
+  cogmaster_add_test(NAME runner.usage.${case}
+    COMMAND ${runner_check} -DCASE=${case} -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS portable runner TIMEOUT 30)
+endforeach()
+
+# Fault prevented: a hash that depends on the frame count for a card that
+# does not move, or a hash line that names the wrong frame.
+cogmaster_add_test(NAME runner.hash.repeat
+  COMMAND ${runner_check} -DCASE=hash_repeat -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 30)
+
+# Fault prevented: --version printing something a script cannot parse.
+cogmaster_add_test(NAME runner.version
+  COMMAND ${runner_check} -DCASE=version -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS portable runner TIMEOUT 30)

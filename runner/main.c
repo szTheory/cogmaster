@@ -2,6 +2,7 @@
  *
  *   cogmaster-run --frames N [--hash] [--png N:FILE]... [--machine auto|sms|gg]
  *   cogmaster-run --bench N [--hash] [--png N:FILE]... [--machine auto|sms|gg]
+ *   cogmaster-run --help | --version
  *
  * Runs N frames (N >= 1) of one instance with no content, which shows the
  * built-in test card. With --hash it prints, after the last frame:
@@ -21,7 +22,7 @@
  * frame in progress: what was asked is printed for the frames that ran, and
  * the status is 0. docs/runner.md describes all of this for users.
  *
- * Exit statuses are listed in exit_status.h.
+ * Exit statuses are listed in exit_status.h and printed by --help.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,18 +60,43 @@ static void run_free(void *user, void *ptr, size_t size)
 }
 
 static const char synopsis[] =
-    "usage: cogmaster-run --frames N [--hash] [--png N:FILE]... [--machine auto|sms|gg]\n"
-    "       cogmaster-run --bench N [--hash] [--png N:FILE]... [--machine auto|sms|gg]\n"
+    "usage: cogmaster-run [--machine auto|sms|gg] --frames N [--hash] [--png N:FILE]...\n"
+    "       cogmaster-run [--machine auto|sms|gg] --bench N [--hash] [--png N:FILE]...\n"
+    "       cogmaster-run --help | --version\n"
+    "  --machine NAME     auto (default), sms or gg\n"
     "  --frames N         run N frames (N >= 1)\n"
     "  --bench N          run N frames and report the time per frame\n"
     "  --hash             print the SHA-256 of the last frame's crop\n"
     "  --png N:FILE       write frame N's crop to FILE as a PNG (1 <= N <= --frames)\n"
-    "  --machine NAME     auto (default), sms or gg\n";
+    "  --help             print this text and the exit statuses\n"
+    "  --version          print the version\n";
 
 static int usage(const char *why)
 {
     fprintf(stderr, "cogmaster-run: %s\n%s", why, synopsis);
     return COGMASTER__EXIT_USAGE;
+}
+
+static void help(void)
+{
+    fputs(synopsis, stdout);
+    fputs("exit status:\n", stdout);
+    for (size_t i = 0; i < sizeof cogmaster__exit_statuses / sizeof cogmaster__exit_statuses[0];
+         i++) {
+        printf("  %d  %-7s  %s\n", cogmaster__exit_statuses[i].code,
+               cogmaster__exit_statuses[i].name, cogmaster__exit_statuses[i].meaning);
+    }
+}
+
+/* The library's version, which is the release's version. */
+static void version(void)
+{
+    cogmaster_versions v;
+    memset(&v, 0, sizeof v);
+    v.size = (uint32_t)sizeof v;
+    (void)cogmaster_get_versions(&v);
+    printf("cogmaster-run %lu.%lu.%lu\n", (unsigned long)v.library_major,
+           (unsigned long)v.library_minor, (unsigned long)v.library_patch);
 }
 
 /* Parses text as a decimal number from 1 to 4294967295. Returns 0 on any
@@ -110,6 +136,7 @@ typedef struct options {
     uint32_t machine;
     png_request *pngs; /* room for one per argument */
     uint32_t png_count;
+    int printed; /* --help or --version ran; nothing else to do */
 } options;
 
 /* Parses "N:FILE" with N from 1 to 4294967295 and FILE not empty. Returns 0
@@ -131,9 +158,20 @@ static int parse_png(const char *text, png_request *out)
     return 1;
 }
 
-/* Returns 0 when the options are valid, else 2 after a usage message. */
+/* Returns 0 when the options are valid, else 2 after a usage message. Any
+   option not listed in the synopsis, and any file name, is a usage error. */
 static int parse_options(int argc, char **argv, options *o)
 {
+    if (argc == 2 && strcmp(argv[1], "--help") == 0) {
+        help();
+        o->printed = 1;
+        return COGMASTER__EXIT_OK;
+    }
+    if (argc == 2 && strcmp(argv[1], "--version") == 0) {
+        version();
+        o->printed = 1;
+        return COGMASTER__EXIT_OK;
+    }
     for (int i = 1; i < argc; i++) {
         const char *arg = argv[i];
         const char *value = i + 1 < argc ? argv[i + 1] : NULL;
@@ -168,6 +206,8 @@ static int parse_options(int argc, char **argv, options *o)
                 return usage("--machine needs auto, sms or gg");
             }
             i++;
+        } else if (strcmp(arg, "--help") == 0 || strcmp(arg, "--version") == 0) {
+            return usage("--help and --version take no other arguments");
         } else {
             return usage(arg[0] == '-' ? "unknown option" : "unexpected argument");
         }
@@ -389,7 +429,7 @@ int main(int argc, char **argv)
         return COGMASTER__EXIT_FAILURE;
     }
     int status = parse_options(argc, argv, &opt);
-    if (status == COGMASTER__EXIT_OK) {
+    if (status == COGMASTER__EXIT_OK && !opt.printed) {
         cogmaster__stop_install();
         status = run(&opt);
     }
