@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 01
 current_phase_name: A test frame in RetroArch
 status: executing
-stopped_at: Completed 01-07-PLAN.md
-last_updated: "2026-10-19T21:59:44.303Z"
+stopped_at: Completed 01-08-PLAN.md
+last_updated: "2026-10-19T22:08:08.868Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 01 execution started
-state_head: cabe26b0ca282a40b1319b6c12f838e6e0ce7ebb
+state_head: 510a545d6233fac5c058b42239389741fdbca78b
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 12
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 01 (A test frame in RetroArch) — EXECUTING
-Plan: 8 of 12
+Plan: 9 of 12
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 01 execution started
 
@@ -65,6 +65,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P05 | 6min | 3 tasks | 13 files |
 | Phase 01 P06 | 6min | 2 tasks | 15 files |
 | Phase 01 P07 | 4min | 3 tasks | 20 files |
+| Phase 01 P08 | 45 min | 3 tasks | 25 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,9 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 01]: docs.api_names drops header names ending in _ (comment wildcards) and lets the guide cite names from cmake/version.h.in and CMakeLists.txt via -DOTHER
 - [Phase 01]: Install rules and packaging register only at top level; an embedding project installs nothing of cogmaster's
 - [Phase 01]: install_line.cmake rewrites a file:// SHA256SUMS only when it names the libretro zip alone, so a release's full list is never touched
+- [Phase 01]: Hygiene preset finds clang-format and clang-tidy 21 from a fixed HINTS list with REQUIRED and checks both majors
+- [Phase 01]: release_inputs is forced true with heavy only for untrusted input (no paths, bad or over-3000 count)
+- [Phase 01]: check-title.sh and classify-changes.sh run in the C locale
 
 ### Pending Todos
 
@@ -126,6 +130,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T21:59:44.288Z
-Stopped at: Completed 01-07-PLAN.md
+Last session: 2026-10-19T22:08:08.850Z
+Stopped at: Completed 01-08-PLAN.md
 Resume file: None
