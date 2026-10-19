@@ -33,7 +33,19 @@ set(helpers
   "^Linux/(x86_64|amd64|AMD64)$:_GLOBAL_OFFSET_TABLE_"
   # 32-bit PowerPC has no 64-bit divide or shift instruction; GCC calls the
   # libgcc integer routines (GCC internals manual, "Integer library routines").
-  "^Linux/(ppc|powerpc)$:__udivdi3 __umoddi3 __ashldi3 __lshrdi3")
+  "^Linux/(ppc|powerpc)$:__udivdi3 __umoddi3 __ashldi3 __lshrdi3"
+  # MSVC x64's auto-vectorizer reads the C runtime's CPU level (measured: llvm-nm
+  # on the core, ci-msvc on windows-2025).
+  "^Windows/(AMD64|x86_64)$:__isa_available")
+# Names a compiler gives its own constants, "system regex:name regex". They
+# are left out of the globals and symbols checks. MSVC puts each string
+# literal in a read-only COMDAT named ??_C@_ and each 128-bit vector constant
+# in one named __xmm@, and on x64 emits __isa_available_default beside the
+# vectorizer's CPU check; BoringSSL's util/audit_symbols.go allows the same
+# three for MSVC builds.
+set(generated
+  "^Windows/:^(\\?\\?_C@_|__xmm@)"
+  "^Windows/(AMD64|x86_64)$:^__isa_available_default$")
 set(allowed memcpy memmove memset memcmp)
 foreach(row IN LISTS helpers)
   string(REGEX MATCH "^([^:]*):(.*)$" unused "${row}")
@@ -41,6 +53,15 @@ foreach(row IN LISTS helpers)
   if(SYSTEM MATCHES "${CMAKE_MATCH_1}")
     separate_arguments(names UNIX_COMMAND "${names}")
     list(APPEND allowed ${names})
+  endif()
+endforeach()
+
+set(generated_regex "^$")
+foreach(row IN LISTS generated)
+  string(REGEX MATCH "^([^:]*):(.*)$" unused "${row}")
+  set(names "${CMAKE_MATCH_2}")
+  if(SYSTEM MATCHES "${CMAKE_MATCH_1}")
+    string(APPEND generated_regex "|${names}")
   endif()
 endforeach()
 
@@ -65,6 +86,9 @@ foreach(line IN LISTS lines)
     continue()
   endif()
   list(APPEND defined "${name}")
+  if(name MATCHES "${generated_regex}")
+    continue()
+  endif()
   if(type MATCHES "^[BbDdC]$")
     list(APPEND writable "${type} ${name}")
   endif()
