@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 01
 current_phase_name: A test frame in RetroArch
 status: executing
-stopped_at: Phase 1 context gathered
-last_updated: "2026-10-19T20:54:01.866Z"
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-10-19T21:08:53.460Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 01 execution started
-state_head: 17a681cfa506604c5313aba8bd4047877310b1de
+state_head: c53bae9e229615760dd7a35c4ea851e292b50c65
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 12
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 01 (A test frame in RetroArch) — EXECUTING
-Plan: 1 of 12
-Status: Executing Phase 01
+Plan: 2 of 12
+Status: Ready to execute
 Last activity: 2026-10-19 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -54,6 +54,11 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: —
 
 *Updated after each plan completion*
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 01 P01 | 12min | 3 tasks | 25 files |
 
 ## Accumulated Context
 
@@ -65,6 +70,10 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Roadmap]: Four phases in the order delivery → CPU → play → sound; every phase ends in an automated release by merging its pull request.
 - [Roadmap]: The whole Z80 is proven against SingleStepTests on every cycle (Phase 2) before any game runs (Phase 3).
 - [Roadmap]: Self-authored WLA-DX fixtures with a RAM mailbox are the primary evidence; the OPLL seed is chosen at Phase 4 planning (DEC.22).
+- [Phase 01]: Status values settled: OK 0, ERR_ARGUMENT 1, ERR_STRUCT_SIZE 2, ERR_NO_MEMORY 3, ERR_BUFFER_TOO_SMALL 4, ERR_NO_CONTENT 5, ERR_PROFILE_REJECTED 6
+- [Phase 01]: get_info before a successful load returns ERR_NO_CONTENT
+- [Phase 01]: get_frame refuses pitch_bytes above 65536 with ERR_ARGUMENT
+- [Phase 01]: Pinned card hashes equal the planning oracle (SMS e14d77ce, GG 7404ed4a); wrong-pin control runs through expect_fail.cmake
 
 ### Pending Todos
 
@@ -96,6 +105,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T18:54:00.110Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-a-test-frame-in-retroarch/01-CONTEXT.md
+Last session: 2026-10-19T21:08:53.446Z
+Stopped at: Completed 01-01-PLAN.md
+Resume file: None

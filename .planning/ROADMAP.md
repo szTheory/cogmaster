@@ -33,6 +33,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Phase Details
 
 ### Phase 1: A test frame in RetroArch
+
 **Goal**: A host can build, install and run cogmaster on every platform and get the same test-card frame from the library, the runner and the libretro core, before any emulation exists; merging the pull request publishes the release.
 **Depends on**: Nothing (first phase)
 **Requirements**: FRAME-01, FRAME-02, FRAME-03, FRAME-04, FRAME-05, FRAME-06, FRAME-07, FRAME-08, FRAME-09
@@ -42,11 +43,26 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. A CTest loads the libretro core in an in-process host, runs 60 frames, and the delivered frame equals the runner's byte for byte; `retro_get_system_av_info` reports 1,640,625/27,379 Hz and the SMS or GG geometry (FRAME-03).
   4. The pull request's prerelease rehearsal produces exactly 18 version-free archives, `SHA256SUMS` and verified attestations and then deletes itself; a packaging test finds `LICENSE` and `THIRD-PARTY-NOTICES.md` in each archive (FRAME-06).
   5. The README install line, run in CI against the built macOS arm64 libretro archive, verifies the checksum and installs the core and its `.info` where RetroArch 1.22.2 finds it; the hosted macOS job's RetroArch screenshot equals the runner's frame, and its one-byte negative control fails (FRAME-07).
-**Plans**: 12 plans, 01-01 to 01-12, one sequential chain (waves 1–12)
+
+**Plans**: 1/12 plans executed, 01-01 to 01-12, one sequential chain (waves 1–12)
+- [x] 01-01-PLAN.md
+- [ ] 01-02-PLAN.md
+- [ ] 01-03-PLAN.md
+- [ ] 01-04-PLAN.md
+- [ ] 01-05-PLAN.md
+- [ ] 01-06-PLAN.md
+- [ ] 01-07-PLAN.md
+- [ ] 01-08-PLAN.md
+- [ ] 01-09-PLAN.md
+- [ ] 01-10-PLAN.md
+- [ ] 01-11-PLAN.md
+- [ ] 01-12-PLAN.md
+
 **UI hint**: no
 **Canonical refs:** `.planning/preparation/ENGINEERING.md`, `.planning/preparation/HOSTS-AND-INTEGRATION.md`, `.planning/preparation/ARCHITECTURE.md`, `PROVENANCE.md`
 
 ### Phase 2: The CPU matches the public vectors
+
 **Goal**: The Z80, the tick-lattice bus, the three v1.0 boards, the ports and the Pause NMI are proven against public vectors and own fixtures before any game runs, and every later stall is diagnosable from the first-fault trace.
 **Depends on**: Phase 1
 **Requirements**: CPU-01, CPU-02, CPU-03, CPU-04, CPU-05
@@ -56,11 +72,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. The Sega, no-mapper and Codemasters boards pass their register-level tests, and the `mapper_sega` and `mapper_codemasters` fixtures, built in CI with pinned WLA-DX v10.7, report the expected values through the RAM mailbox, with images padded to 16 KB multiples and banks wrapping (CPU-03).
   4. The `ports` fixture reports the profile's values for ports `$3E`, `$3F`, `$7E`, `$7F`, `$BE`, `$BF`, `$DC`, `$DD` and GG `$00`–`$06` per machine profile and region, and a test shows the Pause NMI firing at the start of the last line (CPU-04).
   5. `cogmaster-run --probe` prints header fields, region, size, mapper guess, SHA-1, SHA-256, CRC-32 and the RetroAchievements MD5; `cogmaster-run --trace first-fault` prints the first fault (PC, opcode, address, width, device, frame, line, dot) for a ROM that touches an unmapped device; the bounded `fuzz.run` regression replays the loader fuzz seeds per PR (CPU-05).
+
 **Plans**: TBD
 **UI hint**: no
 **Canonical refs:** `.planning/preparation/SMS-SYSTEM.md`, `.planning/preparation/SMS-CARTRIDGES-AND-PERIPHERALS.md`, `.planning/preparation/ARCHITECTURE.md`, `.planning/preparation/CONFORMANCE.md`, `.planning/preparation/SMSPOWER-EXTRACTS.md`
 
 ### Phase 3: Games play in RetroArch
+
 **Goal**: Master System and Game Gear fixtures boot, draw, scroll, respond to two pads and keep battery saves across processes, in the runner and in one integrated RetroArch session, with frame hashes identical on every platform and a compatibility ledger that only ratchets up.
 **Depends on**: Phase 2
 **Requirements**: GAME-01, GAME-02, GAME-03, GAME-04, GAME-05, GAME-06, GAME-07
@@ -70,11 +88,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. A test shows that a button press on either pad in `boot_to_play` changes a visible counter, a scroll register and the frame hash, and that a frame with no port read is counted as a lag frame (GAME-04).
   4. The `battery` fixture continues from its saved value in a fresh `cogmaster-run --save-dir` process after exit and after SIGTERM, and the missing-save and wrong-save controls produce a different result (GAME-05).
   5. One hosted RetroArch session, with at most 300 lines of end-to-end code in total, boots `boot_to_play.sms`, an input changes play, the picture scrolls, and the screenshot equals the runner's frame (GAME-07).
+
 **Plans**: TBD
 **UI hint**: no
 **Canonical refs:** `.planning/preparation/SMS-VDP.md`, `.planning/preparation/SMS-CARTRIDGES-AND-PERIPHERALS.md`, `.planning/preparation/CONFORMANCE.md`, `.planning/preparation/ARCHITECTURE.md`, `.planning/preparation/HOSTS-AND-INTEGRATION.md`
 
 ### Phase 4: Sound
+
 **Goal**: Games play with sound: the SN76489 with Game Gear stereo and the YM2413 for the Japanese profile are synthesised at an exact rational rate, delivered through the runner and both libretro audio paths, with transition and PCM hashes identical on every platform.
 **Depends on**: Phase 3
 **Requirements**: SND-01, SND-02, SND-03, SND-04, SND-05
@@ -84,6 +104,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. `cogmaster-run --hash-audio` prints the same transition-stream and PCM hashes for the `psg_sweep` and `boot_to_play` fixtures on every platform, with exactly 3,504,512/4,375 samples per NTSC frame at 48 kHz and no clipping (SND-03).
   4. A test shows the libretro batch and single-sample audio paths deliver PCM equal to the runner's (stereo on GG, duplicated mono on SMS), and the hosted RetroArch session's recording is non-silent (SND-04).
   5. A test renders reference tones through the synthesiser and shows the largest non-harmonic peak below 16 kHz under −80 dB, and synthesis cost per output sample stays bounded under a register-hammering fixture (SND-05).
+
 **Plans**: TBD
 **UI hint**: no
 **Canonical refs:** `.planning/preparation/SMS-AUDIO.md`, `.planning/preparation/ARCHITECTURE.md`, `.planning/preparation/CONFORMANCE.md`
@@ -95,7 +116,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. A test frame in RetroArch | 0/TBD | Not started | - |
+| 1. A test frame in RetroArch | 1/12 | In Progress | - |
 | 2. The CPU matches the public vectors | 0/TBD | Not started | - |
 | 3. Games play in RetroArch | 0/TBD | Not started | - |
 | 4. Sound | 0/TBD | Not started | - |
