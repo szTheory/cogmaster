@@ -91,6 +91,16 @@ EOF
 $LABELS
 EOF
 
+  # The release App's client ID and key, set by scripts/setup-release-app.sh.
+  # Without them the release pull request never gets CI and nothing publishes.
+  names() { gh "$@" --repo "$repo" --json name -q '.[].name' 2>/dev/null || echo unreadable; }
+  have=$(names variable list | grep -cx COGMASTER_APP_CLIENT_ID || true)
+  want "variable COGMASTER_APP_CLIENT_ID" "$([ "$have" = 1 ] && echo set || echo missing)" set
+  for app in actions dependabot; do
+    have=$(names secret list --app "$app" | grep -cx COGMASTER_APP_PRIVATE_KEY || true)
+    want "$app secret COGMASTER_APP_PRIVATE_KEY" "$([ "$have" = 1 ] && echo set || echo missing)" set
+  done
+
   # The live ruleset with the file's name must match the file. Server-only
   # fields (id, source, timestamps, links) and rule parameters the file does
   # not set are left out; the line names the parts that differ.

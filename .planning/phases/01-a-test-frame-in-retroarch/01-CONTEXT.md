@@ -190,8 +190,9 @@ Rule: a surface lands in the phase whose subsystem first gives it data that a te
 ### Owner prerequisite (identity-bound, AGENTS rule 6)
 - On 2026-10-19 `gh secret list` (Actions and Dependabot) and `gh variable list` returned nothing: the release
   App key `COGMASTER_APP_PRIVATE_KEY` and variable `COGMASTER_APP_CLIENT_ID` are not set. FRAME-06's rehearsal
-  needs them. This is the owner's kickoff task in GSD-HANDOFF §7 and must be done before execute reaches the
-  release plan.
+  needs them. The owner runs `scripts/setup-release-app.sh` once (browser: create, then install); it
+  verifies the install with an App JWT. `scripts/apply-repo-settings.sh --check` reports any of the three as
+  drift. Phase 1's release workflow should also fail fast with a named message when they are absent.
 
 </code_context>
 
