@@ -31,6 +31,9 @@ core.testcard.all_colours	core,portable
 core.testcard.boundaries	core,portable
 core.testcard.full_field	core,portable
 core.testcard.static	core,portable
+docs.api_names	policy
+docs.api_names.self_test	policy
+docs.budgets	policy
 host.palette	host,portable
 libretro.host.gg	libretro,portable
 libretro.host.rgb565	libretro,portable
@@ -45,6 +48,9 @@ perf.gate.no_base	perf
 perf.gate.plus_1_00	perf
 perf.gate.plus_1_01	perf
 perf.gate.unstable	perf
+policy.no_skip	policy
+policy.no_skip.self_test	policy
+policy.notices	policy
 runner.bench.bytes	bench,portable,runner
 runner.bench.format	bench,portable,runner
 runner.bench.percentile	bench,portable,runner
