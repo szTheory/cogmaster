@@ -1,6 +1,7 @@
 /* cogmaster-run: the headless runner.
  *
  *   cogmaster-run --frames N [--hash] [--png N:FILE]... [--machine auto|sms|gg]
+ *   cogmaster-run --bench N [--hash] [--png N:FILE]... [--machine auto|sms|gg]
  *
  * Runs N frames (N >= 1) of one instance with no content, which shows the
  * built-in test card. With --hash it prints, after the last frame:
@@ -15,17 +16,33 @@
  * PNG, each RGB444 channel times 0x11. It may be given more than once. The
  * whole file is built in memory after frame N and written in one call.
  *
+ * --bench N also times each frame with the host's monotonic clock and prints
+ * the report described in bench.h. SIGINT or SIGTERM ends the run after the
+ * frame in progress: what was asked is printed for the frames that ran, and
+ * the status is 0. docs/runner.md describes all of this for users.
+ *
  * Exit statuses are listed in exit_status.h.
  */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "bench.h"
+#include "clock.h"
 #include "cogmaster.h"
 #include "exit_status.h"
 #include "palette.h"
 #include "png.h"
+#include "rss.h"
 #include "sha256.h"
+#include "stop.h"
+
+/* The tests build a second runner with COGMASTER_RUN_RAISE_AT=N, which
+   raises SIGTERM from inside frame N, to show the stop is clean. The
+   installed runner has no such hook. */
+#ifdef COGMASTER_RUN_RAISE_AT
+#include <signal.h>
+#endif
 
 /* The allocator the runner hands the core: the C library's malloc and free. */
 static void *run_alloc(void *user, size_t size)
@@ -43,7 +60,9 @@ static void run_free(void *user, void *ptr, size_t size)
 
 static const char synopsis[] =
     "usage: cogmaster-run --frames N [--hash] [--png N:FILE]... [--machine auto|sms|gg]\n"
+    "       cogmaster-run --bench N [--hash] [--png N:FILE]... [--machine auto|sms|gg]\n"
     "  --frames N         run N frames (N >= 1)\n"
+    "  --bench N          run N frames and report the time per frame\n"
     "  --hash             print the SHA-256 of the last frame's crop\n"
     "  --png N:FILE       write frame N's crop to FILE as a PNG (1 <= N <= --frames)\n"
     "  --machine NAME     auto (default), sms or gg\n";
@@ -86,6 +105,7 @@ typedef struct png_request {
 
 typedef struct options {
     uint32_t frames;
+    int bench;
     int hash;
     uint32_t machine;
     png_request *pngs; /* room for one per argument */
@@ -117,12 +137,16 @@ static int parse_options(int argc, char **argv, options *o)
     for (int i = 1; i < argc; i++) {
         const char *arg = argv[i];
         const char *value = i + 1 < argc ? argv[i + 1] : NULL;
-        if (strcmp(arg, "--frames") == 0) {
+        if (strcmp(arg, "--frames") == 0 || strcmp(arg, "--bench") == 0) {
             if (o->frames != 0u) {
-                return usage("give --frames once");
+                return usage("give --frames or --bench once");
             }
+            o->bench = strcmp(arg, "--bench") == 0;
             if (!parse_count(value, &o->frames)) {
-                return usage("--frames needs a whole number of 1 or more");
+                return usage("--frames and --bench need a whole number of 1 or more");
+            }
+            if (o->bench && cogmaster__bench_bytes(o->frames) == 0u) {
+                return usage("--bench is at most 1073741823");
             }
             i++;
         } else if (strcmp(arg, "--hash") == 0) {
@@ -149,7 +173,7 @@ static int parse_options(int argc, char **argv, options *o)
         }
     }
     if (o->frames == 0u) {
-        return usage("--frames N is required");
+        return usage("--frames N or --bench N is required");
     }
     for (uint32_t k = 0; k < o->png_count; k++) {
         if (o->pngs[k].frame > o->frames) {
@@ -268,13 +292,18 @@ static int write_png(const cogmaster *m, const char *path, uint16_t *pixels)
     return status;
 }
 
-/* Runs the frames. The pixel buffer is on the heap: a field is too large for
-   a small stack such as wasm32's. Returns the exit status. */
+/* Runs the frames. The pixel buffer and the bench samples are on the heap:
+   a field is too large for a small stack such as wasm32's, and the samples
+   take 4 bytes per frame. Returns the exit status. */
 static int run(const options *opt)
 {
     uint16_t *pixels = (uint16_t *)malloc((size_t)256u * 240u * sizeof *pixels);
-    if (pixels == NULL) {
+    uint32_t *samples =
+        opt->bench ? (uint32_t *)malloc(cogmaster__bench_bytes(opt->frames)) : NULL;
+    if (pixels == NULL || (opt->bench && samples == NULL)) {
         fprintf(stderr, "cogmaster-run: out of memory\n");
+        free(pixels);
+        free(samples);
         return COGMASTER__EXIT_FAILURE;
     }
     cogmaster_config cfg;
@@ -288,6 +317,7 @@ static int run(const options *opt)
         fprintf(stderr, "cogmaster-run: cogmaster_create failed with status %lu\n",
                 (unsigned long)st);
         free(pixels);
+        free(samples);
         return COGMASTER__EXIT_FAILURE;
     }
 
@@ -302,9 +332,21 @@ static int run(const options *opt)
                 (unsigned long)st);
         status = COGMASTER__EXIT_FAILURE;
     }
-    /* A 64-bit count, so the loop ends when --frames is 4294967295. */
+    /* A 64-bit count, so the loop ends when --frames is 4294967295. Only
+       cogmaster_run_frame is timed, not hashing or writing files. */
+    uint32_t ran = 0;
     for (uint64_t n = 1; n <= opt->frames && status == COGMASTER__EXIT_OK; n++) {
+        uint64_t start_ns = opt->bench ? cogmaster__clock_ns() : 0u;
         st = cogmaster_run_frame(m, NULL);
+        if (opt->bench) {
+            samples[ran] = cogmaster__bench_us(cogmaster__clock_ns() - start_ns);
+        }
+#ifdef COGMASTER_RUN_RAISE_AT
+        if (n == COGMASTER_RUN_RAISE_AT) {
+            (void)raise(SIGTERM);
+        }
+#endif
+        ran = (uint32_t)n;
         if (st != COGMASTER_STATUS_OK) {
             fprintf(stderr, "cogmaster-run: cogmaster_run_frame failed with status %lu\n",
                     (unsigned long)st);
@@ -315,12 +357,24 @@ static int run(const options *opt)
                 status = write_png(m, opt->pngs[k].path, pixels);
             }
         }
+        /* A stop request ends the run only between whole frames, after the
+           frame's outputs are written. */
+        if (cogmaster__stop_requested()) {
+            break;
+        }
     }
     if (status == COGMASTER__EXIT_OK && opt->hash) {
-        status = print_hash(m, opt->frames, pixels);
+        status = print_hash(m, ran, pixels);
+    }
+    if (status == COGMASTER__EXIT_OK && opt->bench) {
+        char report[512];
+        size_t len = cogmaster__bench_format(report, sizeof report, samples, ran,
+                                             cogmaster__max_rss_kib());
+        fwrite(report, 1u, len, stdout);
     }
     cogmaster_destroy(m);
     free(pixels);
+    free(samples);
     return status;
 }
 
@@ -336,6 +390,7 @@ int main(int argc, char **argv)
     }
     int status = parse_options(argc, argv, &opt);
     if (status == COGMASTER__EXIT_OK) {
+        cogmaster__stop_install();
         status = run(&opt);
     }
     free(opt.pngs);
