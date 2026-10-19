@@ -26,7 +26,7 @@
 _Static_assert(H_RESERVED + H_RESERVED_SIZE == STATE_HEADER_SIZE, "the header is 64 bytes");
 
 /* A loaded state's ticks are capped at 2^62, far from 2^64 wrapping
-   (ARCHITECTURE section 3); the frame cap follows from it. */
+   (ARCHITECTURE section 2); the frame cap follows from it. */
 #define STATE_TICKS_MAX (UINT64_C(1) << 62)
 #define STATE_FRAME_MAX (STATE_TICKS_MAX / COGMASTER__TICKS_PER_FRAME_NTSC)
 
