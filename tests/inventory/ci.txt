@@ -1,0 +1,5 @@
+# Every test the ci, dev and ci-msvc presets register: name<TAB>labels.
+# Sorted; configure fails when this differs from what is registered.
+core.api.size_tags	core,portable
+core.testcard.static	core,portable
+runner.hash.sms	portable,runner
