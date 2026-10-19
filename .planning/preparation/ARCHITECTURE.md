@@ -30,7 +30,7 @@ Citations: [ARCH.01] SMS-SYSTEM, [ARCH.02] SMS-VDP, [ARCH.03] SMS-AUDIO, [ARCH.0
 | Deliverable (directory) | What it is | Built from |
 |---|---|---|
 | Core library (`include/cogmaster.h`, `src/`) | one terse public header (≤ 24 KB) and one module per chip (§3); external symbols `cogmaster_*`, cross-file internals `cogmaster__*` | C17; links nothing beyond `memcpy memmove memset memcmp` [ARCH.06 §2] |
-| `cogmaster-run` (`runner/`) | headless: `--probe`, frame/audio/state hashes, `--png`, `--bench`, `--trace first-fault` from phase 1, later saves, movies, `--vgm`; one exit-status table [ARCH.05 §4] | core + host helpers |
+| `cogmaster-run` (`runner/`) | headless: `--probe`, frame/audio/state hashes, `--png`, `--bench`, `--trace first-fault` from phase 2, later saves, movies, `--vgm`; one exit-status table [ARCH.05 §4] | core + host helpers |
 | `cogmaster_libretro` (`libretro/`) | the sibling's ~350-line adapter shape: one instance, test card without content, XRGB8888 (RGB565 under `USE_RGB565`), stereo batch audio, options, memory exports [ARCH.05 §1] | core + host helpers + vendored `libretro.h` |
 | Host helpers (`host/`), outside the determinism boundary | `palette.c` maps RGB444 to RGB888 through the SMS1 / SMS2 / GG level tables (MAME BSD-3 values with notice) [ARCH.02 §6]; later `lcd.c` (GG ghosting, opt-in) [ARCH.05 §7]; never hashed | runner and adapter |
 

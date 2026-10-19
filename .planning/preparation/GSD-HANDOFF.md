@@ -84,7 +84,7 @@ node ~/.claude/gsd-core/bin/gsd-tools.cjs query config-get workflow.test_command
      evidence or the agent's own reading, viewing and running, and hands the owner only what AGENTS rule 6 leaves
      to them;
    - `gaps_found` → run one fresh verifier first (LESSONS XFER-053), then one gap round (`/gsd-plan-phase N` for
-     the gaps, then execute); a second only with new evidence.
+     the gaps, then `/gsd-execute-phase N` in a new session); a second only with new evidence.
 6. `/gsd-ship N` opens the pull request titled "Phase N: name". The agent retitles it as a Conventional Commit
    (`gh pr edit --title "feat: …"`; `fix:`, or `ci:` for CI-only work so no release is cut), runs
    `gh pr merge --auto --squash` in a shell (never inside GSD command text, where GSD would read the option as

@@ -23,7 +23,7 @@ alternatives, and moves only owner-approved scope into Immediate. The file is sn
 Four phases, each merged by one pull request and released automatically: (1) a test frame in RetroArch with the
 whole delivery path (library, runner, libretro core, six-platform CI, big-endian and wasm32 lanes, attested
 releases, install line); (2) the Z80 matches the public SingleStepTests vectors on every cycle, with the bus,
-the Sega mapper, ports and the Pause NMI; (3) games play in RetroArch: VDP mode 4 on both machines (SMS field
+the Sega, no-mapper and Codemasters boards, ports and the Pause NMI; (3) games play in RetroArch: VDP mode 4 on both machines (SMS field
 and Game Gear window with its 12-bit palette), two pads, regions, battery saves, self-authored SMS and GG
 fixtures with boot-to-play checks, the owner's carts through a local preset, the compatibility ledger;
 (4) sound: the PSG with Game Gear stereo and the YM2413 for the Japanese profile, hashes identical on every
