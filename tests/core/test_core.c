@@ -518,6 +518,11 @@ static cogmaster_status call_run_frame(void *s)
     return cogmaster_run_frame(shared, (cogmaster_run_result *)s);
 }
 
+static cogmaster_status call_get_fault(void *s)
+{
+    return cogmaster_get_fault(shared, (cogmaster_fault *)s);
+}
+
 /* NULL pointers and the size tags of every input and output struct. */
 static void test_size_tags(void)
 {
@@ -557,6 +562,7 @@ static void test_size_tags(void)
     check_output("info", (uint32_t)sizeof info, call_get_info);
     check_output("versions", (uint32_t)sizeof versions, call_get_versions);
     check_output("run_result", (uint32_t)sizeof result, call_run_frame);
+    check_output("fault", (uint32_t)sizeof(cogmaster_fault), call_get_fault);
     cogmaster_destroy(shared);
     shared = NULL;
 }
@@ -741,6 +747,7 @@ static void test_first_released_sizes(void)
         {"info", 48u, call_get_info},
         {"versions", 32u, call_get_versions},
         {"run_result", 12u, call_run_frame},
+        {"fault", 32u, call_get_fault},
     };
     static uint8_t before[TAG_BUF];
     uint8_t *b = (uint8_t *)tag_buf;

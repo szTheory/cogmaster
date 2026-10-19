@@ -37,6 +37,7 @@ endfunction()
 # no default runtime library, and no build path recorded in the objects.
 add_library(cogmaster STATIC
   src/crc32.c
+  src/fault.c
   src/instance.c
   src/frame.c
   src/state.c

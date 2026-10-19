@@ -42,6 +42,14 @@ struct cogmaster__counters {
     uint32_t collision_frames;
 };
 
+/* The first fault since load or reset, as cogmaster_fault reports it. */
+struct cogmaster__fault {
+    uint64_t frame;
+    uint32_t line, dot;
+    uint16_t pc, addr;
+    uint8_t opcode, width, device, kind;
+};
+
 struct cogmaster {
     cogmaster_allocator allocator; /* the caller's, copied at create */
     uint64_t frame;                /* frames run since load */
@@ -49,6 +57,8 @@ struct cogmaster {
     uint32_t machine;              /* resolved machine: SMS2 or GG; valid while loaded */
     uint32_t loaded;               /* 1 after a successful load */
     struct cogmaster__counters counters;
+    uint32_t fault_present;        /* 1 once a fault is recorded */
+    struct cogmaster__fault fault; /* valid while fault_present */
     uint16_t field[COGMASTER__FIELD_MAX_H][COGMASTER__FIELD_W]; /* RGB444 per dot */
 };
 
@@ -113,6 +123,19 @@ _Static_assert(offsetof(cogmaster_run_result, stop) == 4, "run_result.stop");
 _Static_assert(offsetof(cogmaster_run_result, overshoot_ticks) == 8, "run_result.overshoot_ticks");
 _Static_assert(sizeof(cogmaster_run_result) == 12, "run_result size");
 
+_Static_assert(offsetof(cogmaster_fault, size) == 0, "fault.size");
+_Static_assert(offsetof(cogmaster_fault, present) == 4, "fault.present");
+_Static_assert(offsetof(cogmaster_fault, frame) == 8, "fault.frame");
+_Static_assert(offsetof(cogmaster_fault, line) == 16, "fault.line");
+_Static_assert(offsetof(cogmaster_fault, dot) == 20, "fault.dot");
+_Static_assert(offsetof(cogmaster_fault, pc) == 24, "fault.pc");
+_Static_assert(offsetof(cogmaster_fault, addr) == 26, "fault.addr");
+_Static_assert(offsetof(cogmaster_fault, opcode) == 28, "fault.opcode");
+_Static_assert(offsetof(cogmaster_fault, width) == 29, "fault.width");
+_Static_assert(offsetof(cogmaster_fault, device) == 30, "fault.device");
+_Static_assert(offsetof(cogmaster_fault, kind) == 31, "fault.kind");
+_Static_assert(sizeof(cogmaster_fault) == 32, "fault size");
+
 /* The size of each struct as first released. A caller's size tag below it
    is refused; each is pinned to the layout above, so appending a field later
    cannot move it. */
@@ -122,6 +145,7 @@ _Static_assert(sizeof(cogmaster_run_result) == 12, "run_result size");
 #define COGMASTER__FIRST_SIZE_INFO 48u
 #define COGMASTER__FIRST_SIZE_VERSIONS 32u
 #define COGMASTER__FIRST_SIZE_RUN_RESULT 12u
+#define COGMASTER__FIRST_SIZE_FAULT 32u
 _Static_assert(COGMASTER__FIRST_SIZE_CONFIG == sizeof(cogmaster_config), "config first size");
 _Static_assert(COGMASTER__FIRST_SIZE_MEDIA == sizeof(cogmaster_media), "media first size");
 _Static_assert(COGMASTER__FIRST_SIZE_FRAME == sizeof(cogmaster_frame), "frame first size");
@@ -129,6 +153,7 @@ _Static_assert(COGMASTER__FIRST_SIZE_INFO == sizeof(cogmaster_info), "info first
 _Static_assert(COGMASTER__FIRST_SIZE_VERSIONS == sizeof(cogmaster_versions), "versions first size");
 _Static_assert(COGMASTER__FIRST_SIZE_RUN_RESULT == sizeof(cogmaster_run_result),
                "run_result first size");
+_Static_assert(COGMASTER__FIRST_SIZE_FAULT == sizeof(cogmaster_fault), "fault first size");
 
 /* Input structs: OK when the size tag at s is at least first and at most
    4096, and every byte past ours is zero; ERR_STRUCT_SIZE otherwise. */
@@ -141,6 +166,10 @@ cogmaster_status cogmaster__check_out_size(const void *s, uint32_t first);
 /* Writes min(caller's size tag, ours) bytes of the fully built struct full to
    out; bytes past ours are left as the caller set them. */
 void cogmaster__write_out(void *out, const void *full, uint32_t ours);
+
+/* Records f as the instance's fault unless one is already recorded since
+   load or reset: the first fault wins. */
+void cogmaster__fault_record(cogmaster *m, const struct cogmaster__fault *f);
 
 /* CRC-32 as in Ethernet and PNG: reflected polynomial 0xEDB88320, initial
    value and final XOR 0xFFFFFFFF. Continue a running CRC by passing it back

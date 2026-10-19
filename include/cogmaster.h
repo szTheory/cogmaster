@@ -85,6 +85,16 @@ typedef struct cogmaster_run_result {
     uint32_t overshoot_ticks;
 } cogmaster_run_result;
 
+typedef struct cogmaster_fault {
+    uint32_t size;
+    uint32_t present; /* 1 when a fault was recorded since load or reset */
+    uint64_t frame;
+    uint32_t line, dot;
+    uint16_t pc, addr;
+    uint8_t opcode, width;
+    uint8_t device, kind; /* opaque codes, see docs/embedding.md */
+} cogmaster_fault;
+
 cogmaster_status cogmaster_get_versions(cogmaster_versions *out);
 cogmaster_status cogmaster_create(const cogmaster_config *cfg, cogmaster **out);
 void cogmaster_destroy(cogmaster *m); /* NULL-safe */
@@ -92,6 +102,8 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media);
 cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out); /* out may be NULL */
 cogmaster_status cogmaster_get_frame(const cogmaster *m, cogmaster_frame *io);
 cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out);
+cogmaster_status cogmaster_reset(cogmaster *m, uint32_t kind); /* COGMASTER_RESET_* */
+cogmaster_status cogmaster_get_fault(const cogmaster *m, cogmaster_fault *out);
 
 #ifdef __cplusplus
 }

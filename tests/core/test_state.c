@@ -1,6 +1,7 @@
-/* The internal state visitor over the test-card instance:
-   cogmaster-test-state <case>. The tests call the visitor directly; the
-   library has no public state API yet. */
+/* The internal state visitor, the first-fault record and reset over the
+   test-card instance: cogmaster-test-state <case>. The tests call the
+   visitor and the fault recorder directly; the library has no public state
+   API yet, and nothing in it records a fault yet. */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,12 +14,20 @@
 #define BUF 4096u     /* bytes in each state buffer; the card's state is far smaller */
 #define MAX_FIELDS 256u
 #define TICKS_PER_FRAME 179208u
+#define POISON 0xA5u
+#define TAG_BUF 8192u
+#define RESET_SOFT 0u
+#define RESET_POWER 1u
 
 static uint8_t good[BUF];
 static uint8_t bad[BUF];
 static uint8_t before[BUF];
 static uint8_t after[BUF];
 static struct cogmaster__state_field fields[MAX_FIELDS];
+static uint8_t tag_buf[TAG_BUF];
+static uint8_t tag_before[TAG_BUF];
+static uint16_t pixels[256u * 240u];
+static uint8_t snapshot[sizeof(struct cogmaster)];
 
 static void *test_alloc(void *user, size_t size)
 {
@@ -33,14 +42,20 @@ static void test_free(void *user, void *ptr, size_t size)
     free(ptr);
 }
 
-/* A new instance with the test card of machine loaded. */
-static cogmaster *make(uint32_t machine)
+static cogmaster_config make_config(void)
 {
     cogmaster_config cfg;
     memset(&cfg, 0, sizeof cfg);
     cfg.size = (uint32_t)sizeof cfg;
     cfg.allocator.alloc = test_alloc;
     cfg.allocator.free = test_free;
+    return cfg;
+}
+
+/* A new instance with the test card of machine loaded. */
+static cogmaster *make(uint32_t machine)
+{
+    cogmaster_config cfg = make_config();
     cogmaster *m = NULL;
     CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
     cogmaster_media media;
@@ -270,11 +285,7 @@ static void test_rejects_header(void)
     CHECK_EQ_U64(cogmaster__state_save(target, NULL, size), COGMASTER_STATUS_ERR_ARGUMENT);
 
     /* Before a load there is no state to save or to load into. */
-    cogmaster_config cfg;
-    memset(&cfg, 0, sizeof cfg);
-    cfg.size = (uint32_t)sizeof cfg;
-    cfg.allocator.alloc = test_alloc;
-    cfg.allocator.free = test_free;
+    cogmaster_config cfg = make_config();
     cogmaster *empty = NULL;
     CHECK_EQ_U64(cogmaster_create(&cfg, &empty), COGMASTER_STATUS_OK);
     CHECK_EQ_U64(cogmaster__state_size(empty), 0);
@@ -309,10 +320,378 @@ static void test_frame_counter(void)
     }
 }
 
+static cogmaster_fault fault_of(const cogmaster *m)
+{
+    cogmaster_fault f;
+    memset(&f, 0, sizeof f);
+    f.size = (uint32_t)sizeof f;
+    CHECK_EQ_U64(cogmaster_get_fault(m, &f), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(f.size, sizeof f);
+    return f;
+}
+
+/* A fault with every field set, distinct per seed. */
+static struct cogmaster__fault sample_fault(uint32_t seed)
+{
+    struct cogmaster__fault f;
+    memset(&f, 0, sizeof f);
+    f.frame = 7u + seed;
+    f.line = 100u + seed;
+    f.dot = 200u + seed;
+    f.pc = (uint16_t)(0x1234u + seed);
+    f.addr = (uint16_t)(0xBEEFu + seed);
+    f.opcode = (uint8_t)(0xEDu + seed);
+    f.width = (uint8_t)(1u + seed);
+    f.device = (uint8_t)(3u + seed);
+    f.kind = (uint8_t)(5u + seed);
+    return f;
+}
+
+static void expect_fault(const cogmaster *m, const struct cogmaster__fault *want)
+{
+    cogmaster_fault f = fault_of(m);
+    CHECK_EQ_U64(f.present, 1);
+    CHECK_EQ_U64(f.frame, want->frame);
+    CHECK_EQ_U64(f.line, want->line);
+    CHECK_EQ_U64(f.dot, want->dot);
+    CHECK_EQ_HEX(f.pc, want->pc);
+    CHECK_EQ_HEX(f.addr, want->addr);
+    CHECK_EQ_HEX(f.opcode, want->opcode);
+    CHECK_EQ_U64(f.width, want->width);
+    CHECK_EQ_U64(f.device, want->device);
+    CHECK_EQ_U64(f.kind, want->kind);
+}
+
+/* The size-tag rule for the fault struct on m: below its size the struct is
+   left alone; at any larger size only its own bytes are written. */
+static void check_fault_tags(const cogmaster *m)
+{
+    const uint32_t small[] = {0u, (uint32_t)sizeof(cogmaster_fault) - 1u};
+    for (size_t i = 0; i < 2u; i++) {
+        memset(tag_buf, POISON, TAG_BUF);
+        memcpy(tag_buf, &small[i], sizeof small[i]);
+        memcpy(tag_before, tag_buf, TAG_BUF);
+        CHECK_EQ_U64(cogmaster_get_fault(m, (cogmaster_fault *)(void *)tag_buf),
+                     COGMASTER_STATUS_ERR_STRUCT_SIZE);
+        CHECK(memcmp(tag_before, tag_buf, TAG_BUF) == 0);
+    }
+    const uint32_t big[] = {(uint32_t)sizeof(cogmaster_fault) + 8u, TAG_BUF};
+    for (size_t i = 0; i < 2u; i++) {
+        memset(tag_buf, POISON, TAG_BUF);
+        memcpy(tag_buf, &big[i], sizeof big[i]);
+        CHECK_EQ_U64(cogmaster_get_fault(m, (cogmaster_fault *)(void *)tag_buf),
+                     COGMASTER_STATUS_OK);
+        cogmaster_fault f;
+        memcpy(&f, tag_buf, sizeof f);
+        CHECK_EQ_U64(f.size, big[i]);
+        CHECK_EQ_U64(f.present, 0);
+        uint32_t touched = 0;
+        for (size_t k = sizeof f; k < TAG_BUF; k++) {
+            if (tag_buf[k] != POISON) {
+                touched++;
+            }
+        }
+        CHECK_EQ_U64(touched, 0);
+    }
+}
+
+/* No fault after create or after load, and the size-tag rule holds. */
+static void test_fault_empty(void)
+{
+    cogmaster_config cfg = make_config();
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(fault_of(m).present, 0);
+    cogmaster_destroy(m);
+
+    m = make(COGMASTER_MACHINE_GG);
+    run_frames(m, 3u);
+    cogmaster_fault f = fault_of(m);
+    CHECK_EQ_U64(f.present, 0);
+    CHECK_EQ_U64(f.frame, 0);
+    CHECK_EQ_U64(f.pc, 0);
+    check_fault_tags(m);
+    cogmaster_fault out;
+    memset(&out, 0, sizeof out);
+    out.size = (uint32_t)sizeof out;
+    CHECK_EQ_U64(cogmaster_get_fault(NULL, &out), COGMASTER_STATUS_ERR_ARGUMENT);
+    CHECK_EQ_U64(cogmaster_get_fault(m, NULL), COGMASTER_STATUS_ERR_ARGUMENT);
+    cogmaster_destroy(m);
+}
+
+/* Only the first fault since load or reset is kept. */
+static void test_fault_first_wins(void)
+{
+    cogmaster *m = make(COGMASTER_MACHINE_SMS2);
+    struct cogmaster__fault first = sample_fault(0u);
+    struct cogmaster__fault second = sample_fault(1u);
+    cogmaster__fault_record(m, &first);
+    cogmaster__fault_record(m, &second);
+    expect_fault(m, &first);
+    cogmaster_destroy(m);
+}
+
+/* Both reset kinds clear the fault and return frame and ticks to zero; the
+   card keeps running afterwards. */
+static void test_fault_reset_clears(void)
+{
+    const uint32_t kinds[] = {RESET_SOFT, RESET_POWER};
+    for (size_t k = 0; k < 2u; k++) {
+        cogmaster *m = make(COGMASTER_MACHINE_SMS2);
+        run_frames(m, 10u);
+        struct cogmaster__fault f = sample_fault(0u);
+        cogmaster__fault_record(m, &f);
+        CHECK_EQ_U64(cogmaster_reset(m, kinds[k]), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(fault_of(m).present, 0);
+        size_t size = save(m, good);
+        size_t n = record(m);
+        const struct cogmaster__state_field *frame = field(n, "frame");
+        const struct cogmaster__state_field *ticks = field(n, "ticks");
+        if (size != 0u && frame != NULL && ticks != NULL) {
+            CHECK_EQ_U64(get_le(good + frame->offset, 8u), 0);
+            CHECK_EQ_U64(get_le(good + ticks->offset, 8u), 0);
+        }
+        /* A fault after the reset is recorded again. */
+        struct cogmaster__fault g = sample_fault(2u);
+        cogmaster__fault_record(m, &g);
+        expect_fault(m, &g);
+        run_frames(m, 1u);
+        if (save(m, good) != 0u && frame != NULL) {
+            CHECK_EQ_U64(get_le(good + frame->offset, 8u), 1);
+        }
+        cogmaster_destroy(m);
+    }
+}
+
+/* A recorded fault survives save and load into another instance, and a
+   state without one clears the target's. */
+static void test_fault_state_round_trip(void)
+{
+    cogmaster *a = make(COGMASTER_MACHINE_GG);
+    run_frames(a, 4u);
+    struct cogmaster__fault f = sample_fault(0u);
+    cogmaster__fault_record(a, &f);
+    cogmaster *b = make(COGMASTER_MACHINE_GG);
+    size_t size = save(a, good);
+    if (size != 0u) {
+        CHECK_EQ_U64(cogmaster__state_load(b, good, size), COGMASTER_STATUS_OK);
+        expect_fault(b, &f);
+        CHECK_EQ_U64(save(b, after), size);
+        CHECK(memcmp(good, after, size) == 0);
+    }
+    cogmaster *clean = make(COGMASTER_MACHINE_GG);
+    size = save(clean, good);
+    if (size != 0u) {
+        CHECK_EQ_U64(cogmaster__state_load(b, good, size), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(fault_of(b).present, 0);
+    }
+    cogmaster_destroy(a);
+    cogmaster_destroy(b);
+    cogmaster_destroy(clean);
+}
+
+/* The loaded instance's saved bytes and field equal the snapshot taken by
+   take_snapshot. */
+static size_t snapshot_size;
+
+static void take_snapshot(const cogmaster *m)
+{
+    snapshot_size = save(m, before);
+    memcpy(pixels, m->field, sizeof pixels);
+}
+
+static void expect_unchanged(const char *what, cogmaster_status got, cogmaster_status want,
+                             const cogmaster *m)
+{
+    if (got != want) {
+        fprintf(stderr, "%s: status %lu, expected %lu\n", what, (unsigned long)got,
+                (unsigned long)want);
+        check_failures++;
+    }
+    if (save(m, after) != snapshot_size || memcmp(before, after, snapshot_size) != 0 ||
+        memcmp(pixels, m->field, sizeof pixels) != 0) {
+        fprintf(stderr, "%s: the instance changed\n", what);
+        check_failures++;
+    }
+}
+
+/* Before a load the whole instance is compared. */
+static void expect_untouched(const char *what, cogmaster_status got, cogmaster_status want,
+                             const cogmaster *m)
+{
+    if (got != want) {
+        fprintf(stderr, "%s: status %lu, expected %lu\n", what, (unsigned long)got,
+                (unsigned long)want);
+        check_failures++;
+    }
+    if (memcmp(snapshot, m, sizeof snapshot) != 0) {
+        fprintf(stderr, "%s: the instance changed\n", what);
+        check_failures++;
+    }
+}
+
+static void *null_alloc(void *user, size_t size)
+{
+    (void)user;
+    (void)size;
+    return NULL;
+}
+
+/* Every error a public call returns leaves the instance as it was. */
+static void test_error_changes_nothing(void)
+{
+    cogmaster *m = make(COGMASTER_MACHINE_SMS2);
+    run_frames(m, 7u);
+    struct cogmaster__fault f = sample_fault(0u);
+    cogmaster__fault_record(m, &f);
+    take_snapshot(m);
+
+    /* create: every refusal leaves *out and the other instance alone. */
+    cogmaster_config cfg = make_config();
+    cogmaster *out = m;
+    expect_unchanged("create without config", cogmaster_create(NULL, &out),
+                     COGMASTER_STATUS_ERR_ARGUMENT, m);
+    expect_unchanged("create without out", cogmaster_create(&cfg, NULL),
+                     COGMASTER_STATUS_ERR_ARGUMENT, m);
+    cfg.size = 0u;
+    expect_unchanged("create with size 0", cogmaster_create(&cfg, &out),
+                     COGMASTER_STATUS_ERR_STRUCT_SIZE, m);
+    cfg = make_config();
+    cfg.allocator.alloc = NULL;
+    expect_unchanged("create without alloc", cogmaster_create(&cfg, &out),
+                     COGMASTER_STATUS_ERR_ARGUMENT, m);
+    cfg.allocator.alloc = null_alloc;
+    expect_unchanged("create out of memory", cogmaster_create(&cfg, &out),
+                     COGMASTER_STATUS_ERR_NO_MEMORY, m);
+    CHECK(out == m);
+
+    /* load */
+    cogmaster_media media;
+    memset(&media, 0, sizeof media);
+    media.size = (uint32_t)sizeof media;
+    media.machine = COGMASTER_MACHINE_GG;
+    expect_unchanged("load without instance", cogmaster_load(NULL, &media),
+                     COGMASTER_STATUS_ERR_ARGUMENT, m);
+    expect_unchanged("load without media", cogmaster_load(m, NULL), COGMASTER_STATUS_ERR_ARGUMENT,
+                     m);
+    media.size = 0u;
+    expect_unchanged("load with size 0", cogmaster_load(m, &media),
+                     COGMASTER_STATUS_ERR_STRUCT_SIZE, m);
+    media.size = (uint32_t)sizeof media;
+    static const uint8_t image[1] = {0};
+    media.image = image;
+    media.image_size = 1u;
+    expect_unchanged("load an image", cogmaster_load(m, &media), COGMASTER_STATUS_ERR_ARGUMENT, m);
+    media.image = NULL;
+    media.image_size = 0u;
+    media.machine = 3u;
+    expect_unchanged("load another machine", cogmaster_load(m, &media),
+                     COGMASTER_STATUS_ERR_PROFILE_REJECTED, m);
+
+    /* reset */
+    expect_unchanged("reset without instance", cogmaster_reset(NULL, RESET_SOFT),
+                     COGMASTER_STATUS_ERR_ARGUMENT, m);
+    expect_unchanged("reset kind 2", cogmaster_reset(m, 2u), COGMASTER_STATUS_ERR_ARGUMENT, m);
+    expect_unchanged("reset kind max", cogmaster_reset(m, 0xFFFFFFFFu),
+                     COGMASTER_STATUS_ERR_ARGUMENT, m);
+
+    /* run_frame */
+    cogmaster_run_result result;
+    memset(&result, 0, sizeof result);
+    result.size = (uint32_t)sizeof result;
+    expect_unchanged("run_frame without instance", cogmaster_run_frame(NULL, &result),
+                     COGMASTER_STATUS_ERR_ARGUMENT, m);
+    result.size = 0u;
+    expect_unchanged("run_frame with size 0", cogmaster_run_frame(m, &result),
+                     COGMASTER_STATUS_ERR_STRUCT_SIZE, m);
+
+    /* get_frame */
+    cogmaster_frame io;
+    memset(&io, 0, sizeof io);
+    io.size = (uint32_t)sizeof io;
+    io.pitch_bytes = 512u;
+    static uint16_t sink[256u * 240u];
+    io.pixels = sink;
+    expect_unchanged("get_frame without instance", cogmaster_get_frame(NULL, &io),
+                     COGMASTER_STATUS_ERR_ARGUMENT, m);
+    expect_unchanged("get_frame without request", cogmaster_get_frame(m, NULL),
+                     COGMASTER_STATUS_ERR_ARGUMENT, m);
+    io.size = 0u;
+    expect_unchanged("get_frame with size 0", cogmaster_get_frame(m, &io),
+                     COGMASTER_STATUS_ERR_STRUCT_SIZE, m);
+    io.size = (uint32_t)sizeof io;
+    io.flags = 2u;
+    expect_unchanged("get_frame unknown flag", cogmaster_get_frame(m, &io),
+                     COGMASTER_STATUS_ERR_ARGUMENT, m);
+    io.flags = 0u;
+    io.pixels = NULL;
+    expect_unchanged("get_frame without pixels", cogmaster_get_frame(m, &io),
+                     COGMASTER_STATUS_ERR_ARGUMENT, m);
+    io.pixels = sink;
+    io.pitch_bytes = 65537u;
+    expect_unchanged("get_frame pitch too wide", cogmaster_get_frame(m, &io),
+                     COGMASTER_STATUS_ERR_ARGUMENT, m);
+    io.pitch_bytes = 511u;
+    expect_unchanged("get_frame pitch short", cogmaster_get_frame(m, &io),
+                     COGMASTER_STATUS_ERR_BUFFER_TOO_SMALL, m);
+
+    /* get_info, get_fault, get_versions */
+    cogmaster_info info;
+    memset(&info, 0, sizeof info);
+    expect_unchanged("get_info without instance", cogmaster_get_info(NULL, &info),
+                     COGMASTER_STATUS_ERR_ARGUMENT, m);
+    expect_unchanged("get_info without out", cogmaster_get_info(m, NULL),
+                     COGMASTER_STATUS_ERR_ARGUMENT, m);
+    expect_unchanged("get_info with size 0", cogmaster_get_info(m, &info),
+                     COGMASTER_STATUS_ERR_STRUCT_SIZE, m);
+    cogmaster_fault fault;
+    memset(&fault, 0, sizeof fault);
+    expect_unchanged("get_fault without instance", cogmaster_get_fault(NULL, &fault),
+                     COGMASTER_STATUS_ERR_ARGUMENT, m);
+    expect_unchanged("get_fault without out", cogmaster_get_fault(m, NULL),
+                     COGMASTER_STATUS_ERR_ARGUMENT, m);
+    expect_unchanged("get_fault with size 0", cogmaster_get_fault(m, &fault),
+                     COGMASTER_STATUS_ERR_STRUCT_SIZE, m);
+    cogmaster_versions versions;
+    memset(&versions, 0, sizeof versions);
+    expect_unchanged("get_versions without out", cogmaster_get_versions(NULL),
+                     COGMASTER_STATUS_ERR_ARGUMENT, m);
+    expect_unchanged("get_versions with size 0", cogmaster_get_versions(&versions),
+                     COGMASTER_STATUS_ERR_STRUCT_SIZE, m);
+    cogmaster_destroy(m);
+
+    /* Before a load: the calls that need content refuse it and change no
+       byte of the instance. */
+    cfg = make_config();
+    cogmaster *e = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &e), COGMASTER_STATUS_OK);
+    memcpy(snapshot, e, sizeof snapshot);
+    result.size = (uint32_t)sizeof result;
+    expect_untouched("run_frame before load", cogmaster_run_frame(e, &result),
+                     COGMASTER_STATUS_ERR_NO_CONTENT, e);
+    io.pitch_bytes = 512u;
+    expect_untouched("get_frame before load", cogmaster_get_frame(e, &io),
+                     COGMASTER_STATUS_ERR_NO_CONTENT, e);
+    info.size = (uint32_t)sizeof info;
+    expect_untouched("get_info before load", cogmaster_get_info(e, &info),
+                     COGMASTER_STATUS_ERR_NO_CONTENT, e);
+    expect_untouched("reset before load", cogmaster_reset(e, RESET_POWER),
+                     COGMASTER_STATUS_ERR_NO_CONTENT, e);
+    media.machine = 3u;
+    expect_untouched("load another machine before load", cogmaster_load(e, &media),
+                     COGMASTER_STATUS_ERR_PROFILE_REJECTED, e);
+    cogmaster_destroy(e);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
 } cases[] = {
+    {"api.error_changes_nothing", test_error_changes_nothing},
+    {"fault.empty_after_create", test_fault_empty},
+    {"fault.first_wins", test_fault_first_wins},
+    {"fault.reset_clears", test_fault_reset_clears},
+    {"fault.state_round_trip", test_fault_state_round_trip},
     {"state.frame_counter", test_frame_counter},
     {"state.record_sweep", test_record_sweep},
     {"state.rejects_header", test_rejects_header},

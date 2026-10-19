@@ -173,3 +173,10 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out)
     cogmaster__write_out(out, &info, (uint32_t)sizeof info);
     return COGMASTER_STATUS_OK;
 }
+
+cogmaster_status cogmaster_reset(cogmaster *m, uint32_t kind)
+{
+    (void)m;
+    (void)kind;
+    return COGMASTER_STATUS_ERR_ARGUMENT;
+}
