@@ -27,12 +27,28 @@ cogmaster__rect cogmaster__crop(uint32_t machine);
    size_t. */
 #define COGMASTER__PITCH_MAX 65536u
 
+/* The counters every instance keeps (ARCHITECTURE section 8). The test card
+   runs no CPU or VDP, so all of them stay zero until those exist. */
+struct cogmaster__counters {
+    uint32_t lag_frames;
+    uint32_t frame_ints;
+    uint32_t line_ints;
+    uint32_t nmis;
+    uint32_t open_bus_reads;
+    uint32_t audio_dropped;
+    uint32_t vdp_writes_active;
+    uint32_t vdp_fast_accesses;
+    uint32_t sprite_overflow_lines;
+    uint32_t collision_frames;
+};
+
 struct cogmaster {
     cogmaster_allocator allocator; /* the caller's, copied at create */
     uint64_t frame;                /* frames run since load */
     uint64_t ticks;                /* ticks run since load */
     uint32_t machine;              /* resolved machine: SMS2 or GG; valid while loaded */
     uint32_t loaded;               /* 1 after a successful load */
+    struct cogmaster__counters counters;
     uint16_t field[COGMASTER__FIELD_MAX_H][COGMASTER__FIELD_W]; /* RGB444 per dot */
 };
 
@@ -125,6 +141,11 @@ cogmaster_status cogmaster__check_out_size(const void *s, uint32_t first);
 /* Writes min(caller's size tag, ours) bytes of the fully built struct full to
    out; bytes past ours are left as the caller set them. */
 void cogmaster__write_out(void *out, const void *full, uint32_t ours);
+
+/* CRC-32 as in Ethernet and PNG: reflected polynomial 0xEDB88320, initial
+   value and final XOR 0xFFFFFFFF. Continue a running CRC by passing it back
+   as crc; start from 0. */
+uint32_t cogmaster__crc32(uint32_t crc, const uint8_t *p, size_t n);
 
 /* The test card's RGB444 colour at field dot (x, y) for a resolved machine. */
 uint16_t cogmaster__testcard_pixel(uint32_t x, uint32_t y, uint32_t machine);

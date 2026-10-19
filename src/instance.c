@@ -130,6 +130,7 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     m->loaded = 1u;
     m->frame = 0u;
     m->ticks = 0u;
+    memset(&m->counters, 0, sizeof m->counters);
     memset(m->field, 0, sizeof m->field);
     return COGMASTER_STATUS_OK;
 }

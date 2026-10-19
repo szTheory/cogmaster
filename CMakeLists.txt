@@ -36,6 +36,7 @@ endfunction()
 # memcmp: no stack protector or fortify helpers, no MSVC security cookie and
 # no default runtime library, and no build path recorded in the objects.
 add_library(cogmaster STATIC
+  src/crc32.c
   src/instance.c
   src/frame.c
   src/state.c
