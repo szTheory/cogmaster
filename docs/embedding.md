@@ -10,8 +10,8 @@ This release runs the built-in test card only: it loads no cartridge image yet.
 
 **Source tree.** `add_subdirectory` or `FetchContent` gives the `cogmaster::cogmaster` target. Only the C compiler
 is needed: an embedding build gets the library alone, without the runner, the tests or this project's warning
-flags (`COGMASTER_BUILD_RUNNER` and `COGMASTER_BUILD_TESTS` default to off when cogmaster is not the top-level
-project).
+flags (`COGMASTER_BUILD_RUNNER`, `COGMASTER_BUILD_LIBRETRO` and `COGMASTER_BUILD_TESTS` default to off when
+cogmaster is not the top-level project).
 
 ```cmake
 add_subdirectory(third_party/cogmaster)
@@ -20,6 +20,23 @@ target_link_libraries(app PRIVATE cogmaster::cogmaster)
 
 `cogmaster.h` includes `cogmaster_version.h`, which the build generates from `version.txt`; the target's include
 path covers both, and `cmake --install` puts them side by side.
+
+**Release archive.** `cogmaster-library-<os>-<arch>.zip` from a release holds `include/`, the static library in
+`lib/`, a CMake package in `lib/cmake/cogmaster/` and `lib/pkgconfig/cogmaster.pc`. Unzip it anywhere; both
+files find the rest from their own location. The CMake package accepts a request from the same major and minor
+version only, because before 1.0 a minor release may change the API.
+
+```cmake
+# configure with -DCMAKE_PREFIX_PATH=<unzipped directory>
+find_package(cogmaster CONFIG REQUIRED)
+target_link_libraries(app PRIVATE cogmaster::cogmaster)
+```
+
+```sh
+PKG_CONFIG_PATH=<unzipped directory>/lib/pkgconfig cc app.c $(pkg-config --cflags --libs cogmaster)
+```
+
+The header compiles as C and as C++; a C++ program includes it directly.
 
 ## Structs and sizes
 
