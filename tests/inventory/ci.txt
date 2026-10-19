@@ -22,6 +22,9 @@ core.testcard.boundaries	core,portable
 core.testcard.full_field	core,portable
 core.testcard.static	core,portable
 host.palette	host,portable
+libretro.host.gg	libretro,portable
+libretro.host.rgb565	libretro,portable
+libretro.host.xrgb8888	libretro,portable
 libretro.info_claims	libretro
 libretro.info_claims.self_test	libretro
 libretro.vendored	libretro

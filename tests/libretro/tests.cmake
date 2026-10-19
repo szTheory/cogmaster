@@ -8,8 +8,37 @@ cogmaster_add_test(NAME libretro.vendored
   COMMAND ${CMAKE_COMMAND} -P ${libretro_scripts}/vendored.cmake
   LABELS libretro TIMEOUT 10)
 
-# The .info claims only what a test proves.
 if(TARGET cogmaster_libretro)
+  # The in-process frontend. It hashes the delivered frame with the runner's
+  # SHA-256 and compares it with the same pinned card hash the runner's test
+  # uses.
+  add_executable(cogmaster-test-libretro-host
+    ${CMAKE_CURRENT_LIST_DIR}/host.c ${PROJECT_SOURCE_DIR}/runner/sha256.c)
+  target_include_directories(cogmaster-test-libretro-host PRIVATE
+    ${PROJECT_SOURCE_DIR}/libretro ${PROJECT_SOURCE_DIR}/runner)
+  target_link_libraries(cogmaster-test-libretro-host PRIVATE
+    cogmaster::cogmaster cogmaster-host ${CMAKE_DL_LIBS})
+  set_target_properties(cogmaster-test-libretro-host PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+  cogmaster_warnings(cogmaster-test-libretro-host)
+  # Fault prevented: the core RetroArch loads shows a frame, rate, geometry
+  # or audio length other than the library's, or needs content to start.
+  # The arguments are the pinned hash, the crop and the display aspect.
+  cogmaster_add_test(NAME libretro.host.xrgb8888
+    COMMAND cogmaster-test-libretro-host $<TARGET_FILE:cogmaster_libretro> xrgb8888
+      ${COGMASTER_TESTCARD_SHA256_SMS} 256 192 32 21
+    LABELS libretro portable TIMEOUT 60)
+  cogmaster_add_test(NAME libretro.host.rgb565
+    COMMAND cogmaster-test-libretro-host $<TARGET_FILE:cogmaster_libretro_rgb565> rgb565
+      ${COGMASTER_TESTCARD_SHA256_SMS} 256 192 32 21
+    LABELS libretro portable TIMEOUT 60)
+  # The Game Gear crop, 160 x 144 at a 6:5 pixel, shows at 4:3.
+  cogmaster_add_test(NAME libretro.host.gg
+    COMMAND cogmaster-test-libretro-host $<TARGET_FILE:cogmaster_libretro_gg> xrgb8888
+      ${COGMASTER_TESTCARD_SHA256_GG} 160 144 4 3
+    LABELS libretro portable TIMEOUT 60)
+
+  # The .info claims only what a test proves.
   set(libretro_inventory ${PROJECT_SOURCE_DIR}/tests/inventory/${COGMASTER_INVENTORY}.txt)
   # Fault prevented: RetroArch turns on a feature the .info claims and no
   # test exercises.
