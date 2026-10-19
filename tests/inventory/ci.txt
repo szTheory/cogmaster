@@ -1,6 +1,10 @@
 # Every test the ci, dev and ci-msvc presets register: name<TAB>labels.
 # Sorted; configure fails when this differs from what is registered.
+core.api.first_released_sizes	core,portable
 core.api.size_tags	core,portable
+core.api.statuses	core,portable
+core.create.allocator	core,portable
+core.frame.pitch_wide	core,portable
 core.info	core,portable
 core.load.profile_rejected	core,portable
 core.testcard.all_colours	core,portable

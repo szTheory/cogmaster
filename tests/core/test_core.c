@@ -14,6 +14,13 @@
 #define POISON 0xA5u  /* fill the core must leave alone */
 #define TAG_BUF 8192u /* bytes in the size-tag scratch buffer */
 #define TAG_MAX 4096u /* the largest input size tag the core accepts */
+#define P ((uint32_t)sizeof(void *))
+
+/* The values the public header gives the out-of-memory, buffer-too-small and
+   no-content statuses. */
+#define TEST_STATUS_ERR_NO_MEMORY 3u
+#define TEST_STATUS_ERR_BUFFER_TOO_SMALL 4u
+#define TEST_STATUS_ERR_NO_CONTENT 5u
 
 /* The card's colours, RGB444 0000BBBBGGGGRRRR. */
 #define WHITE 0x0FFFu
@@ -31,8 +38,9 @@
 
 static uint16_t pixels[FIELD_W * FIELD_MAX_H];
 static uint16_t pixels2[FIELD_W * FIELD_MAX_H];
-static uint64_t tag_buf[TAG_BUF / 8u]; /* aligned for every public struct */
-static cogmaster *shared;              /* the instance the size-tag calls use */
+static uint16_t wide[336u * FIELD_MAX_H]; /* rows of 336 pixels */
+static uint64_t tag_buf[TAG_BUF / 8u];    /* aligned for every public struct */
+static cogmaster *shared;                 /* the instance the size-tag calls use */
 
 /* The plain malloc allocator, as every host defines it. */
 static void *test_alloc(void *user, size_t size)
@@ -559,11 +567,250 @@ static void test_size_tags(void)
     shared = NULL;
 }
 
+/* A counting allocator: every call, the bytes live, and whether each free
+   names the size its block was allocated with. */
+typedef struct counts {
+    uint32_t allocs, frees, size_mismatches;
+    uint64_t live_bytes;
+    int fail; /* nonzero: alloc returns NULL */
+} counts;
+
+static void *count_alloc(void *user, size_t size)
+{
+    counts *c = (counts *)user;
+    c->allocs++;
+    if (c->fail) {
+        return NULL;
+    }
+    /* A header before the block records its size, so free can check it. */
+    uint64_t *block = (uint64_t *)malloc(size + 16u);
+    if (block == NULL) {
+        return NULL;
+    }
+    block[0] = (uint64_t)size;
+    c->live_bytes += size;
+    return block + 2;
+}
+
+static void count_free(void *user, void *ptr, size_t size)
+{
+    counts *c = (counts *)user;
+    c->frees++;
+    uint64_t *block = (uint64_t *)ptr - 2;
+    if (block[0] != (uint64_t)size) {
+        c->size_mismatches++;
+    }
+    c->live_bytes -= block[0];
+    free(block);
+}
+
+/* The statuses a caller meets before content, with a short pitch and with a
+   cartridge image this release cannot load. */
+static void test_statuses(void)
+{
+    cogmaster_config cfg = make_config();
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    cogmaster_run_result result;
+    memset(&result, 0, sizeof result);
+    result.size = (uint32_t)sizeof result;
+    cogmaster_frame io = frame_io(pixels, FIELD_W * 2u, 0u);
+    cogmaster_info info;
+    memset(&info, 0, sizeof info);
+    info.size = (uint32_t)sizeof info;
+    CHECK_EQ_U64(cogmaster_run_frame(m, &result), TEST_STATUS_ERR_NO_CONTENT);
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), TEST_STATUS_ERR_NO_CONTENT);
+    CHECK_EQ_U64(cogmaster_get_frame(m, &io), TEST_STATUS_ERR_NO_CONTENT);
+    CHECK_EQ_U64(cogmaster_get_info(m, &info), TEST_STATUS_ERR_NO_CONTENT);
+
+    cogmaster_media media = make_media(COGMASTER_MACHINE_GG);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    run_frames(m, 1);
+
+    /* One byte short of a row: the buffer is left as it was. */
+    memset(pixels, POISON, sizeof pixels);
+    io = frame_io(pixels, GG_W * 2u - 1u, 0u);
+    CHECK_EQ_U64(cogmaster_get_frame(m, &io), TEST_STATUS_ERR_BUFFER_TOO_SMALL);
+    uint32_t touched = 0;
+    for (size_t i = 0; i < sizeof pixels; i++) {
+        if (((const uint8_t *)pixels)[i] != POISON) {
+            touched++;
+        }
+    }
+    CHECK_EQ_U64(touched, 0);
+    io = frame_io(pixels, FIELD_W * 2u - 1u, COGMASTER_FRAME_FULL_FIELD);
+    CHECK_EQ_U64(cogmaster_get_frame(m, &io), TEST_STATUS_ERR_BUFFER_TOO_SMALL);
+    /* A pitch above 65536 bytes, or no buffer, is an argument error. */
+    io = frame_io(pixels, 65537u, 0u);
+    CHECK_EQ_U64(cogmaster_get_frame(m, &io), COGMASTER_STATUS_ERR_ARGUMENT);
+    io = frame_io(NULL, GG_W * 2u, 0u);
+    CHECK_EQ_U64(cogmaster_get_frame(m, &io), COGMASTER_STATUS_ERR_ARGUMENT);
+
+    /* This release loads only the test card: an image is refused and the
+       loaded card keeps running. */
+    static const uint8_t image[1] = {0};
+    cogmaster_media cart = make_media(COGMASTER_MACHINE_SMS2);
+    cart.image = image;
+    CHECK_EQ_U64(cogmaster_load(m, &cart), COGMASTER_STATUS_ERR_ARGUMENT);
+    cart.image = NULL;
+    cart.image_size = 1u;
+    CHECK_EQ_U64(cogmaster_load(m, &cart), COGMASTER_STATUS_ERR_ARGUMENT);
+    CHECK_EQ_U64(cogmaster_run_frame(m, &result), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(result.stop, COGMASTER_STOP_FRAME);
+    CHECK_EQ_U64(result.overshoot_ticks, 0);
+    CHECK_EQ_U64(info_of(m).machine, COGMASTER_MACHINE_GG);
+    io = frame_io(pixels, GG_W * 2u, 0u);
+    CHECK_EQ_U64(cogmaster_get_frame(m, &io), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(io.w, GG_W);
+    cogmaster_destroy(m);
+}
+
+/* Allocation goes through the caller's hooks only, each free names the size
+   allocated, and a failed allocation leaves *out alone. */
+static void test_allocator(void)
+{
+    counts c;
+    memset(&c, 0, sizeof c);
+    cogmaster_config cfg = make_config();
+    cfg.allocator.alloc = count_alloc;
+    cfg.allocator.free = count_free;
+    cfg.allocator.user = &c;
+    cogmaster *marker = (cogmaster *)&c;
+    cogmaster *m = marker;
+
+    cfg.allocator.alloc = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_ERR_ARGUMENT);
+    cfg.allocator.alloc = count_alloc;
+    cfg.allocator.free = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_ERR_ARGUMENT);
+    cfg.allocator.free = count_free;
+    CHECK_EQ_U64(c.allocs, 0);
+    CHECK(m == marker);
+
+    c.fail = 1;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), TEST_STATUS_ERR_NO_MEMORY);
+    CHECK_EQ_U64(c.allocs, 1);
+    CHECK(m == marker);
+
+    c.fail = 0;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    CHECK(m != marker && m != NULL);
+    cogmaster_media media = make_media(COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    uint32_t after_load = c.allocs;
+    run_frames(m, 60);
+    CHECK_EQ_U64(c.allocs, after_load);
+    CHECK(c.live_bytes > 0u);
+    cogmaster_destroy(m);
+    CHECK_EQ_U64(c.frees, c.allocs - 1u);
+    CHECK_EQ_U64(c.size_mismatches, 0);
+    CHECK_EQ_U64(c.live_bytes, 0);
+
+    cogmaster_destroy(NULL);
+}
+
+/* Each struct at the size it was first released with, derived here from its
+   documented layout: inputs and outputs are accepted at exactly that size,
+   one byte less is refused and an output struct is left untouched. */
+static void test_first_released_sizes(void)
+{
+    shared = make(COGMASTER_MACHINE_SMS2);
+    run_frames(shared, 1);
+    cogmaster_config cfg = make_config();
+    cogmaster_media media = make_media(COGMASTER_MACHINE_SMS2);
+    cogmaster_frame io = frame_io(pixels, FIELD_W * 2u, 0u);
+    const struct {
+        const char *what;
+        const void *proto;
+        uint32_t first;
+        cogmaster_status (*call)(void *);
+    } inputs[] = {
+        {"config", &cfg, 4u * P, call_create},
+        {"media", &media, 4u * P, call_load},
+        {"frame", &io, 2u * P + 32u, call_get_frame},
+    };
+    for (size_t i = 0; i < sizeof inputs / sizeof inputs[0]; i++) {
+        uint32_t first = inputs[i].first;
+        expect_status(inputs[i].what, first, inputs[i].call(tagged(inputs[i].proto, first, first)),
+                      COGMASTER_STATUS_OK);
+        expect_status(inputs[i].what, first - 1u,
+                      inputs[i].call(tagged(inputs[i].proto, first, first - 1u)),
+                      COGMASTER_STATUS_ERR_STRUCT_SIZE);
+        run_frames(shared, 1);
+    }
+
+    const struct {
+        const char *what;
+        uint32_t first;
+        cogmaster_status (*call)(void *);
+    } outputs[] = {
+        {"info", 48u, call_get_info},
+        {"versions", 32u, call_get_versions},
+        {"run_result", 12u, call_run_frame},
+    };
+    static uint8_t before[TAG_BUF];
+    uint8_t *b = (uint8_t *)tag_buf;
+    for (size_t i = 0; i < sizeof outputs / sizeof outputs[0]; i++) {
+        uint32_t first = outputs[i].first;
+        memset(b, POISON, TAG_BUF);
+        memcpy(b, &first, sizeof first);
+        expect_status(outputs[i].what, first, outputs[i].call(b), COGMASTER_STATUS_OK);
+        uint32_t small = first - 1u;
+        memset(b, POISON, TAG_BUF);
+        memcpy(b, &small, sizeof small);
+        memcpy(before, b, TAG_BUF);
+        expect_status(outputs[i].what, small, outputs[i].call(b), COGMASTER_STATUS_ERR_STRUCT_SIZE);
+        CHECK(memcmp(before, b, TAG_BUF) == 0);
+    }
+    cogmaster_destroy(shared);
+    shared = NULL;
+}
+
+/* A pitch wider than a row: each crop row lands at its offset and the
+   padding after it keeps the caller's bytes. */
+static void test_pitch_wide(void)
+{
+    const uint32_t pitch = 336u * 2u;
+    const uint32_t machines[] = {COGMASTER_MACHINE_SMS2, COGMASTER_MACHINE_GG};
+    for (size_t k = 0; k < 2u; k++) {
+        cogmaster *m = make(machines[k]);
+        run_frames(m, 1);
+        cogmaster_frame tight = frame_io(pixels2, FIELD_W * 2u, 0u);
+        CHECK_EQ_U64(cogmaster_get_frame(m, &tight), COGMASTER_STATUS_OK);
+        memset(wide, POISON, sizeof wide);
+        cogmaster_frame io = frame_io(wide, pitch, 0u);
+        CHECK_EQ_U64(cogmaster_get_frame(m, &io), COGMASTER_STATUS_OK);
+        CHECK(io.w == tight.w && io.h == tight.h);
+        const uint8_t *bytes = (const uint8_t *)wide;
+        const uint8_t *want = (const uint8_t *)pixels2;
+        uint32_t rows_wrong = 0;
+        uint32_t pad_written = 0;
+        for (uint32_t y = 0; y < io.h; y++) {
+            const uint8_t *row = bytes + (size_t)y * pitch;
+            if (memcmp(row, want + (size_t)y * tight.pitch_bytes, (size_t)io.w * 2u) != 0) {
+                rows_wrong++;
+            }
+            for (uint32_t i = io.w * 2u; i < pitch; i++) {
+                if (row[i] != POISON) {
+                    pad_written++;
+                }
+            }
+        }
+        CHECK_EQ_U64(rows_wrong, 0);
+        CHECK_EQ_U64(pad_written, 0);
+        cogmaster_destroy(m);
+    }
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
 } cases[] = {
+    {"api.first_released_sizes", test_first_released_sizes},
     {"api.size_tags", test_size_tags},
+    {"api.statuses", test_statuses},
+    {"create.allocator", test_allocator},
+    {"frame.pitch_wide", test_pitch_wide},
     {"info", test_info},
     {"load.profile_rejected", test_profile_rejected},
     {"testcard.all_colours", test_all_colours},
