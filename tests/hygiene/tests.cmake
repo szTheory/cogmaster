@@ -310,3 +310,20 @@ cogmaster_add_test(NAME policy.action_pins.self_test
     "-DREGEX=action_pins: sample.yml: uses: actions/checkout@v4.*action_pins: 1 uses: lines not pinned"
     -P ${hygiene_scripts}/expect_fail.cmake
   LABELS hygiene policy TIMEOUT 30)
+
+# Fault prevented: real-host test code growing without bound. Every line
+# under tests/retroarch counts, at most 300; the self test counts a fixture
+# directory holding one 301-line file.
+cogmaster_add_test(NAME policy.e2e_budget
+  COMMAND ${CMAKE_COMMAND} -DDIR=${CMAKE_SOURCE_DIR}/tests/retroarch -P ${hygiene_scripts}/e2e_budget.cmake
+  LABELS hygiene policy TIMEOUT 30)
+set(hygiene_e2e ${CMAKE_BINARY_DIR}/hygiene/e2e_budget_fixture)
+file(REMOVE_RECURSE ${hygiene_e2e})
+string(REPEAT "line\n" 301 hygiene_lines)
+file(WRITE ${hygiene_e2e}/sample.cmake "${hygiene_lines}")
+set(hygiene_cmd ${CMAKE_COMMAND} -DDIR=${hygiene_e2e} -P ${hygiene_scripts}/e2e_budget.cmake)
+string(REPLACE ";" "$<SEMICOLON>" hygiene_cmd "${hygiene_cmd}")
+cogmaster_add_test(NAME policy.e2e_budget.self_test
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${hygiene_cmd}" -DCODE=1 "-DREGEX=e2e_budget: 301 lines"
+    -P ${hygiene_scripts}/expect_fail.cmake
+  LABELS hygiene policy TIMEOUT 30)
