@@ -113,7 +113,8 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 
 ### Pending Todos
 
-None yet.
+- [ci] Post-merge ci follow-ups (perf gate arming, nightly forced failure, Dependabot, wasm32 promotion): `.planning/todos/pending/post-merge-ci-follow-ups.md`
+- [owner] Apply the branch ruleset now that `CI required` has reported: `scripts/apply-repo-settings.sh`, then `scripts/apply-repo-settings.sh --check` (admin rights; see 01-12-SUMMARY)
 
 ### Blockers/Concerns
 

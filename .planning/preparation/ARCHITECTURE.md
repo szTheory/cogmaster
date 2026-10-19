@@ -128,7 +128,7 @@ typedef struct { uint32_t size; uint32_t present; uint64_t frame; uint32_t line,
 
 | Rule | Detail (sibling conventions [ARCH.08]) |
 |---|---|
-| Size tag | every boundary struct starts with `uint32_t size`; input structs: smaller than the struct's first released size → `COGMASTER_STATUS_ERR_STRUCT_SIZE`, between first released and current → missing fields default to zero, larger accepted only if the extra bytes are zero; output structs: the library writes min(size, its own) (phase 1 CONTEXT D-11) |
+| Size tag | every boundary struct starts with `uint32_t size`; input structs: smaller than the struct's first released size → `COGMASTER_STATUS_ERR_STRUCT_SIZE`, between first released and current → missing fields default to zero, larger accepted only if the extra bytes are zero, and a total size above 4096 is `COGMASTER_STATUS_ERR_STRUCT_SIZE` whatever the bytes hold, because the zero check on the extra bytes would otherwise read an unbounded distance past the caller's object (AGENTS rule 4; a deliberate narrowing of phase 1 CONTEXT D-11, recorded in plan 01-01 and `docs/embedding.md`); output structs: the library writes min(size, its own) (phase 1 CONTEXT D-11) |
 | Fields | fixed-width integers; enums carried as `uint32_t`; no `bool`, bit-fields or pointers into core state; rates as num/den |
 | Statuses | append-only, specific (`INVALID_IMAGE`, `UNSUPPORTED_SIZE`, `UNSUPPORTED_BOARD`, `UNSUPPORTED_DEVICE`, `PROFILE_REJECTED`, `BIOS_REJECTED`, `STATE_*` …); lint flags are bits in `cogmaster_cart_info` (`HEADER_MISSING`, `CHECKSUM_BAD`, `REGION_UNKNOWN`, `GG_SMS_MODE_GUESSED`) [ARCH.04 §1] |
 | Errors | validate, then apply: an error changes no state; a failed `load` keeps the previous content |
