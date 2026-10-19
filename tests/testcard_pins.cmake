@@ -3,3 +3,4 @@
 # an independent script, not by this code; every test reads them from here.
 # A changed card changes these only together with the behaviour revision.
 set(COGMASTER_TESTCARD_SHA256_SMS e14d77ce564f0b1498f703134e82e6c1fc718a27c94e49b5a35b95a981857ae7)
+set(COGMASTER_TESTCARD_SHA256_GG 7404ed4adc74d6ccbe99f0e157fe0db873e78895834799123cbb04495db5e779)

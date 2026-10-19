@@ -15,6 +15,26 @@
 #define TAG_BUF 8192u /* bytes in the size-tag scratch buffer */
 #define TAG_MAX 4096u /* the largest input size tag the core accepts */
 
+/* The values the public header gives the Game Gear machine, the full-field
+   frame flag and the rejected-profile status. */
+#define TEST_MACHINE_GG 2u
+#define TEST_FRAME_FULL_FIELD 1u
+#define TEST_STATUS_ERR_PROFILE_REJECTED 6u
+
+/* The card's colours, RGB444 0000BBBBGGGGRRRR. */
+#define WHITE 0x0FFFu
+#define BLACK 0x0000u
+#define RED 0x000Fu
+#define GREEN 0x00F0u
+#define BLUE 0x0F00u
+#define MAGENTA 0x0F0Fu
+
+/* The Game Gear window inside the 256x192 field. */
+#define GG_X 48u
+#define GG_Y 24u
+#define GG_W 160u
+#define GG_H 144u
+
 static uint16_t pixels[FIELD_W * FIELD_MAX_H];
 static uint16_t pixels2[FIELD_W * FIELD_MAX_H];
 static uint64_t tag_buf[TAG_BUF / 8u]; /* aligned for every public struct */
@@ -121,6 +141,275 @@ static void test_static(void)
         }
     }
     CHECK_EQ_U64(wrong, 0);
+    cogmaster_destroy(m);
+}
+
+/* The colour at field dot (x, y) of a full-field copy. */
+static uint16_t at(const uint16_t *field, uint32_t x, uint32_t y)
+{
+    return field[y * FIELD_W + x];
+}
+
+static void expect_pixel(const char *what, uint32_t x, uint32_t y, uint16_t got, uint16_t want)
+{
+    if (got != want) {
+        fprintf(stderr, "%s (%lu, %lu): 0x%04x, expected 0x%04x\n", what, (unsigned long)x,
+                (unsigned long)y, (unsigned)got, (unsigned)want);
+        check_failures++;
+    }
+}
+
+/* Runs one frame of machine and copies the whole field into buf. */
+static cogmaster *full_field(uint32_t machine, uint16_t *buf)
+{
+    cogmaster *m = make(machine);
+    run_frames(m, 1);
+    cogmaster_frame io = frame_io(buf, FIELD_W * 2u, TEST_FRAME_FULL_FIELD);
+    CHECK_EQ_U64(cogmaster_get_frame(m, &io), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(io.x, 0);
+    CHECK_EQ_U64(io.y, 0);
+    CHECK_EQ_U64(io.w, 256);
+    CHECK_EQ_U64(io.h, 192);
+    return m;
+}
+
+/* Each card rule at and next to its boundary. */
+static void test_boundaries(void)
+{
+    static const struct {
+        uint32_t x, y;
+        uint16_t want;
+    } sms[] = {
+        {0, 0, WHITE},     {7, 7, WHITE},   {8, 0, WHITE},    {8, 1, RED},      {255, 100, WHITE},
+        {100, 191, WHITE}, {100, 0, WHITE}, {100, 1, RED},    {100, 2, RED},    {100, 31, RED},
+        {100, 161, GREEN}, {1, 40, WHITE},  {2, 40, BLACK},   {63, 40, WHITE},  {193, 100, BLUE},
+        {254, 100, BLUE},  {64, 40, BLACK}, {100, 32, BLACK}, {100, 48, BLACK}, {192, 100, BLACK},
+        {100, 160, BLACK},
+    };
+    cogmaster *m = full_field(COGMASTER_MACHINE_SMS2, pixels);
+    for (size_t i = 0; i < sizeof sms / sizeof sms[0]; i++) {
+        expect_pixel("sms", sms[i].x, sms[i].y, at(pixels, sms[i].x, sms[i].y), sms[i].want);
+    }
+    for (uint32_t x = 0; x < 256u; x++) {
+        expect_pixel("sms top edge", x, 0, at(pixels, x, 0), WHITE);
+        expect_pixel("sms bottom edge", x, 191, at(pixels, x, 191), WHITE);
+    }
+    for (uint32_t y = 0; y < 192u; y++) {
+        expect_pixel("sms left edge", 0, y, at(pixels, 0, y), WHITE);
+        expect_pixel("sms right edge", 255, y, at(pixels, 255, y), WHITE);
+    }
+    cogmaster_destroy(m);
+
+    /* Game Gear, in window coordinates u = x - 48, v = y - 24. */
+    static const struct {
+        uint32_t u, v;
+        uint16_t want;
+    } gg[] = {
+        {0, 0, WHITE},     {7, 7, WHITE},     {8, 1, RED},         {100, 7, RED},
+        {100, 136, GREEN}, {1, 40, WHITE},    {2, 40, BLACK},      {15, 40, BLACK},
+        {144, 40, BLUE},   {158, 40, BLUE},   {16, 8, 0x0000u},    {17, 9, 0x0000u},
+        {18, 8, 0x0001u},  {16, 10, 0x0010u}, {143, 135, 0x0FFFu},
+    };
+    m = full_field(TEST_MACHINE_GG, pixels);
+    for (size_t i = 0; i < sizeof gg / sizeof gg[0]; i++) {
+        expect_pixel("gg", gg[i].u, gg[i].v, at(pixels, GG_X + gg[i].u, GG_Y + gg[i].v),
+                     gg[i].want);
+    }
+    for (uint32_t u = 0; u < GG_W; u++) {
+        expect_pixel("gg top edge", u, 0, at(pixels, GG_X + u, GG_Y), WHITE);
+        expect_pixel("gg bottom edge", u, GG_H - 1u, at(pixels, GG_X + u, GG_Y + GG_H - 1u), WHITE);
+        expect_pixel("gg above", u, 0, at(pixels, GG_X + u, GG_Y - 1u), MAGENTA);
+        expect_pixel("gg below", u, GG_H - 1u, at(pixels, GG_X + u, GG_Y + GG_H), MAGENTA);
+    }
+    for (uint32_t v = 0; v < GG_H; v++) {
+        expect_pixel("gg left edge", 0, v, at(pixels, GG_X, GG_Y + v), WHITE);
+        expect_pixel("gg right edge", GG_W - 1u, v, at(pixels, GG_X + GG_W - 1u, GG_Y + v), WHITE);
+        expect_pixel("gg left of", 0, v, at(pixels, GG_X - 1u, GG_Y + v), MAGENTA);
+        expect_pixel("gg right of", GG_W - 1u, v, at(pixels, GG_X + GG_W, GG_Y + v), MAGENTA);
+    }
+    expect_pixel("gg field", 47, 24, at(pixels, 47, 24), MAGENTA);
+    expect_pixel("gg field", 208, 24, at(pixels, 208, 24), MAGENTA);
+    expect_pixel("gg field", 48, 23, at(pixels, 48, 23), MAGENTA);
+    expect_pixel("gg field", 48, 168, at(pixels, 48, 168), MAGENTA);
+    cogmaster_destroy(m);
+}
+
+/* The SMS chart holds exactly the 64 SMS colours, each channel widened as
+   v | v << 2; the Game Gear chart holds all 4,096 RGB444 values, each as one
+   2x2 cell. */
+static void test_all_colours(void)
+{
+    static uint32_t seen[4096];
+    memset(seen, 0, sizeof seen);
+    cogmaster *m = full_field(COGMASTER_MACHINE_SMS2, pixels);
+    for (uint32_t y = 32; y <= 160u; y++) {
+        for (uint32_t x = 64; x <= 192u; x++) {
+            if ((x - 64u) % 16u != 0u && (y - 32u) % 16u != 0u) {
+                seen[at(pixels, x, y) & 0x0FFFu]++;
+            }
+        }
+    }
+    uint32_t sms_colours = 0;
+    uint32_t sms_wanted = 0;
+    for (uint32_t c = 0; c < 4096u; c++) {
+        uint32_t r = c & 15u;
+        uint32_t g = (c >> 4) & 15u;
+        uint32_t b = (c >> 8) & 15u;
+        int wanted = r % 5u == 0u && g % 5u == 0u && b % 5u == 0u;
+        if (seen[c] != 0u) {
+            sms_colours++;
+            if (wanted) {
+                sms_wanted++;
+            }
+        }
+    }
+    CHECK_EQ_U64(sms_colours, 64);
+    CHECK_EQ_U64(sms_wanted, 64);
+    cogmaster_destroy(m);
+
+    memset(seen, 0, sizeof seen);
+    m = full_field(TEST_MACHINE_GG, pixels);
+    uint32_t split_cells = 0;
+    for (uint32_t cy = 0; cy < 64u; cy++) {
+        for (uint32_t cx = 0; cx < 64u; cx++) {
+            uint32_t x = GG_X + 16u + 2u * cx;
+            uint32_t y = GG_Y + 8u + 2u * cy;
+            uint16_t c = at(pixels, x, y);
+            if (at(pixels, x + 1u, y) != c || at(pixels, x, y + 1u) != c ||
+                at(pixels, x + 1u, y + 1u) != c) {
+                split_cells++;
+            }
+            seen[c & 0x0FFFu]++;
+        }
+    }
+    uint32_t distinct = 0;
+    for (uint32_t c = 0; c < 4096u; c++) {
+        if (seen[c] == 1u) {
+            distinct++;
+        }
+    }
+    CHECK_EQ_U64(split_cells, 0);
+    CHECK_EQ_U64(distinct, 4096);
+    cogmaster_destroy(m);
+}
+
+/* With the full-field flag the Game Gear frame is the whole 256x192 field,
+   magenta outside the window; the default crop is exactly the window. */
+static void test_full_field(void)
+{
+    cogmaster *m = full_field(TEST_MACHINE_GG, pixels);
+    uint32_t outside_wrong = 0;
+    for (uint32_t y = 0; y < 192u; y++) {
+        for (uint32_t x = 0; x < 256u; x++) {
+            int inside = x >= GG_X && x < GG_X + GG_W && y >= GG_Y && y < GG_Y + GG_H;
+            if (!inside && at(pixels, x, y) != MAGENTA) {
+                outside_wrong++;
+            }
+        }
+    }
+    CHECK_EQ_U64(outside_wrong, 0);
+    cogmaster_frame io = frame_io(pixels2, GG_W * 2u, 0u);
+    CHECK_EQ_U64(cogmaster_get_frame(m, &io), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(io.x, GG_X);
+    CHECK_EQ_U64(io.y, GG_Y);
+    CHECK_EQ_U64(io.w, GG_W);
+    CHECK_EQ_U64(io.h, GG_H);
+    CHECK_EQ_U64(io.field_h, 192);
+    /* The crop equals the window, so the only magenta it holds is the one
+       chart cell of that colour: four dots, none from the surround. */
+    uint32_t differ = 0;
+    uint32_t magenta = 0;
+    for (uint32_t v = 0; v < GG_H; v++) {
+        for (uint32_t u = 0; u < GG_W; u++) {
+            uint16_t c = pixels2[v * GG_W + u];
+            if (c != at(pixels, GG_X + u, GG_Y + v)) {
+                differ++;
+            }
+            if (c == MAGENTA) {
+                magenta++;
+            }
+        }
+    }
+    CHECK_EQ_U64(differ, 0);
+    CHECK_EQ_U64(magenta, 4);
+    /* A flag this release does not define is an argument error. */
+    io = frame_io(pixels2, GG_W * 2u, 2u);
+    CHECK_EQ_U64(cogmaster_get_frame(m, &io), COGMASTER_STATUS_ERR_ARGUMENT);
+    cogmaster_destroy(m);
+}
+
+static cogmaster_info info_of(const cogmaster *m)
+{
+    cogmaster_info info;
+    memset(&info, 0, sizeof info);
+    info.size = (uint32_t)sizeof info;
+    CHECK_EQ_U64(cogmaster_get_info(m, &info), COGMASTER_STATUS_OK);
+    return info;
+}
+
+/* Geometry, rate and pixel aspect for each machine, and the interface
+   numbers. */
+static void test_info(void)
+{
+    cogmaster *m = make(COGMASTER_MACHINE_AUTO);
+    cogmaster_info info = info_of(m);
+    CHECK_EQ_U64(info.machine, COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(info.crop_w, 256);
+    CHECK_EQ_U64(info.crop_h, 192);
+    CHECK_EQ_U64(info.field_w, 256);
+    CHECK_EQ_U64(info.field_h, 192);
+    CHECK_EQ_U64(info.max_w, 256);
+    CHECK_EQ_U64(info.max_h, 240);
+    CHECK_EQ_U64(info.fps_num, 1640625);
+    CHECK_EQ_U64(info.fps_den, 27379);
+    CHECK_EQ_U64(info.par_num, 8);
+    CHECK_EQ_U64(info.par_den, 7);
+    cogmaster_destroy(m);
+
+    m = make(TEST_MACHINE_GG);
+    info = info_of(m);
+    CHECK_EQ_U64(info.machine, TEST_MACHINE_GG);
+    CHECK_EQ_U64(info.crop_w, 160);
+    CHECK_EQ_U64(info.crop_h, 144);
+    CHECK_EQ_U64(info.field_w, 256);
+    CHECK_EQ_U64(info.field_h, 192);
+    CHECK_EQ_U64(info.max_w, 256);
+    CHECK_EQ_U64(info.max_h, 240);
+    CHECK_EQ_U64(info.fps_num, 1640625);
+    CHECK_EQ_U64(info.fps_den, 27379);
+    CHECK_EQ_U64(info.par_num, 6);
+    CHECK_EQ_U64(info.par_den, 5);
+    cogmaster_destroy(m);
+
+    cogmaster_versions v;
+    memset(&v, 0, sizeof v);
+    v.size = (uint32_t)sizeof v;
+    CHECK_EQ_U64(cogmaster_get_versions(&v), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(v.library_major, COGMASTER_VERSION_MAJOR);
+    CHECK_EQ_U64(v.library_minor, COGMASTER_VERSION_MINOR);
+    CHECK_EQ_U64(v.library_patch, COGMASTER_VERSION_PATCH);
+    CHECK_EQ_U64(v.api, COGMASTER_API_VERSION);
+    CHECK_EQ_U64(v.abi, COGMASTER_ABI_VERSION);
+    CHECK_EQ_U64(v.behaviour, COGMASTER_BEHAVIOUR_REVISION);
+    CHECK_EQ_U64(v.state, COGMASTER_STATE_FORMAT_VERSION);
+}
+
+/* A machine outside the profile set is refused before anything changes. */
+static void test_profile_rejected(void)
+{
+    cogmaster *m = make(TEST_MACHINE_GG);
+    run_frames(m, 1);
+    static const uint32_t bad[] = {3u, 0xFFFFFFFFu};
+    for (size_t i = 0; i < 2u; i++) {
+        cogmaster_media media = make_media(bad[i]);
+        CHECK_EQ_U64(cogmaster_load(m, &media), TEST_STATUS_ERR_PROFILE_REJECTED);
+        cogmaster_info info = info_of(m);
+        CHECK_EQ_U64(info.machine, TEST_MACHINE_GG);
+        CHECK_EQ_U64(info.crop_w, 160);
+    }
+    cogmaster_frame io = frame_io(pixels, GG_W * 2u, 0u);
+    CHECK_EQ_U64(cogmaster_get_frame(m, &io), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(pixels[0], WHITE);
     cogmaster_destroy(m);
 }
 
@@ -281,6 +570,11 @@ static const struct {
     void (*run)(void);
 } cases[] = {
     {"api.size_tags", test_size_tags},
+    {"info", test_info},
+    {"load.profile_rejected", test_profile_rejected},
+    {"testcard.all_colours", test_all_colours},
+    {"testcard.boundaries", test_boundaries},
+    {"testcard.full_field", test_full_field},
     {"testcard.static", test_static},
 };
 

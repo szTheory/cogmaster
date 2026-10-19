@@ -8,7 +8,8 @@ set_target_properties(cogmaster-test-core PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
 cogmaster_warnings(cogmaster-test-core)
 
-foreach(case IN ITEMS testcard.static api.size_tags)
+foreach(case IN ITEMS testcard.static testcard.boundaries testcard.all_colours testcard.full_field
+    info load.profile_rejected api.size_tags)
   cogmaster_add_test(NAME core.${case}
     COMMAND cogmaster-test-core ${case}
     LABELS core portable TIMEOUT 10)
