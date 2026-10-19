@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 01
 current_phase_name: A test frame in RetroArch
 status: executing
-stopped_at: Completed 01-05-PLAN.md
-last_updated: "2026-10-19T21:47:01.942Z"
+stopped_at: Completed 01-06-PLAN.md
+last_updated: "2026-10-19T21:53:09.410Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 01 execution started
-state_head: d55645924b24902046e8dd769b6322b6f1c78664
+state_head: a78dce3a71238000881582aa53ee26463e19e799
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 12
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 01 (A test frame in RetroArch) — EXECUTING
-Plan: 6 of 12
+Plan: 7 of 12
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 01 execution started
 
@@ -63,6 +63,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P03 | 5min | 1 tasks | 15 files |
 | Phase 01 P04 | 8min | 2 tasks | 22 files |
 | Phase 01 P05 | 6min | 3 tasks | 13 files |
+| Phase 01 P06 | 6min | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -89,6 +90,8 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 01]: libretro core: one instance from retro_init to retro_deinit; av_info and audio length from cogmaster_get_info (48000 x fps_den / fps_num per frame, carried as a remainder)
 - [Phase 01]: cogmaster-host builds for the runner or the libretro core, PIC and hidden
 - [Phase 01]: Test-only modules cogmaster_libretro_rgb565 and cogmaster_libretro_gg cover RGB565 with single-sample audio and the GG geometry; .info claims only supports_no_game, supported_extensions empty
+- [Phase 01]: API version rule kept from the seed: every header name must appear in tests/api/vK.c with K <= COGMASTER_API_VERSION (no git tag read)
+- [Phase 01]: docs.api_names drops header names ending in _ (comment wildcards) and lets the guide cite names from cmake/version.h.in and CMakeLists.txt via -DOTHER
 
 ### Pending Todos
 
@@ -120,6 +123,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T21:47:01.927Z
-Stopped at: Completed 01-05-PLAN.md
+Last session: 2026-10-19T21:53:09.395Z
+Stopped at: Completed 01-06-PLAN.md
 Resume file: None
