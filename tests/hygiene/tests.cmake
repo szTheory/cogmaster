@@ -248,6 +248,72 @@ cogmaster_add_test(NAME policy.publish_ref
     -P ${hygiene_scripts}/expect_fail.cmake
   LABELS hygiene policy TIMEOUT 30)
 
+# Fault prevented: a release that accepts downloads signed by the rehearsal's
+# workflow. verify runs end to end against a gh and a curl on PATH that log
+# their arguments and serve a fixture release; with SIGNER_WORKFLOW=ci.yml a
+# release tag must still verify as release.yml, and a rehearsal- tag as ci.yml.
+set(hygiene_signer ${CMAKE_BINARY_DIR}/hygiene/publish_signer)
+file(REMOVE_RECURSE ${hygiene_signer})
+foreach(c library runner libretro)
+  foreach(o linux macos windows)
+    foreach(a x64 arm64)
+      file(WRITE ${hygiene_signer}/dist/cogmaster-${c}-${o}-${a}.zip "${c}-${o}-${a}\n")
+    endforeach()
+  endforeach()
+endforeach()
+foreach(leg RANGE 1 6)
+  file(WRITE ${hygiene_signer}/dist/legs/${leg}/commit.txt "fixture\n")
+endforeach()
+# The original verifies from its ref; the flipped copy, checked with no ref,
+# does not.
+file(WRITE ${hygiene_signer}/bin/gh [=[
+#!/bin/sh
+echo "gh $*" >> "$STUB_LOG"
+case "$*" in
+  "attestation verify "*--source-ref*) exit 0 ;;
+  "attestation verify "*) exit 1 ;;
+  *isDraft*) echo false ;;
+  *assets*) cd "$STUB_DIR" && ls cogmaster-*.zip SHA256SUMS ;;
+esac
+]=])
+file(WRITE ${hygiene_signer}/bin/curl [=[
+#!/bin/sh
+while [ $# -gt 1 ]
+do
+  if [ "$1" = -o ]
+  then out=$2
+  fi
+  shift
+done
+cp "$STUB_DIR/${1##*/}" "$out"
+]=])
+file(CHMOD ${hygiene_signer}/bin/gh ${hygiene_signer}/bin/curl
+  FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+set(hygiene_signer_check [=[
+script=$1
+export STUB_DIR=$2/dist STUB_LOG=$2/gh.log RUNNER_TEMP=$2/tmp PATH="$2/bin:$PATH"
+export GITHUB_REPOSITORY=fixture/fixture SIGNER_WORKFLOW=ci.yml EXPECTED_SHA=fixture
+sh "$script" prepare "$STUB_DIR" > /dev/null || exit 1
+for case in fixture-release:refs/heads/main:release.yml rehearsal-1-1:refs/pull/1/merge:ci.yml
+do
+  tag=${case%%:*} rest=${case#*:}
+  : > "$STUB_LOG"
+  SOURCE_REF=${rest%%:*} sh "$script" verify "$tag" "$STUB_DIR" > /dev/null || exit 1
+  want="--signer-workflow fixture/fixture/.github/workflows/${rest#*:} "
+  got=$(grep -c -e "$want" "$STUB_LOG")
+  other=$(grep -e '--signer-workflow' "$STUB_LOG" | grep -c -v -e "$want")
+  if [ "$got" -ne 18 ] || [ "$other" -ne 0 ]
+  then
+    echo "policy.publish_signer: $tag verified $got downloads as ${rest#*:} and $other otherwise"
+    exit 1
+  fi
+done
+echo "policy.publish_signer: a release tag verifies as release.yml, a rehearsal tag as ci.yml"
+]=])
+cogmaster_add_test(NAME policy.publish_signer
+  COMMAND ${COGMASTER_SH} -c "${hygiene_signer_check}" sh ${CMAKE_SOURCE_DIR}/scripts/publish.sh ${hygiene_signer}
+  LABELS hygiene policy TIMEOUT 30)
+
 # Fault prevented: a CI required roll-up that passes a failed or wrongly
 # skipped job, or a job missing from its needs. The self test runs it on a
 # copy of ci.yml whose program ignores heavy, which must let a skipped build

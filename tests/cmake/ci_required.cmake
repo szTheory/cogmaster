@@ -27,9 +27,9 @@ if(NOT job MATCHES "jq -e ([^']*)'([^']*)'")
   message(FATAL_ERROR "ci_required: CI required runs no jq -e program")
 endif()
 set(program "${CMAKE_MATCH_2}")
-string(REGEX MATCHALL "--arg [a-z]+" args "${CMAKE_MATCH_1}")
-if(NOT args STREQUAL "--arg event;--arg heavy;--arg called")
-  message(FATAL_ERROR "ci_required: the step passes '${args}', not event, heavy and called")
+string(REGEX MATCHALL "--arg [a-z_]+" args "${CMAKE_MATCH_1}")
+if(NOT args STREQUAL "--arg event;--arg heavy;--arg called;--arg release_inputs")
+  message(FATAL_ERROR "ci_required: the step passes '${args}', not event, heavy, called and release_inputs")
 endif()
 
 set(bad "")
@@ -42,9 +42,9 @@ foreach(name IN LISTS names)
   endif()
 endforeach()
 
-# name|event|heavy|called|job=result,...|want. Unlisted jobs succeeded. The
-# synthetic needs hold every job in CI required's needs; a light pull request
-# skips every one but changes, hygiene and title.
+# name|event|heavy|called|release_inputs|job=result,...|want. Unlisted jobs
+# succeeded. The synthetic needs hold every job in CI required's needs; a
+# light pull request skips every one but changes, hygiene and title.
 set(all ${needs})
 set(light "")
 foreach(j IN LISTS all)
@@ -53,27 +53,35 @@ foreach(j IN LISTS all)
   endif()
 endforeach()
 string(SUBSTRING "${light}" 1 -1 light)
+set(rehearsal_skipped "rehearsal=skipped,cleanup=skipped")
 set(cases
-  "all succeeded|pull_request|true|false||pass"
-  "light pull request|pull_request|false|false|${light}|pass"
-  "build skipped when heavy=true|pull_request|true|false|build=skipped|fail"
-  "build skipped when changes failed|pull_request||false|changes=failure,${light}|fail"
-  "hygiene skipped when heavy=false|pull_request|false|false|hygiene=skipped|fail"
-  "title skipped on push|push|true|false|title=skipped|pass"
-  "title skipped on a pull request|pull_request|true|false|title=skipped|fail"
-  "perf skipped on push|push|true|false|perf=skipped|pass"
-  "perf skipped in a nested call|pull_request|true|true|perf=skipped|pass"
-  "perf skipped on a pull request|pull_request|true|false|perf=skipped|fail"
-  "asan failed|pull_request|true|false|asan=failure|fail"
-  "build cancelled|push|true|false|build=cancelled|fail")
+  "all succeeded|pull_request|true|false|true||pass"
+  "light pull request|pull_request|false|false|false|${light}|pass"
+  "build skipped when heavy=true|pull_request|true|false|true|build=skipped|fail"
+  "build skipped when changes failed|pull_request||false||changes=failure,${light}|fail"
+  "hygiene skipped when heavy=false|pull_request|false|false|false|hygiene=skipped|fail"
+  "title skipped on push|push|true|false|true|title=skipped|pass"
+  "title skipped on a pull request|pull_request|true|false|true|title=skipped|fail"
+  "perf skipped on push|push|true|false|true|perf=skipped|pass"
+  "perf skipped in a nested call|pull_request|true|true|true|perf=skipped|pass"
+  "perf skipped on a pull request|pull_request|true|false|true|perf=skipped|fail"
+  "asan failed|pull_request|true|false|true|asan=failure|fail"
+  "build cancelled|push|true|false|true|build=cancelled|fail"
+  "rehearsal skipped when no release input changed|pull_request|true|false|false|${rehearsal_skipped}|pass"
+  "rehearsal skipped when a release input changed|pull_request|true|false|true|${rehearsal_skipped}|fail"
+  "rehearsal skipped on push|push|true|false|true|${rehearsal_skipped},title=skipped,perf=skipped|pass"
+  "rehearsal skipped in a nested call|pull_request|true|true|true|${rehearsal_skipped},perf=skipped|pass"
+  "rehearsal failed|pull_request|true|false|true|rehearsal=failure|fail"
+  "cleanup failed|pull_request|true|false|true|cleanup=failure|fail")
 foreach(case IN LISTS cases)
   string(REPLACE "|" ";" f "${case}")
   list(GET f 0 name)
   list(GET f 1 event)
   list(GET f 2 heavy)
   list(GET f 3 called)
-  list(GET f 4 results)
-  list(GET f 5 want)
+  list(GET f 4 release_inputs)
+  list(GET f 5 results)
+  list(GET f 6 want)
   set(json "")
   foreach(j IN LISTS all)
     set(result success)
@@ -84,7 +92,7 @@ foreach(case IN LISTS cases)
   endforeach()
   string(SUBSTRING "${json}" 1 -1 json)
   execute_process(COMMAND ${JQ} -n -e --arg event "${event}" --arg heavy "${heavy}"
-      --arg called "${called}" --argjson needs "{${json}}" "$needs | ${program}"
+      --arg called "${called}" --arg release_inputs "${release_inputs}" --argjson needs "{${json}}" "$needs | ${program}"
     RESULT_VARIABLE rc OUTPUT_QUIET ERROR_VARIABLE err)
   if(NOT (want STREQUAL "pass" AND rc STREQUAL "0") AND NOT (want STREQUAL "fail" AND rc STREQUAL "1"))
     list(APPEND bad "${name}: want ${want}, got exit ${rc} ${err}")

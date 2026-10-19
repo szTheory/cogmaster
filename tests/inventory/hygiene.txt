@@ -20,5 +20,6 @@ policy.pins.self_test	hygiene,policy
 policy.publish_ref	hygiene,policy
 policy.publish_set	hygiene,policy
 policy.publish_set.self_test	hygiene,policy
+policy.publish_signer	hygiene,policy
 policy.title	hygiene,policy
 policy.title.self_test	hygiene,policy
