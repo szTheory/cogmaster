@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 01
 current_phase_name: A test frame in RetroArch
 status: executing
-stopped_at: Completed 01-08-PLAN.md
-last_updated: "2026-10-19T22:08:08.868Z"
+stopped_at: Completed 01-09-PLAN.md
+last_updated: "2026-10-19T22:16:27.051Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 01 execution started
-state_head: 510a545d6233fac5c058b42239389741fdbca78b
+state_head: 913012be91f5264c008e8145367c69cd714d739c
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 12
-  completed_plans: 8
+  completed_plans: 9
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 01 (A test frame in RetroArch) — EXECUTING
-Plan: 9 of 12
+Plan: 10 of 12
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 01 execution started
 
@@ -66,6 +66,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P06 | 6min | 2 tasks | 15 files |
 | Phase 01 P07 | 4min | 3 tasks | 20 files |
 | Phase 01 P08 | 45 min | 3 tasks | 25 files |
+| Phase 01 P09 | 12min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,8 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 01]: Hygiene preset finds clang-format and clang-tidy 21 from a fixed HINTS list with REQUIRED and checks both majors
 - [Phase 01]: release_inputs is forced true with heavy only for untrusted input (no paths, bad or over-3000 count)
 - [Phase 01]: check-title.sh and classify-changes.sh run in the C locale
+- [Phase 01]: 01-09: wasm32 stays out of CI required's needs (REPORT_ONLY=wasm32); its Linux x64 comparison only reports
+- [Phase 01]: 01-09: perf mode is the workflow env COGMASTER_PERF_MODE=report; arming changes it to gate in one ci: pull request
 
 ### Pending Todos
 
@@ -130,6 +133,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T22:08:08.850Z
-Stopped at: Completed 01-08-PLAN.md
+Last session: 2026-10-19T22:16:27.025Z
+Stopped at: Completed 01-09-PLAN.md
 Resume file: None
