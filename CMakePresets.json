@@ -76,25 +76,25 @@
     {
       "name": "be32",
       "inherits": "base",
-      "$comment": "COGMASTER_TIMEOUT_SCALE 11 is provisional: the seed project measured its shared tests at 10.7 times as long under qemu-ppc as on Linux x64; this repository's runs are not yet measured.",
+      "$comment": "COGMASTER_TIMEOUT_SCALE 8: under qemu-ppc the 43 shared tests took 6.7 times as long in total as on the Linux x64 leg (run 39336389305; 6.6 on run 39335167905), and the slowest, the libretro host tests, up to 7.3 times (run 39335167905).",
       "toolchainFile": "${sourceDir}/cmake/toolchains/ppc-linux-gnu.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_COMPILE_WARNING_AS_ERROR": "ON",
-        "COGMASTER_TIMEOUT_SCALE": "11",
+        "COGMASTER_TIMEOUT_SCALE": "8",
         "COGMASTER_INVENTORY": "ci"
       }
     },
     {
       "name": "wasm32",
       "inherits": "base",
-      "$comment": "One preopen covers the source and build trees, since binaryDir is under sourceDir. COGMASTER_TIMEOUT_SCALE 3 is provisional: the seed project measured 2.5 times Linux x64 under wasmtime; this repository's runs are not yet measured.",
+      "$comment": "One preopen covers the source and build trees, since binaryDir is under sourceDir. COGMASTER_TIMEOUT_SCALE 5: under wasmtime the 40 shared tests took 4.3 times as long as on the Linux x64 leg in total (run 39336389305; 3.5 on run 39335167905).",
       "toolchainFile": "${sourceDir}/cmake/toolchains/wasm32-wasi.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_COMPILE_WARNING_AS_ERROR": "ON",
         "COGMASTER_BUILD_LIBRETRO": "OFF",
-        "COGMASTER_TIMEOUT_SCALE": "3",
+        "COGMASTER_TIMEOUT_SCALE": "5",
         "COGMASTER_INVENTORY": "wasm32",
         "CMAKE_CROSSCOMPILING_EMULATOR": "${sourceDir}/build/pins/wasmtime/wasmtime;run;--dir=${sourceDir}::${sourceDir}"
       }
