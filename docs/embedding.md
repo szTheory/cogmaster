@@ -45,7 +45,7 @@ program built against one header run with a library built from another.
   extra bytes are zero reads them, so without this cap a garbage size tag would make the library read an
   unbounded distance past your object.
 
-**Output structs** (`cogmaster_info`, `cogmaster_versions`, `cogmaster_run_result`):
+**Output structs** (`cogmaster_info`, `cogmaster_versions`, `cogmaster_run_result`, `cogmaster_fault`):
 
 - A size below the struct's first released size returns `COGMASTER_STATUS_ERR_STRUCT_SIZE` and leaves the struct
   as it was.
@@ -62,6 +62,7 @@ First released sizes, where P is the pointer size (4 or 8):
 | `cogmaster_info` | 48 |
 | `cogmaster_versions` | 32 |
 | `cogmaster_run_result` | 12 |
+| `cogmaster_fault` | 32 |
 
 Fields are fixed-width integers and pointers; enumerations travel as `uint32_t` and zero is the default of every
 input field. Statuses, constants and fields are only ever appended.
@@ -105,7 +106,8 @@ cogmaster_run_frame(m, NULL);             /* one frame; the result struct is opt
 
 `cogmaster_media.image` must be NULL and `image_size` 0 in this release; anything else returns
 `COGMASTER_STATUS_ERR_ARGUMENT`. `machine` selects the profile: `COGMASTER_MACHINE_AUTO` (the default, a Master
-System II), `COGMASTER_MACHINE_SMS2` or `COGMASTER_MACHINE_GG`. Each `load` restarts the frame count.
+System II), `COGMASTER_MACHINE_SMS2` or `COGMASTER_MACHINE_GG`. Each `load` restarts the frame count and clears
+the fault record.
 
 `cogmaster_run_frame` runs one frame, 179,208 ticks of the 10,738,635 Hz video clock. If `out`, a
 `cogmaster_run_result`, is not NULL it receives `stop`, always `COGMASTER_STOP_FRAME` in this release, and
@@ -139,6 +141,38 @@ above 65536 returns `COGMASTER_STATUS_ERR_ARGUMENT`, which keeps every row offse
 A frame hash is SHA-256 over the crop rows, top to bottom, each pixel as two bytes with the low byte first. Hash
 those bytes, not the `uint16_t` array, or a big-endian host gets a different digest.
 
+## Reset
+
+`cogmaster_reset(m, kind)` restarts the loaded content without loading it again. Both kinds set the frame count,
+the tick count and the beam position to zero and clear the fault record:
+
+- `COGMASTER_RESET_SOFT` (0) is the console's reset: memory the machine keeps across a reset stays as it was.
+- `COGMASTER_RESET_POWER` (1) is a power cycle: it also zeroes the internal counters and, on machines that have
+  them, work RAM, video RAM and colour RAM.
+
+The test card has no RAM, video RAM or colour RAM and its counters stay zero, so the two kinds have the same effect
+on it today. Any other `kind` returns `COGMASTER_STATUS_ERR_ARGUMENT`; a reset before a successful
+`cogmaster_load` returns `COGMASTER_STATUS_ERR_NO_CONTENT`.
+
+## Faults
+
+`cogmaster_get_fault` fills a `cogmaster_fault` with the first fault the core recorded since the last load or
+reset: an access to an unmapped address or port, an illegal opcode, a mapper write out of range, or a video write
+faster than the hardware accepts. Only the first is kept; later ones are ignored until the next load or reset.
+The record is part of the instance's saved state.
+
+| Field | Meaning |
+|---|---|
+| `present` | 1 when a fault was recorded, 0 otherwise; every other field is 0 when it is 0 |
+| `frame`, `line`, `dot` | where the beam was: the frame count, the line (0 to 312) and the dot (0 to 341) |
+| `pc` | the CPU's program counter at the faulting instruction |
+| `addr`, `width` | the address or port accessed and the access width in bytes |
+| `opcode` | the opcode byte being executed |
+| `device`, `kind` | which device faulted and how; opaque codes in this release, given names when the CPU and the bus exist |
+
+The test card runs no CPU, so in this release `present` is always 0. The call works before a load too, and then
+also reports `present` 0.
+
 ## Information
 
 `cogmaster_get_info` fills a `cogmaster_info` for the loaded machine, so a host need not hard-code it:
@@ -162,11 +196,11 @@ changes no state; a failed `cogmaster_load` keeps the content that was loaded be
 | Status | Value | Returned when |
 |---|---|---|
 | `COGMASTER_STATUS_OK` | 0 | the call did what it says |
-| `COGMASTER_STATUS_ERR_ARGUMENT` | 1 | a required pointer is NULL; the allocator lacks `alloc` or `free`; `image` is not NULL or `image_size` is not 0; `flags` has an unknown bit; `pitch_bytes` is above 65536 |
+| `COGMASTER_STATUS_ERR_ARGUMENT` | 1 | a required pointer is NULL; the allocator lacks `alloc` or `free`; `image` is not NULL or `image_size` is not 0; `flags` has an unknown bit; `pitch_bytes` is above 65536; the reset `kind` is unknown |
 | `COGMASTER_STATUS_ERR_STRUCT_SIZE` | 2 | a size tag breaks the rules in [Structs and sizes](#structs-and-sizes) |
 | `COGMASTER_STATUS_ERR_NO_MEMORY` | 3 | `alloc` returned NULL in `cogmaster_create`; `*out` is left as it was |
 | `COGMASTER_STATUS_ERR_BUFFER_TOO_SMALL` | 4 | `pitch_bytes` is below `w × 2` for the rectangle requested |
-| `COGMASTER_STATUS_ERR_NO_CONTENT` | 5 | `cogmaster_run_frame`, `cogmaster_get_frame` or `cogmaster_get_info` before a successful `cogmaster_load` |
+| `COGMASTER_STATUS_ERR_NO_CONTENT` | 5 | `cogmaster_run_frame`, `cogmaster_get_frame`, `cogmaster_get_info` or `cogmaster_reset` before a successful `cogmaster_load` |
 | `COGMASTER_STATUS_ERR_PROFILE_REJECTED` | 6 | `cogmaster_media.machine` is not one of the `COGMASTER_MACHINE_*` values |
 
 | Function | Can return |
@@ -178,6 +212,8 @@ changes no state; a failed `cogmaster_load` keeps the content that was loaded be
 | `cogmaster_run_frame(m, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT |
 | `cogmaster_get_frame(m, io)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT, ERR_BUFFER_TOO_SMALL |
 | `cogmaster_get_info(m, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT |
+| `cogmaster_reset(m, kind)` | OK, ERR_ARGUMENT, ERR_NO_CONTENT |
+| `cogmaster_get_fault(m, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE |
 
 ## Version numbers
 
@@ -205,8 +241,10 @@ Every public name, for reference: the opaque instance `cogmaster`; the types `co
 `cogmaster_media` (`size`, `image`, `image_size`, `machine`), `cogmaster_info` (`size`, `machine`, `crop_w`,
 `crop_h`, `field_w`, `field_h`, `max_w`, `max_h`, `fps_num`, `fps_den`, `par_num`, `par_den`), `cogmaster_frame`
 (`size`, `pixels`, `pitch_bytes`, `flags`, `x`, `y`, `w`, `h`, `field_h`, `backdrop_rgb444`) and
-`cogmaster_run_result` (`size`, `stop`, `overshoot_ticks`); the functions `cogmaster_get_versions`,
-`cogmaster_create`, `cogmaster_destroy`, `cogmaster_load`, `cogmaster_run_frame`, `cogmaster_get_frame` and
-`cogmaster_get_info`; the constants `COGMASTER_MACHINE_AUTO`, `COGMASTER_MACHINE_SMS2`, `COGMASTER_MACHINE_GG`,
-`COGMASTER_STOP_FRAME` and `COGMASTER_FRAME_FULL_FIELD`, the seven `COGMASTER_STATUS_*` values above and the
+`cogmaster_run_result` (`size`, `stop`, `overshoot_ticks`) and `cogmaster_fault` (`size`, `present`, `frame`,
+`line`, `dot`, `pc`, `addr`, `opcode`, `width`, `device`, `kind`); the functions `cogmaster_get_versions`,
+`cogmaster_create`, `cogmaster_destroy`, `cogmaster_load`, `cogmaster_run_frame`, `cogmaster_get_frame`,
+`cogmaster_get_info`, `cogmaster_reset` and `cogmaster_get_fault`; the constants `COGMASTER_MACHINE_AUTO`,
+`COGMASTER_MACHINE_SMS2`, `COGMASTER_MACHINE_GG`, `COGMASTER_STOP_FRAME`, `COGMASTER_FRAME_FULL_FIELD`,
+`COGMASTER_RESET_SOFT` and `COGMASTER_RESET_POWER`, the seven `COGMASTER_STATUS_*` values above and the
 version macros above.

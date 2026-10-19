@@ -131,6 +131,8 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     m->frame = 0u;
     m->ticks = 0u;
     memset(&m->counters, 0, sizeof m->counters);
+    m->fault_present = 0u;
+    memset(&m->fault, 0, sizeof m->fault);
     memset(m->field, 0, sizeof m->field);
     return COGMASTER_STATUS_OK;
 }
@@ -174,9 +176,24 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out)
     return COGMASTER_STATUS_OK;
 }
 
+/* Both kinds return the beam to line 0, tick 0, frame 0 and clear the first
+   fault (ARCHITECTURE section 9); POWER also zeroes the counters, which a
+   power cycle resets (section 8). The test card has no RAM, VRAM or CRAM, so
+   the kinds differ only in what later machines add. */
 cogmaster_status cogmaster_reset(cogmaster *m, uint32_t kind)
 {
-    (void)m;
-    (void)kind;
-    return COGMASTER_STATUS_ERR_ARGUMENT;
+    if (m == NULL || (kind != COGMASTER_RESET_SOFT && kind != COGMASTER_RESET_POWER)) {
+        return COGMASTER_STATUS_ERR_ARGUMENT;
+    }
+    if (!m->loaded) {
+        return COGMASTER_STATUS_ERR_NO_CONTENT;
+    }
+    m->frame = 0u;
+    m->ticks = 0u;
+    m->fault_present = 0u;
+    memset(&m->fault, 0, sizeof m->fault);
+    if (kind == COGMASTER_RESET_POWER) {
+        memset(&m->counters, 0, sizeof m->counters);
+    }
+    return COGMASTER_STATUS_OK;
 }

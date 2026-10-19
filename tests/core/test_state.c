@@ -16,8 +16,6 @@
 #define TICKS_PER_FRAME 179208u
 #define POISON 0xA5u
 #define TAG_BUF 8192u
-#define RESET_SOFT 0u
-#define RESET_POWER 1u
 
 static uint8_t good[BUF];
 static uint8_t bad[BUF];
@@ -435,7 +433,7 @@ static void test_fault_first_wins(void)
    card keeps running afterwards. */
 static void test_fault_reset_clears(void)
 {
-    const uint32_t kinds[] = {RESET_SOFT, RESET_POWER};
+    const uint32_t kinds[] = {COGMASTER_RESET_SOFT, COGMASTER_RESET_POWER};
     for (size_t k = 0; k < 2u; k++) {
         cogmaster *m = make(COGMASTER_MACHINE_SMS2);
         run_frames(m, 10u);
@@ -484,6 +482,16 @@ static void test_fault_state_round_trip(void)
     if (size != 0u) {
         CHECK_EQ_U64(cogmaster__state_load(b, good, size), COGMASTER_STATUS_OK);
         CHECK_EQ_U64(fault_of(b).present, 0);
+        /* A fault field set while no fault is present is refused, though the
+           value is inside the field's own bounds. */
+        size_t n = record(clean);
+        const struct cogmaster__state_field *line = field(n, "fault_line");
+        if (line != NULL) {
+            memcpy(bad, good, size);
+            put_le(bad + line->offset, 5u, line->width);
+            cogmaster__state_seal(bad, size);
+            CHECK_EQ_U64(cogmaster__state_load(b, bad, size), COGMASTER_STATUS_ERR_ARGUMENT);
+        }
     }
     cogmaster_destroy(a);
     cogmaster_destroy(b);
@@ -589,7 +597,7 @@ static void test_error_changes_nothing(void)
                      COGMASTER_STATUS_ERR_PROFILE_REJECTED, m);
 
     /* reset */
-    expect_unchanged("reset without instance", cogmaster_reset(NULL, RESET_SOFT),
+    expect_unchanged("reset without instance", cogmaster_reset(NULL, COGMASTER_RESET_SOFT),
                      COGMASTER_STATUS_ERR_ARGUMENT, m);
     expect_unchanged("reset kind 2", cogmaster_reset(m, 2u), COGMASTER_STATUS_ERR_ARGUMENT, m);
     expect_unchanged("reset kind max", cogmaster_reset(m, 0xFFFFFFFFu),
@@ -675,7 +683,7 @@ static void test_error_changes_nothing(void)
     info.size = (uint32_t)sizeof info;
     expect_untouched("get_info before load", cogmaster_get_info(e, &info),
                      COGMASTER_STATUS_ERR_NO_CONTENT, e);
-    expect_untouched("reset before load", cogmaster_reset(e, RESET_POWER),
+    expect_untouched("reset before load", cogmaster_reset(e, COGMASTER_RESET_POWER),
                      COGMASTER_STATUS_ERR_NO_CONTENT, e);
     media.machine = 3u;
     expect_untouched("load another machine before load", cogmaster_load(e, &media),

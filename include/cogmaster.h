@@ -33,6 +33,9 @@ typedef uint32_t cogmaster_status;
 
 #define COGMASTER_FRAME_FULL_FIELD 1u
 
+#define COGMASTER_RESET_SOFT 0u
+#define COGMASTER_RESET_POWER 1u
+
 typedef struct cogmaster cogmaster;
 
 typedef struct cogmaster_allocator {

@@ -5,7 +5,7 @@
      header  magic, format version, header size, total size, behaviour
              revision, API version, packed profile, ROM CRC-32, body CRC-32,
              frame, ticks, 12 reserved zero bytes
-     body    the counters
+     body    the counters, then the first-fault record
    One field list drives every pass (state.h), so they cannot drift apart. A
    struct is never copied as a whole: padding, pointers and the allocator
    never reach the bytes. The field buffer is not saved: every frame of the
@@ -86,11 +86,35 @@ static void counters_io(struct cogmaster__sio *io, struct cogmaster__counters *c
     cogmaster__sio_u32(io, "collision_frames", &c->collision_frames, 0u, UINT32_MAX);
 }
 
+/* A line is at most 313 long (PAL) and 342 dots wide (ARCHITECTURE
+   section 2). */
+#define FAULT_LINE_MAX 312u
+#define FAULT_DOT_MAX 341u
+
+static void fault_io(struct cogmaster__sio *io, cogmaster *m)
+{
+    struct cogmaster__fault *f = &m->fault;
+    uint32_t present = cogmaster__sio_u32(io, "fault_present", &m->fault_present, 0u, 1u);
+    uint64_t frame = cogmaster__sio_u64(io, "fault_frame", &f->frame, 0u, STATE_FRAME_MAX);
+    uint32_t line = cogmaster__sio_u32(io, "fault_line", &f->line, 0u, FAULT_LINE_MAX);
+    uint32_t dot = cogmaster__sio_u32(io, "fault_dot", &f->dot, 0u, FAULT_DOT_MAX);
+    uint16_t pc = cogmaster__sio_u16(io, "fault_pc", &f->pc, 0u, UINT16_MAX);
+    uint16_t addr = cogmaster__sio_u16(io, "fault_addr", &f->addr, 0u, UINT16_MAX);
+    uint8_t opcode = cogmaster__sio_u8(io, "fault_opcode", &f->opcode, 0u, UINT8_MAX);
+    uint8_t width = cogmaster__sio_u8(io, "fault_width", &f->width, 0u, UINT8_MAX);
+    uint8_t device = cogmaster__sio_u8(io, "fault_device", &f->device, 0u, UINT8_MAX);
+    uint8_t kind = cogmaster__sio_u8(io, "fault_kind", &f->kind, 0u, UINT8_MAX);
+    /* With no fault recorded every field is zero. */
+    cogmaster__sio_check(io, present != 0u || (frame | line | dot | pc | addr | opcode | width |
+                                               device | kind) == 0u);
+}
+
 /* The whole state, in the order the format fixes. */
 static void state_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
 {
     header_io(io, m, total);
     counters_io(io, &m->counters);
+    fault_io(io, m);
 }
 
 /* SIZE, WRITE and RECORD only read through the field pointers, and an
