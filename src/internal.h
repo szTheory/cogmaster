@@ -57,8 +57,8 @@ struct cogmaster {
     uint32_t machine;              /* resolved machine: SMS2 or GG; valid while loaded */
     uint32_t loaded;               /* 1 after a successful load */
     struct cogmaster__counters counters;
-    uint32_t fault_present;        /* 1 once a fault is recorded */
-    struct cogmaster__fault fault; /* valid while fault_present */
+    uint32_t fault_present;                                     /* 1 once a fault is recorded */
+    struct cogmaster__fault fault;                              /* valid while fault_present */
     uint16_t field[COGMASTER__FIELD_MAX_H][COGMASTER__FIELD_W]; /* RGB444 per dot */
 };
 

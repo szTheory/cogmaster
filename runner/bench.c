@@ -46,9 +46,8 @@ static const struct {
     const char *key;
     uint32_t ppm;
 } percentiles[7] = {
-    {"p50_us", 500000u},    {"p90_us", 900000u},     {"p99_us", 990000u},
-    {"p99.9_us", 999000u},  {"p99.99_us", 999900u},  {"p99.999_us", 999990u},
-    {"max_us", 1000000u},
+    {"p50_us", 500000u},    {"p90_us", 900000u},     {"p99_us", 990000u},  {"p99.9_us", 999000u},
+    {"p99.99_us", 999900u}, {"p99.999_us", 999990u}, {"max_us", 1000000u},
 };
 
 void cogmaster__bench_stats(uint32_t *us, uint32_t n, uint32_t out[7])

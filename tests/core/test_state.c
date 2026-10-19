@@ -11,7 +11,7 @@
 #include "state.h"
 #include "../check.h"
 
-#define BUF 4096u     /* bytes in each state buffer; the card's state is far smaller */
+#define BUF 4096u /* bytes in each state buffer; the card's state is far smaller */
 #define MAX_FIELDS 256u
 #define TICKS_PER_FRAME 179208u
 #define POISON 0xA5u
@@ -181,7 +181,8 @@ static void test_record_sweep(void)
         for (size_t i = 0; i < n && size != 0u; i++) {
             const struct cogmaster__state_field *fd = &fields[i];
             CHECK(fd->offset + fd->width <= size);
-            uint64_t type_max = fd->width == 8u ? UINT64_MAX : (UINT64_C(1) << (8u * fd->width)) - 1u;
+            uint64_t type_max =
+                fd->width == 8u ? UINT64_MAX : (UINT64_C(1) << (8u * fd->width)) - 1u;
             const uint64_t outside[2] = {fd->max + 1u, fd->min - 1u};
             const int sweep[2] = {fd->max < type_max, fd->min > 0u};
             for (size_t j = 0; j < 2u; j++) {

@@ -70,9 +70,8 @@ struct cogmaster__sio {
 /* Moves one field of width bytes, little-endian, bounded to [min, max].
    Returns the field's value: v for SIZE, WRITE and RECORD, the decoded value
    for VALIDATE and APPLY. */
-static inline uint64_t cogmaster__sio_field(struct cogmaster__sio *io, const char *name,
-                                            uint64_t v, uint32_t width, uint64_t min,
-                                            uint64_t max)
+static inline uint64_t cogmaster__sio_field(struct cogmaster__sio *io, const char *name, uint64_t v,
+                                            uint32_t width, uint64_t min, uint64_t max)
 {
     switch (io->mode) {
     case COGMASTER__SIO_RECORD:

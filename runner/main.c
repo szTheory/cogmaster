@@ -338,8 +338,7 @@ static int write_png(const cogmaster *m, const char *path, uint16_t *pixels)
 static int run(const options *opt)
 {
     uint16_t *pixels = (uint16_t *)malloc((size_t)256u * 240u * sizeof *pixels);
-    uint32_t *samples =
-        opt->bench ? (uint32_t *)malloc(cogmaster__bench_bytes(opt->frames)) : NULL;
+    uint32_t *samples = opt->bench ? (uint32_t *)malloc(cogmaster__bench_bytes(opt->frames)) : NULL;
     if (pixels == NULL || (opt->bench && samples == NULL)) {
         fprintf(stderr, "cogmaster-run: out of memory\n");
         free(pixels);
@@ -408,8 +407,8 @@ static int run(const options *opt)
     }
     if (status == COGMASTER__EXIT_OK && opt->bench) {
         char report[512];
-        size_t len = cogmaster__bench_format(report, sizeof report, samples, ran,
-                                             cogmaster__max_rss_kib());
+        size_t len =
+            cogmaster__bench_format(report, sizeof report, samples, ran, cogmaster__max_rss_kib());
         fwrite(report, 1u, len, stdout);
     }
     cogmaster_destroy(m);
