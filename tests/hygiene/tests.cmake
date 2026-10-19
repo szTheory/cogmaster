@@ -247,3 +247,66 @@ cogmaster_add_test(NAME policy.publish_ref
     "-DREGEX=publish: fixture-release verifies only from refs/heads/main, not refs/pull/1/merge"
     -P ${hygiene_scripts}/expect_fail.cmake
   LABELS hygiene policy TIMEOUT 30)
+
+# Fault prevented: a CI required roll-up that passes a failed or wrongly
+# skipped job, or a job missing from its needs. The self test runs it on a
+# copy of ci.yml whose program ignores heavy, which must let a skipped build
+# through and so fail the case that names it. wasm32 reports on its own, so
+# it may stay out of the needs.
+set(hygiene_ci ${CMAKE_SOURCE_DIR}/.github/workflows/ci.yml)
+cogmaster_add_test(NAME policy.ci_required
+  COMMAND ${CMAKE_COMMAND} -DCI_YML=${hygiene_ci} -DJQ=${COGMASTER_JQ} -DREPORT_ONLY=wasm32
+    -P ${hygiene_scripts}/ci_required.cmake
+  LABELS hygiene policy TIMEOUT 30)
+file(READ ${hygiene_ci} hygiene_yml)
+string(REPLACE "$heavy == \"false\" and " "" hygiene_ignores_heavy "${hygiene_yml}")
+if(hygiene_ignores_heavy STREQUAL hygiene_yml)
+  message(FATAL_ERROR "policy.ci_required.self_test: ci.yml's program no longer tests $heavy == \"false\"")
+endif()
+file(WRITE ${CMAKE_BINARY_DIR}/hygiene/ci_required_fixture/ci.yml "${hygiene_ignores_heavy}")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${hygiene_ci})
+set(hygiene_cmd ${CMAKE_COMMAND} -DCI_YML=${CMAKE_BINARY_DIR}/hygiene/ci_required_fixture/ci.yml
+  -DJQ=${COGMASTER_JQ} -DREPORT_ONLY=wasm32 -P ${hygiene_scripts}/ci_required.cmake)
+string(REPLACE ";" "$<SEMICOLON>" hygiene_cmd "${hygiene_cmd}")
+cogmaster_add_test(NAME policy.ci_required.self_test
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${hygiene_cmd}" -DCODE=1
+    "-DREGEX=build skipped when heavy=true: want fail, got exit 0"
+    -P ${hygiene_scripts}/expect_fail.cmake
+  LABELS hygiene policy TIMEOUT 30)
+
+# Fault prevented: a job timeout guessed rather than measured. Every
+# timeout-minutes line names a run ID or says provisional. The self test
+# scans a fixture with two good lines and two bad ones.
+cogmaster_add_test(NAME hygiene.timeout_comments
+  COMMAND ${CMAKE_COMMAND} -DDIR=${CMAKE_SOURCE_DIR}/.github/workflows -P ${hygiene_scripts}/timeouts.cmake
+  LABELS hygiene TIMEOUT 30)
+set(hygiene_timeouts ${CMAKE_BINARY_DIR}/hygiene/timeouts_fixture)
+file(REMOVE_RECURSE ${hygiene_timeouts})
+file(WRITE ${hygiene_timeouts}/sample.yml "jobs:\n  a:\n    timeout-minutes: 5  # provisional\n"
+  "  b:\n    timeout-minutes: 30\n  c:\n    timeout-minutes: 8  # 2 x 3 min, run 38935647258\n"
+  "  d:\n    timeout-minutes: 15  # a guess\n")
+set(hygiene_cmd ${CMAKE_COMMAND} -DDIR=${hygiene_timeouts} -P ${hygiene_scripts}/timeouts.cmake)
+string(REPLACE ";" "$<SEMICOLON>" hygiene_cmd "${hygiene_cmd}")
+cogmaster_add_test(NAME hygiene.timeout_comments.self_test
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${hygiene_cmd}" -DCODE=1
+    "-DREGEX=sample.yml: timeout-minutes: 30.*sample.yml: timeout-minutes: 15 .*a guess.*timeout_comments: 2 lines"
+    -P ${hygiene_scripts}/expect_fail.cmake
+  LABELS hygiene TIMEOUT 30)
+
+# Fault prevented: an action referenced by a tag that can be moved under the
+# release. The self test scans a fixture that uses a tag.
+cogmaster_add_test(NAME policy.action_pins
+  COMMAND ${CMAKE_COMMAND} -DDIR=${CMAKE_SOURCE_DIR}/.github/workflows -P ${hygiene_scripts}/action_pins.cmake
+  LABELS hygiene policy TIMEOUT 30)
+set(hygiene_actions ${CMAKE_BINARY_DIR}/hygiene/action_pins_fixture)
+file(REMOVE_RECURSE ${hygiene_actions})
+string(REPEAT "0" 40 hygiene_sha)
+file(WRITE ${hygiene_actions}/sample.yml "steps:\n  - uses: ./.github/actions/local\n"
+  "  - uses: actions/checkout@${hygiene_sha} # v7.0.1\n  - uses: actions/checkout@v4\n")
+set(hygiene_cmd ${CMAKE_COMMAND} -DDIR=${hygiene_actions} -P ${hygiene_scripts}/action_pins.cmake)
+string(REPLACE ";" "$<SEMICOLON>" hygiene_cmd "${hygiene_cmd}")
+cogmaster_add_test(NAME policy.action_pins.self_test
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${hygiene_cmd}" -DCODE=1
+    "-DREGEX=action_pins: sample.yml: uses: actions/checkout@v4.*action_pins: 1 uses: lines not pinned"
+    -P ${hygiene_scripts}/expect_fail.cmake
+  LABELS hygiene policy TIMEOUT 30)

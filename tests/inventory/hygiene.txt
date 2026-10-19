@@ -5,8 +5,14 @@ hygiene.analyzer	hygiene
 hygiene.format	hygiene
 hygiene.no_float	hygiene
 hygiene.no_float.self_test	hygiene
+hygiene.timeout_comments	hygiene
+hygiene.timeout_comments.self_test	hygiene
 hygiene.tree	hygiene
 hygiene.tree.self_test	hygiene
+policy.action_pins	hygiene,policy
+policy.action_pins.self_test	hygiene,policy
+policy.ci_required	hygiene,policy
+policy.ci_required.self_test	hygiene,policy
 policy.pins	hygiene,policy
 policy.pins.self_test	hygiene,policy
 policy.publish_ref	hygiene,policy
