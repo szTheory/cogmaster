@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 01
 current_phase_name: A test frame in RetroArch
 status: executing
-stopped_at: Completed 01-10-PLAN.md
-last_updated: "2026-10-19T22:23:27.556Z"
+stopped_at: Completed 01-11-PLAN.md
+last_updated: "2026-10-19T22:38:24.588Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 01 execution started
-state_head: 4bbc0544831bdceea17a2a63c391bcdaed149de4
+state_head: bc256f2c1bb73c46574aa4d247a04461a8b5495b
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 12
-  completed_plans: 10
+  completed_plans: 11
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 01 (A test frame in RetroArch) — EXECUTING
-Plan: 11 of 12
+Plan: 12 of 12
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 01 execution started
 
@@ -68,6 +68,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P08 | 45 min | 3 tasks | 25 files |
 | Phase 01 P09 | 12min | 2 tasks | 12 files |
 | Phase 01 P10 | 25min | 2 tasks | 9 files |
+| Phase 01 P11 | 13min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -107,6 +108,8 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 01]: publish.sh verify honours SIGNER_WORKFLOW only for rehearsal-* tags; release tags always verify as release.yml
 - [Phase 01]: A fork pull request changing a release input skips the rehearsal and fails CI required; rehearse from a same-repository branch
 - [Phase 01]: release.yml keeps the seed's concurrency queue: max though actionlint 1.7.12 rejects it (green on muhtari run 38983378877)
+- [Phase 01]: MSVC's own constant names (??_C@_, __xmm@) and the x64 vectorizer's __isa_available pair are exempt from the link-surface checks on Windows only; __real@ stays forbidden
+- [Phase 01]: Hosted CI green on draft PR #3 (run 39335167905); the merge ref is accepted as the rehearsal's target_commitish
 
 ### Pending Todos
 
@@ -138,6 +141,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T22:23:27.539Z
-Stopped at: Completed 01-10-PLAN.md
+Last session: 2026-10-19T22:38:24.570Z
+Stopped at: Completed 01-11-PLAN.md
 Resume file: None
