@@ -34,7 +34,12 @@ core.testcard.static	core,portable
 docs.api_names	policy
 docs.api_names.self_test	policy
 docs.budgets	policy
+embed.subdirectory	install
 host.palette	host,portable
+install.consumer	install
+install.consumer.cxx	install
+install.consumer.dll_crt	install
+install.stage	install
 libretro.host.gg	libretro,portable
 libretro.host.rgb565	libretro,portable
 libretro.host.xrgb8888	libretro,portable

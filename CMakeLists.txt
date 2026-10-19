@@ -65,9 +65,35 @@ cogmaster_warnings(cogmaster)
 # The library version reaches the public header through a generated header,
 # so version.txt stays the only file that holds it.
 configure_file(cmake/version.h.in ${PROJECT_BINARY_DIR}/generated/cogmaster_version.h @ONLY)
-install(TARGETS cogmaster ARCHIVE DESTINATION lib COMPONENT library)
-install(FILES include/cogmaster.h ${PROJECT_BINARY_DIR}/generated/cogmaster_version.h
-  DESTINATION include COMPONENT library)
+
+# The library component: both headers, the static library, a CMake package
+# exporting cogmaster::cogmaster and a pkg-config file. Before 1.0 a minor
+# version may break the API, so the package accepts a request only from the
+# same MAJOR.MINOR. Both files locate the prefix from their own directory, so
+# an extracted archive works wherever it lands. An embedding project installs
+# nothing of ours.
+if(PROJECT_IS_TOP_LEVEL)
+  include(CMakePackageConfigHelpers)
+  set(COGMASTER_CMAKE_DIR lib/cmake/cogmaster)
+  install(TARGETS cogmaster EXPORT cogmasterTargets
+    ARCHIVE DESTINATION lib COMPONENT library)
+  install(FILES include/cogmaster.h ${PROJECT_BINARY_DIR}/generated/cogmaster_version.h
+    DESTINATION include COMPONENT library)
+  install(EXPORT cogmasterTargets NAMESPACE cogmaster::
+    DESTINATION ${COGMASTER_CMAKE_DIR} COMPONENT library)
+  configure_package_config_file(cmake/cogmasterConfig.cmake.in
+    ${PROJECT_BINARY_DIR}/cogmasterConfig.cmake
+    INSTALL_DESTINATION ${COGMASTER_CMAKE_DIR})
+  write_basic_package_version_file(${PROJECT_BINARY_DIR}/cogmasterConfigVersion.cmake
+    COMPATIBILITY SameMinorVersion)
+  configure_file(cmake/cogmaster.pc.in ${PROJECT_BINARY_DIR}/cogmaster.pc @ONLY)
+  install(FILES
+      ${PROJECT_BINARY_DIR}/cogmasterConfig.cmake
+      ${PROJECT_BINARY_DIR}/cogmasterConfigVersion.cmake
+    DESTINATION ${COGMASTER_CMAKE_DIR} COMPONENT library)
+  install(FILES ${PROJECT_BINARY_DIR}/cogmaster.pc
+    DESTINATION lib/pkgconfig COMPONENT library)
+endif()
 
 # The headless runner, built as ISO C17. It lands at the top of the build
 # directory: build/<preset>/cogmaster-run.

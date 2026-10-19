@@ -1,0 +1,6 @@
+# CMake package for cogmaster: the static library as cogmaster::cogmaster.
+# Every path is relative to this file, so the installed tree can move.
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/cogmasterTargets.cmake")
+check_required_components(cogmaster)

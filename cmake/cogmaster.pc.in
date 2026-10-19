@@ -1,0 +1,9 @@
+prefix=${pcfiledir}/../..
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: cogmaster
+Description: Sega Master System and Game Gear emulator core
+Version: @PROJECT_VERSION@
+Libs: -L${libdir} -lcogmaster
+Cflags: -I${includedir}
