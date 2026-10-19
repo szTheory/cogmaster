@@ -38,6 +38,7 @@ endfunction()
 add_library(cogmaster STATIC
   src/instance.c
   src/frame.c
+  src/state.c
   src/testcard.c)
 add_library(cogmaster::cogmaster ALIAS cogmaster)
 target_include_directories(cogmaster PUBLIC
