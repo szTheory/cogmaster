@@ -95,3 +95,155 @@ cogmaster_add_test(NAME policy.pins.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${hygiene_cmd}" -DCODE=1 "-DREGEX=payload: sha256 mismatch"
     -P ${hygiene_scripts}/expect_fail.cmake
   LABELS hygiene policy TIMEOUT 30)
+
+# Fault prevented: a pull-request title or body that cuts the wrong release
+# or none, or starts no CI run on main. Each fixture line is want|title|body,
+# the body with \n escapes; scripts/check-title.sh must give every want, and
+# the fixtures must hold both kinds, so a check that passes or fails
+# everything fails here.
+set(hygiene_titles [=[
+script=$1
+passes=0
+fails=0
+while IFS='|' read -r want title body
+do
+  if [ -z "$want" ]
+  then continue
+  fi
+  if printf '%b\n' "$body" | sh "$script" "$title" > /dev/null 2>&1
+  then got=pass
+  else got=fail
+  fi
+  if [ "$got" != "$want" ]
+  then
+    echo "policy.title: want $want, got $got: $title|$body"
+    exit 1
+  fi
+  if [ "$want" = pass ]
+  then passes=$((passes + 1))
+  else fails=$((fails + 1))
+  fi
+done < "$2"
+echo "policy.title: $passes pass and $fails fail fixtures"
+[ "$passes" -gt 0 ] && [ "$fails" -gt 0 ]
+]=])
+cogmaster_add_test(NAME policy.title
+  COMMAND ${COGMASTER_SH} -c "${hygiene_titles}" sh ${CMAKE_SOURCE_DIR}/scripts/check-title.sh
+    ${CMAKE_CURRENT_LIST_DIR}/fixtures/titles.txt
+  LABELS hygiene policy TIMEOUT 30)
+# Fault prevented: a title check that accepts a "Phase N: Name" title, or
+# fails it for some other reason than the one it names.
+set(hygiene_cmd ${COGMASTER_SH} -c "sh \"$1\" \"$2\" < /dev/null" sh
+  ${CMAKE_SOURCE_DIR}/scripts/check-title.sh "Phase 1: A test frame in RetroArch")
+string(REPLACE ";" "$<SEMICOLON>" hygiene_cmd "${hygiene_cmd}")
+cogmaster_add_test(NAME policy.title.self_test
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${hygiene_cmd}" -DCODE=1 "-DREGEX=not a Conventional Commit title"
+    -P ${hygiene_scripts}/expect_fail.cmake
+  LABELS hygiene policy TIMEOUT 30)
+
+# Fault prevented: a code change skipping CI as planning only, or a change to
+# the release pipeline merging unrehearsed. heavy=false only for a non-empty
+# list wholly under .planning/, both names of a rename included, from a pull
+# request of at most 3000 files, the most the files API lists;
+# release_inputs=true for any of the five release inputs and for any list
+# that cannot be trusted.
+set(hygiene_classify [=[
+script=$1
+n=0
+check() {
+  got=$(printf '%b' "$3" | sh "$script" "${4-2}" | tr '\n' ' ')
+  if [ "$got" != "heavy=$1 release_inputs=$2 " ]
+  then
+    echo "ci.classify: want heavy=$1 release_inputs=$2, got $got for: $3"
+    exit 1
+  fi
+  n=$((n + 1))
+}
+check true false '.planning/STATE.md\nsrc/core.c\n'
+check true false 'src/core.c\n.planning/core.c\n'
+check true true ''
+check true true '\n\n'
+check true false '(listing failed)\n'
+check true false '.planning-notes/a.md\n'
+check true false 'docs/.planning/a.md\n'
+check false false '.planning/STATE.md\n.planning/phases/01/a.md\n'
+check false false '.planning/STATE.md'
+check false false '.planning/STATE.md\n' 3000
+check true true '.planning/STATE.md\n' 3001
+check true true '.planning/STATE.md\n' ''
+check true true '.planning/STATE.md\n' 'x'
+check true true '.github/workflows/release.yml\n'
+check true true '.github/workflows/ci.yml\n'
+check true true 'src/core.c\nscripts/publish.sh\n'
+check true true 'release-please-config.json\n'
+check true true 'cmake/packaging.cmake\n'
+check true true 'scripts/publish.sh\nscripts/release.sh\n'
+check true false 'scripts/publish.sh.orig\ndocs/release.yml\n'
+check false false '.planning/STATE.md\n' 1
+echo "ci.classify: $n lists"
+]=])
+cogmaster_add_test(NAME ci.classify
+  COMMAND ${COGMASTER_SH} -c "${hygiene_classify}" sh ${CMAKE_SOURCE_DIR}/scripts/classify-changes.sh
+  LABELS hygiene TIMEOUT 30)
+
+# Fault prevented: a release with a missing archive, or a SHA256SUMS whose
+# order differs from host to host. scripts/publish.sh prepare runs on 18
+# empty placeholder zips and six build legs' commit.txt, and SHA256SUMS must
+# list the 18 in C-locale name order. The self test leaves one zip out,
+# which must fail naming it.
+set(hygiene_publish ${CMAKE_BINARY_DIR}/hygiene/publish_set)
+file(REMOVE_RECURSE ${hygiene_publish})
+foreach(c library runner libretro)
+  foreach(o linux macos windows)
+    foreach(a x64 arm64)
+      file(WRITE ${hygiene_publish}/full/cogmaster-${c}-${o}-${a}.zip "")
+      if(NOT "${c}-${o}-${a}" STREQUAL "runner-windows-x64")
+        file(WRITE ${hygiene_publish}/short/cogmaster-${c}-${o}-${a}.zip "")
+      endif()
+    endforeach()
+  endforeach()
+endforeach()
+foreach(leg RANGE 1 6)
+  file(WRITE ${hygiene_publish}/full/legs/${leg}/commit.txt "fixture\n")
+  file(WRITE ${hygiene_publish}/short/legs/${leg}/commit.txt "fixture\n")
+endforeach()
+set(hygiene_publish_check [=[
+EXPECTED_SHA=fixture sh "$1" prepare "$2" || exit 1
+names=$(awk '{ print $2 }' "$2/SHA256SUMS")
+count=$(printf '%s\n' "$names" | grep -c '^cogmaster-[a-z]*-[a-z]*-[a-z0-9]*\.zip$')
+if [ "$count" -ne 18 ]
+then
+  echo "policy.publish_set: $count archives in SHA256SUMS, want 18"
+  exit 1
+fi
+if ! printf '%s\n' "$names" | LC_ALL=C sort -c -u
+then
+  echo "policy.publish_set: SHA256SUMS is not in C-locale name order"
+  exit 1
+fi
+echo "policy.publish_set: 18 archives in C-locale name order"
+]=])
+cogmaster_add_test(NAME policy.publish_set
+  COMMAND ${COGMASTER_SH} -c "${hygiene_publish_check}" sh ${CMAKE_SOURCE_DIR}/scripts/publish.sh
+    ${hygiene_publish}/full
+  LABELS hygiene policy TIMEOUT 30)
+set(hygiene_cmd ${CMAKE_COMMAND} -E env EXPECTED_SHA=fixture
+  ${COGMASTER_SH} ${CMAKE_SOURCE_DIR}/scripts/publish.sh prepare ${hygiene_publish}/short)
+string(REPLACE ";" "$<SEMICOLON>" hygiene_cmd "${hygiene_cmd}")
+cogmaster_add_test(NAME policy.publish_set.self_test
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${hygiene_cmd}" -DCODE=1
+    "-DREGEX=publish: missing cogmaster-runner-windows-x64.zip"
+    -P ${hygiene_scripts}/expect_fail.cmake
+  LABELS hygiene policy TIMEOUT 30)
+
+# Fault prevented: a release that verifies against a pull request's
+# attestation. verify on a release tag with a pull request's ref must refuse
+# before any network call.
+set(hygiene_cmd ${CMAKE_COMMAND} -E env GITHUB_REPOSITORY=fixture/fixture SOURCE_REF=refs/pull/1/merge
+  ${COGMASTER_SH} ${CMAKE_SOURCE_DIR}/scripts/publish.sh verify fixture-release ${hygiene_publish}/full)
+string(REPLACE ";" "$<SEMICOLON>" hygiene_cmd "${hygiene_cmd}")
+cogmaster_add_test(NAME policy.publish_ref
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${hygiene_cmd}" -DCODE=1
+    "-DREGEX=publish: fixture-release verifies only from refs/heads/main, not refs/pull/1/merge"
+    -P ${hygiene_scripts}/expect_fail.cmake
+  LABELS hygiene policy TIMEOUT 30)

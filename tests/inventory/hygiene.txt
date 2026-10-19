@@ -1,5 +1,6 @@
 # Every test the hygiene preset registers: name<TAB>labels.
 # Sorted; configure fails when this differs from what is registered.
+ci.classify	hygiene
 hygiene.analyzer	hygiene
 hygiene.format	hygiene
 hygiene.no_float	hygiene
@@ -8,3 +9,8 @@ hygiene.tree	hygiene
 hygiene.tree.self_test	hygiene
 policy.pins	hygiene,policy
 policy.pins.self_test	hygiene,policy
+policy.publish_ref	hygiene,policy
+policy.publish_set	hygiene,policy
+policy.publish_set.self_test	hygiene,policy
+policy.title	hygiene,policy
+policy.title.self_test	hygiene,policy
