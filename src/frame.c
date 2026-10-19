@@ -4,6 +4,23 @@
 
 #include "internal.h"
 
+cogmaster__rect cogmaster__crop(uint32_t machine)
+{
+    cogmaster__rect r;
+    if (machine == COGMASTER_MACHINE_GG) {
+        r.x = 48u;
+        r.y = 24u;
+        r.w = 160u;
+        r.h = 144u;
+    } else {
+        r.x = 0u;
+        r.y = 0u;
+        r.w = COGMASTER__FIELD_W;
+        r.h = COGMASTER__FIELD_H;
+    }
+    return r;
+}
+
 cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out)
 {
     if (m == NULL) {
@@ -48,25 +65,30 @@ cogmaster_status cogmaster_get_frame(const cogmaster *m, cogmaster_frame *io)
     if (!m->loaded) {
         return COGMASTER_STATUS_ERR_ARGUMENT;
     }
-    if (io->flags != 0u || io->pixels == NULL || io->pitch_bytes > COGMASTER__PITCH_MAX) {
+    if ((io->flags & ~COGMASTER_FRAME_FULL_FIELD) != 0u || io->pixels == NULL ||
+        io->pitch_bytes > COGMASTER__PITCH_MAX) {
         return COGMASTER_STATUS_ERR_ARGUMENT;
     }
-    /* The SMS crop is the whole 256-dot field (ARCHITECTURE section 5). */
-    uint32_t x0 = 0u;
-    uint32_t y0 = 0u;
-    uint32_t w = COGMASTER__FIELD_W;
-    uint32_t h = COGMASTER__FIELD_H;
-    if (io->pitch_bytes < w * 2u) {
+    cogmaster__rect r;
+    if ((io->flags & COGMASTER_FRAME_FULL_FIELD) != 0u) {
+        r.x = 0u;
+        r.y = 0u;
+        r.w = COGMASTER__FIELD_W;
+        r.h = COGMASTER__FIELD_H;
+    } else {
+        r = cogmaster__crop(m->machine);
+    }
+    if (io->pitch_bytes < r.w * 2u) {
         return COGMASTER_STATUS_ERR_ARGUMENT;
     }
     uint8_t *dst = (uint8_t *)io->pixels;
-    for (uint32_t row = 0; row < h; row++) {
-        memcpy(dst + (size_t)row * io->pitch_bytes, &m->field[y0 + row][x0], (size_t)w * 2u);
+    for (uint32_t row = 0; row < r.h; row++) {
+        memcpy(dst + (size_t)row * io->pitch_bytes, &m->field[r.y + row][r.x], (size_t)r.w * 2u);
     }
-    io->x = x0;
-    io->y = y0;
-    io->w = w;
-    io->h = h;
+    io->x = r.x;
+    io->y = r.y;
+    io->w = r.w;
+    io->h = r.h;
     io->field_h = COGMASTER__FIELD_H;
     io->backdrop_rgb444 = 0u;
     return COGMASTER_STATUS_OK;

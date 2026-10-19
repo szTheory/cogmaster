@@ -13,6 +13,13 @@
 #define COGMASTER__FIELD_MAX_H 240u
 #define COGMASTER__FIELD_H 192u
 
+/* The rectangle of the field a machine shows: the SMS shows all 256x192
+   dots, the Game Gear a 160x144 window at (48, 24) (ARCHITECTURE section 5). */
+typedef struct cogmaster__rect {
+    uint32_t x, y, w, h;
+} cogmaster__rect;
+cogmaster__rect cogmaster__crop(uint32_t machine);
+
 /* One NTSC frame is 262 lines of 684 ticks (ARCHITECTURE section 2). */
 #define COGMASTER__TICKS_PER_FRAME_NTSC 179208u
 

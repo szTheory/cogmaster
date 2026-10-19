@@ -20,11 +20,15 @@ typedef uint32_t cogmaster_status;
 #define COGMASTER_STATUS_OK 0u
 #define COGMASTER_STATUS_ERR_ARGUMENT 1u
 #define COGMASTER_STATUS_ERR_STRUCT_SIZE 2u
+#define COGMASTER_STATUS_ERR_PROFILE_REJECTED 6u
 
 #define COGMASTER_MACHINE_AUTO 0u
 #define COGMASTER_MACHINE_SMS2 1u
+#define COGMASTER_MACHINE_GG 2u
 
 #define COGMASTER_STOP_FRAME 0u
+
+#define COGMASTER_FRAME_FULL_FIELD 1u
 
 typedef struct cogmaster cogmaster;
 

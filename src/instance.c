@@ -119,8 +119,11 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     case COGMASTER_MACHINE_SMS2:
         machine = COGMASTER_MACHINE_SMS2;
         break;
+    case COGMASTER_MACHINE_GG:
+        machine = COGMASTER_MACHINE_GG;
+        break;
     default:
-        return COGMASTER_STATUS_ERR_ARGUMENT;
+        return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
     }
     m->machine = machine;
     m->loaded = 1u;
@@ -153,12 +156,18 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out)
     /* 179,208 ticks of 10,738,635 Hz per frame (ARCHITECTURE section 2). */
     info.fps_num = 1640625u;
     info.fps_den = 27379u;
-    /* The SMS shows the whole 256x192 field at an NTSC pixel aspect of 8:7
-       (ARCHITECTURE section 5). */
-    info.crop_w = COGMASTER__FIELD_W;
-    info.crop_h = COGMASTER__FIELD_H;
-    info.par_num = 8u;
-    info.par_den = 7u;
+    cogmaster__rect crop = cogmaster__crop(m->machine);
+    info.crop_w = crop.w;
+    info.crop_h = crop.h;
+    /* Pixel aspect, reported and never applied: 8:7 for the NTSC SMS, 6:5
+       for the Game Gear (ARCHITECTURE section 5). */
+    if (m->machine == COGMASTER_MACHINE_GG) {
+        info.par_num = 6u;
+        info.par_den = 5u;
+    } else {
+        info.par_num = 8u;
+        info.par_den = 7u;
+    }
     cogmaster__write_out(out, &info, (uint32_t)sizeof info);
     return COGMASTER_STATUS_OK;
 }

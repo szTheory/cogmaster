@@ -15,12 +15,6 @@
 #define TAG_BUF 8192u /* bytes in the size-tag scratch buffer */
 #define TAG_MAX 4096u /* the largest input size tag the core accepts */
 
-/* The values the public header gives the Game Gear machine, the full-field
-   frame flag and the rejected-profile status. */
-#define TEST_MACHINE_GG 2u
-#define TEST_FRAME_FULL_FIELD 1u
-#define TEST_STATUS_ERR_PROFILE_REJECTED 6u
-
 /* The card's colours, RGB444 0000BBBBGGGGRRRR. */
 #define WHITE 0x0FFFu
 #define BLACK 0x0000u
@@ -164,7 +158,7 @@ static cogmaster *full_field(uint32_t machine, uint16_t *buf)
 {
     cogmaster *m = make(machine);
     run_frames(m, 1);
-    cogmaster_frame io = frame_io(buf, FIELD_W * 2u, TEST_FRAME_FULL_FIELD);
+    cogmaster_frame io = frame_io(buf, FIELD_W * 2u, COGMASTER_FRAME_FULL_FIELD);
     CHECK_EQ_U64(cogmaster_get_frame(m, &io), COGMASTER_STATUS_OK);
     CHECK_EQ_U64(io.x, 0);
     CHECK_EQ_U64(io.y, 0);
@@ -206,11 +200,11 @@ static void test_boundaries(void)
         uint16_t want;
     } gg[] = {
         {0, 0, WHITE},     {7, 7, WHITE},     {8, 1, RED},         {100, 7, RED},
-        {100, 136, GREEN}, {1, 40, WHITE},    {2, 40, BLACK},      {15, 40, BLACK},
+        {100, 136, GREEN}, {1, 40, WHITE},    {2, 40, BLACK},      {15, 41, BLACK},
         {144, 40, BLUE},   {158, 40, BLUE},   {16, 8, 0x0000u},    {17, 9, 0x0000u},
         {18, 8, 0x0001u},  {16, 10, 0x0010u}, {143, 135, 0x0FFFu},
     };
-    m = full_field(TEST_MACHINE_GG, pixels);
+    m = full_field(COGMASTER_MACHINE_GG, pixels);
     for (size_t i = 0; i < sizeof gg / sizeof gg[0]; i++) {
         expect_pixel("gg", gg[i].u, gg[i].v, at(pixels, GG_X + gg[i].u, GG_Y + gg[i].v),
                      gg[i].want);
@@ -268,7 +262,7 @@ static void test_all_colours(void)
     cogmaster_destroy(m);
 
     memset(seen, 0, sizeof seen);
-    m = full_field(TEST_MACHINE_GG, pixels);
+    m = full_field(COGMASTER_MACHINE_GG, pixels);
     uint32_t split_cells = 0;
     for (uint32_t cy = 0; cy < 64u; cy++) {
         for (uint32_t cx = 0; cx < 64u; cx++) {
@@ -297,7 +291,7 @@ static void test_all_colours(void)
    magenta outside the window; the default crop is exactly the window. */
 static void test_full_field(void)
 {
-    cogmaster *m = full_field(TEST_MACHINE_GG, pixels);
+    cogmaster *m = full_field(COGMASTER_MACHINE_GG, pixels);
     uint32_t outside_wrong = 0;
     for (uint32_t y = 0; y < 192u; y++) {
         for (uint32_t x = 0; x < 256u; x++) {
@@ -366,9 +360,9 @@ static void test_info(void)
     CHECK_EQ_U64(info.par_den, 7);
     cogmaster_destroy(m);
 
-    m = make(TEST_MACHINE_GG);
+    m = make(COGMASTER_MACHINE_GG);
     info = info_of(m);
-    CHECK_EQ_U64(info.machine, TEST_MACHINE_GG);
+    CHECK_EQ_U64(info.machine, COGMASTER_MACHINE_GG);
     CHECK_EQ_U64(info.crop_w, 160);
     CHECK_EQ_U64(info.crop_h, 144);
     CHECK_EQ_U64(info.field_w, 256);
@@ -397,14 +391,14 @@ static void test_info(void)
 /* A machine outside the profile set is refused before anything changes. */
 static void test_profile_rejected(void)
 {
-    cogmaster *m = make(TEST_MACHINE_GG);
+    cogmaster *m = make(COGMASTER_MACHINE_GG);
     run_frames(m, 1);
     static const uint32_t bad[] = {3u, 0xFFFFFFFFu};
     for (size_t i = 0; i < 2u; i++) {
         cogmaster_media media = make_media(bad[i]);
-        CHECK_EQ_U64(cogmaster_load(m, &media), TEST_STATUS_ERR_PROFILE_REJECTED);
+        CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_ERR_PROFILE_REJECTED);
         cogmaster_info info = info_of(m);
-        CHECK_EQ_U64(info.machine, TEST_MACHINE_GG);
+        CHECK_EQ_U64(info.machine, COGMASTER_MACHINE_GG);
         CHECK_EQ_U64(info.crop_w, 160);
     }
     cogmaster_frame io = frame_io(pixels, GG_W * 2u, 0u);

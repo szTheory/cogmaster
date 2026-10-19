@@ -1,6 +1,6 @@
 /* cogmaster-run: the headless runner.
  *
- *   cogmaster-run --frames N [--hash] [--machine auto|sms]
+ *   cogmaster-run --frames N [--hash] [--machine auto|sms|gg]
  *
  * Runs N frames (N >= 1) of one instance with no content, which shows the
  * built-in test card. With --hash it prints, after the last frame:
@@ -35,10 +35,10 @@ static void run_free(void *user, void *ptr, size_t size)
     free(ptr);
 }
 
-static const char synopsis[] = "usage: cogmaster-run --frames N [--hash] [--machine auto|sms]\n"
+static const char synopsis[] = "usage: cogmaster-run --frames N [--hash] [--machine auto|sms|gg]\n"
                                "  --frames N         run N frames (N >= 1)\n"
                                "  --hash             print the SHA-256 of the last frame's crop\n"
-                               "  --machine NAME     auto (default) or sms\n";
+                               "  --machine NAME     auto (default), sms or gg\n";
 
 static int usage(const char *why)
 {
@@ -97,8 +97,10 @@ static int parse_options(int argc, char **argv, options *o)
                 o->machine = COGMASTER_MACHINE_AUTO;
             } else if (value != NULL && strcmp(value, "sms") == 0) {
                 o->machine = COGMASTER_MACHINE_SMS2;
+            } else if (value != NULL && strcmp(value, "gg") == 0) {
+                o->machine = COGMASTER_MACHINE_GG;
             } else {
-                return usage("--machine needs auto or sms");
+                return usage("--machine needs auto, sms or gg");
             }
             i++;
         } else {
