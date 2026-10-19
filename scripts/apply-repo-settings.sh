@@ -2,7 +2,7 @@
 # Applies the GitHub repository settings this project relies on. Idempotent;
 # run once after the repository exists and again at each milestone tune-up.
 #
-#   scripts/apply-repo-settings.sh [--check] [owner/repo]
+#   scripts/apply-repo-settings.sh [--check] [--no-ruleset] [owner/repo]
 #
 # --check only reads: it prints one drift line for every setting, label or
 # ruleset part that differs from this file and the committed ruleset, then
@@ -16,7 +16,14 @@
 set -eu
 
 check=0
-if [ "${1:-}" = --check ]; then check=1; shift; fi
+ruleset_on=1
+while [ $# -gt 0 ]; do
+  case $1 in
+    --check) check=1; shift ;;
+    --no-ruleset) ruleset_on=0; shift ;;   # before CI has ever reported its check
+    *) break ;;
+  esac
+done
 repo=${1:-$(gh repo view --json nameWithOwner -q .nameWithOwner)}
 
 # Merge settings: name=expected value, as the repository API reports them.
@@ -139,14 +146,16 @@ printf '%s\n' "$LABELS" | while IFS=: read -r name colour description; do
   gh label create "$name" --repo "$repo" --color "$colour" --description "$description" --force >/dev/null
 done
 
-# The ruleset is applied once a CI run has reported its required check;
-# before that it would block the pull request that adds CI.
-id=$(gh api "repos/$repo/rulesets" -q ".[] | select(.name == \"$ruleset_name\") | .id")
-if [ -n "$id" ]; then
-  gh api -X PUT "repos/$repo/rulesets/$id" --silent --input "$ruleset"
-else
-  gh api -X POST "repos/$repo/rulesets" --silent --input "$ruleset"
+if [ "$ruleset_on" = 1 ]; then
+  # The ruleset is applied once a CI run has reported its required check;
+  # before that it would block the pull request that adds CI.
+  id=$(gh api "repos/$repo/rulesets" -q ".[] | select(.name == \"$ruleset_name\") | .id")
+  if [ -n "$id" ]; then
+    gh api -X PUT "repos/$repo/rulesets/$id" --silent --input "$ruleset"
+  else
+    gh api -X POST "repos/$repo/rulesets" --silent --input "$ruleset"
+  fi
+  echo "ruleset '$ruleset_name' applied"
 fi
-echo "ruleset '$ruleset_name' applied"
 
 echo "repository settings applied to $repo"
