@@ -188,6 +188,9 @@ Rule: a surface lands in the phase whose subsystem first gives it data that a te
   without `--no-ruleset`, DEC.57).
 
 ### Owner prerequisite (identity-bound, AGENTS rule 6)
+- **Done 2026-10-19:** the owner ran `scripts/setup-release-app.sh` (exit 0, "verified: cogmaster-release is
+  installed"); `scripts/apply-repo-settings.sh --check` then reported only the ruleset as drift (expected until
+  CI reports). The history below is kept for the record.
 - On 2026-10-19 `gh secret list` (Actions and Dependabot) and `gh variable list` returned nothing: the release
   App key `COGMASTER_APP_PRIVATE_KEY` and variable `COGMASTER_APP_CLIENT_ID` are not set. FRAME-06's rehearsal
   needs them. The owner runs `scripts/setup-release-app.sh` once (browser: create, then install); it
