@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 01
 current_phase_name: A test frame in RetroArch
 status: executing
-stopped_at: Completed 01-09-PLAN.md
-last_updated: "2026-10-19T22:16:27.051Z"
+stopped_at: Completed 01-10-PLAN.md
+last_updated: "2026-10-19T22:23:27.556Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 01 execution started
-state_head: 913012be91f5264c008e8145367c69cd714d739c
+state_head: 4bbc0544831bdceea17a2a63c391bcdaed149de4
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 12
-  completed_plans: 9
+  completed_plans: 10
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 01 (A test frame in RetroArch) — EXECUTING
-Plan: 10 of 12
+Plan: 11 of 12
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 01 execution started
 
@@ -67,6 +67,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P07 | 4min | 3 tasks | 20 files |
 | Phase 01 P08 | 45 min | 3 tasks | 25 files |
 | Phase 01 P09 | 12min | 2 tasks | 12 files |
+| Phase 01 P10 | 25min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -102,6 +103,10 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 01]: check-title.sh and classify-changes.sh run in the C locale
 - [Phase 01]: 01-09: wasm32 stays out of CI required's needs (REPORT_ONLY=wasm32); its Linux x64 comparison only reports
 - [Phase 01]: 01-09: perf mode is the workflow env COGMASTER_PERF_MODE=report; arming changes it to gate in one ci: pull request
+- [Phase 01]: Rehearsal and release publish both use the App token as GH_TOKEN for every publish.sh step; actions/attest signs with the job's OIDC token
+- [Phase 01]: publish.sh verify honours SIGNER_WORKFLOW only for rehearsal-* tags; release tags always verify as release.yml
+- [Phase 01]: A fork pull request changing a release input skips the rehearsal and fails CI required; rehearse from a same-repository branch
+- [Phase 01]: release.yml keeps the seed's concurrency queue: max though actionlint 1.7.12 rejects it (green on muhtari run 38983378877)
 
 ### Pending Todos
 
@@ -133,6 +138,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T22:16:27.025Z
-Stopped at: Completed 01-09-PLAN.md
+Last session: 2026-10-19T22:23:27.539Z
+Stopped at: Completed 01-10-PLAN.md
 Resume file: None
