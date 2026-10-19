@@ -139,9 +139,9 @@ Exit statuses: one X-macro table, printed by `--help`, README equality test [HI.
 |---|---|---|
 | `[--rom] FILE`, `--machine auto\|sms\|gg`, `--region auto\|ntsc-u\|ntsc-j\|pal`, `--frames N`, `--hash N`, `--png N:FILE`, `--bench N` | none → test card; SHA-256 of native pixels; PNG via host palette; fps + p50/p90/p99/p99.9/max µs | v1.0 |
 | `--probe` | header fields below, no emulation; exit 0/77/1 | v1.0 |
-| `--boot fast\|bios`, `--bios FILE` | BIOS bytes are an input; SHA-256 printed | v1.0 |
+| `--boot fast\|bios`, `--bios FILE` | BIOS bytes are an input; SHA-256 printed | v2.0 (LIB-03; phase 1 CONTEXT D-08) |
 | `--port1/--port2 DEV` | auto · pad · none (v1.0); lightgun · paddle · sportspad · mdpad (v2.0) | v1.0 / v2.0 |
-| `--expect FILE`, `--capabilities` | compare printed hashes; JSON, writes nothing | v1.0 |
+| `--expect FILE`, `--capabilities` | compare printed hashes; JSON, writes nothing | `--expect` v1.0 phase 3; `--capabilities` v3.0 (phase 1 CONTEXT D-08) |
 | `--hash-audio` | PCM SHA-256 per channel | v1.0 |
 | `--trace first-fault` | stop at the first unmapped or illegal access and print it (format below) | v1.0 |
 | `--save-dir DIR`, `--save-interval F`, SIGUSR1 | `DIR/<rom basename>.sav`, temp → fsync → rename | v2.0 |
