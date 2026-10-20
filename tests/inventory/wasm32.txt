@@ -165,6 +165,12 @@ runner.usage.positional	portable,runner
 runner.usage.unknown	portable,runner
 runner.version	portable,runner
 vdp.background	portable,vdp
+vdp.background.empty	portable,vdp
+vdp.background.intervals	portable,vdp
+vdp.background.latches	portable,vdp
+vdp.background.locks	portable,vdp
+vdp.background.scroll	portable,vdp
+vdp.background.tiles	portable,vdp
 vdp.control_port	portable,vdp
 vdp.data_port	portable,vdp
 vdp.hcounter	portable,vdp
