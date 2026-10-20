@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 02
 current_phase_name: The CPU matches the public vectors
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-10-20T02:16:32.517Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-10-20T02:22:58.154Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 02 execution started
-state_head: 59dfdacca488a010ecdafbe0a6a566d234d0300c
+state_head: 69a48229c928ab4936701f46689886f7631700fd
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 29
-  completed_plans: 13
+  completed_plans: 14
   percent: 25
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 02 (The CPU matches the public vectors) — EXECUTING
-Plan: 2 of 17
+Plan: 3 of 17
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 02 execution started
 
@@ -71,6 +71,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 01 P11 | 13min | 2 tasks | 1 files |
 | Phase 01 P12 | 20min | 2 tasks | 11 files |
 | Phase 02 P01 | 10min | 2 tasks | 18 files |
+| Phase 02 P02 | 12min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -118,6 +119,8 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 02]: Vector sample: access form with a 25-bit final-state change mask, 13,017,674 B; magic CGM-Z80V v1, per-file u16 index
 - [Phase 02]: Z80 bus primitives call the seam at T3 (M1, memory read and write) and T4 (I/O); the harness subtracts a per-kind offset
 - [Phase 02]: z80 sources enter the vector harness as an OBJECT library with the core's options, never through the cogmaster archive
+- [Phase 02]: Vector negative control re-encodes one test in a build-tree copy (an unchanged final field lives only in the initial state)
+- [Phase 02]: Allow-list lines quote the upstream file name and count as unmatched only when their file ran
 
 ### Pending Todos
 
@@ -153,6 +156,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T02:16:32.453Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-10-20T02:22:58.091Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
