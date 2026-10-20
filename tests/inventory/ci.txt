@@ -64,6 +64,7 @@ fixtures.hello	fixtures,portable
 fixtures.judge.hang	fixtures,portable
 fixtures.judge.missing_row	fixtures,portable
 fixtures.judge.wrong_value	fixtures,portable
+fixtures.mapper_codemasters	fixtures,portable
 fixtures.mapper_sega	fixtures,portable
 fixtures.wla_pin.self_test	fixtures
 host.palette	host,portable

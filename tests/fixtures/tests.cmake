@@ -26,7 +26,12 @@ if(CMAKE_SCRIPT_MODE_FILE)
   elseif(CASE STREQUAL "mailbox")
     # The runner prints the image's mailbox, at most FRAMES frames in, into
     # OUT; mailbox.cmake (JUDGE) then judges it against CSV for PROFILE.
-    execute_process(COMMAND ${EMULATOR} ${RUN} ${IMAGE} --frames ${FRAMES} --mailbox
+    # MACHINE, when set, is passed as --machine for an image with no header.
+    set(machine "")
+    if(MACHINE)
+      set(machine --machine ${MACHINE})
+    endif()
+    execute_process(COMMAND ${EMULATOR} ${RUN} ${machine} ${IMAGE} --frames ${FRAMES} --mailbox
       RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
     if(NOT rc STREQUAL "0")
       message(FATAL_ERROR "--mailbox ${IMAGE}: exit ${rc}\n${err}")
@@ -43,7 +48,7 @@ endif()
 set(COGMASTER_FIXTURES_DIR ${PROJECT_BINARY_DIR}/fixtures)
 set(fixtures_src ${PROJECT_SOURCE_DIR}/tests/roms/src)
 set(fixtures_images "")
-foreach(name IN ITEMS hello mapper_sega)
+foreach(name IN ITEMS hello mapper_sega mapper_codemasters)
   set(image ${COGMASTER_FIXTURES_DIR}/${name}.sms)
   # The source directory is the assembler's working directory, so .INCLUDE
   # finds header.inc; the linker's is the build directory, so the link file
@@ -85,6 +90,13 @@ cogmaster_add_test(NAME fixtures.mapper_sega
   COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=mapper_sega
     -DIMAGE=${COGMASTER_FIXTURES_DIR}/mapper_sega.sms -DFRAMES=120
     -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/mapper_sega.txt
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 30)
+# The Codemasters board has no TMR SEGA header to name the machine.
+cogmaster_add_test(NAME fixtures.mapper_codemasters
+  COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=mapper_codemasters -DMACHINE=sms
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/mapper_codemasters.sms -DFRAMES=120
+    -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/mapper_codemasters.txt
     -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS fixtures portable TIMEOUT 30)
 
