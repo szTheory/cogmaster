@@ -182,6 +182,9 @@ set(compat_labels compat)
 if(COGMASTER_HYGIENE)
   list(APPEND compat_labels hygiene)
 endif()
+cogmaster_add_test(NAME compat.ratchet
+  COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat-ratchet
+    -P ${CMAKE_CURRENT_LIST_DIR}/ratchet.cmake LABELS ${compat_labels} TIMEOUT 30)
 cogmaster_add_test(NAME compat.csv
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat
     -P ${CMAKE_CURRENT_LIST_FILE} LABELS ${compat_labels} TIMEOUT 30)

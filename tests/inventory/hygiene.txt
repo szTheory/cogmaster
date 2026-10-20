@@ -2,6 +2,7 @@
 # Sorted; configure fails when this differs from what is registered.
 ci.classify	hygiene
 compat.csv	compat,hygiene
+compat.ratchet	compat,hygiene
 docs.budgets	hygiene,policy
 docs.budgets.helper	hygiene,policy
 docs.budgets.helper_unclassified	hygiene,policy
