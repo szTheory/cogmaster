@@ -23,6 +23,7 @@ static const char synopsis[] =
     "  --hash               print the SHA-256 of the last frame's crop\n"
     "  --png N:FILE         write frame N's crop to FILE as a PNG (1 <= N <= --frames)\n"
     "  --trace first-fault  stop at the first fault and print it, or 'fault none'\n"
+    "  --mailbox            stop when the RAM mailbox reports done; print its records\n"
     "  --probe              print the file's header fields and digests; run nothing\n"
     "  --help               print this text and the exit statuses\n"
     "  --version            print the version\n";
@@ -160,7 +161,7 @@ static int check_combination(const cogmaster__run_options *o)
         if (o->file == NULL) {
             return usage("--probe needs a file");
         }
-        if (o->frames != 0u || o->hash || o->png_count != 0u || o->trace) {
+        if (o->frames != 0u || o->hash || o->png_count != 0u || o->trace || o->mailbox) {
             return usage("--probe runs nothing, so it takes no run option");
         }
         return COGMASTER__EXIT_OK;
@@ -228,6 +229,8 @@ int cogmaster__parse_options(int argc, char **argv, cogmaster__run_options *o)
             }
             o->trace = 1;
             i++;
+        } else if (strcmp(arg, "--mailbox") == 0) {
+            o->mailbox = 1;
         } else if (strcmp(arg, "--probe") == 0) {
             o->probe = 1;
         } else if (strcmp(arg, "--rom") == 0) {

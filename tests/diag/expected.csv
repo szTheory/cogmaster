@@ -1,0 +1,5 @@
+rom,test,profile,expected,source,citation
+mapper_sega,01:bank_sum_slot1,*,F1F0,doc,SMS-CARTRIDGES section 2.1
+mapper_sega,02:bank_sum_slot2,*,F1F0,doc,SMS-CARTRIDGES section 2.1
+mapper_sega,03:slot0_first_1k_fixed,*,5AF3,doc,SMS-CARTRIDGES section 2.1
+mapper_sega,04:slot0_paged_from_400,*,FA05,doc,SMS-CARTRIDGES section 2.1

@@ -252,8 +252,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     # Options a later release adds are refused now, and --help does not
     # mention them; --help and --version take nothing else; --trace takes
     # only first-fault and --region only its four names.
-    foreach(opt --expect --port1 --port2 --input --hash-audio --capabilities --boot --bios
-        --mailbox)
+    foreach(opt --expect --port1 --port2 --input --hash-audio --capabilities --boot --bios)
       expect_exit(2 "unknown option" --frames 1 ${opt})
       expect_exit(2 "unknown option" --frames 1 ${opt} x)
     endforeach()
@@ -267,7 +266,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     expect_exit(2 "usage" --probe)
     expect_exit(2 "usage" --probe --frames 1 ${SEEDS}/di-halt.sms)
     execute_process(COMMAND ${EMULATOR} ${RUN} --help RESULT_VARIABLE rc OUTPUT_VARIABLE out)
-    if(NOT rc STREQUAL "0" OR out MATCHES "--(expect|port|input|hash-audio|capabilities|boot|bios|mailbox)")
+    if(NOT rc STREQUAL "0" OR out MATCHES "--(expect|port|input|hash-audio|capabilities|boot|bios)")
       message(FATAL_ERROR "--help: expected exit 0 and no later option, got exit ${rc}\n${out}")
     endif()
   elseif(CASE STREQUAL "positional")

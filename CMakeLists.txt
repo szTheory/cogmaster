@@ -129,6 +129,7 @@ if(COGMASTER_BUILD_RUNNER)
     runner/bench.c
     runner/clock.c
     runner/crc32.c
+    runner/mailbox.c
     runner/md5.c
     runner/png.c
     runner/probe.c

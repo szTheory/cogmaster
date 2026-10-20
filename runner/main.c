@@ -27,6 +27,9 @@
  *
  * --trace first-fault reads the core's first-fault record after each frame,
  * stops at the first fault and prints it as one line, or "fault none".
+ *
+ * --mailbox peeks the RAM mailbox after each frame, stops at the first
+ * frame whose status reads $00, and prints the mailbox (mailbox.h).
  * docs/runner.md describes all of this for users.
  *
  * Exit statuses are listed in exit_status.h and printed by --help.
@@ -40,6 +43,7 @@
 #include "clock.h"
 #include "cogmaster.h"
 #include "exit_status.h"
+#include "mailbox.h"
 #include "palette.h"
 #include "png.h"
 #include "probe.h"
@@ -311,6 +315,10 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
                 break;
             }
         }
+        /* --mailbox stops after the frame whose status reads done. */
+        if (opt->mailbox && status == COGMASTER__EXIT_OK && cogmaster__mailbox_done(m)) {
+            break;
+        }
         /* A stop request ends the run only between whole frames, after the
            frame's outputs are written. */
         if (cogmaster__stop_requested()) {
@@ -319,6 +327,9 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     }
     if (status == COGMASTER__EXIT_OK && opt->trace) {
         print_fault(&fault);
+    }
+    if (status == COGMASTER__EXIT_OK && opt->mailbox) {
+        cogmaster__mailbox_print(m);
     }
     if (status == COGMASTER__EXIT_OK && opt->hash) {
         status = print_hash(m, ran, pixels);
