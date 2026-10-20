@@ -181,6 +181,20 @@ if(CMAKE_SCRIPT_MODE_FILE)
     unit(mailbox_stop)
     expect_exit(0 "^status=00\nrom=00\nmagic=bad\ncrc=bad\nframe 3 sha256 [0-9a-f]+\n$"
       ${SEEDS}/di-halt.sms --frames 3 --mailbox --hash)
+  elseif(CASE STREQUAL "png_unreached")
+    # --trace first-fault stops after frame 1 of this image, so a --png for
+    # frame 10 is not written: a line on standard error names it, standard
+    # output holds only the fault, and the exit status stays 0. A --png for
+    # a frame that ran is still written.
+    file(REMOVE "${OUT}.10.png" "${OUT}.1.png")
+    execute_process(COMMAND ${EMULATOR} ${RUN} ${SEEDS}/in-a-00.sms --frames 10
+      --trace first-fault --png "1:${OUT}.1.png" --png "10:${OUT}.10.png"
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "0" OR NOT out MATCHES "^fault frame=[0-9]+ [^\n]*\n$"
+        OR NOT err MATCHES "^cogmaster-run: --png 10:[^\n]* not written[^\n]*\n$"
+        OR EXISTS "${OUT}.10.png" OR NOT EXISTS "${OUT}.1.png")
+      message(FATAL_ERROR "--png past a first-fault stop: exit ${rc}\nstdout:\n${out}stderr:\n${err}")
+    endif()
   elseif(CASE STREQUAL "trace_none")
     # DI; HALT touches nothing undriven; with --hash the hash line follows.
     expect_exit(0 "^fault none\n$" ${SEEDS}/di-halt.sms --frames 10 --trace first-fault)
@@ -460,6 +474,13 @@ cogmaster_add_test(NAME runner.mailbox.crc
 # taken before the ROM has run.
 cogmaster_add_test(NAME runner.mailbox.stop
   COMMAND ${bench_check} -DCASE=mailbox_stop -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 30)
+
+# Fault prevented: a run that stops early on --trace or --mailbox and exits 0
+# with a requested --png silently missing, so a script reads a stale file.
+cogmaster_add_test(NAME runner.png_unreached
+  COMMAND ${runner_check} -DCASE=png_unreached -DOUT=${PROJECT_BINARY_DIR}/tests/unreached
+    -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS portable runner TIMEOUT 30)
 
 # Fault prevented: a percentile that interpolates, picks the wrong rank or

@@ -328,6 +328,15 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
             break;
         }
     }
+    /* A stop before a --png frame (first fault, mailbox done or a signal)
+       leaves that file unwritten; say so, as the run itself succeeded. */
+    for (uint32_t k = 0; k < opt->png_count && status == COGMASTER__EXIT_OK; k++) {
+        if (opt->pngs[k].frame > ran) {
+            fprintf(stderr,
+                    "cogmaster-run: --png %lu:%s not written: the run stopped after frame %lu\n",
+                    (unsigned long)opt->pngs[k].frame, opt->pngs[k].path, (unsigned long)ran);
+        }
+    }
     if (status == COGMASTER__EXIT_OK && opt->trace) {
         print_fault(&fault);
     }

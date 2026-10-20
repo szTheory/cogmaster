@@ -132,6 +132,7 @@ runner.mailbox.crc	portable,runner
 runner.mailbox.stop	portable,runner
 runner.png	portable,runner
 runner.png_file	portable,runner
+runner.png_unreached	portable,runner
 runner.probe.digests	portable,runner
 runner.probe.headerless	portable,runner
 runner.probe.keys	portable,runner

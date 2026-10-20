@@ -27,7 +27,7 @@ cogmaster-run --help | --version
 | `--frames N` | Run N frames, N from 1 to 4294967295. Give either `--frames` or `--bench`, once. |
 | `--bench N` | Run N frames, time each one and print the report described under [Bench report](#bench-report). N is from 1 to 1073741823. The runner keeps 4 bytes per frame, so a very large N can exit 1 because memory ran out. |
 | `--hash` | After the last frame, print the SHA-256 of its picture. |
-| `--png N:FILE` | After frame N, write its picture to FILE as a PNG. N is from 1 to the frame count. Repeat the option to write more frames or files. |
+| `--png N:FILE` | After frame N, write its picture to FILE as a PNG. N is from 1 to the frame count. Repeat the option to write more frames or files. If the run stops before frame N, FILE is not written and a line on standard error names it. |
 | `--trace first-fault` | After each frame, read the core's first-fault record; stop at the first fault and print it, described under [First fault](#first-fault). |
 | `--mailbox` | After each frame, read the RAM mailbox a diagnostic ROM fills; stop at the first frame whose status reads done after reading running, and print the mailbox, described under [Mailbox](#mailbox). |
 | `--probe` | Print the file's header fields and digests, described under [Probe](#probe), and run nothing. Give it only with a file. |
@@ -205,7 +205,8 @@ the line is `max_rss_kib 0`.
 ## Stopping
 
 SIGINT (Ctrl+C) or SIGTERM ends the run after the frame in progress. Output is never cut off part-way through a
-report. That frame's PNG is still written. `--hash` prints the last frame that ran, and `--bench` reports the
+report. That frame's PNG is still written; a `--png` for a later frame is not, and a line on standard error names
+it, as after a `--trace` or `--mailbox` stop. `--hash` prints the last frame that ran, and `--bench` reports the
 frames that ran. Output is flushed and the exit status is 0. A signal that was already ignored when the runner
 started, as under `nohup`, stays ignored.
 
