@@ -4,12 +4,12 @@ milestone: v1.0
 milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 03
 current_phase_name: Games play in RetroArch
-status: code_review_findings
-stopped_at: Completed phase 03 standard code review; 1 blocker and 1 warning; runtime Codex; model GPT-6
-last_updated: "2026-10-20T23:17:43.756Z"
+status: ready_for_verification
+stopped_at: Completed phase 03 code review fixes; both findings fixed in round 1; runtime Codex; model GPT-6
+last_updated: "2026-10-20T23:20:42.500Z"
 last_activity: 2026-10-20
-last_activity_desc: Reviewed phase 03; 1 blocker and 1 warning; runtime Codex; model GPT-6
-state_head: dd40d2f54987a149917a4f281f9d6edab9280fe5
+last_activity_desc: Fixed phase 03 review blocker and warning; runtime Codex; model GPT-6
+state_head: 060da4a795996d92dbb28083c260b4390a51c300
 progress:
   total_phases: 4
   completed_phases: 2
@@ -29,12 +29,12 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 
 ## Current Position
 
-Phase: 03 (Games play in RetroArch) — EXECUTION COMPLETE; REVIEW FINDINGS PENDING FIX
+Phase: 03 (Games play in RetroArch) — EXECUTION AND REVIEW FIXES COMPLETE; READY FOR VERIFICATION
 Plan: 18 of 18
-Status: Standard code review complete; 1 blocker and 1 warning require fixes before formal verification; phase 03 remains pending
-Last activity: 2026-10-20 — Reviewed 152 files; 1 blocker and 1 warning; runtime Codex; model GPT-6
+Status: Both standard-review findings fixed in round 1; formal verification pending; phase 03 remains pending
+Last activity: 2026-10-20 — Fixed Unicode PNG cleanup and VDP fault names with regression coverage; runtime Codex; model GPT-6
 
-Next command: `$gsd-code-review 03 --fix`. Address 03-REVIEW.md before formal verification; do not advance phase 04.
+Next command: `$gsd-verify-work 03`. Verify phase 03; do not advance phase 04.
 
 Progress: [█████░░░░░] 50%
 
@@ -271,6 +271,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-10-20 | Execute phase 3 through plan 03-18; ready for code review (gsd-execute-phase) | Codex | GPT-6 |
 
 | 2026-10-20 | Code review phase 3 (gsd-code-review); standard, 152 files, 1 blocker and 1 warning | Codex | GPT-6 |
+| 2026-10-20 | Code review fixes phase 3 (gsd-code-review 03 --fix); both findings fixed, round 1 | Codex | GPT-6 |
 
 ## Deferred Items
 
@@ -282,6 +283,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T23:17:43.756Z
-Stopped at: Completed phase 03 standard code review; 1 blocker and 1 warning; runtime Codex; model GPT-6
+Last session: 2026-10-20T23:20:42.500Z
+Stopped at: Completed phase 03 review fixes; ready for verification; runtime Codex; model GPT-6
 Resume file: None
