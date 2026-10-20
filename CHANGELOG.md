@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/szTheory/cogmaster/compare/v0.2.0...v0.3.0) (2026-10-20)
+
+
+### Features
+
+* make SMS and Game Gear games playable in RetroArch ([#8](https://github.com/szTheory/cogmaster/issues/8)) ([cb13189](https://github.com/szTheory/cogmaster/commit/cb13189a712eae188ff8bb1f52b6cca84e5ec2b4))
+
 ## [0.2.0](https://github.com/szTheory/cogmaster/compare/v0.1.0...v0.2.0) (2026-10-20)
 
 
