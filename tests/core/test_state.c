@@ -504,6 +504,59 @@ static void refuse_with(const char *name, size_t n, uint64_t v, cogmaster *targe
     expect_refused(name, target, size, target_size);
 }
 
+/* Sets fields in a copy of good, each inside its own bounds; target must
+   refuse the set when refused, and a fresh instance of the same image must
+   load it otherwise. */
+struct field_value {
+    const char *name;
+    uint64_t v;
+};
+
+static void load_fields(const char *what, const struct field_value *set, size_t count, int refused,
+                        size_t n, cogmaster *target, size_t size, size_t target_size)
+{
+    memcpy(bad, good, size);
+    for (size_t i = 0; i < count; i++) {
+        const struct cogmaster__state_field *fd = field(n, set[i].name);
+        if (fd == NULL) {
+            return;
+        }
+        put_le(bad + fd->offset, set[i].v, fd->width);
+    }
+    cogmaster__state_seal(bad, size);
+    if (refused) {
+        expect_refused(what, target, size, target_size);
+        return;
+    }
+    cogmaster *fresh = make_image(img_loop);
+    if (cogmaster__state_load(fresh, bad, size) != COGMASTER_STATUS_OK) {
+        fprintf(stderr, "%s: refused\n", what);
+        check_failures++;
+    }
+    cogmaster_destroy(fresh);
+}
+
+/* CPU flags that no run can leave together: HALT, EI or LD A,I/R with a
+   prefix still pending (a halted CPU so loaded never takes /INT or NMI
+   again), and EI's mark with IFF1 clear. Each flag alone loads. */
+static void reject_cpu_states(size_t n, cogmaster *target, size_t size, size_t target_size)
+{
+    const struct field_value halted_ix[] = {{"z80_halted", 1u}, {"z80_idx", 1u}};
+    const struct field_value halted_iy[] = {{"z80_halted", 1u}, {"z80_idx", 2u}};
+    const struct field_value ei_ix[] = {{"z80_ei", 1u}, {"z80_iff1", 1u}, {"z80_idx", 1u}};
+    const struct field_value p_iy[] = {{"z80_p", 1u}, {"z80_idx", 2u}};
+    const struct field_value ei_di[] = {{"z80_ei", 1u}, {"z80_iff1", 0u}};
+    load_fields("halted with DD pending", halted_ix, 2u, 1, n, target, size, target_size);
+    load_fields("halted with FD pending", halted_iy, 2u, 1, n, target, size, target_size);
+    load_fields("EI mark with DD pending", ei_ix, 3u, 1, n, target, size, target_size);
+    load_fields("LD A,I mark with FD pending", p_iy, 2u, 1, n, target, size, target_size);
+    load_fields("EI mark with IFF1 clear", ei_di, 2u, 1, n, target, size, target_size);
+    load_fields("halted alone", halted_ix, 1u, 0, n, target, size, target_size);
+    load_fields("DD pending alone", &halted_ix[1], 1u, 0, n, target, size, target_size);
+    load_fields("EI mark with IFF1 set", ei_ix, 2u, 0, n, target, size, target_size);
+    load_fields("LD A,I mark alone", p_iy, 1u, 0, n, target, size, target_size);
+}
+
 /* An image's state is refused by an instance running another image, and
    when its frame deadline, ticks and beam disagree, each value inside its
    own bounds. */
@@ -534,6 +587,7 @@ static void reject_image_states(void)
     /* /INT must be the VDP's frame flag AND IE0; this image leaves both
        clear, so a raised /INT is refused. */
     refuse_with("z80_int_line", n, 1u, target, size, target_size);
+    reject_cpu_states(n, target, size, target_size);
     cogmaster *other = make_image(img_halt);
     if (save(other, bad) == size) {
         memcpy(bad, good, size);

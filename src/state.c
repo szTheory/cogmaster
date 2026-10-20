@@ -155,16 +155,23 @@ static uint8_t z80_io(struct cogmaster__sio *io, struct cogmaster__z80 *z)
     cogmaster__sio_u16(io, "z80_wz", &z->wz, 0u, UINT16_MAX);
     cogmaster__sio_u8(io, "z80_i", &z->i, 0u, UINT8_MAX);
     cogmaster__sio_u8(io, "z80_r", &z->r, 0u, UINT8_MAX);
-    cogmaster__sio_u8(io, "z80_iff1", &z->iff1, 0u, 1u);
+    uint8_t iff1 = cogmaster__sio_u8(io, "z80_iff1", &z->iff1, 0u, 1u);
     cogmaster__sio_u8(io, "z80_iff2", &z->iff2, 0u, 1u);
     cogmaster__sio_u8(io, "z80_im", &z->im, 0u, 2u);
     cogmaster__sio_u8(io, "z80_q", &z->q, 0u, UINT8_MAX);
-    cogmaster__sio_u8(io, "z80_p", &z->p, 0u, 1u);
-    cogmaster__sio_u8(io, "z80_ei", &z->ei, 0u, 1u);
-    cogmaster__sio_u8(io, "z80_idx", &z->idx, 0u, COGMASTER__Z80_IDX_IY);
-    cogmaster__sio_u8(io, "z80_halted", &z->halted, 0u, 1u);
+    uint8_t p = cogmaster__sio_u8(io, "z80_p", &z->p, 0u, 1u);
+    uint8_t ei = cogmaster__sio_u8(io, "z80_ei", &z->ei, 0u, 1u);
+    uint8_t idx = cogmaster__sio_u8(io, "z80_idx", &z->idx, 0u, COGMASTER__Z80_IDX_IY);
+    uint8_t halted = cogmaster__sio_u8(io, "z80_halted", &z->halted, 0u, 1u);
     uint8_t int_line = cogmaster__sio_u8(io, "z80_int_line", &z->int_line, 0u, 1u);
     cogmaster__sio_u8(io, "z80_nmi_pending", &z->nmi_pending, 0u, 1u);
+    /* A prefix is a step of its own that clears the EI and LD A,I/R marks,
+       and the step that consumes it clears it again, so HALT, EI or LD A,I/R
+       never leaves one pending; EI sets IFF1 in the same step that sets its
+       mark (z80.c). A halted CPU with a prefix pending would never accept
+       /INT or NMI again. */
+    cogmaster__sio_check(io, idx == COGMASTER__Z80_IDX_NONE || (halted | ei | p) == 0u);
+    cogmaster__sio_check(io, ei == 0u || iff1 != 0u);
     return int_line;
 }
 
