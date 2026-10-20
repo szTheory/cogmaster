@@ -88,6 +88,86 @@ if(CMAKE_SCRIPT_MODE_FILE)
       string(TOLOWER ${algo} key)
       expect_key("${out}" ${key} ${want})
     endforeach()
+  elseif(CASE STREQUAL "probe_headerless")
+    # A copier header: the *_headerless digests cover the body after it,
+    # which is size-16k.sms byte for byte, so they differ from the
+    # whole-file ones and equal CMake's digests of that file. With no copier
+    # header they are none.
+    probe(${SEEDS}/size-16k-512.sms)
+    expect_probe_form("${out}")
+    expect_key("${out}" copier_header 1)
+    foreach(algo IN ITEMS MD5 SHA1 SHA256)
+      string(TOLOWER ${algo} key)
+      file(${algo} ${SEEDS}/size-16k.sms body)
+      file(${algo} ${SEEDS}/size-16k-512.sms whole)
+      expect_key("${out}" ${key} ${whole})
+      expect_key("${out}" ${key}_headerless ${body})
+    endforeach()
+    probe(${SEEDS}/header-export-32k.sms)
+    expect_key("${out}" copier_header 0)
+    foreach(key IN ITEMS sha1 sha256 crc32 md5)
+      expect_key("${out}" ${key}_headerless none)
+    endforeach()
+  elseif(CASE STREQUAL "probe_unsupported")
+    # Another board's mapper: every key is still printed, then exit 77.
+    probe(${SEEDS}/unsupported-board.sms)
+    if(NOT rc STREQUAL "77")
+      message(FATAL_ERROR "--probe of another board: expected exit 77, got ${rc}\n${out}${err}")
+    endif()
+    expect_probe_form("${out}")
+    expect_key("${out}" mapper_guess unsupported)
+  elseif(CASE STREQUAL "refuse_size")
+    # Below 1 KiB and above 1 MiB + 512 the core refuses the image; above
+    # 64 MiB the runner refuses the file before reading it.
+    expect_exit(77 "unsupported" --frames 1 ${SEEDS}/size-1023.sms)
+    expect_exit(77 "unsupported" --frames 1 ${SEEDS}/size-1m-513.sms)
+    expect_exit(0 "^$" --frames 1 ${SEEDS}/size-1024.sms)
+    expect_exit(0 "^$" --frames 1 ${SEEDS}/size-1m-512.sms)
+    expect_exit(77 "64 MiB" --frames 1 ${OVERSIZE})
+    expect_exit(77 "64 MiB" --probe ${OVERSIZE})
+  elseif(CASE STREQUAL "refuse_sg1000")
+    # SG-1000 and SC-3000 images are refused by their file name, unread.
+    foreach(name IN ITEMS game.sg game.sc GAME.SG)
+      file(WRITE ${OUT}/${name} "")
+      expect_exit(77 "unsupported: SG-1000 [(]planned[)]" --frames 1 ${OUT}/${name})
+      expect_exit(77 "unsupported: SG-1000 [(]planned[)]" --probe ${OUT}/${name})
+    endforeach()
+  elseif(CASE STREQUAL "refuse_profile")
+    # No Game Gear and no Japanese console was made for PAL.
+    expect_exit(77 "unsupported" --frames 1 --machine gg --region pal)
+    expect_exit(77 "unsupported" --frames 1 --machine gg --region pal ${SEEDS}/di-halt.sms)
+    expect_exit(77 "unsupported" --frames 1 --region pal ${SEEDS}/di-halt.gg)
+    expect_exit(77 "unsupported" --frames 1 --machine gg ${SEEDS}/gg-8k.gg)
+    expect_exit(77 "unsupported" --frames 1 ${SEEDS}/unsupported-board.sms)
+  elseif(CASE STREQUAL "machine_auto")
+    # --machine auto takes the header's region code, then a .gg name, then
+    # the Master System. The two crops differ, so the hash tells them apart.
+    function(hash_of var)
+      execute_process(COMMAND ${EMULATOR} ${RUN} --frames 1 --hash ${ARGN} RESULT_VARIABLE rc
+        OUTPUT_VARIABLE out ERROR_VARIABLE out)
+      if(NOT rc STREQUAL "0" OR NOT out MATCHES "^frame 1 sha256 [0-9a-f]+\n$")
+        message(FATAL_ERROR "--frames 1 --hash ${ARGN}: exit ${rc}\n${out}")
+      endif()
+      set(${var} "${out}" PARENT_SCOPE)
+    endfunction()
+    foreach(file header-gg-export-32k.sms di-halt.gg)
+      hash_of(auto ${SEEDS}/${file})
+      hash_of(gg --machine gg ${SEEDS}/${file})
+      hash_of(sms --machine sms ${SEEDS}/${file})
+      if(NOT auto STREQUAL gg OR auto STREQUAL sms)
+        message(FATAL_ERROR "${file}: auto is not the Game Gear\nauto ${auto}gg ${gg}sms ${sms}")
+      endif()
+    endforeach()
+    hash_of(auto ${SEEDS}/di-halt.sms)
+    hash_of(sms --machine sms ${SEEDS}/di-halt.sms)
+    if(NOT auto STREQUAL sms)
+      message(FATAL_ERROR "di-halt.sms: auto is not the Master System\nauto ${auto}sms ${sms}")
+    endif()
+  elseif(CASE STREQUAL "region")
+    foreach(region auto ntsc-u ntsc-j pal)
+      expect_exit(0 "^$" --frames 2 --region ${region} ${SEEDS}/di-halt.sms)
+    endforeach()
+    expect_exit(2 "usage" --frames 2 --region eu ${SEEDS}/di-halt.sms)
   elseif(CASE STREQUAL "png_file")
     # The decode check runs first, so the pinned digest is only ever
     # compared for a file whose IHDR and every pixel are already known good.
@@ -413,4 +493,47 @@ cogmaster_add_test(NAME runner.probe.keys
 # database entry.
 cogmaster_add_test(NAME runner.probe.digests
   COMMAND ${bench_check} -DCASE=probe_digests -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 30)
+
+# Fault prevented: *_headerless digests taken over the whole file, or
+# printed for a file with no copier header.
+cogmaster_add_test(NAME runner.probe.headerless
+  COMMAND ${runner_check} -DCASE=probe_headerless -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 30)
+
+# Fault prevented: --probe hiding the report of an image it calls
+# unsupported, or calling it supported.
+cogmaster_add_test(NAME runner.probe.unsupported
+  COMMAND ${runner_check} -DCASE=probe_unsupported -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 30)
+
+# Fault prevented: an image outside the accepted sizes run or reported as a
+# failure, or a huge file read into memory before it is refused.
+cogmaster_add_test(NAME runner.refuse.size
+  COMMAND ${runner_check} -DCASE=refuse_size -DOVERSIZE=${COGMASTER_OVERSIZE_FILE}
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 30)
+
+# Fault prevented: an SG-1000 image run as a Master System cartridge.
+cogmaster_add_test(NAME runner.refuse.sg1000
+  COMMAND ${runner_check} -DCASE=refuse_sg1000 -DOUT=${PROJECT_BINARY_DIR}/tests
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 30)
+
+# Fault prevented: a machine and region no console had, or a board the core
+# cannot run, reported as a failure instead of a refusal.
+cogmaster_add_test(NAME runner.refuse.profile
+  COMMAND ${runner_check} -DCASE=refuse_profile -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 30)
+
+# Fault prevented: --machine auto running a Game Gear cartridge as a Master
+# System one, or the reverse.
+cogmaster_add_test(NAME runner.load.machine_auto
+  COMMAND ${runner_check} -DCASE=machine_auto -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 30)
+
+# Fault prevented: a --region name that is refused, ignored or accepts a
+# misspelling.
+cogmaster_add_test(NAME runner.load.region
+  COMMAND ${runner_check} -DCASE=region -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS portable runner TIMEOUT 30)

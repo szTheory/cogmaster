@@ -9,7 +9,8 @@
    seeds directory, and the runner must refuse this one before reading it.
 
    Sizes (a DI; HALT program at $0000):
-     size-1023.sms  size-1024.sms  size-16k-512.sms (512-byte copier header)
+     size-1023.sms  size-1024.sms  size-16k.sms
+     size-16k-512.sms (a 512-byte copier header, then size-16k.sms)
      size-48k.sms  size-1m.sms  size-1m-512.sms  size-1m-513.sms
    ROM headers at $7FF0, one per region code, 32 KiB, good checksum:
      header-japan-32k.sms  header-export-32k.sms  header-gg-japan-32k.sms
@@ -117,8 +118,8 @@ static void sizes(void)
         const char *name;
         size_t n;
     } list[] = {
-        {"size-1023.sms", 1023u}, {"size-1024.sms", 1024u},        {"size-48k.sms", 48u * KIB},
-        {"size-1m.sms", MIB},     {"size-1m-513.sms", MIB + 513u},
+        {"size-1023.sms", 1023u},    {"size-1024.sms", 1024u}, {"size-16k.sms", 16u * KIB},
+        {"size-48k.sms", 48u * KIB}, {"size-1m.sms", MIB},     {"size-1m-513.sms", MIB + 513u},
     };
     for (size_t i = 0; i < sizeof list / sizeof list[0]; i++) {
         program(0u, list[i].n, di_halt, sizeof di_halt);
