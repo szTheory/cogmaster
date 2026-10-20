@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 03
 current_phase_name: Games play in RetroArch
-status: Ready to execute
-stopped_at: Phase 03 planning verified; 18 plans in 18 waves; runtime Codex; model GPT-6
-last_updated: "2026-10-20T17:51:47.044Z"
+status: executing
+stopped_at: Completed 03-01-PLAN.md; runtime Codex; model GPT-6
+last_updated: "2026-10-20T18:21:49.729Z"
 last_activity: 2026-10-20
-last_activity_desc: Phase 03 planning verified (gsd-plan-phase); runtime Codex; model GPT-6
-state_head: 2e59e6cda07e50633e0a2ffbafb26de8104c1f88
+last_activity_desc: Completed plan 03-01; runtime Codex; model GPT-6
+state_head: 9e361e391ca6aedf65a089ae9848ffc052060945
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 47
-  completed_plans: 29
+  completed_plans: 30
   percent: 50
 ---
 
@@ -25,21 +25,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-20)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 03 — Games play in RetroArch; planning verified; next: $gsd-execute-phase 03
+**Current focus:** Phase 03 — Games play in RetroArch
 
 ## Current Position
 
-Phase: 03 (Games play in RetroArch) — READY TO EXECUTE
-Plan: 0/18 complete; 18 sequential waves planned
+Phase: 03 (Games play in RetroArch) — EXECUTING
+Plan: 2 of 18
 Status: Ready to execute
-Last activity: 2026-10-20 — Phase 03 planning verified (gsd-plan-phase); runtime Codex; model GPT-6
+Last activity: 2026-10-20 — Completed plan 03-01; runtime Codex; model GPT-6
 
 Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 29
+- Total plans completed: 30
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -88,6 +88,7 @@ Progress: [█████░░░░░] 50%
 | Phase 02 P15 | 7 min | 2 tasks | 13 files |
 | Phase 02 P16 | 23 min | 2 tasks | 15 files |
 | Phase 02 P17 | 14min | 2 tasks | 20 files |
+| Phase 03 P01 | 16min | 3 tasks | 42 files |
 
 ## Accumulated Context
 
@@ -182,6 +183,8 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 02]: Writes while $3E disables the cartridge are ignored and recorded as unmapped_write (hardware docs silent; stated in src/bus.c)
 - [Phase 02]: The Z80 is split into z80.c, z80_cb.c, z80_ed.c and z80_x3.c, each under the 800-line cap
 - [Phase 02]: A save state refuses CPU combinations the core cannot reach and ties the beam to bus.at
+- [Phase 03]: Save emitted pixels and the monotonic renderer cursor so partially rendered fields restore exactly.
+- [Phase 03]: Validate the canonical absolute input body and exact record count before running; seal eight fixture samples only after sampling.
 
 ### Pending Todos
 
@@ -221,6 +224,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T17:51:47.044Z
-Stopped at: Phase 03 planning verified; 18 plans in 18 waves; runtime Codex; model GPT-6
-Resume file: .planning/phases/03-games-play-in-retroarch/03-01-PLAN.md
+Last session: 2026-10-20T18:21:49.626Z
+Stopped at: Completed 03-01-PLAN.md; runtime Codex; model GPT-6
+Resume file: None
