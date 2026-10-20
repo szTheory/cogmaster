@@ -128,3 +128,9 @@ cogmaster_add_test(NAME vectors.cb
   COMMAND cogmaster-test-sst --sample ${z80_sample} --group cb
     --allow ${PROJECT_SOURCE_DIR}/tests/vectors/z80/allow.txt --expect-count 25600
   LABELS portable vectors TIMEOUT 60)
+foreach(group IN ITEMS dd fd)
+  cogmaster_add_test(NAME vectors.${group}
+    COMMAND cogmaster-test-sst --sample ${z80_sample} --group ${group}
+      --allow ${PROJECT_SOURCE_DIR}/tests/vectors/z80/allow.txt --expect-count 25200
+    LABELS portable vectors TIMEOUT 60)
+endforeach()

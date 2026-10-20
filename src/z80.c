@@ -19,9 +19,25 @@ enum {
 /* Flags S, Z and P/V are kept by the rotates on A, SCF, CCF and CPL. */
 #define KEEP_SZP (COGMASTER__Z80_SF | COGMASTER__Z80_ZF | COGMASTER__Z80_PF)
 
+/* Under a DD or FD prefix, H, L and HL name IXH, IXL and IX, or IYH, IYL
+   and IY (Sean Young section 6). hx is the high byte's index. */
+static unsigned hx(const struct cogmaster__z80 *z)
+{
+    if (z->idx == COGMASTER__Z80_IDX_NONE) {
+        return RH;
+    }
+    return z->idx == COGMASTER__Z80_IDX_IX ? COGMASTER__Z80_IXH : COGMASTER__Z80_IYH;
+}
+
 static uint16_t hl(const struct cogmaster__z80 *z)
 {
-    return cogmaster__z80_pair(z, RH);
+    return cogmaster__z80_pair(z, hx(z));
+}
+
+/* Register field r, with H and L remapped under a prefix. */
+static unsigned r8(const struct cogmaster__z80 *z, unsigned r)
+{
+    return r == RH || r == RL ? hx(z) + (r - RH) : r;
 }
 
 /* The address on the bus during internal T-states after an opcode fetch:
@@ -40,6 +56,22 @@ static uint8_t imm8(cogmaster *m)
     return v;
 }
 
+/* The address of a (HL) operand. Under a prefix it is (IX+d) or (IY+d):
+   the displacement byte at PC, then n internal T-states, and WZ takes the
+   address. */
+static uint16_t mem_hl(cogmaster *m, uint32_t n)
+{
+    struct cogmaster__z80 *z = &m->z80;
+    if (z->idx == COGMASTER__Z80_IDX_NONE) {
+        return cogmaster__z80_pair(z, RH);
+    }
+    uint8_t d = imm8(m);
+    uint16_t a = (uint16_t)(hl(z) + (uint16_t)(int8_t)d);
+    cogmaster__z80_idle(m, (uint16_t)(z->pc - 1u), n);
+    z->wz = a;
+    return a;
+}
+
 /* A little-endian word at PC. */
 static uint16_t imm16(cogmaster *m)
 {
@@ -47,10 +79,15 @@ static uint16_t imm16(cogmaster *m)
     return (uint16_t)(imm8(m) << 8 | lo);
 }
 
-/* Register pair p of the opcode's p field: BC, DE, HL, SP. */
+/* Register pair p of the opcode's p field: BC, DE, HL (or IX, IY), SP. */
+static unsigned rp_hi(const struct cogmaster__z80 *z, unsigned p)
+{
+    return p == 2 ? hx(z) : 2u * p;
+}
+
 static uint16_t rp(const struct cogmaster__z80 *z, unsigned p)
 {
-    return p == 3 ? z->sp : cogmaster__z80_pair(z, 2u * p);
+    return p == 3 ? z->sp : cogmaster__z80_pair(z, rp_hi(z, p));
 }
 
 static void set_rp(struct cogmaster__z80 *z, unsigned p, uint16_t v)
@@ -58,7 +95,7 @@ static void set_rp(struct cogmaster__z80 *z, unsigned p, uint16_t v)
     if (p == 3) {
         z->sp = v;
     } else {
-        cogmaster__z80_set_pair(z, 2u * p, v);
+        cogmaster__z80_set_pair(z, rp_hi(z, p), v);
     }
 }
 
@@ -92,7 +129,8 @@ static uint16_t pop(cogmaster *m)
 /* Opcodes 0x40-0xBF by their fields x = op >> 6, y = op >> 3 & 7 and
    z = op & 7, where register field 6 means the byte at HL: x = 1 is
    LD r[y],r[z] with 0x76 = HALT in place of LD (HL),(HL); x = 2 is the
-   accumulator operation y on r[z]. */
+   accumulator operation y on r[z]. Under a prefix H and L remap, except
+   beside (IX+d): LD H,(IX+d) and LD (IX+d),L use the true H and L. */
 static void block(cogmaster *m, uint8_t op)
 {
     struct cogmaster__z80 *z = &m->z80;
@@ -103,13 +141,18 @@ static void block(cogmaster *m, uint8_t op)
         z->halted = 1;
         return;
     }
-    uint8_t v = s == 6 ? cogmaster__z80_mread(m, hl(z)) : z->reg[s];
+    uint8_t v;
+    if (s == 6) {
+        v = cogmaster__z80_mread(m, mem_hl(m, 5));
+    } else {
+        v = z->reg[y == 6 && op < 0x80 ? s : r8(z, s)];
+    }
     if (op >= 0x80) {
         cogmaster__z80_alu(z, y, v);
     } else if (y == 6) {
-        cogmaster__z80_mwrite(m, hl(z), v);
+        cogmaster__z80_mwrite(m, mem_hl(m, 5), v);
     } else {
-        z->reg[y] = v;
+        z->reg[s == 6 ? y : r8(z, y)] = v;
     }
 }
 
@@ -144,24 +187,30 @@ static void inc_r(cogmaster *m, unsigned r, int dec)
 {
     struct cogmaster__z80 *z = &m->z80;
     if (r != 6) {
+        r = r8(z, r);
         z->reg[r] = dec ? cogmaster__z80_dec8(z, z->reg[r]) : cogmaster__z80_inc8(z, z->reg[r]);
         return;
     }
-    uint16_t a = hl(z);
+    uint16_t a = mem_hl(m, 5);
     uint8_t v = cogmaster__z80_mread(m, a);
     cogmaster__z80_idle(m, a, 1);
     cogmaster__z80_mwrite(m, a, dec ? cogmaster__z80_dec8(z, v) : cogmaster__z80_inc8(z, v));
 }
 
+/* LD r,n; LD (IX+d),n reads d and n, then runs two internal T-states. */
 static void ld_r_n(cogmaster *m, unsigned r)
 {
     struct cogmaster__z80 *z = &m->z80;
-    uint8_t n = imm8(m);
-    if (r == 6) {
-        cogmaster__z80_mwrite(m, hl(z), n);
-    } else {
-        z->reg[r] = n;
+    if (r != 6) {
+        z->reg[r8(z, r)] = imm8(m);
+        return;
     }
+    uint16_t a = mem_hl(m, 0);
+    uint8_t n = imm8(m);
+    if (z->idx != COGMASTER__Z80_IDX_NONE) {
+        cogmaster__z80_idle(m, (uint16_t)(z->pc - 1u), 2);
+    }
+    cogmaster__z80_mwrite(m, a, n);
 }
 
 /* RLCA, RRCA, RLA, RRA by y: C from the bit shifted out, H and N clear,
@@ -184,7 +233,7 @@ static void add_hl(cogmaster *m, unsigned p)
     uint32_t a = hl(z), b = rp(z, p), r = a + b;
     cogmaster__z80_idle(m, ir(z), 7);
     z->wz = (uint16_t)(a + 1u);
-    cogmaster__z80_set_pair(z, RH, (uint16_t)r);
+    cogmaster__z80_set_pair(z, hx(z), (uint16_t)r);
     cogmaster__z80_setf(z, (uint8_t)((z->reg[RF] & KEEP_SZP) | ((r >> 8) & 0x28u) |
                                      (((a ^ b ^ r) >> 8) & 0x10u) | (r >> 16)));
 }
@@ -223,13 +272,14 @@ static void djnz(cogmaster *m)
 static void ld_nn_hl(cogmaster *m, int load)
 {
     struct cogmaster__z80 *z = &m->z80;
+    unsigned h = hx(z);
     uint16_t a = imm16(m);
     if (load) {
-        z->reg[RL] = cogmaster__z80_mread(m, a);
-        z->reg[RH] = cogmaster__z80_mread(m, (uint16_t)(a + 1u));
+        z->reg[h + 1u] = cogmaster__z80_mread(m, a);
+        z->reg[h] = cogmaster__z80_mread(m, (uint16_t)(a + 1u));
     } else {
-        cogmaster__z80_mwrite(m, a, z->reg[RL]);
-        cogmaster__z80_mwrite(m, (uint16_t)(a + 1u), z->reg[RH]);
+        cogmaster__z80_mwrite(m, a, z->reg[h + 1u]);
+        cogmaster__z80_mwrite(m, (uint16_t)(a + 1u), z->reg[h]);
     }
     z->wz = (uint16_t)(a + 1u);
 }
@@ -292,7 +342,8 @@ static void scf_ccf(struct cogmaster__z80 *z, uint8_t q_prev, int ccf)
     cogmaster__z80_setf(z, (uint8_t)((f & KEEP_SZP) | xy | nf));
 }
 
-/* EX AF,AF' and EXX swap without writing Q. */
+/* EX AF,AF', EXX and EX DE,HL swap without writing Q; EXX and EX DE,HL
+   keep the true HL under a prefix. */
 static void ex_af(struct cogmaster__z80 *z)
 {
     for (unsigned k = RF; k <= RA; k++) {
@@ -314,7 +365,7 @@ static void exx(struct cogmaster__z80 *z)
 static void ex_de_hl(struct cogmaster__z80 *z)
 {
     uint16_t t = cogmaster__z80_pair(z, RD);
-    cogmaster__z80_set_pair(z, RD, hl(z));
+    cogmaster__z80_set_pair(z, RD, cogmaster__z80_pair(z, RH));
     cogmaster__z80_set_pair(z, RH, t);
 }
 
@@ -323,15 +374,16 @@ static void ex_de_hl(struct cogmaster__z80 *z)
 static void ex_sp_hl(cogmaster *m)
 {
     struct cogmaster__z80 *z = &m->z80;
+    unsigned h = hx(z);
     uint16_t s1 = (uint16_t)(z->sp + 1u);
     uint8_t lo = cogmaster__z80_mread(m, z->sp);
     uint8_t hi = cogmaster__z80_mread(m, s1);
     cogmaster__z80_idle(m, s1, 1);
-    cogmaster__z80_mwrite(m, s1, z->reg[RH]);
-    cogmaster__z80_mwrite(m, z->sp, z->reg[RL]);
+    cogmaster__z80_mwrite(m, s1, z->reg[h]);
+    cogmaster__z80_mwrite(m, z->sp, z->reg[h + 1u]);
     cogmaster__z80_idle(m, z->sp, 2);
-    z->reg[RH] = hi;
-    z->reg[RL] = lo;
+    z->reg[h] = hi;
+    z->reg[h + 1u] = lo;
     z->wz = hl(z);
 }
 
@@ -362,7 +414,7 @@ static void pop_rp(cogmaster *m, unsigned p)
         z->reg[RA] = (uint8_t)(v >> 8);
         z->reg[RF] = (uint8_t)v;
     } else {
-        cogmaster__z80_set_pair(z, 2u * p, v);
+        set_rp(z, p, v);
     }
 }
 
@@ -370,7 +422,7 @@ static void push_rp(cogmaster *m, unsigned p)
 {
     struct cogmaster__z80 *z = &m->z80;
     cogmaster__z80_idle(m, ir(z), 1);
-    push(m, p == 3 ? (uint16_t)(z->reg[RA] << 8 | z->reg[RF]) : cogmaster__z80_pair(z, 2u * p));
+    push(m, p == 3 ? (uint16_t)(z->reg[RA] << 8 | z->reg[RF]) : rp(z, p));
 }
 
 /* JP nn and JP cc,nn: WZ = nn whether or not the jump is taken. */
@@ -433,24 +485,10 @@ static void ei_di(struct cogmaster__z80 *z, uint8_t on)
     z->ei = on;
 }
 
-void cogmaster__z80_step(cogmaster *m)
+/* One opcode after its fetch; idx holds the prefix of the step before. */
+static void exec(cogmaster *m, uint8_t op, uint8_t q_prev)
 {
     struct cogmaster__z80 *z = &m->z80;
-    /* Q and the LD A,I/R and EI marks describe only the step just run. */
-    uint8_t q_prev = z->q;
-    z->q = 0;
-    z->p = 0;
-    z->ei = 0;
-    z->idx = COGMASTER__Z80_IDX_NONE;
-
-    if (z->halted) {
-        /* a halted CPU runs M1 cycles at PC without advancing it, so R
-           still counts (UM0080, "HALT") */
-        (void)cogmaster__z80_m1(m);
-        z->pc = (uint16_t)(z->pc - 1u);
-        return;
-    }
-    uint8_t op = cogmaster__z80_m1(m);
     if (op >= 0x40 && op < 0xC0) {
         block(m, op);
         return;
@@ -549,7 +587,6 @@ void cogmaster__z80_step(cogmaster *m)
     case 0xDA: jp(m, cc(z, 3)); break;
     case 0xDB: in_n(m); break;
     case 0xDC: call(m, cc(z, 3)); break;
-    case 0xDD: z->idx = COGMASTER__Z80_IDX_IX; break; /* a prefix is a step of its own */
     case 0xDE: cogmaster__z80_alu(z, 3, imm8(m)); break;
     case 0xDF: rst(m, 0x18); break;
     case 0xE0: ret_cc(m, 4); break;
@@ -561,7 +598,7 @@ void cogmaster__z80_step(cogmaster *m)
     case 0xE6: cogmaster__z80_alu(z, 4, imm8(m)); break;
     case 0xE7: rst(m, 0x20); break;
     case 0xE8: ret_cc(m, 5); break;
-    case 0xE9: z->pc = hl(z); break; /* JP (HL); WZ unchanged */
+    case 0xE9: z->pc = hl(z); break; /* JP (HL) or (IX); WZ unchanged */
     case 0xEA: jp(m, cc(z, 5)); break;
     case 0xEB: ex_de_hl(z); break;
     case 0xEC: call(m, cc(z, 5)); break;
@@ -580,9 +617,36 @@ void cogmaster__z80_step(cogmaster *m)
     case 0xFA: jp(m, cc(z, 7)); break;
     case 0xFB: ei_di(z, 1); break;
     case 0xFC: call(m, cc(z, 7)); break;
-    case 0xFD: z->idx = COGMASTER__Z80_IDX_IY; break;
     case 0xFE: cogmaster__z80_alu(z, 7, imm8(m)); break;
     case 0xFF: rst(m, 0x38); break;
-    default: break; /* the ED page */
+    default: break; /* the ED page; DD and FD never reach here */
     }
+}
+
+void cogmaster__z80_step(cogmaster *m)
+{
+    struct cogmaster__z80 *z = &m->z80;
+    /* Q and the LD A,I/R and EI marks describe only the step just run. */
+    uint8_t q_prev = z->q;
+    z->q = 0;
+    z->p = 0;
+    z->ei = 0;
+
+    if (z->halted) {
+        /* a halted CPU runs M1 cycles at PC without advancing it, so R
+           still counts (UM0080, "HALT") */
+        (void)cogmaster__z80_m1(m);
+        z->pc = (uint16_t)(z->pc - 1u);
+        return;
+    }
+    uint8_t op = cogmaster__z80_m1(m);
+    /* A DD or FD byte is a step of its own: a 4 T-state M1 that only sets
+       the prefix for the next step and leaves Q at 0. A second prefix
+       replaces the first; any other opcode consumes it. */
+    if (op == 0xDD || op == 0xFD) {
+        z->idx = op == 0xDD ? COGMASTER__Z80_IDX_IX : COGMASTER__Z80_IDX_IY;
+        return;
+    }
+    exec(m, op, q_prev);
+    z->idx = COGMASTER__Z80_IDX_NONE;
 }
