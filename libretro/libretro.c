@@ -58,6 +58,8 @@ static uint64_t audio_acc;
 static int16_t silence[LR_AUDIO_CAPACITY * 2u];
 static unsigned controllers[2] = {RETRO_DEVICE_JOYPAD, RETRO_DEVICE_JOYPAD};
 
+#include "options.h"
+
 static const struct retro_controller_description lr_devices[] = {
     {"Control Pad", RETRO_DEVICE_JOYPAD}, {"None", RETRO_DEVICE_NONE}};
 static struct retro_controller_info lr_ports[] = {{lr_devices, 2u}, {lr_devices, 2u}, {NULL, 0u}};
@@ -112,6 +114,7 @@ void retro_set_environment(retro_environment_t cb)
     env_cb = cb;
     if (cb != NULL) {
         (void)cb(RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME, &no_game);
+        lr_register_options(cb);
     }
 }
 
