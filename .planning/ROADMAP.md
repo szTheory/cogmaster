@@ -140,14 +140,14 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. The `battery` fixture continues from its saved value in a fresh `cogmaster-run --save-dir` process after exit and after SIGTERM, and the missing-save and wrong-save controls produce a different result (GAME-05).
   5. One hosted RetroArch session, with at most 300 lines of end-to-end code in total, boots `boot_to_play.sms`, an input changes play, the picture scrolls, and the screenshot equals the runner's frame (GAME-07).
 
-**Plans**: 1/18 plans executed, one sequential chain (waves 1–18; shared source and exact inventories)
+**Plans**: 2/18 plans executed, one sequential chain (waves 1–18; shared source and exact inventories)
 
 Plans:
 **Wave 1**
 - [x] 03-01-PLAN.md — Owned SMS rendering/input tracer through library, runner and content-loaded libretro
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 03-02-PLAN.md — Consolidate repository checks and enforce the strict source ratio
+- [x] 03-02-PLAN.md — Consolidate repository checks and enforce the strict source ratio
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 03-03-PLAN.md — Hosted SMS input, scroll and screenshot proof within 300 lines
@@ -225,5 +225,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. A test frame in RetroArch | 12/12 | Complete    | 2026-10-19 |
 | 2. The CPU matches the public vectors | 17/17 | Complete    | 2026-10-20 |
-| 3. Games play in RetroArch | 1/18 | In Progress | - |
+| 3. Games play in RetroArch | 2/18 | In Progress | - |
 | 4. Sound | 0/TBD | Not started | - |
