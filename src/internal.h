@@ -92,14 +92,15 @@ struct cogmaster__bus {
 #define COGMASTER__CRAM_SIZE 32u
 
 struct cogmaster__vdp {
-    uint16_t addr;                    /* the 14-bit VRAM or CRAM address */
-    uint8_t reg[COGMASTER__VDP_REGS]; /* R0 to R10 */
-    uint8_t status;                   /* the flags: bit 7 frame interrupt pending */
-    uint8_t latch;                    /* 1 after the first control byte */
-    uint8_t first;                    /* the first control byte */
-    uint8_t code;                     /* the control code, 0 to 3 */
-    uint8_t buffer;                   /* the data port's read-ahead byte */
-    uint8_t pause;                    /* 1 while a Pause press waits for its NMI tick */
+    uint16_t addr;                     /* the 14-bit VRAM or CRAM address */
+    uint8_t reg[COGMASTER__VDP_REGS];  /* R0 to R10 */
+    uint8_t status;                    /* the flags: bit 7 frame interrupt pending */
+    uint8_t latch;                     /* 1 after the first control byte */
+    uint8_t first;                     /* the first control byte */
+    uint8_t code;                      /* the control code, 0 to 3 */
+    uint8_t buffer;                    /* the data port's read-ahead byte */
+    uint8_t pause;                     /* 1 while a Pause press waits for its NMI tick */
+    uint8_t hscroll, vscroll, display; /* line / frame / line latches, docs/hardware/video.md */
     uint8_t cram[COGMASTER__CRAM_SIZE];
     uint8_t vram[COGMASTER__VRAM_SIZE];
 };
@@ -169,6 +170,7 @@ struct cogmaster {
     struct cogmaster__mapper mapper;
     struct cogmaster__io io;
     uint32_t render_line;
+    uint32_t render_x; /* next unrendered dot of render_line */
     cogmaster_input pending_input, input;
     uint8_t input_read;
     uint8_t ram[COGMASTER__RAM_SIZE];
@@ -362,6 +364,9 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t);
 uint8_t cogmaster__vdp_read(cogmaster *m, uint32_t port);
 void cogmaster__vdp_write(cogmaster *m, uint32_t port, uint8_t v);
 void cogmaster__vdp_render_to(cogmaster *m, uint32_t end);
+void cogmaster__vdp_render_until(cogmaster *m, uint32_t line, uint32_t x);
+#define COGMASTER__VDP_PRIORITY 32u
+uint32_t cogmaster__vdp_background(const cogmaster *m, uint32_t x, uint32_t y);
 void cogmaster__vdp_finish_field(cogmaster *m);
 uint16_t cogmaster__vdp_backdrop(const cogmaster *m);
 

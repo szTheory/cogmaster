@@ -179,7 +179,9 @@ vdp.background.empty	portable,vdp
 vdp.background.intervals	portable,vdp
 vdp.background.latches	portable,vdp
 vdp.background.locks	portable,vdp
+vdp.background.priority	portable,vdp
 vdp.background.scroll	portable,vdp
+vdp.background.state_interval	portable,vdp
 vdp.background.tiles	portable,vdp
 vdp.control_port	portable,vdp
 vdp.data_port	portable,vdp

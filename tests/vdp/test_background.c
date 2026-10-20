@@ -228,6 +228,51 @@ static void empty(void)
     CHECK_EQ_HEX(m->field[191][255], 0xF00u);
     cogmaster_destroy(m);
 }
+static void priority(void)
+{
+    cogmaster *m = make();
+    solid(m, 1u, 1u);
+    name(m, 0u, 0u, 0x1000u);
+    name(m, 1u, 0u, 0x1800u);
+    name(m, 2u, 0u, 0x1001u);
+    name(m, 3u, 0u, 0x0801u);
+    run(m);
+    CHECK_EQ_U64(cogmaster__vdp_background(m, 0u, 0u), 0u);
+    CHECK_EQ_U64(cogmaster__vdp_background(m, 8u, 0u), 16u);
+    CHECK_EQ_U64(cogmaster__vdp_background(m, 16u, 0u), 33u);
+    CHECK_EQ_U64(cogmaster__vdp_background(m, 24u, 0u), 17u);
+    cogmaster_destroy(m);
+}
+static void state_interval(void)
+{
+    cogmaster *m = make();
+    solid(m, 0u, 1u);
+    run(m);
+    /* Place a real bus stamp in active line zero. */
+    m->ticks += (262u - m->bus.line) * 684u - m->bus.t + 8u;
+    cogmaster__bus_sync(m);
+    m->vdp.code = 3u;
+    m->vdp.addr = 1u;
+    cogmaster__vdp_write(m, COGMASTER__VDP_DATA, 12u);
+    size_t n = cogmaster__state_size(m);
+    uint8_t *bytes = malloc(n);
+    CHECK(bytes != NULL);
+    if (bytes != NULL) {
+        CHECK_EQ_U64(cogmaster__state_save(m, bytes, n), COGMASTER_STATUS_OK);
+        cogmaster__vdp_render_to(m, 1u);
+        CHECK_EQ_HEX(m->field[0][3], 0x00Fu);
+        CHECK_EQ_HEX(m->field[0][4], 0x0F0u);
+        m->vdp.cram[1] = 0u;
+        CHECK_EQ_U64(cogmaster__state_load(m, bytes, n), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(m->render_line, 0u);
+        CHECK_EQ_U64(m->render_x, 4u);
+        cogmaster__vdp_render_to(m, 1u);
+        CHECK_EQ_HEX(m->field[0][3], 0x00Fu);
+        CHECK_EQ_HEX(m->field[0][4], 0x0F0u);
+        free(bytes);
+    }
+    cogmaster_destroy(m);
+}
 int main(int argc, char **argv)
 {
     if (argc != 2) {
@@ -245,6 +290,10 @@ int main(int argc, char **argv)
         latches();
     else if (strcmp(argv[1], "empty") == 0)
         empty();
+    else if (strcmp(argv[1], "priority") == 0)
+        priority();
+    else if (strcmp(argv[1], "state_interval") == 0)
+        state_interval();
     else
         return 2;
     CHECK_DONE();

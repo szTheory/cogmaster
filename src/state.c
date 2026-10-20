@@ -47,7 +47,7 @@ static const uint8_t state_magic[8] = {0x8Au, 0x43u, 0x47u, 0x4Du, 0x0Du, 0x0Au,
 _Static_assert(sizeof(struct cogmaster__counters) == 40u, "counters changed: update counters_io");
 _Static_assert(sizeof(struct cogmaster__z80) == 38u, "z80 changed: update z80_io");
 _Static_assert(sizeof(struct cogmaster__bus) == 40u, "bus changed: update bus_io");
-_Static_assert(sizeof(struct cogmaster__vdp) == 16436u, "vdp changed: update vdp_io");
+_Static_assert(sizeof(struct cogmaster__vdp) == 16438u, "vdp changed: update vdp_io");
 _Static_assert(sizeof(struct cogmaster__mapper) == 4u, "mapper changed: update mapper_io");
 _Static_assert(sizeof(struct cogmaster__io) == 8u, "io changed: update io_io");
 
@@ -222,6 +222,9 @@ static void vdp_io(struct cogmaster__sio *io, struct cogmaster__vdp *v, uint8_t 
     cogmaster__sio_u16(io, "vdp_addr", &v->addr, 0u, STATE_VDP_ADDR_MAX);
     cogmaster__sio_u8(io, "vdp_buffer", &v->buffer, 0u, UINT8_MAX);
     cogmaster__sio_u8(io, "vdp_pause", &v->pause, 0u, 1u);
+    cogmaster__sio_u8(io, "vdp_hscroll", &v->hscroll, 0u, UINT8_MAX);
+    cogmaster__sio_u8(io, "vdp_vscroll", &v->vscroll, 0u, UINT8_MAX);
+    cogmaster__sio_u8(io, "vdp_display", &v->display, 0u, 1u);
     for (uint32_t i = 0; i < COGMASTER__CRAM_SIZE; i++) {
         cogmaster__sio_u8(io, "vdp_cram", &v->cram[i], 0u, UINT8_MAX);
     }
@@ -298,7 +301,9 @@ static void state_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
         cogmaster__sio_u32(io, "input_port2", &p->port2, 0u, 1u);
     }
     cogmaster__sio_u8(io, "input_read", &m->input_read, 0u, 1u);
-    cogmaster__sio_u32(io, "render_line", &m->render_line, 0u, COGMASTER__FIELD_H);
+    uint32_t line = cogmaster__sio_u32(io, "render_line", &m->render_line, 0u, COGMASTER__FIELD_H);
+    uint32_t dot = cogmaster__sio_u32(io, "render_x", &m->render_x, 0u, COGMASTER__FIELD_W - 1u);
+    cogmaster__sio_check(io, line < COGMASTER__FIELD_H || dot == 0u);
     for (uint32_t y = 0u; y < COGMASTER__FIELD_MAX_H; y++) {
         for (uint32_t x = 0u; x < COGMASTER__FIELD_W; x++) {
             cogmaster__sio_u16(io, "field_pixel", &m->field[y][x], 0u, 0xFFFu);

@@ -6,12 +6,27 @@ are decoded before SMS two-bit channels expand to RGB444 by multiplication
 by five. Display-off pixels use CRAM entry 16 plus R7's low nibble.
 The fixed field remains bounded by 256×240 pixels.
 
-Each completed line advances a monotonic cursor. Stamped writes catch up
-before changing VRAM, CRAM or registers. A line touched during its active
-part uses its pre-write sources for the whole line; later raster plans
-widen the timing model. The cursor and emitted pixels participate in state.
-The frame interrupt completes the field and opens the next cursor.
-Sources: SMS-VDP sections 2, 3, 6 and 9 in the preparation index.
+The 32×28 name map wraps vertical coordinates at 224 pixels, horizontal
+coordinates at 256. R8 shifts right: the first R8 modulo 8 dots show backdrop.
+R0 bit 6 fixes the top 16 lines horizontally; bit 7 fixes source columns
+24–31 vertically. Bit 5 masks the first eight display dots. Name bits 8–0
+select the tile, 9/10 flip it, 11 selects palette two, and 12 gives priority
+over sprites only for nonzero tile colours. An enabled empty background
+shows CRAM[0]; an empty SAT contributes no pixels. Display-off shows backdrop.
+
+The cursor advances by raster intervals. Before a stamped VRAM, CRAM or
+register write it emits dots strictly before `tick / 2`, capped at 256;
+earlier dots never change. The selected timing model samples R8 and display
+enable at tick 600 for the next line. R9 samples there on the final physical
+line for the following field, even with display disabled. These approximate
+latch positions are sourced choices, not hardware measurements. The cursor,
+latches and emitted pixels participate in state. The frame interrupt completes
+the field and opens the next cursor. Native hashes serialize cropped RGB444
+words low byte first; host palette conversion cannot change that identity.
+
+Sources: preparation SMS-VDP sections 2, 3, 4.7, 6 and 9;
+[SMS Power tilemap](https://www.smspower.org/Development/Tilemap) and
+[registers](https://www.smspower.org/Development/VDPRegisters).
 
 The owned `boot_to_play` fixture writes a diamond in plane 0 and $55, $33,
 $0F in planes 1–3, with palette entry n containing n. Its independent oracle

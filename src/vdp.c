@@ -77,7 +77,11 @@ void cogmaster__vdp_reset(cogmaster *m, int power)
     v->code = 0u;
     v->buffer = 0u;
     v->pause = 0u;
+    v->hscroll = 0u;
+    v->vscroll = 0u;
+    v->display = 0u;
     m->render_line = 0u;
+    m->render_x = 0u;
     if (power) {
         memset(v->cram, 0, sizeof v->cram);
         memset(v->vram, 0, sizeof v->vram);
@@ -108,6 +112,9 @@ uint32_t cogmaster__vdp_next_event(const cogmaster *m, uint32_t line, uint32_t t
     if (line < COGMASTER__FIELD_H && t < 512u) {
         return 512u;
     }
+    if (t < 600u) {
+        return 600u;
+    }
     if (line == VDP_INT_LINE && t < VDP_INT_TICK) {
         return VDP_INT_TICK;
     }
@@ -121,6 +128,15 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t)
 {
     if (line < COGMASTER__FIELD_H && t == 512u) {
         cogmaster__vdp_render_to(m, line + 1u);
+    }
+    /* Selected tick-600 next-line latch; R9 latches before line zero
+       once per field (docs/hardware/video.md). */
+    if (t == 600u) {
+        m->vdp.hscroll = m->vdp.reg[8];
+        m->vdp.display = (uint8_t)((m->vdp.reg[1] >> 6) & 1u);
+        if (line + 1u == cogmaster__frame_lines(m)) {
+            m->vdp.vscroll = m->vdp.reg[9];
+        }
     }
     if (line == VDP_INT_LINE && t == VDP_INT_TICK) {
         cogmaster__vdp_finish_field(m);
@@ -237,10 +253,10 @@ uint8_t cogmaster__vdp_read(cogmaster *m, uint32_t port)
 
 void cogmaster__vdp_write(cogmaster *m, uint32_t port, uint8_t v)
 {
-    /* Catch up before a write changes a line's source (SMS-VDP section 6).
-       This line renderer samples a whole line at its first visible write. */
+    /* Catch up to this dot before mutating a source (video.md). R8/R9
+       and display writes affect their latches, not earlier intervals. */
     if (m->bus.line < COGMASTER__FIELD_H) {
-        cogmaster__vdp_render_to(m, m->bus.line + (m->bus.t != 0u ? 1u : 0u));
+        cogmaster__vdp_render_until(m, m->bus.line, m->bus.t / 2u);
     }
     if (port == COGMASTER__VDP_CONTROL) {
         vdp_control_write(m, v);
