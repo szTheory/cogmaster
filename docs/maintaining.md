@@ -154,3 +154,14 @@ next long-term-support line before the current one's end of life. Each bump is o
 digest comes from the release API (the asset's `digest` field). Packages installed with apt stay unpinned: they
 are signed, and drift fails loudly as a build failure or a hash change. Actions are pinned by commit SHA in the
 workflows, with the tag in a comment; `policy.action_pins` rejects any other reference.
+
+Two pins are test data and a tool rather than runtimes, and move on their own terms:
+
+- **`sst-z80`**, the SingleStepTests Z80 vectors at one commit. Move it only when upstream fixes a vector the
+  allow list excuses or adds coverage. In the same pull request, regenerate `tests/vectors/z80/sst-sample.bin`
+  ([conformance.md](conformance.md#regenerating-the-sample)), update its SHA-256 in `tests/roms/manifest.txt`,
+  and remove the allow lines the move settles. The nightly `vectors.sample_equal` fails if the sample is left
+  behind. The digest is that of GitHub's archive of the commit.
+- **`wla-dx`**, the assembler for the test fixtures. Move it when a release fixes a bug the fixtures meet. The
+  fixtures' SHA-256 lines in `tests/built/expected.txt` should not change; if one does, find out why before
+  accepting the new digest.

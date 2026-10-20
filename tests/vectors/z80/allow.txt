@@ -1,0 +1,7 @@
+# Vector failures excused until upstream answers, one per line:
+#   YYYY-MM-DD "FILE" TEST FIELD URL REASON
+# DATE is when the line was added; FILE is the upstream file name in double
+# quotes, as the harness prints it ("dd 34"); TEST is the zero-based index;
+# FIELD is the field the harness names (a, wz, ram[4096], T3, length); URL is
+# the upstream issue, starting https://; REASON is free text. A line that
+# matches no failure in a run that executes its file fails the run.

@@ -43,12 +43,22 @@ endfunction()
 # memcmp: no stack protector or fortify helpers, no MSVC security cookie and
 # no default runtime library, and no build path recorded in the objects.
 add_library(cogmaster STATIC
+  src/boot.c
+  src/bus.c
+  src/cart.c
   src/crc32.c
   src/fault.c
   src/instance.c
+  src/io.c
   src/frame.c
+  src/mapper.c
   src/state.c
-  src/testcard.c)
+  src/testcard.c
+  src/vdp.c
+  src/z80.c
+  src/z80_cb.c
+  src/z80_ed.c
+  src/z80_x3.c)
 add_library(cogmaster::cogmaster ALIAS cogmaster)
 target_include_directories(cogmaster PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -115,11 +125,16 @@ if(COGMASTER_BUILD_RUNNER)
   # without other extensions.
   set(COGMASTER_RUNNER_SOURCES
     runner/main.c
+    runner/args.c
     runner/bench.c
     runner/clock.c
     runner/crc32.c
+    runner/mailbox.c
+    runner/md5.c
     runner/png.c
+    runner/probe.c
     runner/rss.c
+    runner/sha1.c
     runner/sha256.c
     runner/stop.c)
   list(TRANSFORM COGMASTER_RUNNER_SOURCES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/)
@@ -175,15 +190,39 @@ if(COGMASTER_NOFP)
   target_compile_options(cogmaster PRIVATE -mgeneral-regs-only)
 endif()
 
+# The fuzz lane builds the two libFuzzer targets and registers only their
+# timed runs. The preset compiles everything with
+# -fsanitize=fuzzer-no-link,address,undefined; only the two targets link the
+# libFuzzer runtime, so no other executable gets its main.
+option(COGMASTER_LIBFUZZER "Build the libFuzzer targets; register only the fuzz runs" OFF)
+
+# The nightly vectors lane converts all 1,000 tests of every upstream file
+# from the fetched archive and registers only the full shards and the sample
+# equality check.
+option(COGMASTER_VECTORS_FULL "Convert the fetched z80 vectors; register only the full shards" OFF)
+# Fault prevented: a nightly run that reports green after converting nothing
+# because the fetched tree is missing.
+if(COGMASTER_VECTORS_FULL AND NOT EXISTS "${PROJECT_SOURCE_DIR}/build/pins/sst-z80/v1")
+  message(FATAL_ERROR "vectors-full: build/pins/sst-z80/v1 is missing; fetch it with\n"
+    "  scripts/fetch-pin.sh sst-z80 build/pins/sst-z80")
+endif()
+
 # Tests. COGMASTER_TIMEOUT_SCALE multiplies every test's timeout on slow
 # lanes; COGMASTER_INVENTORY names the tests/inventory/<name>.txt the
 # registered tests must equal.
 set(COGMASTER_TIMEOUT_SCALE 1 CACHE STRING "Multiplier for every test timeout")
+# The assembled test fixtures: configure builds the pinned WLA-DX and the
+# build assembles tests/roms/src into build/<preset>/fixtures.
+option(COGMASTER_FIXTURES "Build WLA-DX and the assembled test fixtures" ON)
 set(inventory ci)
 if(COGMASTER_HYGIENE)
   set(inventory hygiene)
 elseif(COGMASTER_NOFP)
   set(inventory nofp)
+elseif(COGMASTER_LIBFUZZER)
+  set(inventory fuzz)
+elseif(COGMASTER_VECTORS_FULL)
+  set(inventory vectors-full)
 endif()
 set(COGMASTER_INVENTORY ${inventory} CACHE STRING "Test inventory file under tests/inventory")
 # Fault prevented: every wasm32 test failing on a missing runtime, with a

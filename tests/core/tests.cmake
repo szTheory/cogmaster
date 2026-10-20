@@ -9,8 +9,22 @@ set_target_properties(cogmaster-test-core PROPERTIES
 cogmaster_warnings(cogmaster-test-core)
 
 foreach(case IN ITEMS testcard.static testcard.boundaries testcard.all_colours testcard.full_field
-    info load.profile_rejected api.size_tags api.statuses api.first_released_sizes
+    info load.profile_rejected load.profiles load.sizes load.rejected_unchanged load.board
+    boot.handoff api.size_tags
+    api.statuses api.first_released_sizes
     create.allocator frame.pitch_wide)
+  # Timeout: 10 s floor; 2 x 0.06 s, slowest of 2 runs, run 39376644025, provisional.
+  cogmaster_add_test(NAME core.${case}
+    COMMAND cogmaster-test-core ${case}
+    LABELS core portable TIMEOUT 10)
+endforeach()
+
+# Fault prevented: a peek that changes what it reads (a status clear, a
+# read-buffer refill, an open-bus count, a fault record), so the runner's
+# mailbox reading changes the run it measures; or a peek that returns a
+# byte the CPU would not read.
+foreach(case IN ITEMS peek.no_side_effects peek.args)
+  # Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
   cogmaster_add_test(NAME core.${case}
     COMMAND cogmaster-test-core ${case}
     LABELS core portable TIMEOUT 10)
@@ -33,8 +47,10 @@ set_target_properties(cogmaster-test-state PROPERTIES
 cogmaster_warnings(cogmaster-test-state)
 
 foreach(case IN ITEMS state.round_trip state.record_sweep state.rejects_header state.frame_counter
+    state.mapper
     fault.empty_after_create fault.first_wins fault.reset_clears fault.state_round_trip
     api.error_changes_nothing)
+  # Timeout: 10 s floor; 2 x 0.26 s, slowest of 2 runs, run 39376644025, provisional.
   cogmaster_add_test(NAME core.${case}
     COMMAND cogmaster-test-state ${case}
     LABELS core portable TIMEOUT 10)

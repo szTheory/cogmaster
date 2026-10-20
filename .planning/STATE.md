@@ -2,43 +2,44 @@
 gsd_state_version: "1.0"
 milestone: v1.0
 milestone_name: SMS and Game Gear games play with sound in RetroArch
-current_phase: 2
-current_phase_name: The CPU matches the public vectors
-status: "Phase 01 shipped — PR #4"
-stopped_at: Phase 01 shipped as PR #4 (auto-merge); next /gsd-discuss-phase 2
-last_updated: "2026-10-20T00:06:49.693Z"
-last_activity: 2026-10-19
-state_head: 75acfe01d3f0dfc0a4a5ec0b120ff32a39181282
+current_phase: 3
+current_phase_name: Games play in RetroArch
+status: planning
+stopped_at: "Phase 02 shipping in PR #6; awaiting CI, merge and release"
+last_updated: "2026-10-20T06:14:56.763Z"
+last_activity: 2026-10-20
+last_activity_desc: Phase 02 complete, transitioned to Phase 3
+state_head: b8dad7a25db3a844c9b9a3eb31f7c2a61555feb0
 progress:
   total_phases: 4
-  completed_phases: 1
-  total_plans: 12
-  completed_plans: 12
-  percent: 25
+  completed_phases: 2
+  total_plans: 29
+  completed_plans: 29
+  percent: 50
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-18)
+See: .planning/PROJECT.md (updated 2026-10-20)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 01 — A test frame in RetroArch
+**Current focus:** Phase 02 — shipping in PR #6: https://github.com/szTheory/cogmaster/pull/6. Await CI, squash auto-merge and the automated release before `/gsd-discuss-phase 03`.
 
 ## Current Position
 
-Phase: 2 — The CPU matches the public vectors
+Phase: 3 — Games play in RetroArch
 Plan: Not started
-Status: Phase 01 shipped — PR #4
-Last activity: 2026-10-19
+Status: Phase 02 shipping — PR #6; phase 3 waits for merge and release
+Last activity: 2026-10-20 — Phase 02 ship: PR #6 opened; `cmake --workflow --preset ci` exit 0 (183 + 4 tests); hosted CI pending
 
-Progress: [███░░░░░░░] 25%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
+- Total plans completed: 29
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -47,6 +48,7 @@ Progress: [███░░░░░░░] 25%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 | 12 | - | - |
+| 02 | 17 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -69,6 +71,23 @@ Progress: [███░░░░░░░] 25%
 | Phase 01 P10 | 25min | 2 tasks | 9 files |
 | Phase 01 P11 | 13min | 2 tasks | 1 files |
 | Phase 01 P12 | 20min | 2 tasks | 11 files |
+| Phase 02 P01 | 10min | 2 tasks | 18 files |
+| Phase 02 P02 | 12min | 2 tasks | 13 files |
+| Phase 02 P03 | 5min | 2 tasks | 6 files |
+| Phase 02 P04 | 10min | 3 tasks | 7 files |
+| Phase 02 P05 | 25min | 2 tasks | 9 files |
+| Phase 02 P06 | 9min | 3 tasks | 28 files |
+| Phase 02 P07 | 5min | 2 tasks | 16 files |
+| Phase 02 P08 | 9min | 2 tasks | 16 files |
+| Phase 02 P09 | 40min | 3 tasks | 21 files |
+| Phase 02 P10 | 40min | 3 tasks | 21 files |
+| Phase 02 P11 | 9min | 3 tasks | 20 files |
+| Phase 02 P12 | 36min | 2 tasks | 19 files |
+| Phase 02 P13 | 50min | 3 tasks | 27 files |
+| Phase 02 P14 | 25min | 2 tasks | 11 files |
+| Phase 02 P15 | 7 min | 2 tasks | 13 files |
+| Phase 02 P16 | 23 min | 2 tasks | 15 files |
+| Phase 02 P17 | 14min | 2 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -113,6 +132,56 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 01]: 01-12: Timeouts are twice the slowest successful run here; the 5-minute floor also covers asan and perf (apt) and cleanup (API); all provisional until ten samples
 - [Phase 01]: 01-12: be32 timeout scale 8 and wasm32 scale 5, measured against the Linux x64 leg
 - [Phase 01]: 01-12: workflow.test_gate_timeout 4 s, twice the slowest clean local ci workflow run (1.61 s)
+- [Phase 02]: Vector sample: access form with a 25-bit final-state change mask, 13,017,674 B; magic CGM-Z80V v1, per-file u16 index
+- [Phase 02]: Z80 bus primitives call the seam at T3 (M1, memory read and write) and T4 (I/O); the harness subtracts a per-kind offset
+- [Phase 02]: z80 sources enter the vector harness as an OBJECT library with the core's options, never through the cogmaster archive
+- [Phase 02]: Vector negative control re-encodes one test in a build-tree copy (an unchanged final field lives only in the initial state)
+- [Phase 02]: Allow-list lines quote the upstream file name and count as unmatched only when their file ran
+- [Phase 02]: Z80 accumulator, INC/DEC and flag helpers are static inline in z80_cycle.h for reuse by the CB and ED pages; stack, pair and condition helpers stay static in z80.c
+- [Phase 02]: A halted step runs one M1 at PC and steps PC back so R counts and the step stays bounded
+- [Phase 02]: Each DD/FD byte is its own step: step() returns after the prefix fetch with idx set and clears idx after any other opcode
+- [Phase 02]: Index remapping is centralised in hx/r8/mem_hl/rp_hi; EX DE,HL and EXX use the true HL pair
+- [Phase 02]: NMI is not delayed by EI; only /INT waits one instruction after EI; both wait for a pending prefix
+- [Phase 02]: Block instructions are one iteration per step; ED holes (176) are 8-T NOPs reaching the ed_undefined seam
+- [Phase 02]: Beam starts at the frame origin (line 192, tick 607, ticks 0) after load and reset; origin constants live in bus.c apart from any interrupt tick
+- [Phase 02]: bus.at (the tick line/t describe) is saved state; a state needs at <= ticks <= at + 69 and deadline = (frame + 1) x 179,208
+- [Phase 02]: API version checks in v1.c, header and consumer tests accept any version from 1 up
+- [Phase 02]: A first-size cogmaster_media tag reads region and tv as AUTO (region sits in the 64-bit tail padding)
+- [Phase 02]: State header profile word is machine, region, tv and a zero byte, each fixed to the instance
+- [Phase 02]: The V counter is computed from the beam at each read; no stored 604 step
+- [Phase 02]: The VDP access tick is m->bus.vdp_at, keeping the VDP struct free of 64-bit fields
+- [Phase 02]: The Game Gear profile raises no Pause NMI
+- [Phase 02]: VDP port decode: A7/A6/A0 mirrors on the export SMS, full decode on the Japanese SMS and Game Gear
+- [Phase 02]: 02-09: The opcode scan refuses only when stores to another board's registers outnumber stores to the Sega registers $FFFC-$FFFF; Codemasters $8000 stores count for neither
+- [Phase 02]: 02-09: Bank numbers are reduced modulo the page count at write time; the $FFFC shift is added before the reduction
+- [Phase 02]: 02-09: Cartridge RAM lives after the padded ROM in one allocation (32 KiB Sega, 8 KiB Codemasters) and is state; format version stays 2
+- [Phase 02]: 02-09: cogmaster_cart_info first size is 52; machine_guess and region_guess are 0 when no header names them
+- [Phase 02]: 02-09: Load refuses any 8 KiB body loaded as a Game Gear with ERR_UNSUPPORTED_BOARD (8)
+- [Phase 02]: Game Gear $00 bit 5 reads 0 on NTSC ($C0 export, $80 Japan), per SMS-SYSTEM section 8
+- [Phase 02]: The step stores the instruction address and first byte after DD/FD in the bus struct for the fault record; both are saved in the state
+- [Phase 02]: Game Gear: $3E not decoded (write is unmapped_write), $3F latches, $DD reads $FF
+- [Phase 02]: unmapped_write covers $00-$3F and $80-$BF on full-decode consoles; sound-chip and I/O-chip writes never fault
+- [Phase 02]: Probe header fields print none without a ROM header; machine_guess and region_guess report what auto resolves to
+- [Phase 02]: The probe exits 77 for an unsupported size or board after printing every key; exit 77 is named refused
+- [Phase 02]: The first-fault trace prints its line before any hash or bench output
+- [Phase 02]: COGMASTER_FIXTURES is declared in CMakeLists.txt so bench's OFF is a used variable
+- [Phase 02]: hashes.cmake globs FIXTURES/*.sms sorted, so new fixtures join hashes.txt without edits
+- [Phase 02]: MSVC x64 __ImageBase allowed in abi.undefined: linker-defined jump-table base
+- [Phase 02]: cogmaster_peek returns a value above 255 (256) for no answer; undriven addresses peek $FF without counting or faulting
+- [Phase 02]: Mailbox judge order: magic, then status (hang), then CRC; CSV test column is '<id hex>:<name>'
+- [Phase 02]: Fixtures finish no earlier than their second frame (wait for the VDP frame flag) so a one-frame run is a hang
+- [Phase 02]: mapper_codemasters has no TMR SEGA header; its mailbox test passes --machine sms through an optional MACHINE variable
+- [Phase 02]: A Codemasters slot-0 bank loop runs from a position-independent copy in work RAM at $C200
+- [Phase 02]: ports tv_loop rows span the documented approximate count to the frame-length count plus one loop: NTSC 1,923-1,928, PAL 2,287-2,303
+- [Phase 02]: A Game Gear fixture image is the SMS source assembled with FIXTURE_GG (region code 6), judged against the same rom's rows under profile gg
+- [Phase 02]: Fuzz loader entry loads on the probe's machine and region guess and aborts when probe and load disagree on accepting an image
+- [Phase 02]: libFuzzer nightly job stays continue-on-error until ten green runs; crash inputs uploaded as fuzz-artifacts
+- [Phase 02]: vectors-full lane: COGMASTER_VECTORS_FULL selects its own inventory; the build converts the fetched archive and registers seven full shards plus vectors.sample_equal; nightly job vectors joins report
+- [Phase 02]: Every phase-2 test takes the 10 s TIMEOUT floor (slowest Linux x64 0.28 s); libFuzzer runs 123 s; be32 and wasm32 scales stay 8 and 5 since every test fits with wide margin
+- [Phase 02]: The Codemasters $4000 bank comes from bits 6-0; bit 7 is only the RAM enable
+- [Phase 02]: Writes while $3E disables the cartridge are ignored and recorded as unmapped_write (hardware docs silent; stated in src/bus.c)
+- [Phase 02]: The Z80 is split into z80.c, z80_cb.c, z80_ed.c and z80_x3.c, each under the 800-line cap
+- [Phase 02]: A save state refuses CPU combinations the core cannot reach and ties the beam to bus.at
 
 ### Pending Todos
 
@@ -122,8 +191,11 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 
 - [Phase 3]: VDP timing constants (frame/line interrupt tick, vertical scroll latch, SMS1 zoom slot rule, open-bus byte) conflict between sources; settled by fixtures against released binaries, hardware in v4.0.
 - [Phase 3]: devkitSMS crt0 linking exception to be quoted and judged at the first third-party fixture admission.
-- [Phase 2, 3]: SMS Power! returned 503 during preparation; facts taken from archived captures are flagged in SMSPOWER-EXTRACTS and re-read at the research steps.
+- [Phase 3]: SMS Power! returned 503 during preparation; facts taken from archived captures are flagged in SMSPOWER-EXTRACTS and re-read at the research steps.
 - [Phase 4]: OPLL seed choice and FM:PSG mix need research during planning.
+- [Phase 2]: Review-fix commits 775b29c..b8dad7a have not run in CI yet (local ci and vectors-full exit 0); confirm at ship.
+- [Phase 2]: Sanitizer lanes are evidenced only in CI; local clang-21 ASan hangs at start-up on macOS.
+- [Phase 3]: Deferred review info items IN-01..IN-06 (fault-record precision, unread bus.vdp_at, odd-size padding, probe UX, saved fault validation); see 02-REVIEW-DISPOSITION.md.
 
 ## Runtime Log
 
@@ -134,6 +206,10 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-10-19 | Plan phase 1 (gsd-plan-phase) | Claude Code | claude-opus-5-5 |
 | 2026-10-19 | Execute phase 1 (gsd-execute-phase) | Claude Code | claude-opus-5-5 |
 | 2026-10-19 | Ship phase 1 (gsd-ship) | Claude Code | claude-opus-5-5 |
+| 2026-10-19 | Discuss phase 2 (gsd-discuss-phase) | Claude Code | claude-opus-5-5 |
+| 2026-10-19 | Plan phase 2 (gsd-plan-phase) | Claude Code | claude-opus-5-5 |
+| 2026-10-19 | Execute phase 2 (gsd-execute-phase) | Claude Code | claude-opus-5-5 |
+| 2026-10-20 | Ship phase 2 (gsd-ship) | Codex | GPT-6 |
 
 ## Deferred Items
 
@@ -145,6 +221,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T22:58:34.413Z
-Stopped at: Phase 01 complete, ready to plan Phase 2
+Last session: 2026-10-20
+Stopped at: Phase 02 shipping in PR #6; awaiting CI, merge and release
 Resume file: None

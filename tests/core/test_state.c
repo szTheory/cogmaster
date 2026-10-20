@@ -1,7 +1,7 @@
 /* The internal state visitor, the first-fault record and reset over the
-   test-card instance: cogmaster-test-state <case>. The tests call the
-   visitor and the fault recorder directly; the library has no public state
-   API yet, and nothing in it records a fault yet. */
+   test card and over a loaded image: cogmaster-test-state <case>. The tests
+   call the visitor and the fault recorder directly; the library has no
+   public state API yet. */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,8 +11,9 @@
 #include "state.h"
 #include "../check.h"
 
-#define BUF 4096u /* bytes in each state buffer; the card's state is far smaller */
-#define MAX_FIELDS 256u
+#define BUF 65536u        /* bytes in each state buffer; up to about 57 KiB with cartridge RAM */
+#define MAX_FIELDS 60000u /* 8,192 work RAM, 16,384 VRAM and 32,768 cartridge RAM bytes */
+#define IMAGE_SIZE 1024u
 #define TICKS_PER_FRAME 179208u
 #define POISON 0xA5u
 #define TAG_BUF 8192u
@@ -26,6 +27,8 @@ static uint8_t tag_buf[TAG_BUF];
 static uint8_t tag_before[TAG_BUF];
 static uint16_t pixels[256u * 240u];
 static uint8_t snapshot[sizeof(struct cogmaster)];
+static uint8_t img_loop[IMAGE_SIZE];
+static uint8_t img_halt[IMAGE_SIZE];
 
 static void *test_alloc(void *user, size_t size)
 {
@@ -50,8 +53,9 @@ static cogmaster_config make_config(void)
     return cfg;
 }
 
-/* A new instance with the test card of machine loaded. */
-static cogmaster *make(uint32_t machine)
+/* A new instance of the profile running the 1 KiB image img, or the test
+   card when img is NULL. */
+static cogmaster *make_with(const uint8_t *img, uint32_t machine, uint32_t region, uint32_t tv)
 {
     cogmaster_config cfg = make_config();
     cogmaster *m = NULL;
@@ -59,9 +63,48 @@ static cogmaster *make(uint32_t machine)
     cogmaster_media media;
     memset(&media, 0, sizeof media);
     media.size = (uint32_t)sizeof media;
+    media.image = img;
+    media.image_size = img != NULL ? IMAGE_SIZE : 0u;
     media.machine = machine;
+    media.region = region;
+    media.tv = tv;
     CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
     return m;
+}
+
+/* A new instance with the test card of machine loaded. */
+static cogmaster *make(uint32_t machine)
+{
+    return make_with(NULL, machine, COGMASTER_REGION_AUTO, COGMASTER_TV_AUTO);
+}
+
+/* A new Master System instance running the 1 KiB image img. */
+static cogmaster *make_image(const uint8_t *img)
+{
+    return make_with(img, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO, COGMASTER_TV_AUTO);
+}
+
+/* An image that keeps changing RAM, registers and flags: a loop that
+   increments and stores a counter, so a resumed run that misses any field
+   drifts. */
+static void fill_images(void)
+{
+    static const uint8_t prog[] = {
+        0xF3u,               /* DI */
+        0x21u, 0x00u, 0xC1u, /* LD HL,$C100 */
+        0x34u,               /* INC (HL) */
+        0x7Eu,               /* LD A,(HL) */
+        0x23u,               /* INC HL */
+        0x77u,               /* LD (HL),A */
+        0xD9u,               /* EXX */
+        0x08u,               /* EX AF,AF' */
+        0x18u, 0xF8u,        /* JR -8, back to INC (HL) */
+    };
+    memset(img_loop, 0, sizeof img_loop);
+    memcpy(img_loop, prog, sizeof prog);
+    memset(img_halt, 0, sizeof img_halt);
+    img_halt[0] = 0xF3u; /* DI; HALT */
+    img_halt[1] = 0x76u;
 }
 
 static void run_frames(cogmaster *m, uint32_t n)
@@ -135,10 +178,255 @@ static void expect_refused(const char *what, cogmaster *target, size_t size, siz
     }
 }
 
-/* save, load into a fresh instance of the same machine, save again: the two
-   states are equal byte for byte. */
+/* A state taken mid-frame from a running image, loaded into a fresh
+   instance of the same image, resumes exactly: five more frames of each
+   save the same bytes. */
+static void round_trip_image(uint32_t region, uint32_t tv)
+{
+    fill_images();
+    cogmaster *a = make_with(img_loop, COGMASTER_MACHINE_SMS2, region, tv);
+    run_frames(a, 2u);
+    for (uint32_t i = 0; i < 1000u; i++) {
+        cogmaster__z80_step(a);
+    }
+    CHECK(a->ticks < a->bus.deadline);
+    size_t size = save(a, good);
+    cogmaster *b = make_with(img_loop, COGMASTER_MACHINE_SMS2, region, tv);
+    run_frames(b, 1u);
+    if (size != 0u) {
+        CHECK_EQ_U64(cogmaster__state_size(b), size);
+        CHECK_EQ_U64(cogmaster__state_load(b, good, size), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(save(b, after), size);
+        CHECK(memcmp(good, after, size) == 0);
+        run_frames(a, 5u);
+        run_frames(b, 5u);
+        CHECK_EQ_U64(save(a, good), size);
+        CHECK_EQ_U64(save(b, after), size);
+        CHECK(memcmp(good, after, size) == 0);
+        /* The instances agree beyond the bytes they save. */
+        CHECK(memcmp(a->ram, b->ram, sizeof a->ram) == 0);
+        CHECK(memcmp(&a->z80, &b->z80, sizeof a->z80) == 0);
+        CHECK_EQ_U64(a->ticks, b->ticks);
+        CHECK(a->ram[0x100] != 0u);
+    }
+    cogmaster_destroy(a);
+    cogmaster_destroy(b);
+}
+
+static void sweep(cogmaster *src, cogmaster *target)
+{
+    size_t size = save(src, good);
+    size_t target_size = save(target, before);
+    size_t n = record(src);
+    CHECK(n >= 14u);
+    size_t swept = 0;
+    size_t ram = 0;
+    for (size_t i = 0; i < n && size != 0u; i++) {
+        const struct cogmaster__state_field *fd = &fields[i];
+        CHECK(fd->offset + fd->width <= size);
+        if (strcmp(fd->name, "ram") == 0) {
+            ram++;
+        }
+        uint64_t type_max = fd->width == 8u ? UINT64_MAX : (UINT64_C(1) << (8u * fd->width)) - 1u;
+        const uint64_t outside[2] = {fd->max + 1u, fd->min - 1u};
+        const int sweep_side[2] = {fd->max < type_max, fd->min > 0u};
+        for (size_t j = 0; j < 2u; j++) {
+            if (!sweep_side[j]) {
+                continue;
+            }
+            memcpy(bad, good, size);
+            put_le(bad + fd->offset, outside[j], fd->width);
+            cogmaster__state_seal(bad, size);
+            expect_refused(fd->name, target, size, target_size);
+            swept++;
+        }
+    }
+    printf("state fields: %lu recorded, %lu out-of-range values refused\n", (unsigned long)n,
+           (unsigned long)swept);
+    CHECK(swept >= 30u);
+    CHECK_EQ_U64(ram, 8192);
+    static const char *const named[] = {
+        "z80_pc",       "z80_sp",          "z80_wz",       "z80_im",    "z80_idx",   "z80_halted",
+        "z80_int_line", "z80_nmi_pending", "bus_deadline", "bus_at",    "bus_line",  "bus_t",
+        "bus_vdp_at",   "vdp_reg",         "vdp_status",   "vdp_latch", "vdp_code",  "vdp_addr",
+        "vdp_buffer",   "vdp_pause",       "vdp_cram",     "vdp_vram",  "machine",   "region",
+        "tv",           "io_mem_ctrl",     "io_ctrl",      "io_gg",     "bus_op_pc", "bus_op"};
+    for (size_t i = 0; i < sizeof named / sizeof named[0]; i++) {
+        (void)field(n, named[i]);
+    }
+    /* The profile is resolved: no field of it is AUTO or outside its set. */
+    static const char *const profile[] = {"machine", "region", "tv"};
+    for (size_t i = 0; i < 3u; i++) {
+        const struct cogmaster__state_field *fd = field(n, profile[i]);
+        if (fd != NULL) {
+            CHECK(fd->min >= 1u && fd->max <= 2u);
+        }
+    }
+    /* The control: the unchanged state, resealed, loads. */
+    if (size != 0u) {
+        memcpy(bad, good, size);
+        cogmaster__state_seal(bad, size);
+        CHECK(memcmp(bad, good, size) == 0);
+        CHECK_EQ_U64(cogmaster__state_load(target, bad, size), COGMASTER_STATUS_OK);
+    }
+}
+
+/* A state of one profile is refused by an instance of another, and loads
+   into its own. */
+static void reject_other_profile(void)
+{
+    static const uint32_t pairs[][2] = {
+        {COGMASTER_REGION_EXPORT, COGMASTER_TV_PAL},
+        {COGMASTER_REGION_JAPAN, COGMASTER_TV_NTSC},
+    };
+    for (size_t k = 0; k < 2u; k++) {
+        cogmaster *src = make_with(NULL, COGMASTER_MACHINE_SMS2, pairs[k][0], pairs[k][1]);
+        run_frames(src, 3u);
+        cogmaster *target = make(COGMASTER_MACHINE_SMS2);
+        run_frames(target, 3u);
+        size_t size = save(src, bad);
+        size_t target_size = save(target, before);
+        CHECK_EQ_U64(size, target_size);
+        if (size != 0u && size == target_size) {
+            expect_refused("state of another profile", target, size, target_size);
+            cogmaster *same = make_with(NULL, COGMASTER_MACHINE_SMS2, pairs[k][0], pairs[k][1]);
+            CHECK_EQ_U64(cogmaster__state_load(same, bad, size), COGMASTER_STATUS_OK);
+            cogmaster_destroy(same);
+        }
+        cogmaster_destroy(src);
+        cogmaster_destroy(target);
+    }
+}
+
+static uint8_t img_board[512u * 1024u];
+
+/* A new Master System instance running the first n bytes of img_board. */
+static cogmaster *make_board(size_t n)
+{
+    cogmaster_config cfg = make_config();
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    if (m == NULL) {
+        exit(1);
+    }
+    cogmaster_media media;
+    memset(&media, 0, sizeof media);
+    media.size = (uint32_t)sizeof media;
+    media.image = img_board;
+    media.image_size = n;
+    media.machine = COGMASTER_MACHINE_SMS2;
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    return m;
+}
+
+/* Pages, maps cartridge RAM and fills some of it, runs, then saves, loads
+   into a fresh instance and saves again: equal states, equal registers and
+   RAM. Every field one step out of range is refused, the registers and each
+   cartridge RAM byte are recorded, and a bank at or past the page count is
+   refused. */
+static void mapper_round_trip(size_t n, uint32_t board, uint32_t ram_size, const uint16_t *writes,
+                              size_t n_writes)
+{
+    cogmaster *a = make_board(n);
+    CHECK_EQ_U64(a->cart.board, board);
+    for (size_t i = 0; i < n_writes; i += 2u) {
+        cogmaster__bus_write(a, writes[i], (uint8_t)writes[i + 1u]);
+    }
+    for (uint32_t i = 0; i < 0x2000u; i++) {
+        cogmaster__bus_write(a, (uint16_t)(0xA000u + i), (uint8_t)(i * 7u + 1u));
+    }
+    run_frames(a, 2u);
+    cogmaster *b = make_board(n);
+    run_frames(b, 1u);
+    size_t size = save(a, good);
+    if (size != 0u) {
+        CHECK_EQ_U64(cogmaster__state_load(b, good, size), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(save(b, after), size);
+        CHECK(memcmp(good, after, size) == 0);
+        CHECK(memcmp(&a->mapper, &b->mapper, sizeof a->mapper) == 0);
+        CHECK(a->cart.ram_size == b->cart.ram_size &&
+              memcmp(a->cart.ram, b->cart.ram, a->cart.ram_size) == 0);
+        uint32_t set = 0;
+        for (uint32_t i = 0; i < b->cart.ram_size; i++) {
+            set += b->cart.ram[i] != 0u;
+        }
+        CHECK(set >= 0x1000u);
+    }
+    size_t fields_n = record(a);
+    size_t cart_ram = 0, banks = 0;
+    for (size_t i = 0; i < fields_n; i++) {
+        cart_ram += strcmp(fields[i].name, "cart_ram") == 0;
+        if (strcmp(fields[i].name, "mapper_bank") == 0) {
+            banks++;
+            CHECK_EQ_U64(fields[i].max, a->cart.pages - 1u);
+        }
+    }
+    CHECK_EQ_U64(cart_ram, ram_size);
+    CHECK_EQ_U64(banks, 3);
+    (void)field(fields_n, "mapper_board");
+    (void)field(fields_n, "mapper_ctrl");
+    cogmaster *target = make_board(n);
+    run_frames(target, 1u);
+    sweep(a, target);
+    cogmaster_destroy(a);
+    cogmaster_destroy(b);
+    cogmaster_destroy(target);
+}
+
+/* A 512 KiB Sega image with cartridge RAM bank 1 mapped and banks paged,
+   and a 128 KiB Codemasters image with its RAM mapped. */
+static void test_state_mapper(void)
+{
+    memset(img_board, 0, sizeof img_board);
+    static const uint16_t sega[] = {0xFFFCu, 0x0Cu, 0xFFFDu, 0x05u, 0xFFFEu, 0x1Fu, 0xFFFFu, 0x02u};
+    mapper_round_trip(512u * 1024u, COGMASTER__BOARD_SEGA, 32768u, sega, 8u);
+    /* The Codemasters header at $7FE0: 8 pages, 15 June 1994 12:30, checksum
+       $1234 and its complement, $7FEF zero. */
+    static const uint8_t header[16] = {0x08u, 0x15u, 0x06u, 0x94u, 0x12u, 0x30u, 0x34u, 0x12u,
+                                       0xCCu, 0xEDu, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u};
+    memcpy(img_board + 0x7FE0u, header, sizeof header);
+    static const uint16_t cm[] = {0x4000u, 0x83u, 0x8000u, 0x06u};
+    mapper_round_trip(128u * 1024u, COGMASTER__BOARD_CODEMASTERS, 8192u, cm, 4u);
+}
+
+/* The ports a guest wrote survive a save and load: $3E and $3F on the
+   Master System, $3F and the link and stereo registers on the Game Gear. */
+static void io_round_trip(void)
+{
+    const uint32_t machines[] = {COGMASTER_MACHINE_SMS2, COGMASTER_MACHINE_GG};
+    for (size_t k = 0; k < 2u; k++) {
+        cogmaster *a = make(machines[k]);
+        cogmaster__bus_out(a, 0x003Fu, 0x55u);
+        if (k == 0u) {
+            cogmaster__bus_out(a, 0x003Eu, 0xAFu);
+        } else {
+            cogmaster__bus_out(a, 0x0002u, 0x12u);
+            cogmaster__bus_out(a, 0x0006u, 0x34u);
+            CHECK_EQ_HEX(a->io.gg[5], 0x34);
+        }
+        run_frames(a, 1u);
+        size_t size = save(a, good);
+        cogmaster *b = make(machines[k]);
+        if (size != 0u) {
+            CHECK_EQ_U64(cogmaster__state_load(b, good, size), COGMASTER_STATUS_OK);
+            CHECK(memcmp(&a->io, &b->io, sizeof a->io) == 0);
+            CHECK_EQ_HEX(b->io.io_ctrl, 0x55);
+            CHECK_EQ_HEX(b->io.mem_ctrl, k == 0u ? 0xAF : 0xA8);
+        }
+        cogmaster_destroy(a);
+        cogmaster_destroy(b);
+    }
+}
+
+/* save, load into a fresh instance of the same profile, save again: the two
+   states are equal byte for byte, on NTSC and PAL and in both regions. */
 static void test_round_trip(void)
 {
+    round_trip_image(COGMASTER_REGION_AUTO, COGMASTER_TV_AUTO);
+    round_trip_image(COGMASTER_REGION_EXPORT, COGMASTER_TV_PAL);
+    round_trip_image(COGMASTER_REGION_JAPAN, COGMASTER_TV_NTSC);
+    reject_other_profile();
+    io_round_trip();
     const uint32_t machines[] = {COGMASTER_MACHINE_SMS2, COGMASTER_MACHINE_GG};
     const uint32_t frames[] = {0u, 1u, 60u};
     for (size_t k = 0; k < 2u; k++) {
@@ -163,8 +451,8 @@ static void test_round_trip(void)
 }
 
 /* Every field set one step outside its bounds is refused, and the refusal
-   changes nothing. A field the visitor adds later is swept with no new test
-   code. */
+   changes nothing, for both test cards and for an image. A field the
+   visitor adds later is swept with no new test code. */
 static void test_record_sweep(void)
 {
     const uint32_t machines[] = {COGMASTER_MACHINE_SMS2, COGMASTER_MACHINE_GG};
@@ -173,42 +461,156 @@ static void test_record_sweep(void)
         run_frames(src, 60u);
         cogmaster *target = make(machines[k]);
         run_frames(target, 5u);
-        size_t size = save(src, good);
-        size_t target_size = save(target, before);
-        size_t n = record(src);
-        CHECK(n >= 14u);
-        size_t swept = 0;
-        for (size_t i = 0; i < n && size != 0u; i++) {
-            const struct cogmaster__state_field *fd = &fields[i];
-            CHECK(fd->offset + fd->width <= size);
-            uint64_t type_max =
-                fd->width == 8u ? UINT64_MAX : (UINT64_C(1) << (8u * fd->width)) - 1u;
-            const uint64_t outside[2] = {fd->max + 1u, fd->min - 1u};
-            const int sweep[2] = {fd->max < type_max, fd->min > 0u};
-            for (size_t j = 0; j < 2u; j++) {
-                if (!sweep[j]) {
-                    continue;
-                }
-                memcpy(bad, good, size);
-                put_le(bad + fd->offset, outside[j], fd->width);
-                cogmaster__state_seal(bad, size);
-                expect_refused(fd->name, target, size, target_size);
-                swept++;
-            }
-        }
-        printf("state fields: %lu recorded, %lu out-of-range values refused\n", (unsigned long)n,
-               (unsigned long)swept);
-        CHECK(swept >= 14u);
-        /* The control: the unchanged state, resealed, loads. */
-        if (size != 0u) {
-            memcpy(bad, good, size);
-            cogmaster__state_seal(bad, size);
-            CHECK(memcmp(bad, good, size) == 0);
-            CHECK_EQ_U64(cogmaster__state_load(target, bad, size), COGMASTER_STATUS_OK);
-        }
+        sweep(src, target);
         cogmaster_destroy(src);
         cogmaster_destroy(target);
     }
+    fill_images();
+    const uint32_t tvs[] = {COGMASTER_TV_NTSC, COGMASTER_TV_PAL};
+    for (size_t k = 0; k < 2u; k++) {
+        cogmaster *src = make_with(img_loop, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO, tvs[k]);
+        run_frames(src, 3u);
+        cogmaster *target =
+            make_with(img_loop, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO, tvs[k]);
+        run_frames(target, 1u);
+        sweep(src, target);
+        cogmaster_destroy(src);
+        cogmaster_destroy(target);
+    }
+    /* A Japanese PAL test card cannot exist; a PAL export one can. */
+    cogmaster *src =
+        make_with(NULL, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT, COGMASTER_TV_PAL);
+    run_frames(src, 60u);
+    cogmaster *target =
+        make_with(NULL, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT, COGMASTER_TV_PAL);
+    run_frames(target, 5u);
+    sweep(src, target);
+    cogmaster_destroy(src);
+    cogmaster_destroy(target);
+}
+
+/* Sets the field named name in a copy of good and requires target to refuse
+   it once resealed. */
+static void refuse_with(const char *name, size_t n, uint64_t v, cogmaster *target, size_t size,
+                        size_t target_size)
+{
+    const struct cogmaster__state_field *fd = field(n, name);
+    if (fd == NULL) {
+        return;
+    }
+    memcpy(bad, good, size);
+    put_le(bad + fd->offset, v, fd->width);
+    cogmaster__state_seal(bad, size);
+    expect_refused(name, target, size, target_size);
+}
+
+/* Sets fields in a copy of good, each inside its own bounds; target must
+   refuse the set when refused, and a fresh instance of the same image must
+   load it otherwise. */
+struct field_value {
+    const char *name;
+    uint64_t v;
+};
+
+static void load_fields(const char *what, const struct field_value *set, size_t count, int refused,
+                        size_t n, cogmaster *target, size_t size, size_t target_size)
+{
+    memcpy(bad, good, size);
+    for (size_t i = 0; i < count; i++) {
+        const struct cogmaster__state_field *fd = field(n, set[i].name);
+        if (fd == NULL) {
+            return;
+        }
+        put_le(bad + fd->offset, set[i].v, fd->width);
+    }
+    cogmaster__state_seal(bad, size);
+    if (refused) {
+        expect_refused(what, target, size, target_size);
+        return;
+    }
+    cogmaster *fresh = make_image(img_loop);
+    if (cogmaster__state_load(fresh, bad, size) != COGMASTER_STATUS_OK) {
+        fprintf(stderr, "%s: refused\n", what);
+        check_failures++;
+    }
+    cogmaster_destroy(fresh);
+}
+
+/* CPU flags that no run can leave together: HALT, EI or LD A,I/R with a
+   prefix still pending (a halted CPU so loaded never takes /INT or NMI
+   again), and EI's mark with IFF1 clear. Each flag alone loads. */
+static void reject_cpu_states(size_t n, cogmaster *target, size_t size, size_t target_size)
+{
+    const struct field_value halted_ix[] = {{"z80_halted", 1u}, {"z80_idx", 1u}};
+    const struct field_value halted_iy[] = {{"z80_halted", 1u}, {"z80_idx", 2u}};
+    const struct field_value ei_ix[] = {{"z80_ei", 1u}, {"z80_iff1", 1u}, {"z80_idx", 1u}};
+    const struct field_value p_iy[] = {{"z80_p", 1u}, {"z80_idx", 2u}};
+    const struct field_value ei_di[] = {{"z80_ei", 1u}, {"z80_iff1", 0u}};
+    load_fields("halted with DD pending", halted_ix, 2u, 1, n, target, size, target_size);
+    load_fields("halted with FD pending", halted_iy, 2u, 1, n, target, size, target_size);
+    load_fields("EI mark with DD pending", ei_ix, 3u, 1, n, target, size, target_size);
+    load_fields("LD A,I mark with FD pending", p_iy, 2u, 1, n, target, size, target_size);
+    load_fields("EI mark with IFF1 clear", ei_di, 2u, 1, n, target, size, target_size);
+    load_fields("halted alone", halted_ix, 1u, 0, n, target, size, target_size);
+    load_fields("DD pending alone", &halted_ix[1], 1u, 0, n, target, size, target_size);
+    load_fields("EI mark with IFF1 set", ei_ix, 2u, 0, n, target, size, target_size);
+    load_fields("LD A,I mark alone", p_iy, 1u, 0, n, target, size, target_size);
+}
+
+/* An image's state is refused by an instance running another image, and
+   when its frame deadline, ticks and beam disagree, each value inside its
+   own bounds. */
+static void reject_image_states(void)
+{
+    fill_images();
+    cogmaster *src = make_image(img_loop);
+    run_frames(src, 4u);
+    cogmaster__z80_step(src);
+    cogmaster *target = make_image(img_loop);
+    run_frames(target, 2u);
+    size_t size = save(src, good);
+    size_t target_size = save(target, before);
+    size_t n = record(src);
+    const struct cogmaster__state_field *ticks = field(n, "ticks");
+    if (size == 0u || ticks == NULL) {
+        cogmaster_destroy(src);
+        cogmaster_destroy(target);
+        return;
+    }
+    uint64_t t = get_le(good + ticks->offset, 8u);
+    refuse_with("bus_deadline", n, 6u * TICKS_PER_FRAME, target, size, target_size);
+    refuse_with("ticks", n, 4u * TICKS_PER_FRAME - 1u, target, size, target_size);
+    refuse_with("ticks", n, 5u * TICKS_PER_FRAME, target, size, target_size);
+    refuse_with("bus_at", n, t + 1u, target, size, target_size);
+    refuse_with("bus_at", n, t - 70u, target, size, target_size);
+    refuse_with("bus_vdp_at", n, t + 1u, target, size, target_size);
+    /* A beam one tick or one line off where bus_at puts it, inside its own
+       bounds, would move the frame interrupt off the frame deadline. */
+    const struct cogmaster__state_field *line = field(n, "bus_line");
+    const struct cogmaster__state_field *tick = field(n, "bus_t");
+    if (line != NULL && tick != NULL) {
+        uint64_t l = get_le(good + line->offset, line->width);
+        uint64_t x = get_le(good + tick->offset, tick->width);
+        CHECK(l > 0u && l < 261u && x > 0u && x < 683u);
+        refuse_with("bus_line", n, l + 1u, target, size, target_size);
+        refuse_with("bus_line", n, l - 1u, target, size, target_size);
+        refuse_with("bus_t", n, x + 1u, target, size, target_size);
+        refuse_with("bus_t", n, x - 1u, target, size, target_size);
+    }
+    /* /INT must be the VDP's frame flag AND IE0; this image leaves both
+       clear, so a raised /INT is refused. */
+    refuse_with("z80_int_line", n, 1u, target, size, target_size);
+    reject_cpu_states(n, target, size, target_size);
+    cogmaster *other = make_image(img_halt);
+    if (save(other, bad) == size) {
+        memcpy(bad, good, size);
+        expect_refused("state of another image", other, size, save(other, before));
+    }
+    /* The unchanged state loads. */
+    CHECK_EQ_U64(cogmaster__state_load(target, good, size), COGMASTER_STATUS_OK);
+    cogmaster_destroy(other);
+    cogmaster_destroy(src);
+    cogmaster_destroy(target);
 }
 
 /* Header corruption, a wrong length and a bad checksum are each refused and
@@ -277,6 +679,8 @@ static void test_rejects_header(void)
         expect_refused("other machine", target, size, target_size);
     }
     cogmaster_destroy(gg);
+
+    reject_image_states();
 
     CHECK_EQ_U64(cogmaster__state_load(target, NULL, size), COGMASTER_STATUS_ERR_ARGUMENT);
     CHECK_EQ_U64(cogmaster__state_load(NULL, good, size), COGMASTER_STATUS_ERR_ARGUMENT);
@@ -590,7 +994,11 @@ static void test_error_changes_nothing(void)
     static const uint8_t image[1] = {0};
     media.image = image;
     media.image_size = 1u;
-    expect_unchanged("load an image", cogmaster_load(m, &media), COGMASTER_STATUS_ERR_ARGUMENT, m);
+    expect_unchanged("load a 1-byte image", cogmaster_load(m, &media),
+                     COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE, m);
+    media.image = NULL;
+    expect_unchanged("load a size without an image", cogmaster_load(m, &media),
+                     COGMASTER_STATUS_ERR_ARGUMENT, m);
     media.image = NULL;
     media.image_size = 0u;
     media.machine = 3u;
@@ -702,6 +1110,7 @@ static const struct {
     {"fault.reset_clears", test_fault_reset_clears},
     {"fault.state_round_trip", test_fault_state_round_trip},
     {"state.frame_counter", test_frame_counter},
+    {"state.mapper", test_state_mapper},
     {"state.record_sweep", test_record_sweep},
     {"state.rejects_header", test_rejects_header},
     {"state.round_trip", test_round_trip},

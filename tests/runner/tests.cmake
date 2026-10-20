@@ -23,7 +23,184 @@ if(CMAKE_SCRIPT_MODE_FILE)
     endif()
   endfunction()
 
-  if(CASE STREQUAL "png_file")
+  # Runs cogmaster-run --probe FILE and sets out and rc in the caller.
+  macro(probe file)
+    execute_process(COMMAND ${EMULATOR} ${RUN} --probe ${file} RESULT_VARIABLE rc
+      OUTPUT_VARIABLE out ERROR_VARIABLE err)
+  endmacro()
+
+  # Fails unless out holds every probe key once, in order, each value in its
+  # documented form. CMake regexes have no {n}, so digests are built by
+  # repetition.
+  function(expect_probe_form out)
+    string(REPEAT "[0-9a-f]" 40 h40)
+    string(REPEAT "[0-9a-f]" 64 h64)
+    string(REPEAT "[0-9a-f]" 8 h8)
+    string(REPEAT "[0-9a-f]" 32 h32)
+    set(num "([0-9]+|none)")
+    set(form "^size=[0-9]+\ncopier_header=[01]\nheader_at=([$][0-9A-F][0-9A-F][0-9A-F][0-9A-F]|none)\n"
+      "header_magic=[01]\nchecksum=${num}\nchecksum_ok=([01]|none)\nproduct_code=${num}\n"
+      "version=${num}\nregion_code=${num}\nrom_size_code=${num}\nmachine_guess=(sms|gg)\n"
+      "region_guess=(ntsc-u|ntsc-j|pal)\nmapper_guess=(none|sega|codemasters|unsupported)\n"
+      "sha1=${h40}\nsha256=${h64}\ncrc32=${h8}\nmd5=${h32}\n"
+      "sha1_headerless=(${h40}|none)\nsha256_headerless=(${h64}|none)\n"
+      "crc32_headerless=(${h8}|none)\nmd5_headerless=(${h32}|none)\n$")
+    string(CONCAT form ${form})
+    if(NOT out MATCHES "${form}")
+      message(FATAL_ERROR "--probe output is not the documented 21 keys in order:\n${out}")
+    endif()
+  endfunction()
+
+  # Fails unless the probe line key has the value.
+  function(expect_key out key value)
+    if(NOT out MATCHES "(^|\n)${key}=${value}\n")
+      message(FATAL_ERROR "--probe: expected ${key}=${value} in\n${out}")
+    endif()
+  endfunction()
+
+  if(CASE STREQUAL "probe_keys")
+    # A 128 KiB export image with a good header and no mapper stores: the
+    # keys in order, the header read at $7FF0 and the Sega board guessed.
+    probe(${SEEDS}/header-export-128k.sms)
+    if(NOT rc STREQUAL "0")
+      message(FATAL_ERROR "--probe: expected exit 0, got ${rc}\n${out}${err}")
+    endif()
+    expect_probe_form("${out}")
+    expect_key("${out}" header_at "[$]7FF0")
+    expect_key("${out}" header_magic 1)
+    expect_key("${out}" checksum_ok 1)
+    expect_key("${out}" region_code 4)
+    expect_key("${out}" rom_size_code 15)
+    expect_key("${out}" machine_guess sms)
+    expect_key("${out}" mapper_guess sega)
+    expect_key("${out}" md5_headerless none)
+    # A bad checksum is reported, not refused.
+    probe(${SEEDS}/header-export-128k-bad.sms)
+    expect_key("${out}" checksum_ok 0)
+  elseif(CASE STREQUAL "probe_digests")
+    # The digest code against the RFC vectors, then the runner's lines
+    # against CMake's own digests of the same file.
+    unit(digests)
+    set(file ${SEEDS}/header-export-32k.sms)
+    probe(${file})
+    foreach(algo IN ITEMS MD5 SHA1 SHA256)
+      file(${algo} ${file} want)
+      string(TOLOWER ${algo} key)
+      expect_key("${out}" ${key} ${want})
+    endforeach()
+  elseif(CASE STREQUAL "probe_headerless")
+    # A copier header: the *_headerless digests cover the body after it,
+    # which is size-16k.sms byte for byte, so they differ from the
+    # whole-file ones and equal CMake's digests of that file. With no copier
+    # header they are none.
+    probe(${SEEDS}/size-16k-512.sms)
+    expect_probe_form("${out}")
+    expect_key("${out}" copier_header 1)
+    foreach(algo IN ITEMS MD5 SHA1 SHA256)
+      string(TOLOWER ${algo} key)
+      file(${algo} ${SEEDS}/size-16k.sms body)
+      file(${algo} ${SEEDS}/size-16k-512.sms whole)
+      expect_key("${out}" ${key} ${whole})
+      expect_key("${out}" ${key}_headerless ${body})
+    endforeach()
+    probe(${SEEDS}/header-export-32k.sms)
+    expect_key("${out}" copier_header 0)
+    foreach(key IN ITEMS sha1 sha256 crc32 md5)
+      expect_key("${out}" ${key}_headerless none)
+    endforeach()
+  elseif(CASE STREQUAL "probe_unsupported")
+    # Another board's mapper: every key is still printed, then exit 77.
+    probe(${SEEDS}/unsupported-board.sms)
+    if(NOT rc STREQUAL "77")
+      message(FATAL_ERROR "--probe of another board: expected exit 77, got ${rc}\n${out}${err}")
+    endif()
+    expect_probe_form("${out}")
+    expect_key("${out}" mapper_guess unsupported)
+  elseif(CASE STREQUAL "refuse_size")
+    # Below 1 KiB and above 1 MiB + 512 the core refuses the image; above
+    # 64 MiB the runner refuses the file before reading it.
+    expect_exit(77 "unsupported" --frames 1 ${SEEDS}/size-1023.sms)
+    expect_exit(77 "unsupported" --frames 1 ${SEEDS}/size-1m-513.sms)
+    expect_exit(0 "^$" --frames 1 ${SEEDS}/size-1024.sms)
+    expect_exit(0 "^$" --frames 1 ${SEEDS}/size-1m-512.sms)
+    expect_exit(77 "64 MiB" --frames 1 ${OVERSIZE})
+    expect_exit(77 "64 MiB" --probe ${OVERSIZE})
+  elseif(CASE STREQUAL "refuse_sg1000")
+    # SG-1000 and SC-3000 images are refused by their file name, unread.
+    foreach(name IN ITEMS game.sg game.sc GAME.SG)
+      file(WRITE ${OUT}/${name} "")
+      expect_exit(77 "unsupported: SG-1000 [(]planned[)]" --frames 1 ${OUT}/${name})
+      expect_exit(77 "unsupported: SG-1000 [(]planned[)]" --probe ${OUT}/${name})
+    endforeach()
+  elseif(CASE STREQUAL "refuse_profile")
+    # No Game Gear and no Japanese console was made for PAL.
+    expect_exit(77 "unsupported" --frames 1 --machine gg --region pal)
+    expect_exit(77 "unsupported" --frames 1 --machine gg --region pal ${SEEDS}/di-halt.sms)
+    expect_exit(77 "unsupported" --frames 1 --region pal ${SEEDS}/di-halt.gg)
+    expect_exit(77 "unsupported" --frames 1 --machine gg ${SEEDS}/gg-8k.gg)
+    expect_exit(77 "unsupported" --frames 1 ${SEEDS}/unsupported-board.sms)
+  elseif(CASE STREQUAL "machine_auto")
+    # --machine auto takes the header's region code, then a .gg name, then
+    # the Master System. The two crops differ, so the hash tells them apart.
+    function(hash_of var)
+      execute_process(COMMAND ${EMULATOR} ${RUN} --frames 1 --hash ${ARGN} RESULT_VARIABLE rc
+        OUTPUT_VARIABLE out ERROR_VARIABLE out)
+      if(NOT rc STREQUAL "0" OR NOT out MATCHES "^frame 1 sha256 [0-9a-f]+\n$")
+        message(FATAL_ERROR "--frames 1 --hash ${ARGN}: exit ${rc}\n${out}")
+      endif()
+      set(${var} "${out}" PARENT_SCOPE)
+    endfunction()
+    foreach(file header-gg-export-32k.sms di-halt.gg)
+      hash_of(auto ${SEEDS}/${file})
+      hash_of(gg --machine gg ${SEEDS}/${file})
+      hash_of(sms --machine sms ${SEEDS}/${file})
+      if(NOT auto STREQUAL gg OR auto STREQUAL sms)
+        message(FATAL_ERROR "${file}: auto is not the Game Gear\nauto ${auto}gg ${gg}sms ${sms}")
+      endif()
+    endforeach()
+    hash_of(auto ${SEEDS}/di-halt.sms)
+    hash_of(sms --machine sms ${SEEDS}/di-halt.sms)
+    if(NOT auto STREQUAL sms)
+      message(FATAL_ERROR "di-halt.sms: auto is not the Master System\nauto ${auto}sms ${sms}")
+    endif()
+  elseif(CASE STREQUAL "region")
+    foreach(region auto ntsc-u ntsc-j pal)
+      expect_exit(0 "^$" --frames 2 --region ${region} ${SEEDS}/di-halt.sms)
+    endforeach()
+    expect_exit(2 "usage" --frames 2 --region eu ${SEEDS}/di-halt.sms)
+  elseif(CASE STREQUAL "trace_fault")
+    # LD A,$00 then IN A,($00): port $00 is undriven on the export console,
+    # so the first fault is that read, with A * 256 + n on the bus.
+    set(hex "[0-9A-F]")
+    expect_exit(0 "^fault frame=[0-9]+ line=[0-9]+ dot=[0-9]+ pc=[$]${hex}${hex}${hex}${hex} op=[$]DB addr=[$]0000 width=8 dev=ctrl kind=unmapped_read\n$"
+      ${SEEDS}/in-a-00.sms --frames 10 --trace first-fault)
+  elseif(CASE STREQUAL "mailbox_stop")
+    # The stop rule frame by frame, then an image that never writes a
+    # mailbox: its status reads $00 from power-on, which is not done, so
+    # every frame runs.
+    unit(mailbox_stop)
+    expect_exit(0 "^status=00\nrom=00\nmagic=bad\ncrc=bad\nframe 3 sha256 [0-9a-f]+\n$"
+      ${SEEDS}/di-halt.sms --frames 3 --mailbox --hash)
+  elseif(CASE STREQUAL "png_unreached")
+    # --trace first-fault stops after frame 1 of this image, so a --png for
+    # frame 10 is not written: a line on standard error names it, standard
+    # output holds only the fault, and the exit status stays 0. A --png for
+    # a frame that ran is still written.
+    file(REMOVE "${OUT}.10.png" "${OUT}.1.png")
+    execute_process(COMMAND ${EMULATOR} ${RUN} ${SEEDS}/in-a-00.sms --frames 10
+      --trace first-fault --png "1:${OUT}.1.png" --png "10:${OUT}.10.png"
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "0" OR NOT out MATCHES "^fault frame=[0-9]+ [^\n]*\n$"
+        OR NOT err MATCHES "^cogmaster-run: --png 10:[^\n]* not written[^\n]*\n$"
+        OR EXISTS "${OUT}.10.png" OR NOT EXISTS "${OUT}.1.png")
+      message(FATAL_ERROR "--png past a first-fault stop: exit ${rc}\nstdout:\n${out}stderr:\n${err}")
+    endif()
+  elseif(CASE STREQUAL "trace_none")
+    # DI; HALT touches nothing undriven; with --hash the hash line follows.
+    expect_exit(0 "^fault none\n$" ${SEEDS}/di-halt.sms --frames 10 --trace first-fault)
+    expect_exit(0 "^fault none\nframe 10 sha256 [0-9a-f]+\n$"
+      ${SEEDS}/di-halt.sms --frames 10 --trace first-fault --hash)
+  elseif(CASE STREQUAL "png_file")
     # The decode check runs first, so the pinned digest is only ever
     # compared for a file whose IHDR and every pixel are already known good.
     file(REMOVE "${OUT}")
@@ -94,23 +271,36 @@ if(CMAKE_SCRIPT_MODE_FILE)
     expect_exit(2 "usage")
   elseif(CASE STREQUAL "unknown")
     # Options a later release adds are refused now, and --help does not
-    # mention them; --help and --version take nothing else.
-    foreach(opt --probe --trace --region --expect --port1 --port2 --input --hash-audio
-        --capabilities --boot --bios)
+    # mention them; --help and --version take nothing else; --trace takes
+    # only first-fault and --region only its four names.
+    foreach(opt --expect --port1 --port2 --input --hash-audio --capabilities --boot --bios)
       expect_exit(2 "unknown option" --frames 1 ${opt})
       expect_exit(2 "unknown option" --frames 1 ${opt} x)
     endforeach()
     expect_exit(2 "usage" --help --version)
     expect_exit(2 "usage" --frames 1 --help)
     expect_exit(2 "usage" --version x)
+    expect_exit(2 "usage" --frames 1 --trace)
+    expect_exit(2 "usage" --frames 1 --trace full)
+    expect_exit(2 "usage" --frames 1 --region)
+    expect_exit(2 "usage" --frames 1 --region eu)
+    expect_exit(2 "usage" --probe)
+    expect_exit(2 "usage" --probe --frames 1 ${SEEDS}/di-halt.sms)
     execute_process(COMMAND ${EMULATOR} ${RUN} --help RESULT_VARIABLE rc OUTPUT_VARIABLE out)
-    if(NOT rc STREQUAL "0" OR out MATCHES "--(probe|trace|region|expect|port|input|hash-audio|capabilities|boot|bios)")
+    if(NOT rc STREQUAL "0" OR out MATCHES "--(expect|port|input|hash-audio|capabilities|boot|bios)")
       message(FATAL_ERROR "--help: expected exit 0 and no later option, got exit ${rc}\n${out}")
     endif()
   elseif(CASE STREQUAL "positional")
-    # This release loads no cartridge, so a file name is a usage error.
-    expect_exit(2 "unexpected argument" --frames 1 content.sms)
-    expect_exit(2 "unexpected argument" content.sms)
+    # One file, positional or after --rom, runs; a second file, a file with
+    # no frame count, and an empty --rom are usage errors. A file that
+    # cannot be read is a failure.
+    expect_exit(0 "^$" --frames 1 ${SEEDS}/di-halt.sms)
+    expect_exit(0 "^$" --rom ${SEEDS}/di-halt.sms --frames 1)
+    expect_exit(2 "give one file" --frames 1 ${SEEDS}/di-halt.sms ${SEEDS}/di-halt.sms)
+    expect_exit(2 "give one file" --frames 1 --rom ${SEEDS}/di-halt.sms ${SEEDS}/di-halt.sms)
+    expect_exit(2 "usage" ${SEEDS}/di-halt.sms)
+    expect_exit(2 "usage" --frames 1 --rom)
+    expect_exit(1 "cannot read" --frames 1 ${SEEDS}/missing.sms)
   elseif(CASE STREQUAL "frame_range")
     expect_exit(2 "usage" --frames 0)
     expect_exit(2 "usage" --frames -1)
@@ -174,13 +364,19 @@ cogmaster_add_test(NAME runner.hash.self_test
   LABELS runner TIMEOUT 30)
 
 # Fault prevented: a lane whose hashes are never compared with the others.
-# Writes build/<preset>/hashes.txt with the SMS and Game Gear hash lines,
-# the file CI collects from every lane and compares byte for byte.
+# Writes build/<preset>/hashes.txt with the SMS and Game Gear hash lines and
+# the fixture image digests, the file CI collects from every lane and
+# compares byte for byte.
 string(REPLACE ";" "$<SEMICOLON>" runner_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
 set(runner_hashes ${PROJECT_SOURCE_DIR}/tests/cmake/hashes.cmake)
+# With the fixtures built, their image digests join the file.
+set(runner_fixtures "")
+if(COGMASTER_FIXTURES)
+  set(runner_fixtures -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures)
+endif()
 cogmaster_add_test(NAME runner.hashes_file
   COMMAND ${CMAKE_COMMAND} -DMODE=write -DRUN=$<TARGET_FILE:cogmaster-run>
-    "-DEMULATOR=${runner_emulator}" -DOUT=${PROJECT_BINARY_DIR} -P ${runner_hashes}
+    "-DEMULATOR=${runner_emulator}" -DOUT=${PROJECT_BINARY_DIR} ${runner_fixtures} -P ${runner_hashes}
   LABELS runner portable TIMEOUT 30)
 
 # Fault prevented: a comparison that passes lanes which differ, or a lane
@@ -223,7 +419,7 @@ cogmaster_add_test(NAME runner.png
   LABELS runner portable TIMEOUT 10)
 
 set(runner_check ${CMAKE_COMMAND} -DRUN=$<TARGET_FILE:cogmaster-run>
-  "-DEMULATOR=${runner_emulator}")
+  "-DEMULATOR=${runner_emulator}" -DSEEDS=${COGMASTER_SEEDS_DIR})
 
 # Fault prevented: the reference PNG the RetroArch screenshot is compared
 # with changes bytes (palette, layout or encoder) while the frame hash still
@@ -246,7 +442,11 @@ cogmaster_add_test(NAME runner.usage.png_syntax
 add_executable(cogmaster-test-bench
   ${CMAKE_CURRENT_LIST_DIR}/test_runner.c
   ${PROJECT_SOURCE_DIR}/runner/bench.c
+  ${PROJECT_SOURCE_DIR}/runner/mailbox.c
+  ${PROJECT_SOURCE_DIR}/runner/md5.c
+  ${PROJECT_SOURCE_DIR}/runner/sha1.c
   ${PROJECT_SOURCE_DIR}/runner/stop.c)
+target_link_libraries(cogmaster-test-bench PRIVATE cogmaster::cogmaster)
 set_target_properties(cogmaster-test-bench PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
 cogmaster_warnings(cogmaster-test-bench)
@@ -260,6 +460,28 @@ set_target_properties(cogmaster-test-run-stop PROPERTIES
 cogmaster_warnings(cogmaster-test-run-stop)
 
 set(bench_check ${runner_check} -DUNIT=$<TARGET_FILE:cogmaster-test-bench>)
+
+# Fault prevented: a mailbox CRC that differs from the ROM's CRC-16 CCITT,
+# so every fixture reports crc=bad, or a wrong one that agrees with a wrong
+# ROM routine.
+# Timeout: 10 s floor; 2 x 0.00 s, slowest of 2 runs, run 39376644025, provisional.
+cogmaster_add_test(NAME runner.mailbox.crc
+  COMMAND cogmaster-test-bench mailbox_crc
+  LABELS portable runner TIMEOUT 10)
+
+# Fault prevented: --mailbox stopping on the $00 status work RAM holds from
+# power-on, or on a mailbox caught mid-initialisation, so the measurement is
+# taken before the ROM has run.
+cogmaster_add_test(NAME runner.mailbox.stop
+  COMMAND ${bench_check} -DCASE=mailbox_stop -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 30)
+
+# Fault prevented: a run that stops early on --trace or --mailbox and exits 0
+# with a requested --png silently missing, so a script reads a stale file.
+cogmaster_add_test(NAME runner.png_unreached
+  COMMAND ${runner_check} -DCASE=png_unreached -DOUT=${PROJECT_BINARY_DIR}/tests/unreached
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 30)
 
 # Fault prevented: a percentile that interpolates, picks the wrong rank or
 # reads unsorted samples, so the report names a time no frame took.
@@ -301,7 +523,7 @@ cogmaster_add_test(NAME runner.exit.failure
   LABELS portable runner TIMEOUT 30)
 
 # Fault prevented: a command line that runs something it should refuse: no
-# arguments, an option a later release adds, a file name, or a frame count
+# arguments, an option a later release adds, two files, or a frame count
 # that is zero, negative, malformed, too large or given twice.
 foreach(case no_args unknown positional frame_range)
   cogmaster_add_test(NAME runner.usage.${case}
@@ -319,3 +541,83 @@ cogmaster_add_test(NAME runner.hash.repeat
 cogmaster_add_test(NAME runner.version
   COMMAND ${runner_check} -DCASE=version -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS portable runner TIMEOUT 30)
+
+# Fault prevented: a --probe report that drops, reorders or reformats a key,
+# misreads the header, or guesses the wrong board, so a script parsing it
+# reads the wrong field.
+# Timeout: 10 s floor; 2 x 0.02 s, slowest of 2 runs, run 39376644025, provisional.
+cogmaster_add_test(NAME runner.probe.keys
+  COMMAND ${runner_check} -DCASE=probe_keys -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 10)
+
+# Fault prevented: a SHA-1 or MD5 that is wrong for some lengths, so the
+# printed md5 is not the RetroAchievements hash and the sha1 matches no
+# database entry.
+# Timeout: 10 s floor; 2 x 0.03 s, slowest of 2 runs, run 39376644025, provisional.
+cogmaster_add_test(NAME runner.probe.digests
+  COMMAND ${bench_check} -DCASE=probe_digests -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 10)
+
+# Fault prevented: *_headerless digests taken over the whole file, or
+# printed for a file with no copier header.
+# Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
+cogmaster_add_test(NAME runner.probe.headerless
+  COMMAND ${runner_check} -DCASE=probe_headerless -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 10)
+
+# Fault prevented: --probe hiding the report of an image it calls
+# unsupported, or calling it supported.
+# Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
+cogmaster_add_test(NAME runner.probe.unsupported
+  COMMAND ${runner_check} -DCASE=probe_unsupported -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 10)
+
+# Fault prevented: an image outside the accepted sizes run or reported as a
+# failure, or a huge file read into memory before it is refused.
+# Timeout: 10 s floor; 2 x 0.03 s, slowest of 2 runs, run 39376644025, provisional.
+cogmaster_add_test(NAME runner.refuse.size
+  COMMAND ${runner_check} -DCASE=refuse_size -DOVERSIZE=${COGMASTER_OVERSIZE_FILE}
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 10)
+
+# Fault prevented: an SG-1000 image run as a Master System cartridge.
+# Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
+cogmaster_add_test(NAME runner.refuse.sg1000
+  COMMAND ${runner_check} -DCASE=refuse_sg1000 -DOUT=${PROJECT_BINARY_DIR}/tests
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 10)
+
+# Fault prevented: a machine and region no console had, or a board the core
+# cannot run, reported as a failure instead of a refusal.
+# Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
+cogmaster_add_test(NAME runner.refuse.profile
+  COMMAND ${runner_check} -DCASE=refuse_profile -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 10)
+
+# Fault prevented: --machine auto running a Game Gear cartridge as a Master
+# System one, or the reverse.
+# Timeout: 10 s floor; 2 x 0.03 s, slowest of 2 runs, run 39376644025, provisional.
+cogmaster_add_test(NAME runner.load.machine_auto
+  COMMAND ${runner_check} -DCASE=machine_auto -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 10)
+
+# Fault prevented: a --region name that is refused, ignored or accepts a
+# misspelling.
+# Timeout: 10 s floor; 2 x 0.02 s, slowest of 2 runs, run 39376644025, provisional.
+cogmaster_add_test(NAME runner.load.region
+  COMMAND ${runner_check} -DCASE=region -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 10)
+
+# Fault prevented: --trace first-fault missing a fault, printing a later
+# one, or printing it in a form a script cannot parse.
+# Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
+cogmaster_add_test(NAME runner.trace.fault
+  COMMAND ${runner_check} -DCASE=trace_fault -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 10)
+
+# Fault prevented: --trace first-fault reporting a fault for a program that
+# makes none, or printing nothing when there is none.
+# Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
+cogmaster_add_test(NAME runner.trace.none
+  COMMAND ${runner_check} -DCASE=trace_none -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 10)

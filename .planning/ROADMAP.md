@@ -26,7 +26,7 @@ merging each phase.
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: A test frame in RetroArch** - The library, runner and libretro core deliver a hashed test card on every platform, installed into RetroArch by the README line, released by merging (completed 2026-10-19)
-- [ ] **Phase 2: The CPU matches the public vectors** - An own Z80 matches SingleStepTests on every cycle, with the tick-lattice bus, the Sega and Codemasters mappers, ports, Pause and the first-fault trace
+- [x] **Phase 2: The CPU matches the public vectors** - An own Z80 matches SingleStepTests on every cycle, with the tick-lattice bus, the Sega and Codemasters mappers, ports, Pause and the first-fault trace (completed 2026-10-20)
 - [ ] **Phase 3: Games play in RetroArch** - VDP mode 4, the Game Gear window, two pads, regions and battery saves make fixtures playable on both machines, with the ledger ratcheting
 - [ ] **Phase 4: Sound** - The PSG with Game Gear stereo and the YM2413 play through the runner and RetroArch with transition and PCM hashes identical on every platform
 
@@ -73,7 +73,58 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. The `ports` fixture reports the profile's values for ports `$3E`, `$3F`, `$7E`, `$7F`, `$BE`, `$BF`, `$DC`, `$DD` and GG `$00`–`$06` per machine profile and region, and a test shows the Pause NMI firing at the start of the last line (CPU-04).
   5. `cogmaster-run --probe` prints header fields, region, size, mapper guess, SHA-1, SHA-256, CRC-32 and the RetroAchievements MD5; `cogmaster-run --trace first-fault` prints the first fault (PC, opcode, address, width, device, frame, line, dot) for a ROM that touches an unmapped device; the bounded `fuzz.run` regression replays the loader fuzz seeds per PR (CPU-05).
 
-**Plans**: TBD
+**Plans**: 17/17 plans complete, 02-01 to 02-17, one sequential chain (waves 1–17; every plan registers tests in the shared inventories)
+**Wave 1**
+- [x] 02-01-PLAN.md — Vector pipeline: stream builder, sst2bin, committed sample, harness, NOP and LD (BC),A
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 02-02-PLAN.md — Vector negative control on a corrupted copy, allow list, converter tests, conformance page
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [x] 02-03-PLAN.md — Z80 main page and the vectors.base shard
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [x] 02-04-PLAN.md — CB page, DD/FD prefix steps, DDCB/FDCB and five shards
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [x] 02-05-PLAN.md — ED page, block ops, holes, vectors.ed; interrupt, NMI, EI-delay and prefix-run tests
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [x] 02-06-PLAN.md — Images load and run bounded: bus lattice, loader size rules, fast boot, frame origin, CPU state
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [x] 02-07-PLAN.md — API version 2 region and TV: PAL frame, profile rejection, info fields
+
+**Wave 8** *(blocked on Wave 7 completion)*
+- [x] 02-08-PLAN.md — VDP timing half, frame interrupt, counters, ports, Pause NMI tick, stamps and hostile loop
+
+**Wave 9** *(blocked on Wave 8 completion)*
+- [x] 02-09-PLAN.md — cogmaster_probe and the Sega, Codemasters and no-mapper boards
+
+**Wave 10** *(blocked on Wave 9 completion)*
+- [x] 02-10-PLAN.md — I/O ports per profile and region; first-fault call sites
+
+**Wave 11** *(blocked on Wave 10 completion)*
+- [x] 02-11-PLAN.md — Runner: FILE, --machine auto, --region, --probe digests, exit 77, --trace first-fault
+
+**Wave 12** *(blocked on Wave 11 completion)*
+- [x] 02-12-PLAN.md — Pinned WLA-DX build, hello fixture, pin self test, fixture digests across lanes
+
+**Wave 13** *(blocked on Wave 12 completion)*
+- [x] 02-13-PLAN.md — cogmaster_peek, --mailbox, CSV judge and its controls, mapper_sega paging fixture
+
+**Wave 14** *(blocked on Wave 13 completion)*
+- [x] 02-14-PLAN.md — mapper_codemasters fixture, full mapper_sega records, corrected phase matrix
+
+**Wave 15** *(blocked on Wave 14 completion)*
+- [x] 02-15-PLAN.md — ports fixture under sms-export, sms-japan, sms-pal and gg
+
+**Wave 16** *(blocked on Wave 15 completion)*
+- [x] 02-16-PLAN.md — Fuzz entries, per-PR replay, nightly libFuzzer
+
+**Wave 17** *(blocked on Wave 16 completion)*
+- [x] 02-17-PLAN.md — Nightly full vectors, measured timeouts, all-legs CI run, maintainer docs
+
 **UI hint**: no
 **Canonical refs:** `.planning/preparation/SMS-SYSTEM.md`, `.planning/preparation/SMS-CARTRIDGES-AND-PERIPHERALS.md`, `.planning/preparation/ARCHITECTURE.md`, `.planning/preparation/CONFORMANCE.md`, `.planning/preparation/SMSPOWER-EXTRACTS.md`
 
@@ -117,6 +168,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. A test frame in RetroArch | 12/12 | Complete    | 2026-10-19 |
-| 2. The CPU matches the public vectors | 0/TBD | Not started | - |
+| 2. The CPU matches the public vectors | 17/17 | Complete    | 2026-10-20 |
 | 3. Games play in RetroArch | 0/TBD | Not started | - |
 | 4. Sound | 0/TBD | Not started | - |

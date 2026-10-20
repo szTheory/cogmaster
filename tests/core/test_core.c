@@ -376,6 +376,23 @@ static void test_info(void)
     CHECK_EQ_U64(info.fps_den, 27379);
     CHECK_EQ_U64(info.par_num, 6);
     CHECK_EQ_U64(info.par_den, 5);
+    CHECK_EQ_U64(info.region, COGMASTER_REGION_EXPORT);
+    CHECK_EQ_U64(info.tv, COGMASTER_TV_NTSC);
+    cogmaster_destroy(m);
+
+    /* A PAL Master System: 214,092 ticks of 53,203,424 / 5 Hz a frame. */
+    cogmaster_config cfg = make_config();
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    cogmaster_media media = make_media(COGMASTER_MACHINE_SMS2);
+    media.tv = COGMASTER_TV_PAL;
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    info = info_of(m);
+    CHECK_EQ_U64(info.machine, COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(info.region, COGMASTER_REGION_EXPORT);
+    CHECK_EQ_U64(info.tv, COGMASTER_TV_PAL);
+    CHECK_EQ_U64(info.fps_num, 13300856);
+    CHECK_EQ_U64(info.fps_den, 267615);
+    CHECK_EQ_U64((uint64_t)info.fps_num * 5u * 214092u, (uint64_t)info.fps_den * 53203424u);
     cogmaster_destroy(m);
 
     cogmaster_versions v;
@@ -421,13 +438,13 @@ static uint8_t *tagged(const void *proto, uint32_t ours, uint32_t size)
     return b;
 }
 
-/* The input rule for one struct: below its size or above 4096 is
-   ERR_STRUCT_SIZE without reading past the tag; a larger struct is OK only
-   when every byte past ours is zero. */
-static void check_input(const char *what, const void *proto, uint32_t ours,
+/* The input rule for one struct: below its first released size or above
+   4096 is ERR_STRUCT_SIZE without reading past the tag; a larger struct is
+   OK only when every byte past ours is zero. */
+static void check_input(const char *what, const void *proto, uint32_t first, uint32_t ours,
                         cogmaster_status (*call)(void *))
 {
-    const uint32_t small[] = {0u, ours - 1u};
+    const uint32_t small[] = {0u, first - 1u};
     for (uint32_t i = 0; i < 2u; i++) {
         expect_status(what, small[i], call(tagged(proto, ours, small[i])),
                       COGMASTER_STATUS_ERR_STRUCT_SIZE);
@@ -447,13 +464,15 @@ static void check_input(const char *what, const void *proto, uint32_t ours,
     expect_status(what, TAG_MAX, call(tagged(proto, ours, TAG_MAX)), COGMASTER_STATUS_OK);
 }
 
-/* The output rule for one struct: below its size is ERR_STRUCT_SIZE with the
-   struct untouched; any larger size is OK with only ours bytes written. */
-static void check_output(const char *what, uint32_t ours, cogmaster_status (*call)(void *))
+/* The output rule for one struct: below its first released size is
+   ERR_STRUCT_SIZE with the struct untouched; any larger size is OK with only
+   ours bytes written. */
+static void check_output(const char *what, uint32_t first, uint32_t ours,
+                         cogmaster_status (*call)(void *))
 {
     static uint8_t before[TAG_BUF];
     uint8_t *b = (uint8_t *)tag_buf;
-    const uint32_t small[] = {0u, ours - 1u};
+    const uint32_t small[] = {0u, first - 1u};
     for (uint32_t i = 0; i < 2u; i++) {
         memset(b, POISON, TAG_BUF);
         memcpy(b, &small[i], sizeof small[i]);
@@ -556,14 +575,14 @@ static void test_size_tags(void)
     CHECK_EQ_U64(cogmaster_run_frame(NULL, &result), COGMASTER_STATUS_ERR_ARGUMENT);
     CHECK_EQ_U64(cogmaster_run_frame(shared, NULL), COGMASTER_STATUS_OK);
 
-    check_input("config", &cfg, (uint32_t)sizeof cfg, call_create);
-    check_input("media", &media, (uint32_t)sizeof media, call_load);
+    check_input("config", &cfg, 4u * P, (uint32_t)sizeof cfg, call_create);
+    check_input("media", &media, 4u * P, (uint32_t)sizeof media, call_load);
     run_frames(shared, 1);
-    check_input("frame", &io, (uint32_t)sizeof io, call_get_frame);
-    check_output("info", (uint32_t)sizeof info, call_get_info);
-    check_output("versions", (uint32_t)sizeof versions, call_get_versions);
-    check_output("run_result", (uint32_t)sizeof result, call_run_frame);
-    check_output("fault", (uint32_t)sizeof(cogmaster_fault), call_get_fault);
+    check_input("frame", &io, 2u * P + 32u, (uint32_t)sizeof io, call_get_frame);
+    check_output("info", 48u, (uint32_t)sizeof info, call_get_info);
+    check_output("versions", 32u, (uint32_t)sizeof versions, call_get_versions);
+    check_output("run_result", 12u, (uint32_t)sizeof result, call_run_frame);
+    check_output("fault", 32u, (uint32_t)sizeof(cogmaster_fault), call_get_fault);
     cogmaster_destroy(shared);
     shared = NULL;
 }
@@ -606,7 +625,7 @@ static void count_free(void *user, void *ptr, size_t size)
 }
 
 /* The statuses a caller meets before content, with a short pitch and with a
-   cartridge image this release cannot load. */
+   cartridge image of a size the loader refuses. */
 static void test_statuses(void)
 {
     cogmaster_config cfg = make_config();
@@ -647,15 +666,23 @@ static void test_statuses(void)
     io = frame_io(NULL, GG_W * 2u, 0u);
     CHECK_EQ_U64(cogmaster_get_frame(m, &io), COGMASTER_STATUS_ERR_ARGUMENT);
 
-    /* This release loads only the test card: an image is refused and the
-       loaded card keeps running. */
+    /* An image of the wrong size, or a size with no image, is refused and
+       the loaded card keeps running. */
     static const uint8_t image[1] = {0};
     cogmaster_media cart = make_media(COGMASTER_MACHINE_SMS2);
     cart.image = image;
-    CHECK_EQ_U64(cogmaster_load(m, &cart), COGMASTER_STATUS_ERR_ARGUMENT);
-    cart.image = NULL;
+    CHECK_EQ_U64(cogmaster_load(m, &cart), COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE);
     cart.image_size = 1u;
+    CHECK_EQ_U64(cogmaster_load(m, &cart), COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE);
+    cart.image = NULL;
     CHECK_EQ_U64(cogmaster_load(m, &cart), COGMASTER_STATUS_ERR_ARGUMENT);
+    /* An 8 KiB image on a Game Gear is the X-Terminator, on no supported
+       board. */
+    static const uint8_t device[8192] = {0};
+    cart = make_media(COGMASTER_MACHINE_GG);
+    cart.image = device;
+    cart.image_size = sizeof device;
+    CHECK_EQ_U64(cogmaster_load(m, &cart), COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD);
     CHECK_EQ_U64(cogmaster_run_frame(m, &result), COGMASTER_STATUS_OK);
     CHECK_EQ_U64(result.stop, COGMASTER_STOP_FRAME);
     CHECK_EQ_U64(result.overshoot_ticks, 0);
@@ -844,6 +871,518 @@ static void test_pitch_wide(void)
     }
 }
 
+/* Cartridge images. Sizes are bytes; a page is 16 KiB. */
+#define PAGE 16384u
+#define IMAGE_MIN 1024u
+#define IMAGE_MAX (1048576u + 512u)
+static uint8_t big[IMAGE_MAX + 64u];
+
+/* Fills big with bytes that differ from page to page and from $FF. */
+static void fill_big(void)
+{
+    for (size_t i = 0; i < sizeof big; i++) {
+        big[i] = (uint8_t)((i * 7u + (i >> 14)) % 255u);
+    }
+}
+
+static cogmaster_media image_media(const void *image, size_t n, uint32_t machine)
+{
+    cogmaster_media media = make_media(machine);
+    media.image = image;
+    media.image_size = n;
+    return media;
+}
+
+/* Loads n bytes of big into m and checks the buffer: the body after any
+   copier header, then $FF up to the next page. */
+static void expect_loaded(cogmaster *m, size_t n, size_t header, uint32_t padded)
+{
+    cogmaster_media media = image_media(big, n, COGMASTER_MACHINE_SMS2);
+    expect_status("load", (uint32_t)n, cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(m->cart.size, padded);
+    if (m->cart.rom == NULL || m->cart.size != padded) {
+        return;
+    }
+    size_t body = n - header;
+    CHECK(memcmp(m->cart.rom, big + header, body) == 0);
+    uint32_t not_ff = 0;
+    for (size_t i = body; i < padded; i++) {
+        if (m->cart.rom[i] != 0xFFu) {
+            not_ff++;
+        }
+    }
+    CHECK_EQ_U64(not_ff, 0);
+}
+
+/* The size rules: 1 KiB to 1 MiB + 512 bytes, a 512-byte copier header
+   stripped when the size is 512 past a whole page, $FF padding to a page. */
+static void test_load_sizes(void)
+{
+    fill_big();
+    cogmaster_config cfg = make_config();
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    if (m == NULL) {
+        return;
+    }
+    static const size_t refused[] = {0u, 1u, IMAGE_MIN - 1u, IMAGE_MAX + 1u, IMAGE_MAX + 64u};
+    for (size_t i = 0; i < sizeof refused / sizeof refused[0]; i++) {
+        cogmaster_media media = image_media(big, refused[i], COGMASTER_MACHINE_SMS2);
+        expect_status("load", (uint32_t)refused[i], cogmaster_load(m, &media),
+                      COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE);
+    }
+    /* No image pointer with a size is an argument error, not a size. */
+    cogmaster_media media = image_media(NULL, IMAGE_MIN, COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_ERR_ARGUMENT);
+
+    expect_loaded(m, IMAGE_MIN, 0u, PAGE);
+    expect_loaded(m, PAGE + 512u, 512u, PAGE);
+    expect_loaded(m, 3u * PAGE, 0u, 3u * PAGE);
+    expect_loaded(m, 20u * 1024u, 0u, 2u * PAGE);
+    expect_loaded(m, 1048576u, 0u, 1048576u);
+    expect_loaded(m, IMAGE_MAX, 512u, 1048576u);
+    /* A 20 KiB image reads $FF from 20,480 to 32,767 through the bus too. */
+    expect_loaded(m, 20u * 1024u, 0u, 2u * PAGE);
+    CHECK_EQ_HEX(cogmaster__bus_read(m, 20479u), big[20479]);
+    CHECK_EQ_HEX(cogmaster__bus_read(m, 20480u), 0xFF);
+    CHECK_EQ_HEX(cogmaster__bus_read(m, 32767u), 0xFF);
+    /* Loading the test card again frees the image. */
+    media = make_media(COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK(m->cart.rom == NULL);
+    cogmaster_destroy(m);
+}
+
+/* splitmix64 (Steele, Lea and Flood, 2014): a seeded sequence the same on
+   every platform. */
+static uint64_t splitmix64(uint64_t *s)
+{
+    uint64_t z = (*s += UINT64_C(0x9E3779B97F4A7C15));
+    z = (z ^ (z >> 30)) * UINT64_C(0xBF58476D1CE4E5B9);
+    z = (z ^ (z >> 27)) * UINT64_C(0x94D049BB133111EB);
+    return z ^ (z >> 31);
+}
+
+static uint8_t instance_before[sizeof(struct cogmaster)];
+/* An image up to 1 MiB + 511 bytes with no copier header pads to 65 pages. */
+static uint8_t rom_before[1048576u + PAGE];
+
+/* 200 seeded loads with sizes near both bounds and any machine, region and
+   tv value: each
+   refused load returns the status the rules give, allocates nothing and
+   leaves every byte of the instance and of its image as it was. */
+static void test_load_rejected_unchanged(void)
+{
+    fill_big();
+    counts c;
+    memset(&c, 0, sizeof c);
+    cogmaster_config cfg = make_config();
+    cfg.allocator.alloc = count_alloc;
+    cfg.allocator.free = count_free;
+    cfg.allocator.user = &c;
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    if (m == NULL) {
+        return;
+    }
+    cogmaster_media first = image_media(big, IMAGE_MIN, COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(cogmaster_load(m, &first), COGMASTER_STATUS_OK);
+    run_frames(m, 2);
+
+    uint64_t seed = UINT64_C(0x5EED0000C0C0A5A5);
+    const size_t bases[3] = {0u, IMAGE_MIN, IMAGE_MAX};
+    uint32_t refusals = 0, changed = 0;
+    for (uint32_t i = 0; i < 200u; i++) {
+        uint64_t r = splitmix64(&seed);
+        size_t base = bases[r % 3u];
+        size_t delta = (size_t)((r >> 8) % 33u);
+        size_t n = base + delta >= 16u ? base + delta - 16u : delta;
+        uint32_t machine = (r >> 24) % 4u == 0u ? (uint32_t)(r >> 32) : (uint32_t)((r >> 40) % 4u);
+        uint64_t r2 = splitmix64(&seed);
+        uint32_t region = r2 % 8u == 0u ? (uint32_t)(r2 >> 32) : (uint32_t)((r2 >> 8) % 4u);
+        uint32_t tv = (r2 >> 16) % 8u == 0u ? (uint32_t)(r2 >> 24) : (uint32_t)((r2 >> 20) % 4u);
+        cogmaster_status want = COGMASTER_STATUS_OK;
+        if (n < IMAGE_MIN || n > IMAGE_MAX) {
+            want = COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE;
+        } else if (machine > COGMASTER_MACHINE_GG || region > COGMASTER_REGION_JAPAN ||
+                   tv > COGMASTER_TV_PAL) {
+            want = COGMASTER_STATUS_ERR_PROFILE_REJECTED;
+        } else if (tv == COGMASTER_TV_PAL &&
+                   (machine == COGMASTER_MACHINE_GG || region == COGMASTER_REGION_JAPAN)) {
+            want = COGMASTER_STATUS_ERR_PROFILE_REJECTED;
+        }
+        memcpy(instance_before, m, sizeof instance_before);
+        uint32_t rom_size = m->cart.size;
+        if (m->cart.rom != NULL) {
+            memcpy(rom_before, m->cart.rom, rom_size);
+        }
+        uint32_t allocs = c.allocs;
+        cogmaster_media media = image_media(big, n, machine);
+        media.region = region;
+        media.tv = tv;
+        cogmaster_status got = cogmaster_load(m, &media);
+        expect_status("seeded load", (uint32_t)n, got, want);
+        if (got != COGMASTER_STATUS_OK) {
+            refusals++;
+            if (memcmp(instance_before, m, sizeof instance_before) != 0 || c.allocs != allocs ||
+                (m->cart.rom != NULL && memcmp(rom_before, m->cart.rom, rom_size) != 0)) {
+                fprintf(stderr,
+                        "seeded load %lu: size %lu machine %lu region %lu tv %lu changed the "
+                        "instance\n",
+                        (unsigned long)i, (unsigned long)n, (unsigned long)machine,
+                        (unsigned long)region, (unsigned long)tv);
+                changed++;
+            }
+        } else {
+            run_frames(m, 1);
+        }
+    }
+    printf("seeded loads: 200 run, %lu refused, %lu changed the instance\n",
+           (unsigned long)refusals, (unsigned long)changed);
+    CHECK(refusals >= 50u);
+    CHECK_EQ_U64(changed, 0);
+    cogmaster_destroy(m);
+    CHECK_EQ_U64(c.frees, c.allocs);
+    CHECK_EQ_U64(c.live_bytes, 0);
+}
+
+static uint8_t board_img[64u * 1024u];
+
+/* Loads n bytes of board_img as machine, which must be refused with
+   ERR_UNSUPPORTED_BOARD and leave the instance, its image and the
+   allocator untouched. */
+static void expect_board_refused(const char *what, cogmaster *m, const counts *c, size_t n,
+                                 uint32_t machine)
+{
+    memcpy(instance_before, m, sizeof instance_before);
+    uint32_t rom_size = m->cart.size;
+    if (m->cart.rom != NULL) {
+        memcpy(rom_before, m->cart.rom, rom_size);
+    }
+    uint32_t allocs = c->allocs;
+    cogmaster_media media = image_media(board_img, n, machine);
+    expect_status(what, (uint32_t)n, cogmaster_load(m, &media),
+                  COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD);
+    if (memcmp(instance_before, m, sizeof instance_before) != 0 || c->allocs != allocs ||
+        (m->cart.rom != NULL && memcmp(rom_before, m->cart.rom, rom_size) != 0)) {
+        fprintf(stderr, "%s: the refused load changed the instance\n", what);
+        check_failures++;
+    }
+}
+
+/* An image on no supported board is refused by load with the status the
+   probe gives, and the instance stays byte for byte as it was: a 64 KiB
+   image storing to $A000, an 8 KiB image whose header names the Game Gear,
+   and an 8 KiB image loaded as a Game Gear. As a Master System the last
+   loads with no mapper. */
+static void test_load_board(void)
+{
+    fill_big();
+    counts c;
+    memset(&c, 0, sizeof c);
+    cogmaster_config cfg = make_config();
+    cfg.allocator.alloc = count_alloc;
+    cfg.allocator.free = count_free;
+    cfg.allocator.user = &c;
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    if (m == NULL) {
+        return;
+    }
+    cogmaster_media first = image_media(big, 64u * 1024u, COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(cogmaster_load(m, &first), COGMASTER_STATUS_OK);
+    run_frames(m, 2);
+
+    /* Four LD ($A000),A stores, the Korean board's register. */
+    memset(board_img, 0, sizeof board_img);
+    for (uint32_t i = 0; i < 4u; i++) {
+        board_img[0x100u + 3u * i] = 0x32u;
+        board_img[0x101u + 3u * i] = 0x00u;
+        board_img[0x102u + 3u * i] = 0xA0u;
+    }
+    cogmaster_cart_info info;
+    memset(&info, 0, sizeof info);
+    info.size = (uint32_t)sizeof info;
+    CHECK_EQ_U64(cogmaster_probe(board_img, sizeof board_img, &info),
+                 COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD);
+    CHECK_EQ_U64(info.board, 0);
+    expect_board_refused("$A000 stores", m, &c, sizeof board_img, COGMASTER_MACHINE_SMS2);
+    expect_board_refused("$A000 stores as auto", m, &c, sizeof board_img, COGMASTER_MACHINE_AUTO);
+
+    /* The ROM header magic as bytes at $1FF0, region code 5 (Game Gear
+       Japan), size code $A. */
+    static const uint8_t header[16] = {0x54u, 0x4Du, 0x52u, 0x20u, 0x53u, 0x45u, 0x47u, 0x41u,
+                                       0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x5Au};
+    memset(board_img, 0, sizeof board_img);
+    memcpy(board_img + 0x1FF0u, header, sizeof header);
+    expect_board_refused("8 KiB Game Gear header", m, &c, 8192u, COGMASTER_MACHINE_SMS2);
+    memset(board_img + 0x1FF0u, 0, sizeof header);
+    expect_board_refused("8 KiB as a Game Gear", m, &c, 8192u, COGMASTER_MACHINE_GG);
+    cogmaster_media sms = image_media(board_img, 8192u, COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(cogmaster_load(m, &sms), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(m->cart.board, COGMASTER_BOARD_ROM_ONLY);
+    cogmaster_destroy(m);
+    CHECK_EQ_U64(c.frees, c.allocs);
+    CHECK_EQ_U64(c.live_bytes, 0);
+}
+
+/* Every profile pair: AUTO is an export console on an NTSC set; each legal
+   pair loads, reports itself and runs frames of its TV's length; PAL on a
+   Game Gear or a Japanese console, which were never made (SMS-SYSTEM C6),
+   and a value outside its set are refused with the instance unchanged. */
+static void test_load_profiles(void)
+{
+    static const struct {
+        uint32_t machine, region, tv;
+        cogmaster_status status;
+        uint32_t want_region, want_tv;
+    } rows[] = {
+        {COGMASTER_MACHINE_AUTO, COGMASTER_REGION_AUTO, COGMASTER_TV_AUTO, COGMASTER_STATUS_OK,
+         COGMASTER_REGION_EXPORT, COGMASTER_TV_NTSC},
+        {COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT, COGMASTER_TV_PAL, COGMASTER_STATUS_OK,
+         COGMASTER_REGION_EXPORT, COGMASTER_TV_PAL},
+        {COGMASTER_MACHINE_GG, COGMASTER_REGION_AUTO, COGMASTER_TV_PAL,
+         COGMASTER_STATUS_ERR_PROFILE_REJECTED, 0u, 0u},
+        {COGMASTER_MACHINE_GG, COGMASTER_REGION_EXPORT, COGMASTER_TV_PAL,
+         COGMASTER_STATUS_ERR_PROFILE_REJECTED, 0u, 0u},
+        {COGMASTER_MACHINE_SMS2, COGMASTER_REGION_JAPAN, COGMASTER_TV_PAL,
+         COGMASTER_STATUS_ERR_PROFILE_REJECTED, 0u, 0u},
+        {COGMASTER_MACHINE_AUTO, COGMASTER_REGION_JAPAN, COGMASTER_TV_PAL,
+         COGMASTER_STATUS_ERR_PROFILE_REJECTED, 0u, 0u},
+        {COGMASTER_MACHINE_SMS2, 3u, COGMASTER_TV_NTSC, COGMASTER_STATUS_ERR_PROFILE_REJECTED, 0u,
+         0u},
+        {COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT, 3u, COGMASTER_STATUS_ERR_PROFILE_REJECTED,
+         0u, 0u},
+        {COGMASTER_MACHINE_SMS2, 0xFFFFFFFFu, COGMASTER_TV_AUTO,
+         COGMASTER_STATUS_ERR_PROFILE_REJECTED, 0u, 0u},
+        {COGMASTER_MACHINE_AUTO, COGMASTER_REGION_AUTO, COGMASTER_TV_PAL, COGMASTER_STATUS_OK,
+         COGMASTER_REGION_EXPORT, COGMASTER_TV_PAL},
+        {COGMASTER_MACHINE_SMS2, COGMASTER_REGION_JAPAN, COGMASTER_TV_AUTO, COGMASTER_STATUS_OK,
+         COGMASTER_REGION_JAPAN, COGMASTER_TV_NTSC},
+        {COGMASTER_MACHINE_GG, COGMASTER_REGION_JAPAN, COGMASTER_TV_NTSC, COGMASTER_STATUS_OK,
+         COGMASTER_REGION_JAPAN, COGMASTER_TV_NTSC},
+        {COGMASTER_MACHINE_GG, COGMASTER_REGION_AUTO, COGMASTER_TV_AUTO, COGMASTER_STATUS_OK,
+         COGMASTER_REGION_EXPORT, COGMASTER_TV_NTSC},
+    };
+    cogmaster *m = make(COGMASTER_MACHINE_SMS2);
+    for (size_t i = 0; i < sizeof rows / sizeof rows[0]; i++) {
+        run_frames(m, 2);
+        cogmaster_media media = make_media(rows[i].machine);
+        media.region = rows[i].region;
+        media.tv = rows[i].tv;
+        memcpy(instance_before, m, sizeof instance_before);
+        cogmaster_status got = cogmaster_load(m, &media);
+        expect_status("profile row", (uint32_t)i, got, rows[i].status);
+        if (rows[i].status != COGMASTER_STATUS_OK) {
+            if (memcmp(instance_before, m, sizeof instance_before) != 0) {
+                fprintf(stderr, "profile row %lu: the refused load changed the instance\n",
+                        (unsigned long)i);
+                check_failures++;
+            }
+            continue;
+        }
+        cogmaster_info info = info_of(m);
+        CHECK_EQ_U64(info.region, rows[i].want_region);
+        CHECK_EQ_U64(info.tv, rows[i].want_tv);
+        int pal = rows[i].want_tv == COGMASTER_TV_PAL;
+        CHECK_EQ_U64(info.fps_num, pal ? 13300856u : 1640625u);
+        CHECK_EQ_U64(info.fps_den, pal ? 267615u : 27379u);
+        run_frames(m, 1);
+        CHECK_EQ_U64(m->ticks, pal ? 214092u : 179208u);
+    }
+
+    /* A size tag at the first released size reads region and tv as AUTO,
+       even where the old struct's tail padding holds them. */
+    cogmaster_media media = make_media(COGMASTER_MACHINE_SMS2);
+    media.region = COGMASTER_REGION_JAPAN;
+    media.tv = COGMASTER_TV_PAL;
+    uint8_t *b = tagged(&media, (uint32_t)sizeof media, 4u * P);
+    CHECK_EQ_U64(cogmaster_load(m, (const cogmaster_media *)b), COGMASTER_STATUS_OK);
+    cogmaster_info info = info_of(m);
+    CHECK_EQ_U64(info.region, COGMASTER_REGION_EXPORT);
+    CHECK_EQ_U64(info.tv, COGMASTER_TV_NTSC);
+    cogmaster_destroy(m);
+}
+
+/* After load the CPU and RAM are as the BIOS leaves them, with no BIOS code
+   in RAM: SP $DFF0, $C000 = $AB (Master System only), PC 0. */
+static void test_boot_handoff(void)
+{
+    fill_big();
+    cogmaster_config cfg = make_config();
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    if (m == NULL) {
+        return;
+    }
+    cogmaster_media media = image_media(big, IMAGE_MIN, COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(m->z80.sp, 0xDFF0);
+    CHECK_EQ_HEX(m->z80.pc, 0x0000);
+    CHECK_EQ_HEX(m->z80.reg[COGMASTER__Z80_A], 0xFF);
+    CHECK_EQ_HEX(m->z80.reg[COGMASTER__Z80_F], 0xFF);
+    CHECK_EQ_U64(m->z80.im, 0);
+    CHECK_EQ_U64(m->z80.iff1, 0);
+    CHECK_EQ_U64(m->z80.iff2, 0);
+    CHECK_EQ_U64(m->z80.halted, 0);
+    CHECK_EQ_HEX(cogmaster__bus_read(m, 0xC000u), 0xAB);
+    CHECK_EQ_HEX(cogmaster__bus_read(m, 0xE000u), 0xAB);
+    CHECK_EQ_HEX(m->io.mem_ctrl, 0xAB);
+    CHECK_EQ_HEX(m->io.io_ctrl, 0xFF);
+    uint32_t written = 0;
+    for (size_t i = 1; i < sizeof m->ram; i++) {
+        if (m->ram[i] != 0u) {
+            written++;
+        }
+    }
+    CHECK_EQ_U64(written, 0);
+    media = image_media(big, IMAGE_MIN, COGMASTER_MACHINE_GG);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(m->z80.sp, 0xDFF0);
+    CHECK_EQ_HEX(m->ram[0], 0x00);
+    CHECK_EQ_HEX(m->io.mem_ctrl, 0xA8);
+    CHECK_EQ_HEX(m->io.io_ctrl, 0xFF);
+    cogmaster_destroy(m);
+}
+
+/* The addresses the peek program reads with LD A,(nn): slot 0 inside and
+   past its fixed first 1 KiB, slots 1 and 2, work RAM and its mirror, and
+   the mapper register's mirror at $FFFF. */
+static const uint16_t peek_at[] = {0x0000u, 0x03FFu, 0x0400u, 0x4123u, 0x7FFFu,
+                                   0x8456u, 0xBFFFu, 0xC000u, 0xE000u, 0xFFFFu};
+#define PEEK_COPY 0xC800u /* where the program stores what it read */
+
+/* A 128 KiB Sega image: each byte is a function of its page and offset, and
+   at $0000 a program that selects bank 3 in slot 2, copies each peek_at
+   byte to PEEK_COPY, writes $5A to VRAM $0000, sets a VRAM read (which fills
+   the read-ahead buffer) and spins with interrupts off. */
+static size_t peek_image(void)
+{
+    size_t n = 8u * PAGE;
+    for (size_t i = 0; i < n; i++) {
+        big[i] = (uint8_t)((i >> 14) * 0x11u + (i & 0xFFu) * 7u);
+    }
+    uint8_t *p = big;
+    static const uint8_t head[] = {0xF3u, 0x3Eu, 0x03u, 0x32u, 0xFFu, 0xFFu};
+    memcpy(p, head, sizeof head);
+    p += sizeof head;
+    for (size_t k = 0; k < sizeof peek_at / sizeof peek_at[0]; k++) {
+        uint16_t to = (uint16_t)(PEEK_COPY + k);
+        const uint8_t copy[] = {0x3Au, (uint8_t)(peek_at[k] & 0xFFu), (uint8_t)(peek_at[k] >> 8),
+                                0x32u, (uint8_t)(to & 0xFFu),         (uint8_t)(to >> 8)};
+        memcpy(p, copy, sizeof copy);
+        p += sizeof copy;
+    }
+    static const uint8_t tail[] = {0x3Eu, 0x00u, 0xD3u, 0xBFu, 0x3Eu, 0x40u, 0xD3u, 0xBFu,
+                                   0x3Eu, 0x5Au, 0xD3u, 0xBEu, 0x3Eu, 0x00u, 0xD3u, 0xBFu,
+                                   0x3Eu, 0x00u, 0xD3u, 0xBFu, 0x18u, 0xFEu};
+    memcpy(p, tail, sizeof tail);
+    return n;
+}
+
+/* Saves m's state into a new buffer of *n bytes; NULL on failure. */
+static uint8_t *peek_save(const cogmaster *m, size_t *n)
+{
+    *n = cogmaster__state_size(m);
+    uint8_t *buf = (uint8_t *)malloc(*n != 0u ? *n : 1u);
+    if (buf == NULL || cogmaster__state_save(m, buf, *n) != COGMASTER_STATUS_OK) {
+        free(buf);
+        return NULL;
+    }
+    return buf;
+}
+
+/* Peeks all 64 KiB and checks the saved state is byte for byte the same. */
+static void expect_peek_pure(const char *what, cogmaster *m)
+{
+    size_t na = 0;
+    size_t nb = 0;
+    uint8_t *a = peek_save(m, &na);
+    struct cogmaster__counters before = m->counters;
+    for (uint32_t addr = 0; addr <= 0xFFFFu; addr++) {
+        (void)cogmaster_peek(m, COGMASTER_SPACE_BUS, addr);
+    }
+    uint8_t *b = peek_save(m, &nb);
+    CHECK(a != NULL && b != NULL);
+    if (a != NULL && b != NULL && (na != nb || memcmp(a, b, na) != 0)) {
+        fprintf(stderr, "%s: peeking changed the saved state\n", what);
+        check_failures++;
+    }
+    CHECK(memcmp(&before, &m->counters, sizeof before) == 0);
+    free(a);
+    free(b);
+}
+
+/* Mid-frame, with the frame flag pending and the read-ahead buffer filled,
+   peeking every address changes no state, and each peek equals the byte the
+   guest's LD A,(nn) read. With $3E taking the cartridge or work RAM off the
+   bus, the peek reads $FF and records no fault and counts no open bus. */
+static void test_peek_no_side_effects(void)
+{
+    size_t n = peek_image();
+    cogmaster_config cfg = make_config();
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    if (m == NULL) {
+        return;
+    }
+    cogmaster_media media = image_media(big, n, COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(m->cart.board, COGMASTER_BOARD_SEGA);
+    run_frames(m, 1u);
+    for (uint32_t i = 0; i < 101u; i++) {
+        cogmaster__z80_step(m);
+    }
+    CHECK((m->vdp.status & 0x80u) != 0u);
+    CHECK_EQ_HEX(m->vdp.buffer, 0x5A);
+    CHECK_EQ_U64(m->fault_present, 0);
+    for (size_t k = 0; k < sizeof peek_at / sizeof peek_at[0]; k++) {
+        uint32_t got = cogmaster_peek(m, COGMASTER_SPACE_BUS, peek_at[k]);
+        if (got != m->ram[(PEEK_COPY + k) & (COGMASTER__RAM_SIZE - 1u)]) {
+            fprintf(stderr, "peek $%04X is $%02lX, the guest read $%02X\n", (unsigned)peek_at[k],
+                    (unsigned long)got, (unsigned)m->ram[(PEEK_COPY + k) & 0x1FFFu]);
+            check_failures++;
+        }
+    }
+    CHECK_EQ_HEX(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0x8000u), big[3u * PAGE]);
+    expect_peek_pure("mid-frame", m);
+
+    m->io.mem_ctrl = (uint8_t)(m->io.mem_ctrl | 0x50u);
+    CHECK_EQ_HEX(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0x0400u), 0xFF);
+    CHECK_EQ_HEX(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC000u), 0xFF);
+    expect_peek_pure("cartridge and work RAM off", m);
+    CHECK_EQ_U64(m->fault_present, 0);
+    cogmaster_destroy(m);
+}
+
+/* A NULL instance, an instance with nothing loaded, a space other than the
+   bus and an address above $FFFF each peek a value above 255. */
+static void test_peek_args(void)
+{
+    CHECK(cogmaster_peek(NULL, COGMASTER_SPACE_BUS, 0u) > 255u);
+    cogmaster_config cfg = make_config();
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    if (m == NULL) {
+        return;
+    }
+    CHECK(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0u) > 255u);
+    size_t n = peek_image();
+    cogmaster_media media = image_media(big, n, COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0u), 0xF3);
+    CHECK_EQ_HEX(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xFFFFu), m->ram[0x1FFFu]);
+    CHECK(cogmaster_peek(m, COGMASTER_SPACE_BUS + 1u, 0u) > 255u);
+    CHECK(cogmaster_peek(m, 0xFFFFFFFFu, 0u) > 255u);
+    CHECK(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0x10000u) > 255u);
+    CHECK(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xFFFFFFFFu) > 255u);
+    /* The test card has no cartridge: its slots read $FF. */
+    cogmaster_media card = make_media(COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(cogmaster_load(m, &card), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0u), 0xFF);
+    cogmaster_destroy(m);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
@@ -851,11 +1390,18 @@ static const struct {
     {"api.first_released_sizes", test_first_released_sizes},
     {"api.size_tags", test_size_tags},
     {"api.statuses", test_statuses},
+    {"boot.handoff", test_boot_handoff},
     {"create.allocator", test_allocator},
     {"frame.pitch_wide", test_pitch_wide},
     {"info", test_info},
+    {"load.board", test_load_board},
     {"load.profile_rejected", test_profile_rejected},
+    {"load.profiles", test_load_profiles},
+    {"load.rejected_unchanged", test_load_rejected_unchanged},
+    {"load.sizes", test_load_sizes},
     {"no_alloc_after_load", test_no_alloc_after_load},
+    {"peek.args", test_peek_args},
+    {"peek.no_side_effects", test_peek_no_side_effects},
     {"testcard.all_colours", test_all_colours},
     {"testcard.boundaries", test_boundaries},
     {"testcard.full_field", test_full_field},

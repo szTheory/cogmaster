@@ -96,8 +96,24 @@ void cogmaster_destroy(cogmaster *m)
     if (m == NULL) {
         return;
     }
+    struct cogmaster__cart none;
+    memset(&none, 0, sizeof none);
+    cogmaster__cart_install(m, &none);
     cogmaster_allocator a = m->allocator;
     a.free(a.user, m, sizeof *m);
+}
+
+/* A uint32_t media field at off, or 0 (AUTO) when the caller's size tag
+   does not cover it. A tag at the first released size reads every later
+   field as 0, even one that sits in that struct's tail padding. */
+static uint32_t media_field(const cogmaster_media *media, size_t off)
+{
+    uint32_t size = size_tag(media);
+    uint32_t v = 0u;
+    if (size > COGMASTER__FIRST_SIZE_MEDIA && off + sizeof v <= size) {
+        memcpy(&v, (const uint8_t *)media + off, sizeof v);
+    }
+    return v;
 }
 
 cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
@@ -110,9 +126,15 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     if (st != COGMASTER_STATUS_OK) {
         return st;
     }
-    /* This release loads only the built-in test card. */
-    if (media->image != NULL || media->image_size != 0u) {
-        return COGMASTER_STATUS_ERR_ARGUMENT;
+    /* No image (NULL, 0) is the built-in test card. */
+    int has_image = media->image != NULL || media->image_size != 0u;
+    cogmaster_cart_info probe;
+    memset(&probe, 0, sizeof probe);
+    if (has_image) {
+        st = cogmaster__cart_probe(media->image, media->image_size, &probe);
+        if (st != COGMASTER_STATUS_OK) {
+            return st;
+        }
     }
     uint32_t machine;
     switch (media->machine) {
@@ -126,14 +148,48 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     default:
         return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
     }
+    /* AUTO is an export console on an NTSC set. */
+    uint32_t region = media_field(media, offsetof(cogmaster_media, region));
+    uint32_t tv = media_field(media, offsetof(cogmaster_media, tv));
+    if (region > COGMASTER_REGION_JAPAN || tv > COGMASTER_TV_PAL) {
+        return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
+    }
+    region = region == COGMASTER_REGION_AUTO ? COGMASTER_REGION_EXPORT : region;
+    tv = tv == COGMASTER_TV_AUTO ? COGMASTER_TV_NTSC : tv;
+    /* No Game Gear and no Japanese console was made for PAL (SMS-SYSTEM C6). */
+    if (tv == COGMASTER_TV_PAL &&
+        (machine == COGMASTER_MACHINE_GG || region == COGMASTER_REGION_JAPAN)) {
+        return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
+    }
+    /* An 8 KiB image on a Game Gear is the X-Terminator cheat device, which
+       needs a cartridge in its own slot (SMS-CARTRIDGES section 1.4). */
+    if (has_image && machine == COGMASTER_MACHINE_GG &&
+        media->image_size - probe.body_offset == 8192u) {
+        return COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD;
+    }
+    /* Every check is done; only the copy can still fail, and it touches
+       nothing of the instance until it has succeeded. */
+    struct cogmaster__cart cart;
+    memset(&cart, 0, sizeof cart);
+    if (has_image) {
+        st = cogmaster__cart_copy(m, (const uint8_t *)media->image, media->image_size, &probe,
+                                  &cart);
+        if (st != COGMASTER_STATUS_OK) {
+            return st;
+        }
+    }
+    cogmaster__cart_install(m, &cart);
     m->machine = machine;
+    m->region = region;
+    m->tv = tv;
     m->loaded = 1u;
-    m->frame = 0u;
-    m->ticks = 0u;
     memset(&m->counters, 0, sizeof m->counters);
     m->fault_present = 0u;
     memset(&m->fault, 0, sizeof m->fault);
     memset(m->field, 0, sizeof m->field);
+    cogmaster__bus_origin(m);
+    cogmaster__boot_handoff(m, 1);
+    cogmaster__vdp_reset(m, 1);
     return COGMASTER_STATUS_OK;
 }
 
@@ -157,9 +213,17 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out)
     info.field_h = COGMASTER__FIELD_H;
     info.max_w = COGMASTER__FIELD_W;
     info.max_h = COGMASTER__FIELD_MAX_H;
-    /* 179,208 ticks of 10,738,635 Hz per frame (ARCHITECTURE section 2). */
-    info.fps_num = 1640625u;
-    info.fps_den = 27379u;
+    info.region = m->region;
+    info.tv = m->tv;
+    /* NTSC: 179,208 ticks of 10,738,635 Hz per frame (ARCHITECTURE section
+       2). PAL: 214,092 ticks of 53,203,424 / 5 Hz (SMS-SYSTEM C2), reduced. */
+    if (m->tv == COGMASTER_TV_PAL) {
+        info.fps_num = 13300856u;
+        info.fps_den = 267615u;
+    } else {
+        info.fps_num = 1640625u;
+        info.fps_den = 27379u;
+    }
     cogmaster__rect crop = cogmaster__crop(m->machine);
     info.crop_w = crop.w;
     info.crop_h = crop.h;
@@ -176,10 +240,10 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out)
     return COGMASTER_STATUS_OK;
 }
 
-/* Both kinds return the beam to line 0, tick 0, frame 0 and clear the first
-   fault (ARCHITECTURE section 9); POWER also zeroes the counters, which a
-   power cycle resets (section 8). The test card has no RAM, VRAM or CRAM, so
-   the kinds differ only in what later machines add. */
+/* Both kinds return the beam to the frame origin with frame and ticks 0,
+   apply the fast-boot hand-off again and clear the first fault (ARCHITECTURE
+   section 9); POWER also clears work RAM, VRAM and CRAM and zeroes the
+   counters, which a power cycle resets (section 8). */
 cogmaster_status cogmaster_reset(cogmaster *m, uint32_t kind)
 {
     if (m == NULL || (kind != COGMASTER_RESET_SOFT && kind != COGMASTER_RESET_POWER)) {
@@ -188,8 +252,9 @@ cogmaster_status cogmaster_reset(cogmaster *m, uint32_t kind)
     if (!m->loaded) {
         return COGMASTER_STATUS_ERR_NO_CONTENT;
     }
-    m->frame = 0u;
-    m->ticks = 0u;
+    cogmaster__bus_origin(m);
+    cogmaster__boot_handoff(m, kind == COGMASTER_RESET_POWER);
+    cogmaster__vdp_reset(m, kind == COGMASTER_RESET_POWER);
     m->fault_present = 0u;
     memset(&m->fault, 0, sizeof m->fault);
     if (kind == COGMASTER_RESET_POWER) {

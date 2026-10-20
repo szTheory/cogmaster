@@ -57,7 +57,7 @@ Strongest alternative: MAME's 53,203,425 [SYS.25]. Would change if: a frequency-
 | ≥ 599 | ≥ 200 | an `IN A,($7E)` sees the next line's V counter value (12 ticks before the /CSYNC rising edge) | [SYS.11] |
 | 607 | 202 | frame /INT falls on the first line after active display (line 192, 224 or 240), 4 ticks before /HSYNC rises | [SYS.11]; flag line V = $C1/$E1/$F1 [SYS.10] |
 | 608 | 203 | line /INT falls on the line whose counter underflowed, 3 ticks before /HSYNC rises | [SYS.11] |
-| 611 | 204 | /HSYNC rises; on the last frame line (261 NTSC, 312 PAL) the pause /NMI is asserted here, whenever the button was pressed earlier | [SYS.11] |
+| 611 | 204 | /HSYNC rises; on line 260 NTSC / 311 PAL, the start of the last line, the pause /NMI is asserted here, whenever the button was pressed earlier ("the /HSYNC edge 611 mclk into line 260") | [SYS.11] |
 
 - A frame interrupt and a line interrupt can never fall on the same Z80 cycle; the frame one leads by one cycle [SYS.11].
 - Line counter rule: reloaded from register $0A on every line outside the active area except the one right after it, decremented
@@ -224,7 +224,7 @@ repository (AGENTS.md rule 3). MAME's `hash/sms.xml` was not needed and was not 
 | Mapper | $FFFC $00, $FFFD 0, $FFFE 1, $FFFF 2 (C4) | same | same |
 | VDP | registers as SMS-VDP.md's "after BIOS" table (MAME reset: all 0 except R2 = $0E, R10 = $FF [SYS.27]); VRAM, CRAM zero; status flags clear | GG mode unless the cartridge sets SMS mode | same |
 | PSG, $F2 | all channels silent; $F2 = %00 (PSG on, FM muted) [SYS.19] | $06 = $FF [SYS.09] | $F2 %00 |
-| Beam | tick 0 of line 0, frame 0 | same | same |
+| Beam | the frame origin: tick 607 of line 192, frame 0, ticks 0, so every frame, the first included, is exactly one frame long | same | same |
 | RAM | `ram_fill` (C8), then the two bytes above | `ram_fill` | `ram_fill` |
 
 Strongest alternative: boot from the Z80 reset state alone (SP $FFFF, $3E untouched) as ares does. Would change if: a title boots on
@@ -234,7 +234,7 @@ hardware only with the BIOS's VDP residue (the "after BIOS" table) or RAM residu
 
 - **Pause** is a console button (Game Gear: none) on the Z80 /NMI through the I/O chip; it is an edge, holding it does nothing, and the
   handler at $0066 ends with RETN [SYS.15][SYS.09][SYS.14]. The VDP synchronises it: /NMI is asserted at the start of the last line of the
-  frame (NTSC line 261, PAL 312) no matter when the button went down [SYS.11]. MAME drives it through the VDP's NMI input; ares fires on
+  frame, tick 611 of line 260 NTSC / 311 PAL, no matter when the button went down [SYS.11]. MAME drives it through the VDP's NMI input; ares fires on
   the press edge without the line alignment [SYS.25][SYS.30]. On a Game Gear in SMS mode the Start button is the NMI; in GG mode it is only
   $00 bit 7 [SYS.26][SYS.30].
 - **Reset button** exists only on the export SMS1. It is not wired to the Z80: it is a software input on $DD bit 4 that games poll and may
@@ -243,8 +243,9 @@ hardware only with the BIOS's VDP residue (the "after BIOS" table) or RAM residu
   (soft) re-applies C7 and keeps work RAM, cartridge RAM, VRAM and CRAM; `cogmaster_power` (hard) also applies `ram_fill` and zeroes VRAM
   and CRAM. Strongest alternative: a single hard reset. Would change if: a movie/TAS consumer wants a soft reset that matches a
   hardware power-cycle residue; then soft reset becomes hard reset plus a documented residue model.
-**C8 Pause alignment.** Recommendation: latch the host's pause press and assert /NMI at tick 611 of the last frame line, as measured
-[SYS.11]. Strongest alternative: immediate edge (ares). Would change if: a pause-timing test on hardware disagrees with [SYS.11].
+**C8 Pause alignment.** Recommendation: latch the host's pause press and assert /NMI at tick 611 of line 260 NTSC / 311 PAL, the start of the last line,
+as the logic analyser measured ("the /HSYNC edge 611 mclk into line 260") [SYS.11]; a handler's `IN A,($7E)` then reads $FF,
+where an NMI one line later would read $00. Strongest alternative: immediate edge (ares). Would change if: a pause-timing test on hardware disagrees with [SYS.11].
 
 ## 8. Power-on profile fields
 
@@ -262,7 +263,7 @@ hardware only with the BIOS's VDP residue (the "after BIOS" table) or RAM residu
 | PSG | undefined | all four attenuations $F, tone 0, noise reset (SMS-AUDIO.md) | | |
 | Z80 | PC, I, R, IFF 0, IM 0; AF = SP = $FFFF (unverified) | as C7, SP $DFF0 | | [SYS.23][SYS.24] |
 | Open-bus byte | | $FF | C5 | [SYS.28] |
-| Beam | undefined phase vs. CPU is fixed by the clock ratio | line 0, tick 0 | C1 | derived |
+| Beam | undefined phase vs. CPU is fixed by the clock ratio | line 192, tick 607 (the frame origin; every frame is then exactly one frame long) | C1 | derived |
 
 Every field lives in the instance, the save state and the movie header; BIOS bytes are an input, never a default.
 

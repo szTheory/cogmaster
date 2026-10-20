@@ -1,11 +1,14 @@
 /* cogmaster-run: the headless runner.
  *
- *   cogmaster-run --frames N [--hash] [--png N:FILE]... [--machine auto|sms|gg]
- *   cogmaster-run --bench N [--hash] [--png N:FILE]... [--machine auto|sms|gg]
+ *   cogmaster-run [--machine M] [--region R] --frames N [OPTION]... [FILE]
+ *   cogmaster-run [--machine M] [--region R] --bench N [OPTION]... [FILE]
+ *   cogmaster-run --probe FILE
  *   cogmaster-run --help | --version
  *
- * Runs N frames (N >= 1) of one instance with no content, which shows the
- * built-in test card. With --hash it prints, after the last frame:
+ * Runs N frames (N >= 1) of one instance. FILE (or --rom FILE) is the
+ * cartridge image; without one the built-in test card shows. args.c parses
+ * the command line; probe.c reads the file and prints --probe. With --hash
+ * it prints, after the last frame:
  *
  *   frame <N> sha256 <64 lowercase hex digits>
  *
@@ -20,7 +23,14 @@
  * --bench N also times each frame with the host's monotonic clock and prints
  * the report described in bench.h. SIGINT or SIGTERM ends the run after the
  * frame in progress: what was asked is printed for the frames that ran, and
- * the status is 0. docs/runner.md describes all of this for users.
+ * the status is 0.
+ *
+ * --trace first-fault reads the core's first-fault record after each frame,
+ * stops at the first fault and prints it as one line, or "fault none".
+ *
+ * --mailbox peeks the RAM mailbox after each frame, stops at the first
+ * frame whose status reads $00, and prints the mailbox (mailbox.h).
+ * docs/runner.md describes all of this for users.
  *
  * Exit statuses are listed in exit_status.h and printed by --help.
  */
@@ -28,12 +38,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "args.h"
 #include "bench.h"
 #include "clock.h"
 #include "cogmaster.h"
 #include "exit_status.h"
+#include "mailbox.h"
 #include "palette.h"
 #include "png.h"
+#include "probe.h"
 #include "rss.h"
 #include "sha256.h"
 #include "stop.h"
@@ -57,170 +70,6 @@ static void run_free(void *user, void *ptr, size_t size)
     (void)user;
     (void)size;
     free(ptr);
-}
-
-static const char synopsis[] =
-    "usage: cogmaster-run [--machine auto|sms|gg] --frames N [--hash] [--png N:FILE]...\n"
-    "       cogmaster-run [--machine auto|sms|gg] --bench N [--hash] [--png N:FILE]...\n"
-    "       cogmaster-run --help | --version\n"
-    "  --machine NAME     auto (default), sms or gg\n"
-    "  --frames N         run N frames (N >= 1)\n"
-    "  --bench N          run N frames and report the time per frame\n"
-    "  --hash             print the SHA-256 of the last frame's crop\n"
-    "  --png N:FILE       write frame N's crop to FILE as a PNG (1 <= N <= --frames)\n"
-    "  --help             print this text and the exit statuses\n"
-    "  --version          print the version\n";
-
-static int usage(const char *why)
-{
-    fprintf(stderr, "cogmaster-run: %s\n%s", why, synopsis);
-    return COGMASTER__EXIT_USAGE;
-}
-
-static void help(void)
-{
-    fputs(synopsis, stdout);
-    fputs("exit status:\n", stdout);
-    for (size_t i = 0; i < sizeof cogmaster__exit_statuses / sizeof cogmaster__exit_statuses[0];
-         i++) {
-        printf("  %d  %-7s  %s\n", cogmaster__exit_statuses[i].code,
-               cogmaster__exit_statuses[i].name, cogmaster__exit_statuses[i].meaning);
-    }
-}
-
-/* The library's version, which is the release's version. */
-static void version(void)
-{
-    cogmaster_versions v;
-    memset(&v, 0, sizeof v);
-    v.size = (uint32_t)sizeof v;
-    (void)cogmaster_get_versions(&v);
-    printf("cogmaster-run %lu.%lu.%lu\n", (unsigned long)v.library_major,
-           (unsigned long)v.library_minor, (unsigned long)v.library_patch);
-}
-
-/* Parses text as a decimal number from 1 to 4294967295. Returns 0 on any
-   other text. */
-static int parse_count(const char *text, uint32_t *out)
-{
-    uint64_t v = 0;
-    if (text == NULL || *text == '\0') {
-        return 0;
-    }
-    for (const char *p = text; *p != '\0'; p++) {
-        if (*p < '0' || *p > '9') {
-            return 0;
-        }
-        v = v * 10u + (uint64_t)(*p - '0');
-        if (v > 0xffffffffu) {
-            return 0;
-        }
-    }
-    if (v == 0u) {
-        return 0;
-    }
-    *out = (uint32_t)v;
-    return 1;
-}
-
-/* One --png request. */
-typedef struct png_request {
-    uint32_t frame;
-    const char *path;
-} png_request;
-
-typedef struct options {
-    uint32_t frames;
-    int bench;
-    int hash;
-    uint32_t machine;
-    png_request *pngs; /* room for one per argument */
-    uint32_t png_count;
-    int printed; /* --help or --version ran; nothing else to do */
-} options;
-
-/* Parses "N:FILE" with N from 1 to 4294967295 and FILE not empty. Returns 0
-   on any other text. */
-static int parse_png(const char *text, png_request *out)
-{
-    const char *colon = text != NULL ? strchr(text, ':') : NULL;
-    char number[11];
-    size_t len = colon != NULL ? (size_t)(colon - text) : 0u;
-    if (colon == NULL || len == 0u || len >= sizeof number || colon[1] == '\0') {
-        return 0;
-    }
-    memcpy(number, text, len);
-    number[len] = '\0';
-    if (!parse_count(number, &out->frame)) {
-        return 0;
-    }
-    out->path = colon + 1;
-    return 1;
-}
-
-/* Returns 0 when the options are valid, else 2 after a usage message. Any
-   option not listed in the synopsis, and any file name, is a usage error. */
-static int parse_options(int argc, char **argv, options *o)
-{
-    if (argc == 2 && strcmp(argv[1], "--help") == 0) {
-        help();
-        o->printed = 1;
-        return COGMASTER__EXIT_OK;
-    }
-    if (argc == 2 && strcmp(argv[1], "--version") == 0) {
-        version();
-        o->printed = 1;
-        return COGMASTER__EXIT_OK;
-    }
-    for (int i = 1; i < argc; i++) {
-        const char *arg = argv[i];
-        const char *value = i + 1 < argc ? argv[i + 1] : NULL;
-        if (strcmp(arg, "--frames") == 0 || strcmp(arg, "--bench") == 0) {
-            if (o->frames != 0u) {
-                return usage("give --frames or --bench once");
-            }
-            o->bench = strcmp(arg, "--bench") == 0;
-            if (!parse_count(value, &o->frames)) {
-                return usage("--frames and --bench need a whole number of 1 or more");
-            }
-            if (o->bench && cogmaster__bench_bytes(o->frames) == 0u) {
-                return usage("--bench is at most 1073741823");
-            }
-            i++;
-        } else if (strcmp(arg, "--hash") == 0) {
-            o->hash = 1;
-        } else if (strcmp(arg, "--png") == 0) {
-            if (!parse_png(value, &o->pngs[o->png_count])) {
-                return usage("--png needs N:FILE with N >= 1");
-            }
-            o->png_count++;
-            i++;
-        } else if (strcmp(arg, "--machine") == 0) {
-            if (value != NULL && strcmp(value, "auto") == 0) {
-                o->machine = COGMASTER_MACHINE_AUTO;
-            } else if (value != NULL && strcmp(value, "sms") == 0) {
-                o->machine = COGMASTER_MACHINE_SMS2;
-            } else if (value != NULL && strcmp(value, "gg") == 0) {
-                o->machine = COGMASTER_MACHINE_GG;
-            } else {
-                return usage("--machine needs auto, sms or gg");
-            }
-            i++;
-        } else if (strcmp(arg, "--help") == 0 || strcmp(arg, "--version") == 0) {
-            return usage("--help and --version take no other arguments");
-        } else {
-            return usage(arg[0] == '-' ? "unknown option" : "unexpected argument");
-        }
-    }
-    if (o->frames == 0u) {
-        return usage("--frames N or --bench N is required");
-    }
-    for (uint32_t k = 0; k < o->png_count; k++) {
-        if (o->pngs[k].frame > o->frames) {
-            return usage("--png N must not exceed --frames");
-        }
-    }
-    return COGMASTER__EXIT_OK;
 }
 
 /* Copies the crop of the frame just run into pixels, which has room for the
@@ -332,10 +181,68 @@ static int write_png(const cogmaster *m, const char *path, uint16_t *pixels)
     return status;
 }
 
+/* Reads the first-fault record into fault. Returns the exit status. */
+static int read_fault(const cogmaster *m, cogmaster_fault *fault)
+{
+    cogmaster_status st = cogmaster_get_fault(m, fault);
+    if (st != COGMASTER_STATUS_OK) {
+        fprintf(stderr, "cogmaster-run: cogmaster_get_fault failed with status %lu\n",
+                (unsigned long)st);
+        return COGMASTER__EXIT_FAILURE;
+    }
+    return COGMASTER__EXIT_OK;
+}
+
+/* Prints the first fault as one line of key=value fields, or "fault none".
+   The kind and device names are the ones docs/embedding.md gives each
+   COGMASTER_FAULT_* constant. */
+static void print_fault(const cogmaster_fault *f)
+{
+    static const char *const kinds[] = {"none",      "unmapped_read", "unmapped_write",
+                                        "rom_write", "mapper_range",  "ed_undefined"};
+    static const char *const devices[] = {"none", "cpu", "cart", "ram", "mapper", "ctrl"};
+    if (!f->present) {
+        printf("fault none\n");
+        return;
+    }
+    const char *kind = f->kind < sizeof kinds / sizeof kinds[0] ? kinds[f->kind] : "unknown";
+    const char *dev =
+        f->device < sizeof devices / sizeof devices[0] ? devices[f->device] : "unknown";
+    printf("fault frame=%llu line=%lu dot=%lu pc=$%04X op=$%02X addr=$%04X width=%u dev=%s "
+           "kind=%s\n",
+           (unsigned long long)f->frame, (unsigned long)f->line, (unsigned long)f->dot,
+           (unsigned)f->pc, (unsigned)f->opcode, (unsigned)f->addr, (unsigned)f->width, dev, kind);
+}
+
+/* The exit status for cogmaster_load's status, after a message: a refusal
+   for what the core does not support, a failure for anything else. */
+static int load_status(cogmaster_status st, size_t image_size)
+{
+    switch (st) {
+    case COGMASTER_STATUS_OK:
+        return COGMASTER__EXIT_OK;
+    case COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE:
+        fprintf(stderr, "cogmaster-run: unsupported: an image of %lu bytes; 1024 to 1049088 load\n",
+                (unsigned long)image_size);
+        return COGMASTER__EXIT_REFUSED;
+    case COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD:
+        fprintf(stderr, "cogmaster-run: unsupported: the cartridge's board\n");
+        return COGMASTER__EXIT_REFUSED;
+    case COGMASTER_STATUS_ERR_PROFILE_REJECTED:
+        fprintf(stderr, "cogmaster-run: unsupported: no such console was made for this machine "
+                        "and region\n");
+        return COGMASTER__EXIT_REFUSED;
+    default:
+        fprintf(stderr, "cogmaster-run: cogmaster_load failed with status %lu\n",
+                (unsigned long)st);
+        return COGMASTER__EXIT_FAILURE;
+    }
+}
+
 /* Runs the frames. The pixel buffer and the bench samples are on the heap:
    a field is too large for a small stack such as wasm32's, and the samples
    take 4 bytes per frame. Returns the exit status. */
-static int run(const options *opt)
+static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t image_size)
 {
     uint16_t *pixels = (uint16_t *)malloc((size_t)256u * 240u * sizeof *pixels);
     uint32_t *samples = opt->bench ? (uint32_t *)malloc(cogmaster__bench_bytes(opt->frames)) : NULL;
@@ -360,20 +267,25 @@ static int run(const options *opt)
         return COGMASTER__EXIT_FAILURE;
     }
 
-    int status = COGMASTER__EXIT_OK;
     cogmaster_media media;
     memset(&media, 0, sizeof media);
     media.size = (uint32_t)sizeof media;
+    media.image = image;
+    media.image_size = image_size;
     media.machine = opt->machine;
-    st = cogmaster_load(m, &media);
-    if (st != COGMASTER_STATUS_OK) {
-        fprintf(stderr, "cogmaster-run: cogmaster_load failed with status %lu\n",
-                (unsigned long)st);
-        status = COGMASTER__EXIT_FAILURE;
+    if (image != NULL && media.machine == COGMASTER_MACHINE_AUTO) {
+        media.machine = cogmaster__auto_machine(opt->file, image, image_size);
     }
+    media.region = opt->region;
+    media.tv = opt->tv;
+    int status = load_status(cogmaster_load(m, &media), image_size);
+    cogmaster_fault fault;
+    memset(&fault, 0, sizeof fault);
+    fault.size = (uint32_t)sizeof fault;
     /* A 64-bit count, so the loop ends when --frames is 4294967295. Only
        cogmaster_run_frame is timed, not hashing or writing files. */
     uint32_t ran = 0;
+    int mailbox_running = 0;
     for (uint64_t n = 1; n <= opt->frames && status == COGMASTER__EXIT_OK; n++) {
         uint64_t start_ns = opt->bench ? cogmaster__clock_ns() : 0u;
         st = cogmaster_run_frame(m, NULL);
@@ -396,11 +308,40 @@ static int run(const options *opt)
                 status = write_png(m, opt->pngs[k].path, pixels);
             }
         }
+        /* --trace first-fault stops after the frame that recorded the
+           first fault. */
+        if (opt->trace && status == COGMASTER__EXIT_OK) {
+            status = read_fault(m, &fault);
+            if (fault.present) {
+                break;
+            }
+        }
+        /* --mailbox stops after the frame whose status reads done, once a
+           frame has ended with it running. */
+        if (opt->mailbox && status == COGMASTER__EXIT_OK &&
+            cogmaster__mailbox_done(m, &mailbox_running)) {
+            break;
+        }
         /* A stop request ends the run only between whole frames, after the
            frame's outputs are written. */
         if (cogmaster__stop_requested()) {
             break;
         }
+    }
+    /* A stop before a --png frame (first fault, mailbox done or a signal)
+       leaves that file unwritten; say so, as the run itself succeeded. */
+    for (uint32_t k = 0; k < opt->png_count && status == COGMASTER__EXIT_OK; k++) {
+        if (opt->pngs[k].frame > ran) {
+            fprintf(stderr,
+                    "cogmaster-run: --png %lu:%s not written: the run stopped after frame %lu\n",
+                    (unsigned long)opt->pngs[k].frame, opt->pngs[k].path, (unsigned long)ran);
+        }
+    }
+    if (status == COGMASTER__EXIT_OK && opt->trace) {
+        print_fault(&fault);
+    }
+    if (status == COGMASTER__EXIT_OK && opt->mailbox) {
+        cogmaster__mailbox_print(m);
     }
     if (status == COGMASTER__EXIT_OK && opt->hash) {
         status = print_hash(m, ran, pixels);
@@ -417,20 +358,44 @@ static int run(const options *opt)
     return status;
 }
 
+/* Reads the file, if any, then probes it or runs it. Returns the exit
+   status. */
+static int start(const cogmaster__run_options *opt)
+{
+    if (opt->file == NULL) {
+        return run(opt, NULL, 0u);
+    }
+    /* SG-1000 and SC-3000 images are named .sg and .sc; their support is
+       planned, so they are refused before they are read. */
+    if (cogmaster__has_extension(opt->file, ".sg") || cogmaster__has_extension(opt->file, ".sc")) {
+        fprintf(stderr, "cogmaster-run: unsupported: SG-1000 (planned)\n");
+        return COGMASTER__EXIT_REFUSED;
+    }
+    uint8_t *image = NULL;
+    size_t n = 0;
+    int status = cogmaster__read_file(opt->file, &image, &n);
+    if (status != COGMASTER__EXIT_OK) {
+        return status;
+    }
+    status = opt->probe ? cogmaster__probe_print(opt->file, image, n) : run(opt, image, n);
+    free(image);
+    return status;
+}
+
 int main(int argc, char **argv)
 {
-    options opt;
+    cogmaster__run_options opt;
     memset(&opt, 0, sizeof opt);
     /* At most one --png per two arguments, so argc entries always suffice. */
-    opt.pngs = (png_request *)malloc((size_t)(argc > 0 ? argc : 1) * sizeof *opt.pngs);
+    opt.pngs = (cogmaster__png_request *)malloc((size_t)(argc > 0 ? argc : 1) * sizeof *opt.pngs);
     if (opt.pngs == NULL) {
         fprintf(stderr, "cogmaster-run: out of memory\n");
         return COGMASTER__EXIT_FAILURE;
     }
-    int status = parse_options(argc, argv, &opt);
+    int status = cogmaster__parse_options(argc, argv, &opt);
     if (status == COGMASTER__EXIT_OK && !opt.printed) {
         cogmaster__stop_install();
-        status = run(&opt);
+        status = start(&opt);
     }
     free(opt.pngs);
     if (fflush(stdout) != 0) {

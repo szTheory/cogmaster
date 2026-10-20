@@ -1,0 +1,49 @@
+rom,test,profile,expected,source,citation
+mapper_sega,01:bank_sum_slot1,*,F1F0,doc,SMS-CARTRIDGES section 2.1
+mapper_sega,02:bank_sum_slot2,*,F1F0,doc,SMS-CARTRIDGES section 2.1
+mapper_sega,03:slot0_first_1k_fixed,*,5AF3,doc,SMS-CARTRIDGES section 2.1
+mapper_sega,04:slot0_paged_from_400,*,FA05,doc,SMS-CARTRIDGES section 2.1
+mapper_sega,05:bank_wrap,*,1F03,doc,SMS-CARTRIDGES section 2.4
+mapper_sega,06:dfff_reads_ffff_write,*,1D3D,doc,SMS-CARTRIDGES section 2.1
+mapper_sega,07:cart_ram_then_rom,*,02A5,doc,SMS-CARTRIDGES section 2.1
+mapper_sega,08:cart_ram_again,*,C3A5,doc,SMS-CARTRIDGES section 2.1
+mapper_sega,09:cart_ram_bank,*,A55A,doc,SMS-CARTRIDGES section 2.1
+mapper_sega,0A:bank_shift,*,0918,doc,SMS-CARTRIDGES section 2.1
+mapper_codemasters,01:reset_banks_0_1_0,*,0010,doc,SMS-CARTRIDGES section 2.2
+mapper_codemasters,02:bank_sum_slot0,*,DC1C,doc,SMS-CARTRIDGES section 2.2
+mapper_codemasters,03:bank_sum_slot1,*,DC1C,doc,SMS-CARTRIDGES section 2.2
+mapper_codemasters,04:bank_sum_slot2,*,DC1C,doc,SMS-CARTRIDGES section 2.2
+mapper_codemasters,05:bank_wrap,*,0703,doc,SMS-CARTRIDGES section 2.4
+mapper_codemasters,06:ram_a000_8k,*,3CA5,doc,SMS-CARTRIDGES section 2.2
+mapper_codemasters,07:ram_rom_ram,*,A55A,doc,SMS-CARTRIDGES section 2.2
+ports,01:region_echo,sms-export,00C0,doc,SMS-SYSTEM section 5
+ports,01:region_echo,sms-japan,0000,doc,SMS-SYSTEM section 5
+ports,01:region_echo,sms-pal,00C0,doc,SMS-SYSTEM section 5
+ports,01:region_echo,gg,C0C0,doc,SMS-SYSTEM section 4
+ports,02:dd_reset_b4_b5,*,0030,doc,SMS-SYSTEM section 4
+ports,03:dc_dd_idle,*,FFFF,doc,SMS-SYSTEM section 4
+ports,04:open_bus_3e_c0,*,FFFF,doc,SMS-SYSTEM section 4
+ports,05:io_chip_off,*,FFFF,doc,SMS-SYSTEM section 4
+ports,06:ram_off_open_bus,sms-export,5AFF,doc,SMS-SYSTEM section 4
+ports,06:ram_off_open_bus,sms-japan,5AFF,doc,SMS-SYSTEM section 4
+ports,06:ram_off_open_bus,sms-pal,5AFF,doc,SMS-SYSTEM section 4
+ports,06:ram_off_open_bus,gg,5A5A,doc,SMS-SYSTEM section 5
+ports,07:tv_loop,sms-export,0783-0788,doc,SMS-SYSTEM sections 1 and 5
+ports,07:tv_loop,sms-japan,0783-0788,doc,SMS-SYSTEM sections 1 and 5
+ports,07:tv_loop,sms-pal,08EF-08FF,doc,SMS-SYSTEM sections 1 and 5
+ports,07:tv_loop,gg,0783-0788,doc,SMS-SYSTEM sections 1 and 5
+ports,08:tv_verdict,sms-export,0000,doc,SMS-SYSTEM section 5
+ports,08:tv_verdict,sms-japan,0000,doc,SMS-SYSTEM section 5
+ports,08:tv_verdict,sms-pal,0001,doc,SMS-SYSTEM section 5
+ports,08:tv_verdict,gg,0000,doc,SMS-SYSTEM section 5
+ports,09:vc_lines,sms-export,0106,doc,SMS-SYSTEM section 5
+ports,09:vc_lines,sms-japan,0106,doc,SMS-SYSTEM section 5
+ports,09:vc_lines,sms-pal,0139,doc,SMS-SYSTEM section 5
+ports,09:vc_lines,gg,0106,doc,SMS-SYSTEM section 5
+ports,0A:vram_readback,*,5AA5,doc,SMS-VDP section 2.2
+ports,0B:status_low_bits,*,001F,doc,SMS-VDP section 2.6
+ports,0C:hcount_step,*,000B-000C,derived,SMS-VDP section 4.3 and SMS-SYSTEM section 1
+ports,0D:gg_port00,gg,00C0,doc,SMS-SYSTEM sections 4 and 8
+ports,0E:gg_ports_01_02,gg,FF7F,doc,SMS-SYSTEM section 8
+ports,0F:gg_ports_03_04,gg,FF00,doc,SMS-SYSTEM section 8
+ports,10:gg_ports_05_06,gg,FF00,doc,SMS-SYSTEM section 8

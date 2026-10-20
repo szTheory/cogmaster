@@ -4,7 +4,8 @@ The library is one static archive and one header, `cogmaster.h`, written in C17.
 the allocator you pass, keeps all state in the instance, starts no threads, opens no files, reads no clock and uses
 no floating point. It needs nothing from the C library beyond `memcpy`, `memmove`, `memset` and `memcmp`.
 
-This release runs the built-in test card only: it loads no cartridge image yet.
+This release loads a cartridge image and runs its CPU, but draws no picture from it yet: the frame of a loaded
+image stays black. With no image it runs the built-in test card.
 
 ## Getting it
 
@@ -55,14 +56,17 @@ program built against one header run with a library built from another.
 
 - A size below the struct's first released size returns `COGMASTER_STATUS_ERR_STRUCT_SIZE`.
 - A size between the first released size and the library's own: the fields the caller's header lacks read as
-  zero, and a field added later keeps the old behaviour when it is zero.
+  zero, and a field added later keeps the old behaviour when it is zero. A size equal to the first released size
+  reads every later field as zero, even one that lies in that struct's tail padding (`cogmaster_media.region` on
+  a 64-bit target).
 - A larger size from a newer header is accepted only if every byte past the library's struct is zero; otherwise
   the call returns `COGMASTER_STATUS_ERR_STRUCT_SIZE`.
 - A size above 4096 bytes returns `COGMASTER_STATUS_ERR_STRUCT_SIZE` whatever the bytes hold. Checking that the
   extra bytes are zero reads them, so without this cap a garbage size tag would make the library read an
   unbounded distance past your object.
 
-**Output structs** (`cogmaster_info`, `cogmaster_versions`, `cogmaster_run_result`, `cogmaster_fault`):
+**Output structs** (`cogmaster_info`, `cogmaster_versions`, `cogmaster_run_result`, `cogmaster_fault`,
+`cogmaster_cart_info`):
 
 - A size below the struct's first released size returns `COGMASTER_STATUS_ERR_STRUCT_SIZE` and leaves the struct
   as it was.
@@ -80,6 +84,7 @@ First released sizes, where P is the pointer size (4 or 8):
 | `cogmaster_versions` | 32 |
 | `cogmaster_run_result` | 12 |
 | `cogmaster_fault` | 32 |
+| `cogmaster_cart_info` | 52 |
 
 Fields are fixed-width integers and pointers; enumerations travel as `uint32_t` and zero is the default of every
 input field. Statuses, constants and fields are only ever appended.
@@ -116,19 +121,87 @@ cogmaster_media media;
 memset(&media, 0, sizeof media);
 media.size = (uint32_t)sizeof media;
 media.machine = COGMASTER_MACHINE_AUTO;   /* or COGMASTER_MACHINE_SMS2, COGMASTER_MACHINE_GG */
-cogmaster_load(m, &media);                /* image NULL and image_size 0: the test card */
+media.region = COGMASTER_REGION_AUTO;     /* or COGMASTER_REGION_EXPORT, COGMASTER_REGION_JAPAN */
+media.tv = COGMASTER_TV_AUTO;             /* or COGMASTER_TV_NTSC, COGMASTER_TV_PAL */
+media.image = rom;                        /* the image bytes, or NULL for the test card */
+media.image_size = rom_size;              /* 0 with a NULL image */
+cogmaster_load(m, &media);
 
 cogmaster_run_frame(m, NULL);             /* one frame; the result struct is optional */
 ```
 
-`cogmaster_media.image` must be NULL and `image_size` 0 in this release; anything else returns
-`COGMASTER_STATUS_ERR_ARGUMENT`. `machine` selects the profile: `COGMASTER_MACHINE_AUTO` (the default, a Master
-System II), `COGMASTER_MACHINE_SMS2` or `COGMASTER_MACHINE_GG`. Each `load` restarts the frame count and clears
-the fault record.
+`cogmaster_media.image` with `image_size` 0 and a NULL `image` loads the built-in test card. Any other image must
+be 1,024 to 1,048,576 + 512 bytes; any other size returns `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE`, and a NULL
+`image` with a non-zero size returns `COGMASTER_STATUS_ERR_ARGUMENT`. When the size is 512 bytes past a multiple
+of 16 KiB the first 512 bytes are a copier's header and are skipped. The library copies the rest into one buffer
+from your allocator, padded with `$FF` to a multiple of 16 KiB, so you may free your copy once `load` returns.
+The library guesses the cartridge's board from the image (see [Probing an image](#probing-an-image)) and maps it
+at `$0000`-`$BFFF`, with 8 KiB of work RAM at `$C000`; an image on no supported board returns
+`COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD`. The CPU starts as the console's BIOS leaves it (fast boot; no BIOS code runs): stack pointer `$DFF0`,
+`$AB` at `$C000` on the Master System, program counter 0. `machine` selects the profile: `COGMASTER_MACHINE_AUTO` (the default, a Master
+System II), `COGMASTER_MACHINE_SMS2` or `COGMASTER_MACHINE_GG`. `region` selects the console's region:
+`COGMASTER_REGION_AUTO` (the default, export), `COGMASTER_REGION_EXPORT` or `COGMASTER_REGION_JAPAN`. `tv` selects
+the video standard: `COGMASTER_TV_AUTO` (the default, NTSC), `COGMASTER_TV_NTSC` or `COGMASTER_TV_PAL`. No Game
+Gear and no Japanese console was made for PAL, so `COGMASTER_TV_PAL` with either returns
+`COGMASTER_STATUS_ERR_PROFILE_REJECTED`. Each
+`load` restarts the frame count and clears the fault record.
 
-`cogmaster_run_frame` runs one frame, 179,208 ticks of the 10,738,635 Hz video clock. If `out`, a
+`cogmaster_run_frame` runs one frame: 262 lines, 179,208 ticks of the 10,738,635 Hz video clock, on NTSC, and
+313 lines, 214,092 ticks of the 10,640,684.8 Hz (53,203,424 / 5) clock, on PAL. The CPU runs whole instructions,
+so a frame stops at the first instruction boundary at or after its end, at most 69 ticks late, and the next frame
+ends one frame length after this one should have: the frames never drift. If `out`, a
 `cogmaster_run_result`, is not NULL it receives `stop`, always `COGMASTER_STOP_FRAME` in this release, and
-`overshoot_ticks`, always 0 for the test card.
+`overshoot_ticks`, the ticks run past the frame's end (always 0 for the test card).
+
+The Master System's Pause button reaches the CPU as on the console: a press raises the CPU's non-maskable interrupt
+at the start of the frame's last line, tick 611 of line 260 on NTSC and of line 311 on PAL, wherever in the frame it
+was pressed. The Game Gear has no Pause button.
+
+## Probing an image
+
+`cogmaster_probe(image, n, out)` reads an image the way `load` does, without an instance: it fills a
+`cogmaster_cart_info` and returns the status `load` would give for the image alone. It reads only the `n` bytes
+at `image`, never changes them, and gives the same answer for the same bytes. It returns
+`COGMASTER_STATUS_ERR_ARGUMENT` for a NULL `image` or `out`, `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE` outside the
+load bounds (with only `image_size` filled), and `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD` with `board` 0 and
+every other field filled when no supported board fits.
+
+| Field | Meaning |
+|---|---|
+| `image_size` | `n` |
+| `body_offset` | 512 after a copier header, else 0 |
+| `header_at` | where the ROM header was found: `0x7FF0`, `0x3FF0`, `0x1FF0`, or 0 for none |
+| `checksum`, `checksum_ok` | the header's checksum, and 1 when it matches the sum over the range its size code names |
+| `product_code`, `version` | the product number (decimal) and the version nibble |
+| `region_code`, `rom_size_code` | the header's region and size nibbles |
+| `machine_guess`, `region_guess` | the machine and region the region code names (`COGMASTER_MACHINE_*`, `COGMASTER_REGION_*`), or 0 |
+| `board` | `COGMASTER_BOARD_ROM_ONLY` (1), `COGMASTER_BOARD_SEGA` (2) or `COGMASTER_BOARD_CODEMASTERS` (3); 0 for none |
+
+Every header field is 0 when no header was found. The board is chosen in this order:
+
+1. When the size is 512 bytes past a multiple of 16 KiB, the first 512 bytes are a copier's header and are skipped.
+2. The ROM header is looked for at `$7FF0`, then `$3FF0`, then `$1FF0`. Its region code names the machine and
+   region; its checksum is checked but a wrong one refuses nothing.
+3. A Codemasters header at `$7FE0` (page count, BCD date, checksum and its complement, `$7FEF` zero) gives the
+   Codemasters board.
+4. An 8 KiB image whose header names the Game Gear is refused, and so is any 8 KiB image loaded as a Game Gear.
+5. An image of at most 48 KiB has no mapper.
+6. Otherwise the first 32 KiB are scanned for `LD (nn),A` stores. When stores to another board's registers
+   (`$0002`-`$0004`, `$3FFE`, `$6000`, `$A000`) outnumber stores to the Sega registers (`$FFFC`-`$FFFF`), the
+   image is refused; else it has the Sega mapper.
+
+The boards:
+
+- **No mapper.** The image at `$0000`, padded with `$FF` up to `$BFFF`. Writes to it change nothing.
+- **Sega.** Writes to `$FFFD`, `$FFFE` and `$FFFF` select the 16 KiB bank in `$0000`, `$4000` and `$8000`; the
+  first 1 KiB stays on bank 0. Bit 3 of `$FFFC` maps 16 KiB of cartridge RAM at `$8000` (bit 2 picks which of
+  two banks); bits 1-0 add `$18`, `$10` or `$08` to later bank writes. Every register write also lands in work
+  RAM, so `$DFFC`-`$DFFF` read them back. Fast boot leaves the banks at 0, 1 and 2.
+- **Codemasters.** Writes to `$0000`, `$4000` and `$8000` select the bank in those slots; they start at 0, 1 and
+  0. Bit 7 of the `$4000` write maps 8 KiB of cartridge RAM at `$A000`-`$BFFF`.
+
+The image is padded with `$FF` to whole 16 KiB banks, and a bank number past the end selects the bank number
+modulo the bank count. Cartridge RAM starts zeroed at load, is kept by both resets and is part of the saved state.
 
 ## Frames
 
@@ -160,22 +233,25 @@ those bytes, not the `uint16_t` array, or a big-endian host gets a different dig
 
 ## Reset
 
-`cogmaster_reset(m, kind)` restarts the loaded content without loading it again. Both kinds set the frame count,
-the tick count and the beam position to zero and clear the fault record:
+`cogmaster_reset(m, kind)` restarts the loaded content without loading it again. Both kinds set the frame count
+and the tick count to zero, put the beam at the frame origin (line 192, tick 607, where a frame ends) as `load`
+does, start the CPU again from the fast-boot hand-off and clear the fault record. Every frame, the first after a
+load or reset included, is then exactly 179,208 ticks on NTSC and 214,092 on PAL:
 
-- `COGMASTER_RESET_SOFT` (0) is the console's reset: memory the machine keeps across a reset stays as it was.
+- `COGMASTER_RESET_SOFT` (0) is the console's reset: memory the machine keeps across a reset, such as work RAM,
+  stays as it was.
 - `COGMASTER_RESET_POWER` (1) is a power cycle: it also zeroes the internal counters and, on machines that have
   them, work RAM, video RAM and colour RAM.
 
 The test card has no RAM, video RAM or colour RAM and its counters stay zero, so the two kinds have the same effect
-on it today. Any other `kind` returns `COGMASTER_STATUS_ERR_ARGUMENT`; a reset before a successful
+on it. Any other `kind` returns `COGMASTER_STATUS_ERR_ARGUMENT`; a reset before a successful
 `cogmaster_load` returns `COGMASTER_STATUS_ERR_NO_CONTENT`.
 
 ## Faults
 
 `cogmaster_get_fault` fills a `cogmaster_fault` with the first fault the core recorded since the last load or
-reset: an access to an unmapped address or port, an illegal opcode, a mapper write out of range, or a video write
-faster than the hardware accepts. Only the first is kept; later ones are ignored until the next load or reset.
+reset: an access to an unmapped address or port, a write to ROM, a mapper value out of range, or an undefined
+opcode. Only the first is kept; later ones are ignored until the next load or reset.
 The record is part of the instance's saved state.
 
 | Field | Meaning |
@@ -183,12 +259,49 @@ The record is part of the instance's saved state.
 | `present` | 1 when a fault was recorded, 0 otherwise; every other field is 0 when it is 0 |
 | `frame`, `line`, `dot` | where the beam was: the frame count, the line (0 to 312) and the dot (0 to 341) |
 | `pc` | the CPU's program counter at the faulting instruction |
-| `addr`, `width` | the address or port accessed and the access width in bytes |
+| `addr`, `width` | the full 16-bit address or port accessed and the access width in bits (8) |
 | `opcode` | the opcode byte being executed |
-| `device`, `kind` | which device faulted and how; opaque codes in this release, given names when the CPU and the bus exist |
+| `device`, `kind` | which device faulted and how, as the codes below |
 
-The test card runs no CPU, so in this release `present` is always 0. The call works before a load too, and then
-also reports `present` 0.
+`kind` and `device` take these values; both lists only grow, and 0 means none.
+
+| `kind` | Constant | Recorded when |
+|---|---|---|
+| 1 | `COGMASTER_FAULT_KIND_UNMAPPED_READ` | a read nothing drives returns open bus: a port in `$00`–`$3F` other than the Game Gear's `$00`–`$06`, the cartridge slots with the cartridge disabled by port `$3E`, or work RAM disabled by port `$3E` |
+| 2 | `COGMASTER_FAULT_KIND_UNMAPPED_WRITE` | a write nothing takes: on the Japanese console or the Game Gear, which decode every port address, a port in `$00`–`$3F` or `$80`–`$BF` that nothing latches, such as `$3E` on the Game Gear; the cartridge slots with the cartridge disabled by port `$3E`, which also hides `$FFFC`–`$FFFF` from its mapper; or work RAM disabled by port `$3E`, except a write to `$FFFC`–`$FFFF` the enabled cartridge takes |
+| 3 | `COGMASTER_FAULT_KIND_ROM_WRITE` | a write to `$0000`–`$BFFF` that is neither a register of the cartridge's mapper nor cartridge RAM |
+| 4 | `COGMASTER_FAULT_KIND_MAPPER_RANGE` | a bank number at or past the end of an image whose page count is not a power of two, or a write to `$FFFC` that sets bit 7, bit 4 or bits 1–0 |
+| 5 | `COGMASTER_FAULT_KIND_ED_UNDEFINED` | the CPU ran an opcode after `$ED` that the Z80 does not define, as an 8 T-state no-operation; `opcode` is that second byte and `pc` the address of the `$ED` |
+
+| `device` | Constant | Meaning |
+|---|---|---|
+| 0 | `COGMASTER_FAULT_DEVICE_NONE` | no device answers the address |
+| 1 | `COGMASTER_FAULT_DEVICE_CPU` | the CPU itself |
+| 2 | `COGMASTER_FAULT_DEVICE_CART` | the cartridge |
+| 3 | `COGMASTER_FAULT_DEVICE_RAM` | work RAM |
+| 4 | `COGMASTER_FAULT_DEVICE_MAPPER` | the cartridge's mapper |
+| 5 | `COGMASTER_FAULT_DEVICE_CTRL` | the memory and I/O control ports `$3E` and `$3F` |
+
+`addr` is the full 16-bit bus address; for `IN A,(n)` and `OUT (n),A` that is A × 256 + n. Outside kind 5, `pc`
+is the address of the instruction, its first `$DD` or `$FD` prefix included, and `opcode` its first byte after
+those prefixes.
+
+Things shipped games do are never faults, so the record stays free for the real one: reads of `$C0`–`$FF` while
+port `$3E` has the I/O chip disabled, ports `$F0`–`$F2`, `$DE` and `$DF`, writes to the I/O chip's ports, the Game
+Gear's link ports `$01`–`$05`, a bank number past the end of an image whose page count is a power of two (it
+wraps), toggling port `$3E`, and undocumented CPU instructions. An undriven read returns `$FF` and counts in the
+instance's open-bus counter instead. The test card runs no CPU, so it never records a fault. The call works before
+a load too, and then reports `present` 0.
+
+## Reading memory
+
+`cogmaster_peek(m, COGMASTER_SPACE_BUS, addr)` returns the byte the CPU would read at `addr` (`$0000`-`$FFFF`)
+right now: the cartridge through its mapper, work RAM and its mirror, and `$FF` where port `$3E` has taken the
+cartridge or work RAM off the bus. It has no side effect: it moves no clock, records no fault, counts no open-bus
+read and clears no status, so peeking every address leaves the saved state byte for byte the same. A peek with no
+answer returns a value above 255: a NULL instance, no successful `cogmaster_load` yet, a `space` other than
+`COGMASTER_SPACE_BUS` (0, the only space), or an `addr` above `$FFFF`. With the test card loaded the slots read
+`$FF`.
 
 ## Information
 
@@ -200,10 +313,13 @@ also reports `present` 0.
 | `crop_w`, `crop_h` | 256, 192 | 160, 144 |
 | `field_w`, `field_h` | 256, 192 | 256, 192 |
 | `max_w`, `max_h` | 256, 240 | 256, 240 |
-| `fps_num`, `fps_den` | 1,640,625 / 27,379 (about 59.92 Hz) | the same |
+| `fps_num`, `fps_den` | 1,640,625 / 27,379 (about 59.92 Hz); on PAL 13,300,856 / 267,615 (about 49.70 Hz) | 1,640,625 / 27,379 |
 | `par_num`, `par_den` | 8 / 7 | 6 / 5 |
+| `region` | the loaded region: `COGMASTER_REGION_EXPORT` or `COGMASTER_REGION_JAPAN` | the same |
+| `tv` | the loaded video standard: `COGMASTER_TV_NTSC` or `COGMASTER_TV_PAL` | `COGMASTER_TV_NTSC` |
 
-The pixel aspect ratio is reported, never applied. `max_w` × `max_h` sizes a buffer for any frame.
+`region` and `tv` are never AUTO: they report what `load` resolved. The pixel aspect ratio is reported, never
+applied. `max_w` × `max_h` sizes a buffer for any frame.
 
 ## Functions and statuses
 
@@ -213,24 +329,28 @@ changes no state; a failed `cogmaster_load` keeps the content that was loaded be
 | Status | Value | Returned when |
 |---|---|---|
 | `COGMASTER_STATUS_OK` | 0 | the call did what it says |
-| `COGMASTER_STATUS_ERR_ARGUMENT` | 1 | a required pointer is NULL; the allocator lacks `alloc` or `free`; `image` is not NULL or `image_size` is not 0; `flags` has an unknown bit; `pitch_bytes` is above 65536; the reset `kind` is unknown |
+| `COGMASTER_STATUS_ERR_ARGUMENT` | 1 | a required pointer is NULL (`cogmaster_probe`'s `image` included); the allocator lacks `alloc` or `free`; `image` is NULL while `image_size` is not 0; `flags` has an unknown bit; `pitch_bytes` is above 65536; the reset `kind` is unknown |
 | `COGMASTER_STATUS_ERR_STRUCT_SIZE` | 2 | a size tag breaks the rules in [Structs and sizes](#structs-and-sizes) |
-| `COGMASTER_STATUS_ERR_NO_MEMORY` | 3 | `alloc` returned NULL in `cogmaster_create`; `*out` is left as it was |
+| `COGMASTER_STATUS_ERR_NO_MEMORY` | 3 | `alloc` returned NULL in `cogmaster_create` (`*out` is left as it was) or in `cogmaster_load` |
 | `COGMASTER_STATUS_ERR_BUFFER_TOO_SMALL` | 4 | `pitch_bytes` is below `w × 2` for the rectangle requested |
 | `COGMASTER_STATUS_ERR_NO_CONTENT` | 5 | `cogmaster_run_frame`, `cogmaster_get_frame`, `cogmaster_get_info` or `cogmaster_reset` before a successful `cogmaster_load` |
-| `COGMASTER_STATUS_ERR_PROFILE_REJECTED` | 6 | `cogmaster_media.machine` is not one of the `COGMASTER_MACHINE_*` values |
+| `COGMASTER_STATUS_ERR_PROFILE_REJECTED` | 6 | `cogmaster_media.machine`, `region` or `tv` is not one of its `COGMASTER_MACHINE_*`, `COGMASTER_REGION_*` or `COGMASTER_TV_*` values, or the pair was never made: `COGMASTER_TV_PAL` with `COGMASTER_MACHINE_GG` or with `COGMASTER_REGION_JAPAN` |
+| `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE` | 7 | an image is below 1,024 or above 1,048,576 + 512 bytes; checked before every other load rule |
+| `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD` | 8 | the image is on a cartridge board the library does not emulate, or is an 8 KiB Game Gear image (the X-Terminator cheat device) |
 
 | Function | Can return |
 |---|---|
 | `cogmaster_get_versions(out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE |
 | `cogmaster_create(cfg, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_MEMORY |
 | `cogmaster_destroy(m)` | nothing; NULL is accepted |
-| `cogmaster_load(m, media)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_PROFILE_REJECTED |
+| `cogmaster_load(m, media)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_MEMORY, ERR_PROFILE_REJECTED, ERR_UNSUPPORTED_SIZE, ERR_UNSUPPORTED_BOARD |
 | `cogmaster_run_frame(m, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT |
 | `cogmaster_get_frame(m, io)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT, ERR_BUFFER_TOO_SMALL |
 | `cogmaster_get_info(m, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT |
 | `cogmaster_reset(m, kind)` | OK, ERR_ARGUMENT, ERR_NO_CONTENT |
 | `cogmaster_get_fault(m, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE |
+| `cogmaster_probe(image, n, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_UNSUPPORTED_SIZE, ERR_UNSUPPORTED_BOARD |
+| `cogmaster_peek(m, space, addr)` | a byte, 0 to 255, or a value above 255 (no status) |
 
 ## Version numbers
 
@@ -255,13 +375,19 @@ header does not know stays at the zero you wrote.
 Every public name, for reference: the opaque instance `cogmaster`; the types `cogmaster_status`,
 `cogmaster_allocator` (`alloc`, `free`, `user`), `cogmaster_config` (`size`, `allocator`), `cogmaster_versions`
 (`size`, `library_major`, `library_minor`, `library_patch`, `api`, `abi`, `behaviour`, `state`),
-`cogmaster_media` (`size`, `image`, `image_size`, `machine`), `cogmaster_info` (`size`, `machine`, `crop_w`,
-`crop_h`, `field_w`, `field_h`, `max_w`, `max_h`, `fps_num`, `fps_den`, `par_num`, `par_den`), `cogmaster_frame`
+`cogmaster_media` (`size`, `image`, `image_size`, `machine`, `region`, `tv`), `cogmaster_info` (`size`, `machine`,
+`crop_w`, `crop_h`, `field_w`, `field_h`, `max_w`, `max_h`, `fps_num`, `fps_den`, `par_num`, `par_den`, `region`,
+`tv`), `cogmaster_frame`
 (`size`, `pixels`, `pitch_bytes`, `flags`, `x`, `y`, `w`, `h`, `field_h`, `backdrop_rgb444`) and
 `cogmaster_run_result` (`size`, `stop`, `overshoot_ticks`) and `cogmaster_fault` (`size`, `present`, `frame`,
-`line`, `dot`, `pc`, `addr`, `opcode`, `width`, `device`, `kind`); the functions `cogmaster_get_versions`,
+`line`, `dot`, `pc`, `addr`, `opcode`, `width`, `device`, `kind`) and `cogmaster_cart_info` (`size`,
+`image_size`, `body_offset`, `header_at`, `checksum`, `checksum_ok`, `product_code`, `version`, `region_code`,
+`rom_size_code`, `machine_guess`, `region_guess`, `board`); the functions `cogmaster_get_versions`,
 `cogmaster_create`, `cogmaster_destroy`, `cogmaster_load`, `cogmaster_run_frame`, `cogmaster_get_frame`,
-`cogmaster_get_info`, `cogmaster_reset` and `cogmaster_get_fault`; the constants `COGMASTER_MACHINE_AUTO`,
-`COGMASTER_MACHINE_SMS2`, `COGMASTER_MACHINE_GG`, `COGMASTER_STOP_FRAME`, `COGMASTER_FRAME_FULL_FIELD`,
-`COGMASTER_RESET_SOFT` and `COGMASTER_RESET_POWER`, the seven `COGMASTER_STATUS_*` values above and the
+`cogmaster_get_info`, `cogmaster_reset`, `cogmaster_get_fault`, `cogmaster_probe` and `cogmaster_peek`; the constants `COGMASTER_MACHINE_AUTO`,
+`COGMASTER_MACHINE_SMS2`, `COGMASTER_MACHINE_GG`, `COGMASTER_REGION_AUTO`, `COGMASTER_REGION_EXPORT`,
+`COGMASTER_REGION_JAPAN`, `COGMASTER_TV_AUTO`, `COGMASTER_TV_NTSC`, `COGMASTER_TV_PAL`, `COGMASTER_STOP_FRAME`, `COGMASTER_FRAME_FULL_FIELD`,
+`COGMASTER_RESET_SOFT`, `COGMASTER_RESET_POWER`, `COGMASTER_BOARD_ROM_ONLY`, `COGMASTER_BOARD_SEGA`,
+`COGMASTER_BOARD_CODEMASTERS`, `COGMASTER_SPACE_BUS`, the five `COGMASTER_FAULT_KIND_*` and six `COGMASTER_FAULT_DEVICE_*` values
+above, the nine `COGMASTER_STATUS_*` values above and the
 version macros above.

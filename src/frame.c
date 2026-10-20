@@ -1,5 +1,6 @@
 /* cogmaster_run_frame and cogmaster_get_frame: every check first, then the
-   work. With the test card loaded a frame redraws the card into the field. */
+   work. With the test card loaded a frame redraws the card into the field;
+   with an image it runs the Z80 to the frame deadline. */
 #include <string.h>
 
 #include "internal.h"
@@ -35,19 +36,29 @@ cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out)
     if (!m->loaded) {
         return COGMASTER_STATUS_ERR_NO_CONTENT;
     }
-    for (uint32_t y = 0; y < COGMASTER__FIELD_H; y++) {
-        for (uint32_t x = 0; x < COGMASTER__FIELD_W; x++) {
-            m->field[y][x] = cogmaster__testcard_pixel(x, y, m->machine);
+    uint32_t overshoot = 0u;
+    if (m->cart.rom != NULL) {
+        /* No renderer yet: the field stays as load cleared it. */
+        overshoot = cogmaster__bus_run_frame(m);
+    } else {
+        for (uint32_t y = 0; y < COGMASTER__FIELD_H; y++) {
+            for (uint32_t x = 0; x < COGMASTER__FIELD_W; x++) {
+                m->field[y][x] = cogmaster__testcard_pixel(x, y, m->machine);
+            }
         }
+        /* The card is exactly one frame: the beam ends where it began. */
+        m->frame++;
+        uint32_t ticks = cogmaster__frame_ticks(m);
+        m->ticks += ticks;
+        m->bus.at += ticks;
+        m->bus.deadline += ticks;
     }
-    m->frame++;
-    m->ticks += COGMASTER__TICKS_PER_FRAME_NTSC;
     if (out != NULL) {
         cogmaster_run_result r;
         memset(&r, 0, sizeof r);
         r.size = out->size;
         r.stop = COGMASTER_STOP_FRAME;
-        r.overshoot_ticks = 0u;
+        r.overshoot_ticks = overshoot;
         cogmaster__write_out(out, &r, (uint32_t)sizeof r);
     }
     return COGMASTER_STATUS_OK;

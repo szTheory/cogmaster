@@ -2,15 +2,18 @@
 
 `cogmaster-run` is the headless runner. It runs the emulator for a fixed number of frames with no window, sound
 device or input device. It can print a frame hash, write PNG images and report frame times. Scripts and CI use it
-to check that a build produces the expected picture.
+to check that a build produces the expected picture. It can also describe a cartridge file without running it
+(see [Probe](#probe)).
 
-This release does not load cartridges. Every run shows the built-in test card (see [Test card](#test-card)).
+With no file, every run shows the built-in test card (see [Test card](#test-card)). This release has no input,
+sound or video chip drawing yet, so a cartridge runs but its picture stays black.
 
 ## Synopsis
 
 ```text
-cogmaster-run [--machine auto|sms|gg] --frames N [--hash] [--png N:FILE]...
-cogmaster-run [--machine auto|sms|gg] --bench N [--hash] [--png N:FILE]...
+cogmaster-run [--machine NAME] [--region NAME] --frames N [OPTION]... [FILE]
+cogmaster-run [--machine NAME] [--region NAME] --bench N [OPTION]... [FILE]
+cogmaster-run --probe FILE
 cogmaster-run --help | --version
 ```
 
@@ -18,16 +21,35 @@ cogmaster-run --help | --version
 
 | Option | Meaning |
 |---|---|
-| `--machine NAME` | `sms` for the Master System, `gg` for the Game Gear. `auto`, the default, is the Master System when no cartridge is loaded. |
+| `FILE`, `--rom FILE` | The cartridge image to run: a Master System or Game Gear ROM from 1,024 bytes to 1 MiB, optionally after a 512-byte copier header. Give one file. Without one, the test card shows. |
+| `--machine NAME` | `sms` for the Master System, `gg` for the Game Gear. `auto`, the default, reads the cartridge's header: region codes 5 to 7 are the Game Gear and 3 or 4 the Master System. With no header, a file name ending in `.gg` is the Game Gear and anything else the Master System. With no file, `auto` is the Master System. |
+| `--region NAME` | The console's region and TV standard together: `ntsc-u` is an export console on NTSC, `ntsc-j` a Japanese console on NTSC and `pal` an export console on PAL. `auto`, the default, is `ntsc-u`. |
 | `--frames N` | Run N frames, N from 1 to 4294967295. Give either `--frames` or `--bench`, once. |
 | `--bench N` | Run N frames, time each one and print the report described under [Bench report](#bench-report). N is from 1 to 1073741823. The runner keeps 4 bytes per frame, so a very large N can exit 1 because memory ran out. |
 | `--hash` | After the last frame, print the SHA-256 of its picture. |
-| `--png N:FILE` | After frame N, write its picture to FILE as a PNG. N is from 1 to the frame count. Repeat the option to write more frames or files. |
+| `--png N:FILE` | After frame N, write its picture to FILE as a PNG. N is from 1 to the frame count. Repeat the option to write more frames or files. If the run stops before frame N, FILE is not written and a line on standard error names it. |
+| `--trace first-fault` | After each frame, read the core's first-fault record; stop at the first fault and print it, described under [First fault](#first-fault). |
+| `--mailbox` | After each frame, read the RAM mailbox a diagnostic ROM fills; stop at the first frame whose status reads done after reading running, and print the mailbox, described under [Mailbox](#mailbox). |
+| `--probe` | Print the file's header fields and digests, described under [Probe](#probe), and run nothing. Give it only with a file. |
 | `--help` | Print the usage text and the exit statuses. Give it alone. |
 | `--version` | Print `cogmaster-run` and the version, for example `cogmaster-run 1.2.3`. Give it alone. |
 
 You can give options in any order. Anything else on the command line is a usage error and nothing runs. That
-includes a file name and any option this release does not have.
+includes a second file and any option this release does not have.
+
+## Refusals
+
+The runner exits 77 and runs nothing when it cannot run what was asked:
+
+- a file larger than 64 MiB, refused before any of it is read;
+- an image smaller than 1,024 bytes or larger than 1 MiB plus a 512-byte copier header;
+- a cartridge whose board (its bank-switching hardware) is not supported: the core runs cartridges with no mapper,
+  the Sega mapper and the Codemasters mapper;
+- an 8 KiB image on the Game Gear, which is the X-Terminator cheat device rather than a game;
+- a machine and region no console had: PAL with the Game Gear or with `ntsc-j`'s Japanese console;
+- a file whose name ends in `.sg` or `.sc`, refused unread with `unsupported: SG-1000 (planned)`.
+
+A file that cannot be read exits 1.
 
 ## Frame hash
 
@@ -50,6 +72,100 @@ uncompressed and the file carries no aspect-ratio metadata. The runner builds th
 N and writes it in one call. If the file cannot be written in full, it is removed and the runner exits 1.
 
 This PNG is the reference for screenshot comparisons: it is the card exactly as the core produces it.
+
+## Probe
+
+`--probe FILE` prints one `key=value` line per key, always every key and always in this order. Later releases only
+add keys at the end. Integers are decimal and digests lowercase hexadecimal.
+
+| Key | Value |
+|---|---|
+| `size` | the file's size in bytes |
+| `copier_header` | 1 when the size is 512 past a multiple of 16 KiB, so a copier wrote a 512-byte header in front, else 0 |
+| `header_at` | where the ROM header sits in the image after any copier header: `$7FF0`, `$3FF0`, `$1FF0`, or `none` |
+| `header_magic` | 1 when a ROM header was found, else 0 |
+| `checksum` | the checksum word the header stores |
+| `checksum_ok` | 1 when it equals the sum the export console's BIOS computes over the range the size code names, else 0 |
+| `product_code` | the header's product code |
+| `version` | the header's version number |
+| `region_code` | 3 Master System Japan, 4 Master System export, 5 Game Gear Japan, 6 Game Gear export, 7 Game Gear international |
+| `rom_size_code` | the header's size code, 0 to 15 |
+| `machine_guess` | `sms` or `gg`: the machine `--machine auto` runs the file on |
+| `region_guess` | `ntsc-j` for a Japanese region code, else `ntsc-u` |
+| `mapper_guess` | `none` (no mapper, 48 KiB or less), `sega`, `codemasters`, or `unsupported` for an image the core will not load |
+| `sha1`, `sha256`, `crc32`, `md5` | digests of the whole file |
+| `sha1_headerless`, `sha256_headerless`, `crc32_headerless`, `md5_headerless` | the same digests of the file after its copier header, or `none` when it has none |
+
+Each header field from `checksum` to `rom_size_code` is `none` when the image has no ROM header. `md5` is the
+RetroAchievements hash for both machines: the MD5 of the whole file, copier header included. `crc32` is the value
+RetroArch's playlist scanner matches.
+
+`--probe` runs no emulation. It exits 0, or 77 after printing every key for an image the core will not load
+because of its size or its board.
+
+## First fault
+
+`--trace first-fault` checks after each frame whether the guest has done something no hardware answers. At the
+first such fault the run stops after that frame and prints one line:
+
+```text
+fault frame=0 line=192 dot=329 pc=$0002 op=$DB addr=$0000 width=8 dev=ctrl kind=unmapped_read
+```
+
+With no fault by the last frame it prints `fault none`. Either way the exit status is 0: the fault is data about
+the guest, not a failure of the run. `--hash` and `--bench` output follows the line, for the frames that ran.
+
+| Field | Value |
+|---|---|
+| `frame` | the frame the fault happened in, counted from 0 at load |
+| `line`, `dot` | the beam position: line and dot within the frame |
+| `pc` | the address of the instruction, including its first `$DD` or `$FD` prefix |
+| `op` | the instruction's first byte after any prefix; for `ed_undefined`, the byte after `$ED` |
+| `addr` | the full 16-bit bus address; for `IN` and `OUT` with an immediate port, A × 256 + the port |
+| `width` | the access width in bits, 8 |
+| `dev` | `none`, `cpu`, `cart`, `ram`, `mapper` or `ctrl` (the memory and I/O control ports `$3E` and `$3F`) |
+| `kind` | `unmapped_read`, `unmapped_write`, `rom_write`, `mapper_range` or `ed_undefined` |
+
+[Embedding](embedding.md) says when each kind is recorded and which guest behaviour is never a fault. Later
+releases add kinds and devices; scripts should accept names they do not know.
+
+## Mailbox
+
+The diagnostic ROMs in `tests/roms/src` measure the machine and write what they measured into work RAM at
+`$C100`-`$C1FF`:
+
+| Address | Content |
+|---|---|
+| `$C100`-`$C103` | the magic `CMDG` |
+| `$C104` | the protocol version, 1 |
+| `$C105` | the status: `$80` running, `$00` done |
+| `$C106`, `$C107` | the record count and the ROM's id |
+| `$C108`-`$C109` | the CRC-16 of `$C110`-`$C1FF`, low byte first |
+| `$C110` + 4 × n | record n: its test id, its flags (bit 0 valid), its value low byte first; up to 60 records |
+
+The CRC-16 is CCITT's: polynomial `$1021`, initial value `$FFFF`, no reflection and no final XOR, so the nine
+bytes `123456789` give `$29B1`.
+
+`--mailbox` reads the mailbox after each frame without disturbing the run (the library's `cogmaster_peek`). The run
+stops after the first frame whose status reads `$00` with the magic in place, once an earlier frame has ended with
+the status reading `$80`; otherwise it runs all `--frames N` frames. Work RAM reads `$00` from power-on, so a ROM
+that has not yet set up its mailbox, or a ROM that has none, is not taken as done. A ROM that finishes within its
+first frame runs to the frame count. Then the runner prints, in hexadecimal:
+
+```text
+status=00
+rom=01
+magic=ok
+crc=ok
+01=F1F0 flags=1
+02=F1F0 flags=1
+```
+
+`status` and `rom` are the bytes at `$C105` and `$C107`. `magic` is `ok` when `$C100` holds `CMDG`, else `bad`;
+`crc` is `ok` when the stored CRC matches the records, else `bad`. Then one `NN=VVVV flags=F` line per record, in
+order: the test id, the value and the flags. A status other than `00` means the ROM had not finished by the last
+frame. The runner only measures: it judges nothing, and the exit status is 0 whatever the mailbox holds.
+`--hash` and `--bench` output follows the mailbox.
 
 ## Bench report
 
@@ -89,7 +205,8 @@ the line is `max_rss_kib 0`.
 ## Stopping
 
 SIGINT (Ctrl+C) or SIGTERM ends the run after the frame in progress. Output is never cut off part-way through a
-report. That frame's PNG is still written. `--hash` prints the last frame that ran, and `--bench` reports the
+report. That frame's PNG is still written; a `--png` for a later frame is not, and a line on standard error names
+it, as after a `--trace` or `--mailbox` stop. `--hash` prints the last frame that ran, and `--bench` reports the
 frames that ran. Output is flushed and the exit status is 0. A signal that was already ignored when the runner
 started, as under `nohup`, stays ignored.
 
@@ -98,9 +215,10 @@ started, as under `nohup`, stays ignored.
 `cogmaster-run --help` prints this table:
 
 ```text
-  0  ok       every frame ran, or SIGINT or SIGTERM stopped the run after a whole frame
-  1  failure  a file could not be written, memory ran out or the core failed
+  0  ok       every frame ran or the probe printed, or a signal stopped the run after a whole frame
+  1  failure  a file could not be read or written, memory ran out or the core failed
   2  usage    the command line is invalid, so nothing ran
+  77  refused  the cartridge, its size or the machine and region is not supported, so nothing ran
 ```
 
 Errors and usage messages go to standard error. Standard output holds only the results described above.
