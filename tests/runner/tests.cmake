@@ -446,6 +446,21 @@ if(CMAKE_SCRIPT_MODE_FILE)
     endif()
     # A file the runner cannot write is a failure, not a success.
     expect_exit(1 "cannot write" --frames 1 --png "1:${OUT}.missing/x.png")
+    # A failed close removes the wide-opened target and preserves its CP1252 alias.
+    set(target "${OUT}.café.png")
+    set(alias "${OUT}.cafÃ©.png")
+    file(WRITE "${alias}" "unrelated")
+    execute_process(COMMAND ${EMULATOR} ${FAIL_CLOSE} --frames 1 --png "1:${target}"
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "1" OR NOT err MATCHES "cannot write" OR EXISTS "${target}"
+        OR NOT EXISTS "${alias}")
+      message(FATAL_ERROR "PNG close cleanup changed the wrong path: exit ${rc}\n${out}${err}")
+    endif()
+    file(READ "${alias}" data)
+    if(NOT data STREQUAL "unrelated")
+      message(FATAL_ERROR "PNG cleanup changed unrelated file bytes")
+    endif()
+    file(REMOVE "${alias}")
   elseif(CASE STREQUAL "png_syntax")
     # Each malformed or out-of-range --png is a usage error, whichever order
     # the options come in, and writes nothing.
@@ -699,9 +714,19 @@ cogmaster_add_test(NAME runner.input
 # Fault prevented: the reference PNG the RetroArch screenshot is compared
 # with changes bytes (palette, layout or encoder) while the frame hash still
 # passes, or no longer shows the card.
+set(png_failure_sources ${COGMASTER_RUNNER_SOURCES})
+list(REMOVE_ITEM png_failure_sources ${PROJECT_SOURCE_DIR}/runner/main.c)
+add_executable(cogmaster-test-png-close ${CMAKE_CURRENT_LIST_DIR}/png_close_failure.c
+  ${png_failure_sources})
+target_link_libraries(cogmaster-test-png-close PRIVATE cogmaster::cogmaster cogmaster-host)
+target_compile_definitions(cogmaster-test-png-close PRIVATE _POSIX_C_SOURCE=200809L)
+set_target_properties(cogmaster-test-png-close PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-png-close)
 cogmaster_add_test(NAME runner.png_file
   COMMAND ${runner_check} -DCASE=png_file -DOUT=${PROJECT_BINARY_DIR}/tests/card.png
     -DDECODE=$<TARGET_FILE:cogmaster-test-runner> -DEXPECTED=${COGMASTER_TESTCARD_PNG_SHA256_SMS}
+    -DFAIL_CLOSE=$<TARGET_FILE:cogmaster-test-png-close>
     -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS runner portable TIMEOUT 30)
 

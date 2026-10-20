@@ -179,7 +179,7 @@ static int write_png(const cogmaster *m, const char *path, uint16_t *pixels)
     if (!ok) {
         fprintf(stderr, "cogmaster-run: cannot write %s\n", path);
         if (f != NULL) {
-            (void)remove(path);
+            (void)cogmaster__path_remove(path);
         }
         status = COGMASTER__EXIT_FAILURE;
     }

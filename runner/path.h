@@ -22,7 +22,15 @@ static FILE *cogmaster__path_open(const char *path, const char *mode)
     free(wide);
     return f;
 }
+static inline int cogmaster__path_remove(const char *path)
+{
+    wchar_t *wide = cogmaster__path_wide(path);
+    int result = wide != NULL ? _wremove(wide) : -1;
+    free(wide);
+    return result;
+}
 #else
 #define cogmaster__path_open fopen
+#define cogmaster__path_remove remove
 #endif
 #endif
