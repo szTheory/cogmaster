@@ -191,6 +191,7 @@ runner.bench.format	bench,portable,runner
 runner.bench.percentile	bench,portable,runner
 runner.exit.failure	portable,runner
 runner.exit.table	runner
+runner.expect.predicates	portable,runner
 runner.hash.gg	portable,runner
 runner.hash.repeat	portable,runner
 runner.hash.self_test	runner

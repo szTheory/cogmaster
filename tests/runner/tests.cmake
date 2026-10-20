@@ -1,4 +1,7 @@
 # cogmaster-run tests.
+if(NOT CMAKE_SCRIPT_MODE_FILE)
+  include(${CMAKE_CURRENT_LIST_DIR}/expect.cmake)
+endif()
 #
 # Run as a script (cmake -DCASE=<case> ... -P tests.cmake), this file is one
 # runner check; include()d by tests/tests.cmake, it registers the tests.
