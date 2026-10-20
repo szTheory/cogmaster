@@ -1,12 +1,11 @@
 /* The 192-line Mode 4 background, decoded from four bitplanes and the
-   little-endian name table (SMS-VDP sections 2.3, 2.4 and 3.1). Lines
+   little-endian name table (SMS-VDP section 2 and section 3). Lines
    already emitted are immutable until the next field. */
 #include "internal.h"
 
 static uint16_t vdp_colour(uint8_t c)
 {
-    return (uint16_t)(((c & 3u) * 5u) | (((c >> 2) & 3u) * 5u << 4) |
-                      (((c >> 4) & 3u) * 5u << 8));
+    return (uint16_t)(((c & 3u) * 5u) | (((c >> 2) & 3u) * 5u << 4) | (((c >> 4) & 3u) * 5u << 8));
 }
 
 static void vdp_line(cogmaster *m, uint32_t y)
@@ -18,10 +17,9 @@ static void vdp_line(cogmaster *m, uint32_t y)
         if ((v->reg[1] & 0x40u) != 0u && (v->reg[0] & 4u) != 0u) {
             uint32_t sx = (x + 256u - v->reg[8]) & 255u;
             uint32_t sy = (y + v->reg[9]) % 224u;
-            uint32_t name = ((uint32_t)(v->reg[2] & 14u) << 10) +
-                            (sy / 8u * 32u + sx / 8u) * 2u;
-            uint32_t attr = v->vram[name & 0x3FFFu] |
-                            ((uint32_t)v->vram[(name + 1u) & 0x3FFFu] << 8);
+            uint32_t name = ((uint32_t)(v->reg[2] & 14u) << 10) + (sy / 8u * 32u + sx / 8u) * 2u;
+            uint32_t attr =
+                v->vram[name & 0x3FFFu] | ((uint32_t)v->vram[(name + 1u) & 0x3FFFu] << 8);
             uint32_t tx = sx & 7u, ty = sy & 7u;
             if ((attr & 0x200u) != 0u) {
                 tx = 7u - tx;

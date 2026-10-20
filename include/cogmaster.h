@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#define COGMASTER_API_VERSION 2
+#define COGMASTER_API_VERSION 3
 #define COGMASTER_ABI_VERSION 1
 #define COGMASTER_BEHAVIOUR_REVISION 1
 #define COGMASTER_STATE_FORMAT_VERSION 2
@@ -118,7 +118,17 @@ typedef struct cogmaster_run_result {
     uint32_t size;
     uint32_t stop; /* COGMASTER_STOP_* */
     uint32_t overshoot_ticks;
+    uint32_t lagged;
 } cogmaster_run_result;
+
+#define COGMASTER_DEVICE_PAD 0u
+#define COGMASTER_DEVICE_NONE 1u
+typedef struct cogmaster_input {
+    uint32_t size;
+    uint32_t p1, p2;
+    uint32_t pause, reset, start;
+    uint32_t port1, port2;
+} cogmaster_input;
 
 typedef struct cogmaster_fault {
     uint32_t size;
@@ -143,6 +153,7 @@ typedef struct cogmaster_cart_info {
 } cogmaster_cart_info;
 
 cogmaster_status cogmaster_get_versions(cogmaster_versions *out);
+cogmaster_status cogmaster_set_input(cogmaster *m, const cogmaster_input *in);
 cogmaster_status cogmaster_create(const cogmaster_config *cfg, cogmaster **out);
 void cogmaster_destroy(cogmaster *m); /* NULL-safe */
 cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media);

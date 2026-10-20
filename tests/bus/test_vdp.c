@@ -518,10 +518,14 @@ static const struct {
     void (*run)(void);
 } cases[] = {
     {"background", test_background},
-    {"control_port", test_control_port},   {"data_port", test_data_port},
-    {"hcounter", test_hcounter},           {"pause_nmi", test_pause_nmi},
-    {"port_decode", test_port_decode},     {"status", test_status},
-    {"vcounter.ntsc", test_vcounter_ntsc}, {"vcounter.pal", test_vcounter_pal},
+    {"control_port", test_control_port},
+    {"data_port", test_data_port},
+    {"hcounter", test_hcounter},
+    {"pause_nmi", test_pause_nmi},
+    {"port_decode", test_port_decode},
+    {"status", test_status},
+    {"vcounter.ntsc", test_vcounter_ntsc},
+    {"vcounter.pal", test_vcounter_pal},
 };
 
 int main(int argc, char **argv)

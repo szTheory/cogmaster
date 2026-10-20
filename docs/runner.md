@@ -5,8 +5,20 @@ device or input device. It can print a frame hash, write PNG images and report f
 to check that a build produces the expected picture. It can also describe a cartridge file without running it
 (see [Probe](#probe)).
 
-With no file, every run shows the built-in test card (see [Test card](#test-card)). This release has no input,
-sound or video chip drawing yet, so a cartridge runs but its picture stays black.
+With no file, every run shows the built-in test card (see [Test card](#test-card)). Content uses the Mode 4
+background renderer; audio remains silent.
+
+`--input FILE` reads exactly one absolute record per requested frame, in this order:
+`p1=00 p2=00 pause=0 reset=0 start=0`. Masks have two hexadecimal digits; bits 0–5 are Up, Down, Left,
+Right, button 1 and button 2. Console values are 0 or 1. LF, CRLF and an optional final newline work.
+Blank lines, comments, unknown or repeated fields, high mask bits, overlong lines, missing and surplus
+records exit 2 before running. File errors exit 1. The reader uses fixed memory and validates the whole
+body before execution. Without `--input`, all levels are released. `--port1 pad|none` and `--port2 pad|none`
+default to pad; none releases that pad's six pins. Opposing directions remain independent.
+
+Record 1 applies before frame 1. For example, released, `p1=10`, `p1=10`, released means the first press
+is visible to CPU reads in frame 2, remains held in frame 3, and releases in frame 4. All five fields are
+required on every record. Pause is edge-triggered by the core; Reset and native Game Gear Start are levels.
 
 ## Synopsis
 
@@ -217,7 +229,7 @@ started, as under `nohup`, stays ignored.
 ```text
   0  ok       every frame ran or the probe printed, or a signal stopped the run after a whole frame
   1  failure  a file could not be read or written, memory ran out or the core failed
-  2  usage    the command line is invalid, so nothing ran
+  2  usage    the command line or input script is invalid, so nothing ran
   77  refused  the cartridge, its size or the machine and region is not supported, so nothing ran
 ```
 

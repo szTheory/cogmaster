@@ -15,6 +15,8 @@ typedef struct cogmaster__run_options {
     uint32_t frames;
     int bench;
     int hash;
+    const char *input;
+    uint32_t port1, port2;
     uint32_t machine;             /* COGMASTER_MACHINE_*; AUTO is resolved from the file */
     uint32_t region, tv;          /* COGMASTER_REGION_* and COGMASTER_TV_* */
     const char *file;             /* the cartridge image, or NULL for the test card */

@@ -21,6 +21,9 @@ static const char synopsis[] =
     "  --frames N           run N frames (N >= 1)\n"
     "  --bench N            run N frames and report the time per frame\n"
     "  --hash               print the SHA-256 of the last frame's crop\n"
+    "  --input FILE         absolute pad and console record per frame\n"
+    "  --port1 pad|none     first controller device (default pad)\n"
+    "  --port2 pad|none     second controller device (default pad)\n"
     "  --png N:FILE         write frame N's crop to FILE as a PNG (1 <= N <= --frames)\n"
     "  --trace first-fault  stop at the first fault and print it, or 'fault none'\n"
     "  --mailbox            stop when the RAM mailbox reports done; print its records\n"
@@ -161,7 +164,8 @@ static int check_combination(const cogmaster__run_options *o)
         if (o->file == NULL) {
             return usage("--probe needs a file");
         }
-        if (o->frames != 0u || o->hash || o->png_count != 0u || o->trace || o->mailbox) {
+        if (o->frames != 0u || o->hash || o->png_count != 0u || o->trace || o->mailbox ||
+            o->input) {
             return usage("--probe runs nothing, so it takes no run option");
         }
         return COGMASTER__EXIT_OK;
@@ -203,6 +207,23 @@ int cogmaster__parse_options(int argc, char **argv, cogmaster__run_options *o)
             }
             if (o->bench && cogmaster__bench_bytes(o->frames) == 0u) {
                 return usage("--bench is at most 1073741823");
+            }
+            i++;
+        } else if (strcmp(arg, "--input") == 0) {
+            if (value == NULL || *value == '\0' || o->input != NULL) {
+                return usage("--input needs one file");
+            }
+            o->input = value;
+            i++;
+        } else if (strcmp(arg, "--port1") == 0 || strcmp(arg, "--port2") == 0) {
+            if (!is(value, "pad") && !is(value, "none")) {
+                return usage("--port1 and --port2 need pad or none");
+            }
+            uint32_t device = is(value, "none") ? COGMASTER_DEVICE_NONE : COGMASTER_DEVICE_PAD;
+            if (strcmp(arg, "--port1") == 0) {
+                o->port1 = device;
+            } else {
+                o->port2 = device;
             }
             i++;
         } else if (strcmp(arg, "--hash") == 0) {

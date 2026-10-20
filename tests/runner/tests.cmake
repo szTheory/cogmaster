@@ -58,7 +58,36 @@ if(CMAKE_SCRIPT_MODE_FILE)
     endif()
   endfunction()
 
-  if(CASE STREQUAL "probe_keys")
+  if(CASE STREQUAL "input")
+    set(record "p1=00 p2=00 pause=0 reset=0 start=0")
+    foreach(ending IN ITEMS lf crlf none)
+      set(eol "\n")
+      if(ending STREQUAL "crlf")
+        set(eol "\r\n")
+      elseif(ending STREQUAL "none")
+        set(eol "")
+      endif()
+      file(WRITE "${OUT}" "${record}${eol}")
+      expect_exit(0 "frame 1 sha256" --frames 1 --input ${OUT} --hash)
+    endforeach()
+    set(bad "" "${record}\n${record}\n" "p1=40 p2=00 pause=0 reset=0 start=0\n"
+      "p1=00 p2=80 pause=0 reset=0 start=0\n" "p1=0G p2=00 pause=0 reset=0 start=0\n"
+      "p1=00 p1=00 pause=0 reset=0 start=0\n" "p1=00 p2=00 pause=2 reset=0 start=0\n"
+      "p1=00 p2=00 pause=0 reset=2 start=0\n" "p1=00 p2=00 pause=0 reset=0 start=2\n"
+      "${record} unknown=0\n" "\n" "#comment\n" "p1=00\n" "${record}\r")
+    string(REPEAT x 100 long)
+    list(APPEND bad "${long}\n")
+    foreach(body IN LISTS bad)
+      file(WRITE "${OUT}" "${body}")
+      expect_exit(2 "input file error" --frames 1 --input ${OUT} --hash)
+    endforeach()
+    file(WRITE "${OUT}" "${record}\n")
+    expect_exit(2 "input file error" --frames 2 --input ${OUT} --hash)
+    expect_exit(1 "input file error" --frames 1 --input ${OUT}.missing)
+    expect_exit(2 "usage" --frames 1 --port1 other)
+    expect_exit(2 "usage" --frames 1 --port2)
+    expect_exit(0 "frame 1 sha256" --frames 1 --port1 none --port2 none --hash)
+  elseif(CASE STREQUAL "probe_keys")
     # A 128 KiB export image with a good header and no mapper stores: the
     # keys in order, the header read at $7FF0 and the Sega board guessed.
     probe(${SEEDS}/header-export-128k.sms)
@@ -273,7 +302,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     # Options a later release adds are refused now, and --help does not
     # mention them; --help and --version take nothing else; --trace takes
     # only first-fault and --region only its four names.
-    foreach(opt --expect --port1 --port2 --input --hash-audio --capabilities --boot --bios)
+    foreach(opt --expect --hash-audio --capabilities --boot --bios)
       expect_exit(2 "unknown option" --frames 1 ${opt})
       expect_exit(2 "unknown option" --frames 1 ${opt} x)
     endforeach()
@@ -287,7 +316,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     expect_exit(2 "usage" --probe)
     expect_exit(2 "usage" --probe --frames 1 ${SEEDS}/di-halt.sms)
     execute_process(COMMAND ${EMULATOR} ${RUN} --help RESULT_VARIABLE rc OUTPUT_VARIABLE out)
-    if(NOT rc STREQUAL "0" OR out MATCHES "--(expect|port|input|hash-audio|capabilities|boot|bios)")
+    if(NOT rc STREQUAL "0" OR out MATCHES "--(expect|hash-audio|capabilities|boot|bios)")
       message(FATAL_ERROR "--help: expected exit 0 and no later option, got exit ${rc}\n${out}")
     endif()
   elseif(CASE STREQUAL "positional")
@@ -420,6 +449,12 @@ cogmaster_add_test(NAME runner.png
 
 set(runner_check ${CMAKE_COMMAND} -DRUN=$<TARGET_FILE:cogmaster-run>
   "-DEMULATOR=${runner_emulator}" -DSEEDS=${COGMASTER_SEEDS_DIR})
+
+# Fault prevented: malformed, truncated or surplus absolute input being run as released input.
+cogmaster_add_test(NAME runner.input
+  COMMAND ${runner_check} -DCASE=input -DOUT=${PROJECT_BINARY_DIR}/tests/input.txt
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS runner portable TIMEOUT 30)
 
 # Fault prevented: the reference PNG the RetroArch screenshot is compared
 # with changes bytes (palette, layout or encoder) while the frame hash still

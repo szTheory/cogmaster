@@ -286,6 +286,18 @@ static void state_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
     ram_io(io, m);
     mapper_io(io, m);
     io_io(io, m);
+    cogmaster_input *inputs[2] = {&m->pending_input, &m->input};
+    for (uint32_t i = 0u; i < 2u; i++) {
+        cogmaster_input *p = inputs[i];
+        cogmaster__sio_u32(io, "input_p1", &p->p1, 0u, 63u);
+        cogmaster__sio_u32(io, "input_p2", &p->p2, 0u, 63u);
+        cogmaster__sio_u32(io, "input_pause", &p->pause, 0u, 1u);
+        cogmaster__sio_u32(io, "input_reset", &p->reset, 0u, 1u);
+        cogmaster__sio_u32(io, "input_start", &p->start, 0u, 1u);
+        cogmaster__sio_u32(io, "input_port1", &p->port1, 0u, 1u);
+        cogmaster__sio_u32(io, "input_port2", &p->port2, 0u, 1u);
+    }
+    cogmaster__sio_u8(io, "input_read", &m->input_read, 0u, 1u);
     cogmaster__sio_u32(io, "render_line", &m->render_line, 0u, COGMASTER__FIELD_H);
     for (uint32_t y = 0u; y < COGMASTER__FIELD_MAX_H; y++) {
         for (uint32_t x = 0u; x < COGMASTER__FIELD_W; x++) {

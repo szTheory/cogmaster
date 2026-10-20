@@ -17,7 +17,13 @@ if(CMAKE_SCRIPT_MODE_FILE)
     message(FATAL_ERROR "${IMAGE}: SHA-256 ${got}, expected ${want}")
   endif()
   if(CASE STREQUAL "play")
-    execute_process(COMMAND ${EMULATOR} ${ORACLE} ${IMAGE} RESULT_VARIABLE rc
+    set(script "")
+    set(oracle_arg "")
+    if(INPUT)
+      set(script --input ${INPUT})
+      set(oracle_arg scripted)
+    endif()
+    execute_process(COMMAND ${EMULATOR} ${ORACLE} ${IMAGE} ${oracle_arg} RESULT_VARIABLE rc
       OUTPUT_VARIABLE want ERROR_VARIABLE err)
     if(NOT rc STREQUAL "0")
       message(FATAL_ERROR "pixel oracle exit ${rc}: ${err}")
@@ -26,7 +32,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(WRONG)
       set(want "deliberately-wrong-pixel-digest")
     endif()
-    execute_process(COMMAND ${EMULATOR} ${RUN} ${IMAGE} --frames 4 --hash
+    execute_process(COMMAND ${EMULATOR} ${RUN} ${IMAGE} --frames 14 --hash ${script}
       RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
     if(NOT rc STREQUAL "0" OR NOT out MATCHES "${want}")
       message(FATAL_ERROR "native frame mismatch: exit ${rc}, ${out} ${err}")
@@ -107,6 +113,25 @@ cogmaster_add_test(NAME fixtures.boot_to_play
     "-DEMULATOR=${fixtures_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS fixtures portable TIMEOUT 10)
 
+set(play_input ${PROJECT_BINARY_DIR}/tests/play.input)
+set(play_body "")
+foreach(frame RANGE 1 14)
+  set(pad 00)
+  if(frame EQUAL 5 OR frame EQUAL 6 OR frame EQUAL 8)
+    set(pad 10)
+  endif()
+  string(APPEND play_body "p1=${pad} p2=00 pause=0 reset=0 start=0\n")
+endforeach()
+file(WRITE ${play_input} "${play_body}")
+# Fault prevented: held input counting twice, late boundary input, or disconnected pins sticking.
+cogmaster_add_test(NAME fixtures.boot_to_play.input
+  COMMAND ${CMAKE_COMMAND} -DCASE=play -DNAME=boot_to_play -DINPUT=${play_input}
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/boot_to_play.sms
+    -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+    -DORACLE=$<TARGET_FILE:cogmaster-test-play> -DRUN=$<TARGET_FILE:cogmaster-run>
+    "-DEMULATOR=${fixtures_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 10)
+
 set(cmd ${CMAKE_COMMAND} -DCASE=play -DNAME=boot_to_play -DWRONG=1
   -DIMAGE=${COGMASTER_FIXTURES_DIR}/boot_to_play.sms
   -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
@@ -137,6 +162,13 @@ set(fixtures_mailbox -DCASE=mailbox -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built
   -DJUDGE=${PROJECT_SOURCE_DIR}/tests/cmake/mailbox.cmake -DPROFILE=sms-export)
 set(fixtures_out ${PROJECT_BINARY_DIR}/tests/mailbox)
 file(MAKE_DIRECTORY ${fixtures_out})
+# Fault prevented: input measurements with invalid mailbox CRC or missing records.
+cogmaster_add_test(NAME fixtures.boot_to_play.mailbox
+  COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=boot_to_play
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/boot_to_play.sms -DFRAMES=20
+    -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/boot_to_play.txt
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 10)
 # Timeout: 10 s floor; 2 x 0.02 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME fixtures.mapper_sega
   COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=mapper_sega

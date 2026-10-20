@@ -62,6 +62,8 @@ fault.rom_write	bus,portable
 fault.unmapped_read	bus,portable
 fault.unmapped_write	bus,portable
 fixtures.boot_to_play	fixtures,portable
+fixtures.boot_to_play.input	fixtures,portable
+fixtures.boot_to_play.mailbox	fixtures,portable
 fixtures.boot_to_play.wrong_hash	fixtures,portable
 fixtures.hello	fixtures,portable
 fixtures.judge.hang	fixtures,portable
@@ -81,6 +83,7 @@ install.consumer	install
 install.consumer.cxx	install
 install.consumer.dll_crt	install
 install.stage	install
+io.absolute_input	io,portable
 io.decode_mirrors	io,portable
 io.gg_ports	io,portable
 io.open_bus	io,portable
@@ -133,6 +136,7 @@ runner.hash.sms	portable,runner
 runner.hashes_compare.byte.self_test	runner
 runner.hashes_compare.count.self_test	runner
 runner.hashes_file	portable,runner
+runner.input	portable,runner
 runner.load.machine_auto	portable,runner
 runner.load.region	portable,runner
 runner.mailbox.crc	portable,runner

@@ -4,8 +4,19 @@ The library is one static archive and one header, `cogmaster.h`, written in C17.
 the allocator you pass, keeps all state in the instance, starts no threads, opens no files, reads no clock and uses
 no floating point. It needs nothing from the C library beyond `memcpy`, `memmove`, `memset` and `memcmp`.
 
-This release loads a cartridge image and runs its CPU, but draws no picture from it yet: the frame of a loaded
-image stays black. With no image it runs the built-in test card.
+This release loads a cartridge image and draws its Mode 4 background. With no image it runs the built-in test card.
+
+`cogmaster_set_input` accepts a size-tagged `cogmaster_input` with `size`, `p1`, `p2`, `pause`, `reset`,
+`start`, `port1` and `port2`. It validates every field before replacing pending input. The two pad masks
+contain six independent bits (Up, Down, Left, Right, button 1, button 2). Console levels are binary.
+`COGMASTER_DEVICE_PAD` is zero, the default; `COGMASTER_DEVICE_NONE` is one and releases that port's pins.
+The native Game Gear has one local pad. Input latches before the next frame runs; identical submissions
+remain held levels. Pause queues an NMI only on a rising edge. Reset and native GG Start drive levels.
+The first input struct size is 32 bytes. Oversized zero tails follow the general size-tag rule.
+
+The appended `cogmaster_run_result.lagged` is one when no decoded controller read occurred in that frame.
+Legacy 12-byte callers receive only their original fields. The runner submits input before each frame and
+receives this result. Host peeks never earn lag credit.
 
 ## Getting it
 

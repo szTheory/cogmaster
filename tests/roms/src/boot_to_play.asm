@@ -9,6 +9,10 @@
 .ORG $66
     retn
 main:
+    xor a
+    ld ($C200),a
+    ld ($C201),a
+    ld ($C202),a
     ld a,5
     call mb_init
     xor a
@@ -53,11 +57,53 @@ palette:
     in a,($BF)
     call wait_frame
     call wait_frame
-    ld hl,$0F01
-    ld a,1
-    call mb_record
-    call mb_done
 forever:
+    ; One poll in VBlank per frame; bit 4 is active-low button 1.
+    in a,($DC)
+    cpl
+    and $10
+    ld b,a
+    ld a,($C201)
+    xor b
+    and b
+    ld c,a
+    ld a,b
+    ld ($C201),a
+    ld a,c
+    or a
+    jr z,no_edge
+    ld a,($C200)
+    inc a
+    ld ($C200),a
+    out ($BF),a
+    ld a,$88
+    out ($BF),a
+    ; Palette entry 15 is the visible colour counter, six-bit SMS CRAM.
+    ld a,15
+    out ($BF),a
+    ld a,$C0
+    out ($BF),a
+    ld a,($C200)
+    out ($BE),a
+no_edge:
+    ; Record the first eight polls, then seal once. CRC calculation never
+    ; delays any of the press/hold/release measurements.
+    ld a,($C202)
+    cp 8
+    jr nc,sampled
+    inc a
+    ld ($C202),a
+    push af
+    ld a,($C200)
+    ld h,a
+    ld l,a
+    pop af
+    call mb_record
+    ld a,($C202)
+    cp 8
+    jr nz,sampled
+    call mb_done
+sampled:
     call wait_frame
     jr forever
 wait_frame:

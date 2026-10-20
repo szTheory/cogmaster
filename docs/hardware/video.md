@@ -19,4 +19,10 @@ expands the diamond into eight explicit bit rows, adds 2 for odd columns,
 4 for columns 2,3,6,7 and 8 for columns 4–7. Red is `(n & 3) * 5`, green
 is `(n / 4) * 5`, blue is zero. Repeating this 8×8 construction across all
 256×192 coordinates gives the native little-endian SHA-256 checked against
-the runner. The ROM reports $0F01 in its mailbox after two frame flags.
+the runner. After two frame flags, the ROM polls button 1 once per frame.
+Press edges increment a colour counter (CRAM 15) and horizontal scroll by
+one; holding and release leave the counter unchanged. The first eight polls
+report `counter | scroll << 8` in successive mailbox records, sealed once
+after the eighth measurement. Live counter and previous button levels occupy
+$C200 and $C201. In the scripted check, frame 5 presses, 6 holds, 7 releases,
+8 presses again; counts are 1, 1, 1, 2 at those first boundaries.

@@ -5,6 +5,27 @@
    address (section 4, "Full decode exceptions"). */
 #include "internal.h"
 
+cogmaster_status cogmaster_set_input(cogmaster *m, const cogmaster_input *in)
+{
+    if (m == NULL || in == NULL) {
+        return COGMASTER_STATUS_ERR_ARGUMENT;
+    }
+    cogmaster_status st = cogmaster__check_size(in, 32u, (uint32_t)sizeof *in);
+    if (st != COGMASTER_STATUS_OK) {
+        return st;
+    }
+    if (!m->loaded) {
+        return COGMASTER_STATUS_ERR_NO_CONTENT;
+    }
+    if (in->p1 > 63u || in->p2 > 63u || in->pause > 1u || in->reset > 1u || in->start > 1u ||
+        in->port1 > COGMASTER_DEVICE_NONE || in->port2 > COGMASTER_DEVICE_NONE) {
+        return COGMASTER_STATUS_ERR_ARGUMENT;
+    }
+    m->pending_input = *in;
+    m->pending_input.size = 0u;
+    return COGMASTER_STATUS_OK;
+}
+
 /* $3E is active low (section 4). */
 #define IO_CART_OFF 0x40u
 #define IO_RAM_OFF 0x10u
@@ -59,8 +80,9 @@ void cogmaster__io_reset(cogmaster *m)
    pressed. No input reaches the core yet, so every button is up. */
 static uint8_t port_dc(const cogmaster *m)
 {
-    (void)m;
-    return 0xFFu;
+    uint32_t p1 = m->input.port1 == COGMASTER_DEVICE_NONE ? 0u : m->input.p1;
+    uint32_t p2 = m->input.port2 == COGMASTER_DEVICE_NONE || is_gg(m) ? 0u : m->input.p2;
+    return (uint8_t)~(p1 | ((p2 & 3u) << 6));
 }
 
 /* $DD: b3-0 port B left, right, TL, TR; b4 the reset button, 1 where there
@@ -71,7 +93,8 @@ static uint8_t port_dc(const cogmaster *m)
    the regions apart (section 5). The Game Gear has no TH lines. */
 static uint8_t port_dd(const cogmaster *m)
 {
-    uint8_t v = 0xFFu;
+    uint32_t p2 = m->input.port2 == COGMASTER_DEVICE_NONE || is_gg(m) ? 0u : m->input.p2;
+    uint8_t v = (uint8_t)~((p2 >> 2) | (is_gg(m) ? 0u : m->input.reset << 4));
     uint8_t c = m->io.io_ctrl;
     if (is_gg(m)) {
         return v;
@@ -97,6 +120,7 @@ static uint8_t chip_in(cogmaster *m, uint32_t p)
     if (full_decode(m) && p != 0xDCu && p != 0xDDu) {
         return cogmaster__io_open_bus(m);
     }
+    m->input_read = 1u;
     return (p & 1u) != 0u ? port_dd(m) : port_dc(m);
 }
 
@@ -108,7 +132,9 @@ uint8_t cogmaster__io_in(cogmaster *m, uint16_t port)
     }
     if (is_gg(m) && p <= 6u) {
         if (p == 0u) {
-            return (uint8_t)(GG_START_UP | (m->region == COGMASTER_REGION_JAPAN ? 0u : GG_EXPORT));
+            m->input_read = 1u;
+            return (uint8_t)((m->input.start ? 0u : GG_START_UP) |
+                             (m->region == COGMASTER_REGION_JAPAN ? 0u : GG_EXPORT));
         }
         return m->io.gg[p - 1u];
     }

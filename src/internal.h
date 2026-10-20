@@ -170,6 +170,8 @@ struct cogmaster {
     struct cogmaster__mapper mapper;
     struct cogmaster__io io;
     uint32_t render_line;
+    cogmaster_input pending_input, input;
+    uint8_t input_read;
     uint8_t ram[COGMASTER__RAM_SIZE];
     uint16_t field[COGMASTER__FIELD_MAX_H][COGMASTER__FIELD_W]; /* RGB444 per dot */
 };
@@ -239,7 +241,11 @@ _Static_assert(sizeof(cogmaster_frame) == 2 * COGMASTER__P + 32, "frame size");
 _Static_assert(offsetof(cogmaster_run_result, size) == 0, "run_result.size");
 _Static_assert(offsetof(cogmaster_run_result, stop) == 4, "run_result.stop");
 _Static_assert(offsetof(cogmaster_run_result, overshoot_ticks) == 8, "run_result.overshoot_ticks");
-_Static_assert(sizeof(cogmaster_run_result) == 12, "run_result size");
+_Static_assert(offsetof(cogmaster_run_result, lagged) == 12, "run_result.lagged");
+_Static_assert(sizeof(cogmaster_run_result) == 16, "run_result size");
+_Static_assert(sizeof(cogmaster_input) == 32, "input size");
+_Static_assert(offsetof(cogmaster_input, p1) == 4, "input.p1");
+_Static_assert(offsetof(cogmaster_input, port2) == 28, "input.port2");
 
 _Static_assert(offsetof(cogmaster_fault, size) == 0, "fault.size");
 _Static_assert(offsetof(cogmaster_fault, present) == 4, "fault.present");
@@ -285,7 +291,7 @@ _Static_assert(COGMASTER__FIRST_SIZE_MEDIA == 4 * COGMASTER__P, "media first siz
 _Static_assert(COGMASTER__FIRST_SIZE_FRAME == sizeof(cogmaster_frame), "frame first size");
 _Static_assert(COGMASTER__FIRST_SIZE_INFO == offsetof(cogmaster_info, region), "info first size");
 _Static_assert(COGMASTER__FIRST_SIZE_VERSIONS == sizeof(cogmaster_versions), "versions first size");
-_Static_assert(COGMASTER__FIRST_SIZE_RUN_RESULT == sizeof(cogmaster_run_result),
+_Static_assert(COGMASTER__FIRST_SIZE_RUN_RESULT == offsetof(cogmaster_run_result, lagged),
                "run_result first size");
 _Static_assert(COGMASTER__FIRST_SIZE_FAULT == sizeof(cogmaster_fault), "fault first size");
 _Static_assert(COGMASTER__FIRST_SIZE_CART_INFO == sizeof(cogmaster_cart_info),

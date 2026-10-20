@@ -37,6 +37,13 @@ cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out)
         return COGMASTER_STATUS_ERR_NO_CONTENT;
     }
     uint32_t overshoot = 0u;
+    /* Absolute host levels latch once at the frame boundary; only a Pause
+       rising edge queues the console NMI (SMS-CARTRIDGES section 3). */
+    if (m->pending_input.pause && !m->input.pause) {
+        m->vdp.pause = 1u;
+    }
+    m->input = m->pending_input;
+    m->input_read = 0u;
     if (m->cart.rom != NULL) {
         /* Beam events and stamped writes advance the production renderer. */
         overshoot = cogmaster__bus_run_frame(m);
@@ -53,12 +60,15 @@ cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out)
         m->bus.at += ticks;
         m->bus.deadline += ticks;
     }
+    uint32_t lagged = m->input_read == 0u ? 1u : 0u;
+    m->counters.lag_frames += lagged;
     if (out != NULL) {
         cogmaster_run_result r;
         memset(&r, 0, sizeof r);
         r.size = out->size;
         r.stop = COGMASTER_STOP_FRAME;
         r.overshoot_ticks = overshoot;
+        r.lagged = lagged;
         cogmaster__write_out(out, &r, (uint32_t)sizeof r);
     }
     return COGMASTER_STATUS_OK;

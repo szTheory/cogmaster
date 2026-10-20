@@ -22,7 +22,7 @@ static const cogmaster__exit_status cogmaster__exit_statuses[] = {
      "every frame ran or the probe printed, or a signal stopped the run after a whole frame"},
     {COGMASTER__EXIT_FAILURE, "failure",
      "a file could not be read or written, memory ran out or the core failed"},
-    {COGMASTER__EXIT_USAGE, "usage", "the command line is invalid, so nothing ran"},
+    {COGMASTER__EXIT_USAGE, "usage", "the command line or input script is invalid, so nothing ran"},
     {COGMASTER__EXIT_REFUSED, "refused",
      "the cartridge, its size or the machine and region is not supported, so nothing ran"},
 };

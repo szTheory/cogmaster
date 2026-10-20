@@ -183,6 +183,9 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     m->region = region;
     m->tv = tv;
     m->loaded = 1u;
+    memset(&m->pending_input, 0, sizeof m->pending_input);
+    memset(&m->input, 0, sizeof m->input);
+    m->input_read = 0u;
     memset(&m->counters, 0, sizeof m->counters);
     m->fault_present = 0u;
     memset(&m->fault, 0, sizeof m->fault);

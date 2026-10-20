@@ -269,10 +269,39 @@ static void test_decode_mirrors(void)
     }
 }
 
+static void test_absolute_input(void)
+{
+    cogmaster *m = export_sms();
+    cogmaster_input in = {0};
+    in.size = sizeof in;
+    in.p1 = 63u;
+    in.p2 = 63u;
+    in.reset = 1u;
+    CHECK_EQ_U64(cogmaster_set_input(m, &in), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDCu), 0xFFu);
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDCu), 0u);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDDu), 0xE0u);
+    in.p1 = 64u;
+    CHECK_EQ_U64(cogmaster_set_input(m, &in), COGMASTER_STATUS_ERR_ARGUMENT);
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDCu), 0u);
+    in.p1 = 63u;
+    in.port1 = COGMASTER_DEVICE_NONE;
+    in.port2 = COGMASTER_DEVICE_NONE;
+    in.reset = 0u;
+    CHECK_EQ_U64(cogmaster_set_input(m, &in), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDCu), 0xFFu);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDDu), 0xFFu);
+    cogmaster_destroy(m);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
 } cases[] = {
+    {"absolute_input", test_absolute_input},
     {"decode_mirrors", test_decode_mirrors},
     {"gg_ports", test_gg_ports},
     {"open_bus", test_open_bus},

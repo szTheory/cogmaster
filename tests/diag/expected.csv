@@ -47,3 +47,11 @@ ports,0D:gg_port00,gg,00C0,doc,SMS-SYSTEM sections 4 and 8
 ports,0E:gg_ports_01_02,gg,FF7F,doc,SMS-SYSTEM section 8
 ports,0F:gg_ports_03_04,gg,FF00,doc,SMS-SYSTEM section 8
 ports,10:gg_ports_05_06,gg,FF00,doc,SMS-SYSTEM section 8
+boot_to_play,01:released_sample,*,0000,derived,owned ROM released input and scroll
+boot_to_play,02:released_sample,*,0000,derived,owned ROM released input and scroll
+boot_to_play,03:released_sample,*,0000,derived,owned ROM released input and scroll
+boot_to_play,04:released_sample,*,0000,derived,owned ROM released input and scroll
+boot_to_play,05:released_sample,*,0000,derived,owned ROM released input and scroll
+boot_to_play,06:released_sample,*,0000,derived,owned ROM released input and scroll
+boot_to_play,07:released_sample,*,0000,derived,owned ROM released input and scroll
+boot_to_play,08:released_sample,*,0000,derived,owned ROM released input and scroll

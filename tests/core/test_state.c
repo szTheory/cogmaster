@@ -228,8 +228,7 @@ static void sweep(cogmaster *src, cogmaster *target)
             ram++;
         }
         /* One interior and both edge pixels exercise the shared RGB444 bound. */
-        if (strcmp(fd->name, "field_pixel") == 0 &&
-            fd->offset != fields[n - 1u].offset &&
+        if (strcmp(fd->name, "field_pixel") == 0 && fd->offset != fields[n - 1u].offset &&
             (i == 0u || strcmp(fields[i - 1u].name, "field_pixel") == 0)) {
             continue;
         }

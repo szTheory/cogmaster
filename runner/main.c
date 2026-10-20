@@ -43,6 +43,7 @@
 #include "clock.h"
 #include "cogmaster.h"
 #include "exit_status.h"
+#include "input.h"
 #include "mailbox.h"
 #include "palette.h"
 #include "png.h"
@@ -279,6 +280,15 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     media.region = opt->region;
     media.tv = opt->tv;
     int status = load_status(cogmaster_load(m, &media), image_size);
+    FILE *input = NULL;
+    if (status == COGMASTER__EXIT_OK && opt->input != NULL) {
+        input = fopen(opt->input, "rb");
+        status =
+            input != NULL ? cogmaster__input_validate(input, opt->frames) : COGMASTER__EXIT_FAILURE;
+        if (status != COGMASTER__EXIT_OK) {
+            fprintf(stderr, "cogmaster-run: input file error (status %d)\n", status);
+        }
+    }
     cogmaster_fault fault;
     memset(&fault, 0, sizeof fault);
     fault.size = (uint32_t)sizeof fault;
@@ -287,8 +297,24 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     uint32_t ran = 0;
     int mailbox_running = 0;
     for (uint64_t n = 1; n <= opt->frames && status == COGMASTER__EXIT_OK; n++) {
+        cogmaster_input in = {0};
+        in.size = sizeof in;
+        if (input != NULL) {
+            status = cogmaster__input_read(input, &in);
+            if (status != COGMASTER__EXIT_OK) {
+                break;
+            }
+        }
+        in.port1 = opt->port1;
+        in.port2 = opt->port2;
+        if (cogmaster_set_input(m, &in) != COGMASTER_STATUS_OK) {
+            status = COGMASTER__EXIT_FAILURE;
+            break;
+        }
         uint64_t start_ns = opt->bench ? cogmaster__clock_ns() : 0u;
-        st = cogmaster_run_frame(m, NULL);
+        cogmaster_run_result result = {0};
+        result.size = sizeof result;
+        st = cogmaster_run_frame(m, &result);
         if (opt->bench) {
             samples[ran] = cogmaster__bench_us(cogmaster__clock_ns() - start_ns);
         }
@@ -351,6 +377,9 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
         size_t len =
             cogmaster__bench_format(report, sizeof report, samples, ran, cogmaster__max_rss_kib());
         fwrite(report, 1u, len, stdout);
+    }
+    if (input != NULL && fclose(input) != 0) {
+        status = COGMASTER__EXIT_FAILURE;
     }
     cogmaster_destroy(m);
     free(pixels);
