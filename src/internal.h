@@ -285,7 +285,7 @@ _Static_assert(offsetof(cogmaster_run_result, size) == 0, "run_result.size");
 _Static_assert(offsetof(cogmaster_run_result, stop) == 4, "run_result.stop");
 _Static_assert(offsetof(cogmaster_run_result, overshoot_ticks) == 8, "run_result.overshoot_ticks");
 _Static_assert(offsetof(cogmaster_run_result, lagged) == 12, "run_result.lagged");
-_Static_assert(sizeof(cogmaster_run_result) == 16, "run_result size");
+_Static_assert(sizeof(cogmaster_run_result) == 20, "run_result size");
 _Static_assert(sizeof(cogmaster_input) == 32, "input size");
 _Static_assert(offsetof(cogmaster_input, p1) == 4, "input.p1");
 _Static_assert(offsetof(cogmaster_input, p2) == 8, "input.p2");

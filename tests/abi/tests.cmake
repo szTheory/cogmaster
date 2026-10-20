@@ -161,3 +161,8 @@ add_executable(cogmaster-test-api-v7 ${PROJECT_SOURCE_DIR}/tests/api/v7.c)
 target_link_libraries(cogmaster-test-api-v7 PRIVATE cogmaster::cogmaster)
 cogmaster_warnings(cogmaster-test-api-v7)
 cogmaster_add_test(NAME abi.api_v7 COMMAND cogmaster-test-api-v7 LABELS abi portable TIMEOUT 10)
+# Fault prevented: adding a display observation breaks earlier result layouts.
+add_executable(cogmaster-test-api-v8 ${PROJECT_SOURCE_DIR}/tests/api/v8.c)
+target_link_libraries(cogmaster-test-api-v8 PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-api-v8)
+cogmaster_add_test(NAME abi.api_v8 COMMAND cogmaster-test-api-v8 LABELS abi portable TIMEOUT 10)

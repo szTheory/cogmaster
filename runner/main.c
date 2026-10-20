@@ -43,6 +43,7 @@
 #include "clock.h"
 #include "cogmaster.h"
 #include "exit_status.h"
+#include "expect.h"
 #include "input.h"
 #include "mailbox.h"
 #include "palette.h"
@@ -250,6 +251,12 @@ static int load_status(cogmaster_status st, size_t image_size)
    take 4 bytes per frame. Returns the exit status. */
 static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t image_size)
 {
+    cogmaster__expect expectations;
+    if (opt->expect != NULL) {
+        int rc = cogmaster__expect_load(&expectations, opt->expect, opt->frames);
+        if (rc != COGMASTER__EXIT_OK)
+            return rc;
+    }
     uint16_t *pixels = (uint16_t *)malloc((size_t)256u * 240u * sizeof *pixels);
     uint32_t *samples = opt->bench ? (uint32_t *)malloc(cogmaster__bench_bytes(opt->frames)) : NULL;
     if (pixels == NULL || (opt->bench && samples == NULL)) {
@@ -301,6 +308,39 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
             fprintf(stderr, "cogmaster-run: input file error (status %d)\n", status);
         }
     }
+    if (status == COGMASTER__EXIT_OK && opt->expect != NULL) {
+        cogmaster_info info = {0};
+        info.size = sizeof info;
+        cogmaster_cart_info cart = {0};
+        cart.size = sizeof cart;
+        cogmaster_versions versions = {0};
+        versions.size = sizeof versions;
+        if (cogmaster_get_info(m, &info) != COGMASTER_STATUS_OK ||
+            cogmaster_get_versions(&versions) != COGMASTER_STATUS_OK ||
+            (image != NULL && cogmaster_probe(image, image_size, &cart) != COGMASTER_STATUS_OK))
+            status = COGMASTER__EXIT_FAILURE;
+        cogmaster__sha256 hash;
+        cogmaster__sha256_init(&hash);
+        if (input != NULL) {
+            int ch;
+            while ((ch = fgetc(input)) != EOF) {
+                uint8_t byte = (uint8_t)ch;
+                cogmaster__sha256_update(&hash, &byte, 1u);
+            }
+            if (ferror(input) || fseek(input, 0, SEEK_SET) != 0)
+                status = COGMASTER__EXIT_FAILURE;
+        }
+        uint8_t digest[32];
+        char hex[65];
+        cogmaster__sha256_final(&hash, digest);
+        cogmaster__sha256_hex(digest, hex);
+        printf("execution machine=%lu region=%lu tv=%lu video=%lu mapper=%lu port1=%lu port2=%lu "
+               "script_sha256=%s cap=%lu behaviour=%lu\n",
+               (unsigned long)info.machine, (unsigned long)info.region, (unsigned long)info.tv,
+               (unsigned long)info.video_mode, (unsigned long)cart.board, (unsigned long)opt->port1,
+               (unsigned long)opt->port2, hex, (unsigned long)opt->frames,
+               (unsigned long)versions.behaviour);
+    }
     cogmaster_fault fault;
     memset(&fault, 0, sizeof fault);
     fault.size = (uint32_t)sizeof fault;
@@ -344,6 +384,9 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
                     (unsigned long)st);
             status = COGMASTER__EXIT_FAILURE;
         }
+        if (status == COGMASTER__EXIT_OK && opt->expect != NULL)
+            status = cogmaster__expect_frame(&expectations, m, (uint32_t)n, result.display_enabled,
+                                             pixels);
         for (uint32_t k = 0; k < opt->png_count && status == COGMASTER__EXIT_OK; k++) {
             if (opt->pngs[k].frame == n) {
                 status = write_png(m, opt->pngs[k].path, pixels);
@@ -396,6 +439,13 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     if (status == COGMASTER__EXIT_OK && opt->input != NULL) {
         printf("lag_frames=%lu\n", (unsigned long)lag_frames);
     }
+    if (status == COGMASTER__EXIT_OK && opt->expect != NULL) {
+        status = read_fault(m, &fault);
+        if (status == COGMASTER__EXIT_OK)
+            print_fault(&fault);
+    }
+    if (status == COGMASTER__EXIT_OK && opt->expect != NULL)
+        status = cogmaster__expect_finish(&expectations);
     if (input != NULL && fclose(input) != 0) {
         status = COGMASTER__EXIT_FAILURE;
     }

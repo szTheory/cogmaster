@@ -20,6 +20,9 @@ The first input struct size is 32 bytes. Oversized zero tails follow the general
 The appended `cogmaster_run_result.lagged` is one when no decoded controller read occurred in that frame.
 Legacy 12-byte callers receive only their original fields. The runner submits input before each frame and
 receives this result. Host peeks never earn lag credit.
+API version 8 appends `cogmaster_run_result.display_enabled`: the VDP display-enable latch
+observed at the end of this run call, zero for the test card. It is a sampled observation;
+it does not prove that every line was enabled. Older 12-byte and 16-byte callers keep their layouts.
 
 The libretro adapter accepts `game.data` and `game.size` in memory, advertises
 `sms|gg|bin|rom`, and keeps `need_fullpath` false. One input poll precedes each

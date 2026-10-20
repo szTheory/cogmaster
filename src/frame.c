@@ -85,6 +85,7 @@ cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out)
         r.stop = COGMASTER_STOP_FRAME;
         r.overshoot_ticks = overshoot;
         r.lagged = lagged;
+        r.display_enabled = m->vdp.display;
         cogmaster__write_out(out, &r, (uint32_t)sizeof r);
     }
     return COGMASTER_STATUS_OK;

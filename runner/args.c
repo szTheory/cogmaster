@@ -22,6 +22,7 @@ static const char synopsis[] =
     "  --frames N           run N frames (N >= 1)\n"
     "  --bench N            run N frames and report the time per frame\n"
     "  --hash               print the SHA-256 of the last frame's crop\n"
+    "  --expect FILE        judge bounded accepted frame/RAM/mailbox/boot predicates\n"
     "  --input FILE         absolute pad and console record per frame\n"
     "  --save-dir DIR       read and persist battery data in an existing directory\n"
     "  --port1 pad|none     first controller device (default pad)\n"
@@ -169,7 +170,7 @@ static int check_combination(const cogmaster__run_options *o)
             return usage("--probe needs a file");
         }
         if (o->frames != 0u || o->hash || o->png_count != 0u || o->trace || o->mailbox ||
-            o->input || o->save_dir) {
+            o->input || o->save_dir || o->expect) {
             return usage("--probe runs nothing, so it takes no run option");
         }
         return COGMASTER__EXIT_OK;
@@ -179,6 +180,8 @@ static int check_combination(const cogmaster__run_options *o)
     }
     if (o->save_dir != NULL && o->file == NULL)
         return usage("--save-dir requires content");
+    if (o->expect && (o->trace || o->mailbox || o->bench))
+        return usage("--expect requires the complete --frames run");
     for (uint32_t k = 0; k < o->png_count; k++) {
         if (o->pngs[k].frame > o->frames) {
             return usage("--png N must not exceed --frames");
@@ -219,6 +222,11 @@ int cogmaster__parse_options(int argc, char **argv, cogmaster__run_options *o)
             if (value == NULL || *value == '\0' || o->save_dir != NULL)
                 return usage("--save-dir needs one directory");
             o->save_dir = value;
+            i++;
+        } else if (strcmp(arg, "--expect") == 0) {
+            if (value == NULL || *value == '\0' || o->expect != NULL)
+                return usage("--expect needs one file");
+            o->expect = value;
             i++;
         } else if (strcmp(arg, "--input") == 0) {
             if (value == NULL || *value == '\0' || o->input != NULL) {

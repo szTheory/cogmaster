@@ -62,6 +62,10 @@ static void program(size_t off, size_t n, const uint8_t *code, size_t code_n)
 }
 
 static const uint8_t di_halt[] = {0xF3u, 0x76u};
+/* Mode 4 display enabled, zero palette/pixels, then permanent HALT. */
+static const uint8_t static_display[] = {0xF3u, 0x3Eu, 0x04u, 0xD3u, 0xBFu, 0x3Eu,
+                                         0x80u, 0xD3u, 0xBFu, 0x3Eu, 0x40u, 0xD3u,
+                                         0xBFu, 0x3Eu, 0x81u, 0xD3u, 0xBFu, 0x76u};
 
 /* The bytes the checksum covers, by size code (SMS-CARTRIDGES section 1.2). */
 static uint32_t checksum_range(uint32_t code)
@@ -194,6 +198,7 @@ static void programs(void)
         size_t code_n, n;
     } list[] = {
         {"di-halt.sms", di_halt, sizeof di_halt, 32u * KIB},
+        {"static-display.sms", static_display, sizeof static_display, 32u * KIB},
         {"di-halt.gg", di_halt, sizeof di_halt, 32u * KIB},
         {"jr-self.sms", jr_self, sizeof jr_self, 32u * KIB},
         {"in-a-00.sms", in_a_00, sizeof in_a_00, 32u * KIB},

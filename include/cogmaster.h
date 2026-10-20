@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#define COGMASTER_API_VERSION 7
+#define COGMASTER_API_VERSION 8
 #define COGMASTER_ABI_VERSION 1
 #define COGMASTER_BEHAVIOUR_REVISION 10
 #define COGMASTER_STATE_FORMAT_VERSION 10
@@ -145,6 +145,7 @@ typedef struct cogmaster_run_result {
     uint32_t stop; /* COGMASTER_STOP_* */
     uint32_t overshoot_ticks;
     uint32_t lagged;
+    uint32_t display_enabled;
 } cogmaster_run_result;
 
 #define COGMASTER_DEVICE_PAD 0u

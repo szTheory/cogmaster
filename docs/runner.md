@@ -61,6 +61,7 @@ cogmaster-run --help | --version
 | `--trace first-fault` | After each frame, read the core's first-fault record; stop at the first fault and print it, described under [First fault](#first-fault). |
 | `--mailbox` | After each frame, read the RAM mailbox a diagnostic ROM fills; stop at the first frame whose status reads done after reading running, and print the mailbox, described under [Mailbox](#mailbox). |
 | `--probe` | Print the file's header fields and digests, described under [Probe](#probe), and run nothing. Give it only with a file. |
+| `--expect FILE` | Judge accepted bounded frame, RAM, mailbox and boot observations. |
 | `--help` | Print the usage text and the exit statuses. Give it alone. |
 | `--version` | Print `cogmaster-run` and the version, for example `cogmaster-run 1.2.3`. Give it alone. |
 
@@ -274,6 +275,39 @@ first creation and overwrite. They check the old bytes, dirty retry, exclusive s
 cleanup and preservation of unrelated temporaries. Signal and abrupt-interruption runners are test-only
 builds; the installed runner has no fault injection. Periodic saves and SIGUSR1 remain deferred.
 
+## Accepted expectations
+
+`--frames N --expect FILE` reads an LF-terminated ASCII file before running. It accepts
+1–64 records, each at most 255 bytes; every requested frame is within `1..N`, and N is
+at most 1,000,000. Each record is one of:
+
+```text
+frame@14=e14d77ce564f0b1498f703134e82e6c1fc718a27c94e49b5a35b95a981857ae7
+ram@14:$C200=02
+mailbox@20
+boots@20
+```
+
+The frame value is an accepted full lowercase SHA-256 of the completed native crop,
+serialized RGB444 low byte first. RAM compares a byte at `$C000..$FFFF` without side
+effects. Mailbox checks magic, protocol version, done status, bounded nonempty distinct
+records with valid/not-timed-out flags, and CRC; it does not validate record values.
+Use independent RAM/frame expectations or the diagnostic judge for numeric claims.
+
+`boots@F` is strict smoke: a display-enabled latch was observed after a run call, at
+least two distinct native crop hashes occurred by F, and no first fault was recorded.
+Distinct counting saturates at two. An interrupt-driven HALT loop is healthy and is
+never rejected for HALT. A static display may fail this heuristic. Neither pass nor
+fail establishes gameplay, completion or sound; sound has no predicate yet.
+
+Each observation prints its frame, normalized kind/address and observed hash alongside
+display/distinct/fault facts. Expected values stay in the accepted file. The execution
+line reports resolved machine/region/TV/video/board, both devices, cap, behaviour revision
+and SHA-256 of input bytes (the empty digest without a script). The first fault remains
+a diagnostic and does not stop the capped run. `--trace`, `--mailbox`, `--bench` and
+`--probe` conflict with `--expect`. A signal before an expected frame is infrastructure
+failure; mismatches exit 3, unsupported capabilities 77, invalid syntax 2 and I/O errors 1.
+
 ## Exit status
 
 `cogmaster-run --help` prints this table:
@@ -282,6 +316,7 @@ builds; the installed runner has no fault injection. Periodic saves and SIGUSR1 
   0  ok       every frame ran or the probe printed, or a signal stopped the run after a whole frame
   1  failure  a file could not be read or written, memory ran out or the core failed
   2  usage    the command line or input script is invalid, so nothing ran
+  3  mismatch  an accepted expectation did not match the observed predicate
   4  save     the battery file is oversized, so nothing ran
   77  refused  the cartridge, its size or the machine and region is not supported, so nothing ran
 ```
