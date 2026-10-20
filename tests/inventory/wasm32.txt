@@ -160,6 +160,7 @@ runner.hashes_file	portable,runner
 runner.input	portable,runner
 runner.load.machine_auto	portable,runner
 runner.load.region	portable,runner
+runner.load.video_override	portable,runner
 runner.mailbox.crc	portable,runner
 runner.mailbox.stop	portable,runner
 runner.png	portable,runner

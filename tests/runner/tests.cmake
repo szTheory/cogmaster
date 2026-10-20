@@ -58,7 +58,17 @@ if(CMAKE_SCRIPT_MODE_FILE)
     endif()
   endfunction()
 
-  if(CASE STREQUAL "input")
+  if(CASE STREQUAL "video_override")
+    expect_exit(0 "^$" --frames 1 --machine sms1)
+    expect_exit(0 "^$" --frames 1 --machine sms --video-mode sms)
+    expect_exit(0 "^$" --frames 1 --machine gg --video-mode gg)
+    expect_exit(0 "^$" --frames 1 --machine gg --video-mode sms)
+    expect_exit(0 "^$" --frames 1 --machine gg --video-mode auto)
+    expect_exit(77 "unsupported" --frames 1 --machine sms --video-mode gg)
+    expect_exit(77 "unsupported" --frames 1 --machine sms1 --video-mode gg)
+    expect_exit(2 "usage" --frames 1 --video-mode invalid)
+    expect_exit(2 "usage" --frames 1 --video-mode)
+  elseif(CASE STREQUAL "input")
     set(record "p1=00 p2=00 pause=0 reset=0 start=0")
     foreach(ending IN ITEMS lf crlf none)
       set(eol "\n")
@@ -655,6 +665,9 @@ cogmaster_add_test(NAME runner.load.machine_auto
 # Timeout: 10 s floor; 2 x 0.02 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME runner.load.region
   COMMAND ${runner_check} -DCASE=region -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 10)
+cogmaster_add_test(NAME runner.load.video_override
+  COMMAND ${runner_check} -DCASE=video_override -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS portable runner TIMEOUT 10)
 
 # Fault prevented: --trace first-fault missing a fault, printing a later
