@@ -533,7 +533,8 @@ int main(int argc, char **argv)
 
     if (argc == 4 && strcmp(argv[2], "controls") == 0) {
         rgb565 = strcmp(argv[3], "rgb565") == 0;
-        if (!module_open(argv[1])) return 1;
+        if (!module_open(argv[1]))
+            return 1;
         resolve_all();
         int rc = missing != NULL ? 1 : controls_test();
         module_close();

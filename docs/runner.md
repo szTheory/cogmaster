@@ -28,7 +28,10 @@ Right, button 1 and button 2. Console values are 0 or 1. LF, CRLF and an optiona
 Blank lines, comments, unknown or repeated fields, high mask bits, overlong lines, missing and surplus
 records exit 2 before running. File errors exit 1. The reader uses fixed memory and validates the whole
 body before execution. Without `--input`, all levels are released. `--port1 pad|none` and `--port2 pad|none`
-default to pad; none releases that pad's six pins. Opposing directions remain independent.
+default to pad; none releases that pad's pins. Opposing directions remain independent.
+With `--input`, a successful run appends `lag_frames=N` to standard output,
+counting completed frames without a decoded guest controller read. Host polling, peeks, disabled and
+undriven port reads do not remove lag. Early stops count only the frames actually completed.
 
 Record 1 applies before frame 1. For example, released, `p1=10`, `p1=10`, released means the first press
 is visible to CPU reads in frame 2, remains held in frame 3, and releases in frame 4. All five fields are

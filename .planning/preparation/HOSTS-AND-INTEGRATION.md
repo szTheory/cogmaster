@@ -2,7 +2,7 @@
 title: "Hosts and integration: libretro, RetroAchievements, RetroArch on Mac, runner + Playstead, automation, WASM"
 summary: "What every host needs from cogmaster (libretro adapter for SMS and Game Gear, rcheevos memory and hash rules, RetroArch on Apple Silicon, cogmaster-run and Playstead's protocol, scripting, WASM) and which milestone each piece lands in."
 read_when: "Building the libretro adapter or .info, the runner CLI, saves, the RetroArch e2e job, a Playstead pin, scripting/Gym/TAS surfaces, or a web build."
-updated: 2026-10-18
+updated: 2026-10-20
 ---
 
 # Hosts and integration
@@ -60,7 +60,7 @@ Port devices are `SET_CONTROLLER_INFO` (35, L1506) subclasses, not options: SMS 
 | D-pad | directions | |
 | B, A | button 1, button 2 | all three cores; `RETRO_DEVICE_ID_JOYPAD_MASK` 256 (L380) for one poll |
 | Start | Pause (SMS, NMI) / Start (GG) | all three cores |
-| Select (port 1) | Reset (SMS) | Gearsystem only; GPGX/smsplus leave Select unused |
+| Select (port 1) | Physical Reset (export SMS1 only) | Separate from frontend Restart; never resets the CPU |
 | Light Phaser | `RETRO_DEVICE_LIGHTGUN` 4 (L238): SCREEN_X/Y 13/14 → column/row, TRIGGER 2, IS_OFFSCREEN 15, RELOAD 16 (L411–417); GPGX names A/B/C/Start aux ids; a pointer (touchscreen) variant as both cores offer | L238–420 |
 | Paddle | `RETRO_DEVICE_ANALOG` 5 (L260): left stick X → paddle (GPGX); Gearsystem also maps RetroMouse X | L389–393 |
 | Sports Pad | left stick X/Y → trackball, B/A → 1/2 | both cores |

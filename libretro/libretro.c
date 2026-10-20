@@ -263,8 +263,11 @@ static void lr_input(void)
                                         RETRO_DEVICE_ID_JOYPAD_B,    RETRO_DEVICE_ID_JOYPAD_A};
     cogmaster_input in = {0};
     in.size = sizeof in;
-    in.port1 = controllers[0] == RETRO_DEVICE_NONE ? COGMASTER_DEVICE_NONE : COGMASTER_DEVICE_PAD;
-    in.port2 = controllers[1] == RETRO_DEVICE_NONE ? COGMASTER_DEVICE_NONE : COGMASTER_DEVICE_PAD;
+    int connected = input_poll_cb != NULL && input_state_cb != NULL;
+    in.port1 = connected && controllers[0] != RETRO_DEVICE_NONE ? COGMASTER_DEVICE_PAD
+                                                                : COGMASTER_DEVICE_NONE;
+    in.port2 = connected && controllers[1] != RETRO_DEVICE_NONE ? COGMASTER_DEVICE_PAD
+                                                                : COGMASTER_DEVICE_NONE;
     for (unsigned bit = 0u; bit < 6u; bit++) {
         in.p1 |= lr_button(0u, buttons[bit]) << bit;
         in.p2 |= lr_button(1u, buttons[bit]) << bit;
@@ -278,11 +281,13 @@ static void lr_input(void)
     (void)cogmaster_set_input(inst, &in);
 }
 
-/* L7680: a power cycle; the test card has no other reset. */
+/* L7680 prefers soft reset. Frontend Restart reapplies the hand-off on SMS,
+   or power-cycles GG; Select is the separate physical Reset pin. */
 void retro_reset(void)
 {
     if (loaded) {
-        (void)cogmaster_reset(inst, COGMASTER_RESET_POWER);
+        (void)cogmaster_reset(inst, info.machine == COGMASTER_MACHINE_GG ? COGMASTER_RESET_POWER
+                                                                         : COGMASTER_RESET_SOFT);
     }
 }
 

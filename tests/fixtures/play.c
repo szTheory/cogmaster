@@ -62,7 +62,12 @@ int main(int argc, char **argv)
         if (both && (i == 5u || i == 6u || i == 9u))
             in.p2 = 16u;
         CHECK_EQ_U64(cogmaster_set_input(m, &in), COGMASTER_STATUS_OK);
-        CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+        cogmaster_run_result result = {0};
+        result.size = sizeof result;
+        CHECK_EQ_U64(cogmaster_run_frame(m, &result), COGMASTER_STATUS_OK);
+        /* Setup occupies frames 1..3; sealing the fixed-size mailbox
+           occupies frame 12. Every other frame executes a controller IN. */
+        CHECK_EQ_U64(result.lagged, i < 3u || i == 11u ? 1u : 0u);
         if (i >= 3u) {
             uint32_t count = scripted ? (i >= (both ? 9u : 7u) ? 2u : (i >= 4u ? 1u : 0u)) : 0u;
             CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC200u), count);

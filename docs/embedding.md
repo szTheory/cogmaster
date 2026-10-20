@@ -26,11 +26,16 @@ The libretro adapter accepts `game.data` and `game.size` in memory, advertises
 frame; D-pad/B/A map to the six pad bits. Port-1 Start maps to SMS Pause or native
 GG Start, and Select drives SMS Reset. Pad/none and button descriptors are sent
 to the frontend. Missing callbacks and none devices submit released levels.
+Their reconnection follows the same Pause arming rule as the library. Port 2 never supplies console
+controls. RetroArch Restart calls SOFT on SMS and POWER on GG; Select changes only the supported physical
+Reset level and cannot restart the CPU. Both restart kinds preserve cartridge RAM.
 The experimental flag remains enabled while the background tracer is expanded.
 API version 4 appends SMS1 and unsupported-video fault constants; all earlier
-values and struct layouts are retained. Behaviour revision 7 adds completed-field geometry and extended rendering to independent line
+values and struct layouts are retained. Behaviour revision 9 adds pin-output mixing, export-SMS1-only Reset
+and held-reconnect Pause suppression to native GG and completed-field geometry. The renderer includes independent line
 IRQs, six mode/TV V-counter sequences, the translated H coordinate and TH capture
-to the sprite/background semantics. State format 8 also saves completed pixels/height/backdrop alongside the line counter
+to the sprite/background semantics. State format 9 saves native LCD and palette-latch state,
+completed pixels/height/backdrop alongside the line counter
 and pending source, rolling NTSC-240 phase and held H value alongside the sprite
 slots, dot cursor, scroll/display latches and last driven bus byte, so older state
 bytes are refused. The API and ABI layouts are unchanged.
@@ -285,7 +290,7 @@ and the tick count to zero, put the beam at the frame origin (line 192, tick 607
 does, start the CPU again from the fast-boot hand-off and clear the fault record. Every frame, the first after a
 load or reset included, is then exactly 179,208 ticks on NTSC and 214,092 on PAL:
 
-- `COGMASTER_RESET_SOFT` (0) is the console's reset: memory the machine keeps across a reset, such as work RAM,
+- `COGMASTER_RESET_SOFT` (0) reapplies the fast-boot hand-off: memory kept across this restart, such as work RAM,
   stays as it was.
 - `COGMASTER_RESET_POWER` (1) is a power cycle: it also zeroes the internal counters and, on machines that have
   them, work RAM, video RAM and colour RAM.

@@ -72,8 +72,8 @@ if(CMAKE_SCRIPT_MODE_FILE)
     string(REPEAT "p1=00 p2=00 pause=0 reset=0 start=0\n" 14 body)
     file(WRITE "${OUT}" "${body}")
     expect_exit(0 "(^|\n)lag_frames=14\n" ${SEEDS}/di-halt.sms --frames 14 --input ${OUT})
-    expect_exit(0 "(^|\n)lag_frames=3\n" ${READ_ROM} --frames 14 --input ${OUT})
-    expect_exit(0 "(^|\n)lag_frames=3\n" ${READ_ROM} --frames 14 --input ${OUT}
+    expect_exit(0 "(^|\n)lag_frames=4\n" ${READ_ROM} --frames 14 --input ${OUT})
+    expect_exit(0 "(^|\n)lag_frames=4\n" ${READ_ROM} --frames 14 --input ${OUT}
       --port1 none --port2 none)
   elseif(CASE STREQUAL "input")
     set(record "p1=00 p2=00 pause=0 reset=0 start=0")
@@ -324,6 +324,10 @@ if(CMAKE_SCRIPT_MODE_FILE)
     set(RUN ${HOOKED})
     expect_exit(0 "^frame 3 sha256 ${EXPECTED}\n$" --frames 60 --hash)
     expect_exit(0 "^frames 3\n.*max_rss_kib [0-9]+\n$" --bench 60)
+    string(REPEAT "p1=00 p2=00 pause=0 reset=0 start=0\n" 60 body)
+    file(WRITE "${SEEDS}/stop.input" "${body}")
+    expect_exit(0 "^frame 3 sha256 ${EXPECTED}\nlag_frames=3\n$"
+      --frames 60 --input ${SEEDS}/stop.input --hash)
   elseif(CASE STREQUAL "exit_failure")
     # A --png path that cannot be opened is a failure, not a usage error.
     expect_exit(1 "cannot write" --frames 1 --png "1:${OUT}.missing/x.png")

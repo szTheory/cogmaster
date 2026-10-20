@@ -2,7 +2,7 @@
 title: "Architecture: time model, modules, public API, I/O contracts and build order"
 summary: "The technical shape of the cogmaster core: one VDP-clock timeline driven by the Z80's time-stamped bus accesses, lazy devices behind one deadline dispatcher, the module and seed map, the public C API and its versions, the frame, audio, input, determinism, state, observability and boot contracts, the v1.0 build order, and how each research conflict is settled."
 read_when: "Before planning or writing core, runner or libretro code; before adding a module, API call, profile field or hash; whenever two preparation files disagree."
-updated: 2026-10-18
+updated: 2026-10-20
 ---
 
 # cogmaster architecture
@@ -217,7 +217,7 @@ Integer-only (`hygiene.no_float`, `nofp`, `abi.undefined`); no mutable globals (
 | Beam | frame origin: line 192, tick 607, frame 0, ticks 0; a frame runs from frame-interrupt tick to frame-interrupt tick, so starting there makes every frame exactly one frame long | same |
 
 - **BIOS** bytes are user-supplied only, recognised by the MAME digests in [ARCH.01 §6] (v1.3 `0072ed54`, Japanese v2.1 `48d44a13`, GG `0ebea9d4` …); any other 8 KiB / 1 KiB image is accepted with a warning; the BIOS checks the header, region nibble and checksum itself, so a rejected cartridge shows SOFTWARE ERROR as on hardware, never a core status. Lands v2.0; `load` with `boot = BIOS` and no BIOS falls back to fast boot with a warning flag [ARCH.05 §1].
-- **Reset.** `reset(SOFT)` re-applies the hand-off table and keeps work RAM, cart RAM, VRAM and CRAM (no model has a CPU reset line a user can reach; the SMS1 Reset button is an input on $DD b4, not a reset); `reset(POWER)` also applies `ram_fill` and zeroes VRAM and CRAM. The adapter's Restart contract is `SOFT` on SMS and `POWER` on GG, separate from the SMS Reset input (context D-08) [ARCH.01 §7][ARCH.05 §1].
+- **Reset.** `reset(SOFT)` re-applies the hand-off table and keeps work RAM, cart RAM, VRAM and CRAM (no model has a CPU reset line a user can reach; the export SMS1 Reset button is an input on $DD b4, not a reset); `reset(POWER)` also applies `ram_fill` and zeroes VRAM and CRAM. The adapter's Restart contract is `SOFT` on SMS and `POWER` on GG, separate from the SMS Reset input. A disconnected port releases its pins; reconnecting held Pause requires release before a new edge [ARCH.01 §7][ARCH.05 §1].
 - **Refusals.** `UNSUPPORTED_BOARD` for a Korean, MSX, Janggun, 4PAK, Hicom or multicart detection before v2; `UNSUPPORTED_DEVICE` for an 8 KiB GG image (X-Terminator) or a Master Gear / Card Catcher entry; `UNSUPPORTED_SIZE` outside 1 KiB–1 MiB + 512; `PROFILE_REJECTED` for PAL + GG or PAL + JAPAN; an SG-1000 image (hash table or `.sg`) is `UNSUPPORTED_BOARD` with the message "SG-1000 mode is planned". The runner exits 77 for all of these [ARCH.04 §2.2, §6][ARCH.05 §4].
 - **Test card** (phase 1, `testcard.c`): static; SMS 256 × 192 showing the 64 SMS colours as 15 × 15 swatches on a 16-px grid with 1-px backdrop borders; GG 160 × 144 inside the window showing all 4,096 RGB444 colours as 2 × 2 cells; both with orientation, crop-edge and channel-order markers, drawn in software (never through the VDP) into the normal field buffer and crop so the hash path is the real one; exact layout in phase 1 CONTEXT D-15 and `docs/`. No content → test card in runner and adapter [ARCH.05 §1].
 

@@ -306,7 +306,11 @@ Named wrong-value, missing-row and one-frame-hang controls must return their
 expected nonzero result. The lane hash file contains all fixture image
 digests plus actual playing-frame hashes for both TV standards; comparison
 across portable lanes detects host-dependent rendering. The separate
-`boot_to_play` pixel oracle remains unchanged.
+`boot_to_play` retains the same pixel oracle. Its SMS mailbox values now hold independent pad-1 and
+pad-2 edge counters in the high and low bytes. Separate and overlapping pad schedules exercise no input,
+press, hold, release and repeated press; the shared visible counter, CRAM colour and scroll still drive
+the independently checked picture. Setup frames 1–3 and mailbox-sealing frame 12 are lagged; every other
+frame executes a decoded controller read. The runner reports their sum with `--input`.
 
 ## Frontend play evidence
 

@@ -296,6 +296,7 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     /* A 64-bit count, so the loop ends when --frames is 4294967295. Only
        cogmaster_run_frame is timed, not hashing or writing files. */
     uint32_t ran = 0;
+    uint32_t lag_frames = 0;
     int mailbox_running = 0;
     for (uint64_t n = 1; n <= opt->frames && status == COGMASTER__EXIT_OK; n++) {
         cogmaster_input in = {0};
@@ -316,6 +317,8 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
         cogmaster_run_result result = {0};
         result.size = sizeof result;
         st = cogmaster_run_frame(m, &result);
+        if (st == COGMASTER_STATUS_OK)
+            lag_frames += result.lagged;
         if (opt->bench) {
             samples[ran] = cogmaster__bench_us(cogmaster__clock_ns() - start_ns);
         }
@@ -378,6 +381,9 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
         size_t len =
             cogmaster__bench_format(report, sizeof report, samples, ran, cogmaster__max_rss_kib());
         fwrite(report, 1u, len, stdout);
+    }
+    if (status == COGMASTER__EXIT_OK && opt->input != NULL) {
+        printf("lag_frames=%lu\n", (unsigned long)lag_frames);
     }
     if (input != NULL && fclose(input) != 0) {
         status = COGMASTER__EXIT_FAILURE;
