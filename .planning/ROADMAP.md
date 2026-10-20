@@ -27,7 +27,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: A test frame in RetroArch** - The library, runner and libretro core deliver a hashed test card on every platform, installed into RetroArch by the README line, released by merging (completed 2026-10-19)
 - [x] **Phase 2: The CPU matches the public vectors** - An own Z80 matches SingleStepTests on every cycle, with the tick-lattice bus, the Sega and Codemasters mappers, ports, Pause and the first-fault trace (completed 2026-10-20)
-- [ ] **Phase 3: Games play in RetroArch** - VDP mode 4, the Game Gear window, two pads, regions and battery saves make fixtures playable on both machines, with the ledger ratcheting
+- [x] **Phase 3: Games play in RetroArch** - VDP mode 4, the Game Gear window, two pads, regions and battery saves make fixtures playable on both machines, with the ledger ratcheting (completed 2026-10-20)
 - [ ] **Phase 4: Sound** - The PSG with Game Gear stereo and the YM2413 play through the runner and RetroArch with transition and PCM hashes identical on every platform
 
 ## Phase Details
@@ -140,7 +140,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. The `battery` fixture continues from its saved value in a fresh `cogmaster-run --save-dir` process after exit and after SIGTERM, and the missing-save and wrong-save controls produce a different result (GAME-05).
   5. One hosted RetroArch session, with at most 300 lines of end-to-end code in total, boots `boot_to_play.sms`, an input changes play, the picture scrolls, and the screenshot equals the runner's frame (GAME-07).
 
-**Plans**: 18/18 plans executed, one sequential chain (waves 1–18; shared source and exact inventories)
+**Plans**: 18/18 plans complete, one sequential chain (waves 1–18; shared source and exact inventories)
 
 Plans:
 **Wave 1**
@@ -225,5 +225,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. A test frame in RetroArch | 12/12 | Complete    | 2026-10-19 |
 | 2. The CPU matches the public vectors | 17/17 | Complete    | 2026-10-20 |
-| 3. Games play in RetroArch | 18/18 | Code review pending | - |
+| 3. Games play in RetroArch | 18/18 | Complete    | 2026-10-20 |
 | 4. Sound | 0/TBD | Not started | - |

@@ -22,10 +22,10 @@ MIT-licensed C library that any host can embed.
 
 - ✓ Release automation from the first phase: library, runner and libretro core built, tested, attested and published on every platform by merging a pull request; one install line puts the core into RetroArch on a Mac — Phase 1
 - ✓ The Z80 matches the public SingleStepTests vectors on every cycle before any game runs, with the bus, Sega and Codemasters mappers, ports and the Pause NMI — Phase 2
+- ✓ SMS and Game Gear owned fixtures play through the runner and released RetroArch, with two pads, regions, raw battery continuation, identical playing hashes on eight lanes and a protected compatibility ledger; the private-library path is proven with synthetic fixtures — Phase 3
 
 ### Active
 
-- [ ] Master System and Game Gear games play in RetroArch with two pads, regions, battery saves, self-authored fixtures that prove play, the owner's carts through a local preset, and a compatibility ledger that only ratchets up.
 - [ ] Sound: the PSG with Game Gear stereo and the YM2413 for the Japanese profile, with frame and audio hashes identical on every platform including a 32-bit big-endian lane and a wasm32 lane.
 
 ### Out of Scope
@@ -78,12 +78,12 @@ MIT-licensed C library that any host can embed.
 | The whole Z80 against SingleStepTests on every cycle before any game | Exhaustive MIT vectors exist; siblings that grew CPUs from game traces stalled | ✓ Good — 100-per-file sample per PR, full set nightly (Phase 2) |
 | Self-authored WLA-DX fixtures with a RAM mailbox as the primary evidence | Licence-clear, byte-identical builds, oracles that cannot be fooled | ✓ Good — mapper_sega, mapper_codemasters and ports fixtures built in CI (Phase 2) |
 | ares (ISC) and MAME's BSD-3 files may be read; Genesis Plus GX, Gearsystem and other GPL or non-commercial sources never | MIT licence protection | — Pending |
-| Video is one 256×H RGB444 field with a crop rect; palettes and filters are host helpers | GG-native, SMS-lossless, hash-stable | — Pending |
+| Video is one 256×H RGB444 field with a crop rect; palettes and filters are host helpers | GG-native, SMS-lossless, hash-stable | ✓ Good — independent SMS/GG pixels, completed fields and eight-lane playing hashes (Phase 3) |
 | Audio hash on the transition stream; PCM secondary; exact rational samples per frame | Mixer-independent determinism | — Pending |
 | Every phase ends in an automated release; phase 1 is the ROM-free walking skeleton | Sibling velocity evidence | — Pending |
 | One entrypoint: CMake workflow presets; one required CI check; SHA-pinned actions; measured timeouts | No script to keep in step with CI | — Pending |
 | Cachegrind instructions per frame as the only per-PR speed gate | Wall-clock tails are noise on shared runners | — Pending |
-| Proportional gates; real-host e2e ≤ 300 lines; no attempt quotas or ceremonies | Two siblings stalled on their own machinery | — Pending |
+| Proportional gates; real-host e2e ≤ 300 lines; no attempt quotas or ceremonies | Two siblings stalled on their own machinery | ✓ Good — 528 check / 5,298 core lines and 300 hosted helper lines (Phase 3) |
 | Pins are public and fetched with `gh api` | A sibling lost six plans to an unpushed pin | — Pending |
 | Pre-seeded GSD bootstrap, interactive, one step per session | Owner steering; fastest sibling path | — Pending |
 | NMI is not delayed by EI; only /INT waits one instruction after EI | Matches the SingleStepTests vectors | ✓ Good (Phase 2) |
@@ -92,6 +92,8 @@ MIT-licensed C library that any host can embed.
 | Writes while `$3E` disables the cartridge are ignored and recorded as unmapped_write | Hardware docs are silent; symmetric with reads, stated in `src/bus.c` | — Pending hardware evidence |
 | The Z80 is split into `z80.c`, `z80_cb.c`, `z80_ed.c` and `z80_x3.c` under an 800-line cap per file | Small modules; clang-format 21 and hygiene stay green | ✓ Good (Phase 2) |
 | A save state refuses CPU combinations the core cannot reach and ties the beam to the bus stamp | A hostile state must not break the bounded-frame guarantee | ✓ Good — state round-trip and refusal tests (Phase 2) |
+| Battery classification is independent of mapper allocation; unsupported physical geometry exposes no guessed span | Metadata membership cannot establish persistence wiring | ✓ Good — exact spans, transactional import and native process continuation (Phase 3) |
+| Selected VDP timing remains confidence-qualified until hardware measurements | Passing fixtures prove the model, not new measurements | ✓ Good — documented H/latch/GG assumptions retained at verification (Phase 3) |
 
 The full list with sources is `.planning/preparation/DECISIONS.md`.
 
@@ -108,4 +110,4 @@ After each milestone:
 3. Lessons are exported to `.planning/LESSONS.md`.
 
 ---
-*Last updated: 2026-10-20 after Phase 2*
+*Last updated: 2026-10-20 after Phase 3 verification; ship pending*

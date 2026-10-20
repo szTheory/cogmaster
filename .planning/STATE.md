@@ -4,18 +4,18 @@ milestone: v1.0
 milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 03
 current_phase_name: Games play in RetroArch
-status: ready_for_verification
-stopped_at: Completed phase 03 code review fixes; both findings fixed in round 1; runtime Codex; model GPT-6
-last_updated: "2026-10-20T23:20:42.500Z"
+status: ready_to_ship
+stopped_at: Phase 03 verification passed; ready for ship; runtime Codex; model GPT-6
+last_updated: "2026-10-20T23:27:29Z"
 last_activity: 2026-10-20
-last_activity_desc: Fixed phase 03 review blocker and warning; runtime Codex; model GPT-6
-state_head: 060da4a795996d92dbb28083c260b4390a51c300
+last_activity_desc: Phase 03 verified with fresh hosted CI and agent screenshot inspection; runtime Codex; model GPT-6
+state_head: 5e7afdcbbda9dfad6b65a34410838a448573e313
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 47
   completed_plans: 47
-  percent: 50
+  percent: 75
 ---
 
 # Project State
@@ -29,14 +29,14 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 
 ## Current Position
 
-Phase: 03 (Games play in RetroArch) — EXECUTION AND REVIEW FIXES COMPLETE; READY FOR VERIFICATION
+Phase: 03 (Games play in RetroArch) — VERIFIED; READY FOR SHIP
 Plan: 18 of 18
-Status: Both standard-review findings fixed in round 1; formal verification pending; phase 03 remains pending
-Last activity: 2026-10-20 — Fixed Unicode PNG cleanup and VDP fault names with regression coverage; runtime Codex; model GPT-6
+Status: Canonical verification passed; 88 UAT checks passed; no open acceptance gaps; phase 04 not started
+Last activity: 2026-10-20 — Verified all seven requirements, all native/portable lanes and RetroArch in run 39514577638; runtime Codex; model GPT-6
 
-Next command: `$gsd-verify-work 03`. Verify phase 03; do not advance phase 04.
+Next command: `$gsd-ship 03`. Ship and confirm the phase release before starting phase 04, per AGENTS rules 9/10.
 
-Progress: [█████░░░░░] 50%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
@@ -272,6 +272,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 
 | 2026-10-20 | Code review phase 3 (gsd-code-review); standard, 152 files, 1 blocker and 1 warning | Codex | GPT-6 |
 | 2026-10-20 | Code review fixes phase 3 (gsd-code-review 03 --fix); both findings fixed, round 1 | Codex | GPT-6 |
+| 2026-10-20 | Verify phase 3 (gsd-verify-work 03); 64 plan truths, 7 requirements and 88 UAT checks passed; hosted run 39514577638 | Codex | GPT-6 |
 
 ## Deferred Items
 
@@ -283,6 +284,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T23:20:42.500Z
-Stopped at: Completed phase 03 review fixes; ready for verification; runtime Codex; model GPT-6
+Last session: 2026-10-20T23:27:29Z
+Stopped at: Phase 03 verified, ready for ship; phase 04 not started; runtime Codex; model GPT-6
 Resume file: None

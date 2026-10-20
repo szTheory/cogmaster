@@ -84,7 +84,7 @@ The ninth Y match sets overflow at the first enabled active dot of that
 line, even for transparent or clipped sprites; no ninth slot is rendered.
 Collision sets only on a dot shared by two opaque retained sprites, with
 display enabled and outside the masked left column. Touching edges,
-transparent dots and pixels outside the 256×192 active field cannot collide.
+transparent dots and pixels outside the selected 256×H active field cannot collide.
 Background priority hides sprite colour but does not suppress occupancy.
 These are tests of the selected active-area model, not hardware timing
 measurements. A status read catches up through the dot at `tick / 2`,
@@ -129,8 +129,8 @@ The NTSC-240 sequence rolls every 263 counts, independently of the host's
 boundaries. On entry into that mode, the selected model seeds phase from
 the current physical line (plus one at/after 604). This entry phase is an
 explicit inference. Other modes use the physical 262/313-line beam; PAL
-keeps its 214092-tick deadline. Extended counter timing does not imply the
-native GG LCD behavior has been implemented yet.
+keeps its 214092-tick deadline. Native GG LCD behavior follows the separate
+crop and freeze model above.
 
 The selected H coordinate translates active-origin ticks by 32 modulo 684,
 then reads $00–$93 followed by $E9–$FF, four ticks per value. In active
