@@ -40,6 +40,7 @@ cart.probe.pure	cart,portable
 cart.probe.sizes	cart,portable
 compat.csv	compat
 compat.fixtures	compat,portable
+compat.public_update	compat
 compat.ratchet	compat
 compat.trusted_judge	compat
 core.api.error_changes_nothing	core,portable

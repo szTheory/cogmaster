@@ -192,6 +192,9 @@ cogmaster_add_test(NAME compat.trusted_judge
 cogmaster_add_test(NAME compat.csv
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat
     -P ${CMAKE_CURRENT_LIST_FILE} LABELS ${compat_labels} TIMEOUT 30)
+cogmaster_add_test(NAME compat.public_update
+  COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat-update
+    -P ${CMAKE_CURRENT_LIST_DIR}/update.cmake LABELS ${compat_labels} TIMEOUT 30)
 cogmaster_add_test(NAME policy.compat_doc_fresh
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=fresh -DOUT=${PROJECT_BINARY_DIR}/tests/compat-doc
     -P ${CMAKE_CURRENT_LIST_FILE} LABELS ${compat_labels} policy TIMEOUT 30)
