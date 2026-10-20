@@ -1,7 +1,7 @@
 # Conformance
 
-How the core is checked against public test data. This page covers the Z80 vectors; testing in general is in
-[testing.md](testing.md).
+How the core is checked against public test data and assembled test programs. This page covers the Z80 vectors
+and the assembled fixtures; testing in general is in [testing.md](testing.md).
 
 ## Z80 vectors
 
@@ -124,3 +124,29 @@ those cases in a flat 64 KiB memory, one case per test (`ctest -L z80`):
 - `z80.int.prefix_run`, `z80.int.r_prefixes`: 65,536 DD bytes run in 4 T-state steps with no acceptance between
   them, and R counts one per opcode fetch with bit 7 kept.
 - `z80.ed.holes`: each of the 176 undefined ED opcodes is an 8 T-state no-operation that adds 2 to R.
+
+## Assembled fixtures
+
+Test programs for the whole machine are written in Z80 assembly under `tests/roms/src`, one `<name>.asm` and one
+`<name>.link` each, sharing `header.inc` (the memory map and the Sega header, with the ROM size set explicitly and
+the header checksum computed by the assembler). Git checks these sources out with LF line endings on every host,
+so every lane assembles the same bytes.
+
+### The assembler pin
+
+The fixtures are built with WLA-DX v10.7, the `wla-dx` row of `pins.txt`. At configure time `cmake/WlaDx.cmake`
+downloads that tarball into `build/<preset>/wla-dx`, refuses it unless its SHA-256 matches the row, and builds
+only `wla-z80` and `wlalink` with the host compiler: Release, no documentation, no toolchain file and no cross or
+sanitizer flags, since the tools run on the build machine. A later configure reuses the two programs while the pin
+they were built from is unchanged. WLA-DX is GPL-2.0-or-later; it runs only as a tool, and its source stays in the
+build tree. `fixtures.wla_pin.self_test` checks a local `file://` tarball against the pinned digest and passes
+only when the download fails with a hash mismatch, so it needs no network.
+
+### The images
+
+The `cogmaster-fixtures` target assembles each source into `build/<preset>/fixtures/<name>.sms`. The images are
+never committed and never packed into a release archive: the source and the pinned assembler define them, and
+`tests/built/expected.txt` pins each image's SHA-256. `fixtures.hello` assembles the smallest one, a valid export
+header and a jump to itself, checks its digest and that `cogmaster-run --probe` reports `checksum_ok=1`.
+`runner.hashes_file` adds each image's digest to `hashes.txt`, so the `hash-equality` job also shows every lane
+assembled the same bytes.

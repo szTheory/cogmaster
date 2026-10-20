@@ -41,7 +41,7 @@ Each lane is one workflow preset, `cmake --workflow --preset <name>`, building i
 | `hygiene` | The repository is clean: tree scan, formatting, the integer-only text scan, the analyzer, the pins file, and the tests of CI itself. | `hygiene` | `hygiene` |
 | `be32` | The same hashes on a big-endian, 32-bit target with unsigned `char`: 32-bit PowerPC (`cmake/toolchains/ppc-linux-gnu.cmake`) under `qemu-ppc`. | `ci` | `portable` |
 | `wasm32` | The same hashes in WebAssembly: clang-21 for `wasm32-wasi` (`cmake/toolchains/wasm32-wasi.cmake`) under the pinned wasmtime. WASI cannot load a libretro core, so this lane builds none. | `wasm32` | `portable` |
-| `bench` | A Release runner for the bench and the instructions-per-frame job. Configure and build only. | none | none |
+| `bench` | A Release runner for the bench and the instructions-per-frame job. Configure and build only, with no tests and no fixtures. | none | none |
 
 On the two emulated lanes CMake runs each test binary through `CMAKE_CROSSCOMPILING_EMULATOR`, and every script
 that starts `cogmaster-run` takes the same emulator as `-DEMULATOR=`, so a test never runs a host binary in place
@@ -49,6 +49,9 @@ of the guest one. The wasm32 emulator is `build/pins/wasmtime/wasmtime run --dir
 tree sits under the source tree, so one preopen covers both at the same paths. Fetch the runtime first with
 `scripts/fetch-pin.sh wasmtime-<arch>-linux build/pins/wasmtime`. The wasm32 lane takes clang-21, lld-21,
 `wasi-libc` and `libclang-rt-21-dev-wasm32` from the distribution rather than a separate WASI SDK.
+
+`COGMASTER_FIXTURES` (on by default; on in `ci`, `ci-msvc`, `asan`, `be32` and `wasm32`) builds WLA-DX and the
+fixtures, described in [conformance.md](conformance.md#assembled-fixtures).
 
 `COGMASTER_TIMEOUT_SCALE` multiplies every test timeout: 3 for `asan`, 8 for `be32` and 5 for `wasm32`. The
 emulator scales are measured on the hosted runners: the tests a lane shares with the Linux x64 leg took, in total,
@@ -58,7 +61,8 @@ under wasmtime. Each scale is the largest ratio rounded up; `CMakePresets.json` 
 ### Comparing hashes across lanes
 
 `runner.hashes_file` (`tests/cmake/hashes.cmake`, mode `write`) writes `build/<preset>/hashes.txt`: the frame 60
-hash line of the Master System card and of the Game Gear card, with Unix newlines on every host. CI collects the
+hash line of the Master System card and of the Game Gear card, then a `fixture <name> sha256 <hex>` line per
+assembled fixture image, with Unix newlines on every host. CI collects the
 file from each lane, and the `hash-equality` job compares them:
 
 ```sh
@@ -95,6 +99,7 @@ fixture) and `wasm32.txt` (the `ci` list without the `libretro` tests).
 | `install` | The library installed and found by an outside project, and embedded with `add_subdirectory`. |
 | `perf` | Allocation-free frames and the instructions-per-frame gate's own logic. |
 | `policy` | Rules about the repository, the documents and the tests themselves. |
+| `fixtures` | The images assembled from `tests/roms/src` with the pinned WLA-DX, and that pin's negative control. |
 | `release` | The packaged zips, run after the package step. |
 | `hygiene` | The hygiene lane's checks. |
 

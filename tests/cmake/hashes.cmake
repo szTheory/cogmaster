@@ -1,10 +1,12 @@
 # The hashes every lane prints, and their comparison across lanes, run as
-#   cmake -DMODE=write -DRUN=<cogmaster-run> [-DEMULATOR=<list>] -DOUT=<dir> -P hashes.cmake
+#   cmake -DMODE=write -DRUN=<cogmaster-run> [-DEMULATOR=<list>] -DOUT=<dir>
+#     [-DFIXTURES=<dir>] -P hashes.cmake
 #   cmake -DMODE=compare -DFILES=<list> -DCOUNT=<n> -P hashes.cmake
 if(MODE STREQUAL "write")
   # Fault prevented: a lane's output silently not compared. Writes
   # <OUT>/hashes.txt with the frame 60 hash line of the Master System card
-  # and of the Game Gear card, the file CI collects from every lane.
+  # and of the Game Gear card, then one "fixture <name> sha256 <hex>" line per
+  # image in FIXTURES, the file CI collects from every lane.
   set(lines "")
   foreach(machine IN ITEMS sms gg)
     set(args --frames 60 --hash)
@@ -19,6 +21,18 @@ if(MODE STREQUAL "write")
     endif()
     string(APPEND lines "${out}")
   endforeach()
+  if(DEFINED FIXTURES)
+    file(GLOB images "${FIXTURES}/*.sms")
+    if(NOT images)
+      message(FATAL_ERROR "hashes: no fixture image in ${FIXTURES}")
+    endif()
+    list(SORT images)
+    foreach(image IN LISTS images)
+      get_filename_component(name "${image}" NAME_WE)
+      file(SHA256 "${image}" digest)
+      string(APPEND lines "fixture ${name} sha256 ${digest}\n")
+    endforeach()
+  endif()
   # Unix newlines on every host: file(WRITE) writes CRLF on Windows.
   file(CONFIGURE OUTPUT "${OUT}/hashes.txt" NEWLINE_STYLE UNIX CONTENT "${lines}")
 elseif(MODE STREQUAL "compare")
