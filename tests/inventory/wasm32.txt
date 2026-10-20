@@ -38,6 +38,7 @@ core.load.rejected_unchanged	core,portable
 core.load.sizes	core,portable
 core.no_alloc_after_load	perf,portable
 core.state.frame_counter	core,portable
+core.state.mapper	core,portable
 core.state.record_sweep	core,portable
 core.state.rejects_header	core,portable
 core.state.round_trip	core,portable
@@ -55,7 +56,16 @@ install.consumer	install
 install.consumer.cxx	install
 install.consumer.dll_crt	install
 install.stage	install
+mapper.codemasters.banks	mapper,portable
+mapper.codemasters.ram	mapper,portable
+mapper.codemasters.wrap	mapper,portable
+mapper.none.layout	mapper,portable
+mapper.pad_wrap	mapper,portable
 mapper.sega.banks	mapper,portable
+mapper.sega.mirror	mapper,portable
+mapper.sega.ram	mapper,portable
+mapper.sega.shift	mapper,portable
+mapper.sega.wrap	mapper,portable
 perf.gate.allowed	perf
 perf.gate.identical	perf
 perf.gate.missing	perf

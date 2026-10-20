@@ -7,10 +7,13 @@ set_target_properties(cogmaster-test-mapper PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
 cogmaster_warnings(cogmaster-test-mapper)
 
-# Fault prevented: a bank register that selects the wrong 16 KiB page, or a
-# slot 0 switch that moves the interrupt vectors, so a paged game runs code
-# or reads data from the wrong place.
-foreach(case IN ITEMS sega.banks)
+# Fault prevented: a bank register that selects the wrong 16 KiB page, a
+# slot 0 switch that moves the interrupt vectors, cartridge RAM that loses
+# its bytes or shadows the wrong slot, or a register no longer readable from
+# its RAM mirror, so a paged game runs code or reads data from the wrong
+# place.
+foreach(case IN ITEMS sega.banks sega.wrap sega.ram sega.mirror sega.shift codemasters.banks
+                      codemasters.ram codemasters.wrap none.layout pad_wrap)
   cogmaster_add_test(NAME mapper.${case} COMMAND cogmaster-test-mapper ${case}
     LABELS mapper portable TIMEOUT 10)
 endforeach()

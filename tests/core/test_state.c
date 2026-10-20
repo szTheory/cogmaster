@@ -11,8 +11,8 @@
 #include "state.h"
 #include "../check.h"
 
-#define BUF 32768u /* bytes in each state buffer; a state is about 25 KiB */
-#define MAX_FIELDS 25000u /* 8,192 work RAM and 16,384 VRAM bytes among them */
+#define BUF 65536u        /* bytes in each state buffer; up to about 57 KiB with cartridge RAM */
+#define MAX_FIELDS 60000u /* 8,192 work RAM, 16,384 VRAM and 32,768 cartridge RAM bytes */
 #define IMAGE_SIZE 1024u
 #define TICKS_PER_FRAME 179208u
 #define POISON 0xA5u
@@ -90,15 +90,15 @@ static cogmaster *make_image(const uint8_t *img)
 static void fill_images(void)
 {
     static const uint8_t prog[] = {
-        0xF3u,              /* DI */
+        0xF3u,               /* DI */
         0x21u, 0x00u, 0xC1u, /* LD HL,$C100 */
-        0x34u,              /* INC (HL) */
-        0x7Eu,              /* LD A,(HL) */
-        0x23u,              /* INC HL */
-        0x77u,              /* LD (HL),A */
-        0xD9u,              /* EXX */
-        0x08u,              /* EX AF,AF' */
-        0x18u, 0xF8u,       /* JR -8, back to INC (HL) */
+        0x34u,               /* INC (HL) */
+        0x7Eu,               /* LD A,(HL) */
+        0x23u,               /* INC HL */
+        0x77u,               /* LD (HL),A */
+        0xD9u,               /* EXX */
+        0x08u,               /* EX AF,AF' */
+        0x18u, 0xF8u,        /* JR -8, back to INC (HL) */
     };
     memset(img_loop, 0, sizeof img_loop);
     memcpy(img_loop, prog, sizeof prog);
@@ -245,15 +245,12 @@ static void sweep(cogmaster *src, cogmaster *target)
            (unsigned long)swept);
     CHECK(swept >= 30u);
     CHECK_EQ_U64(ram, 8192);
-    static const char *const named[] = {"z80_pc",       "z80_sp",          "z80_wz",
-                                        "z80_im",       "z80_idx",         "z80_halted",
-                                        "z80_int_line", "z80_nmi_pending", "bus_deadline",
-                                        "bus_at",       "bus_line",        "bus_t",
-                                        "bus_vdp_at",   "vdp_reg",         "vdp_status",
-                                        "vdp_latch",    "vdp_code",        "vdp_addr",
-                                        "vdp_buffer",   "vdp_pause",       "vdp_cram",
-                                        "vdp_vram",     "machine",         "region",
-                                        "tv"};
+    static const char *const named[] = {
+        "z80_pc",     "z80_sp",       "z80_wz",          "z80_im",       "z80_idx",
+        "z80_halted", "z80_int_line", "z80_nmi_pending", "bus_deadline", "bus_at",
+        "bus_line",   "bus_t",        "bus_vdp_at",      "vdp_reg",      "vdp_status",
+        "vdp_latch",  "vdp_code",     "vdp_addr",        "vdp_buffer",   "vdp_pause",
+        "vdp_cram",   "vdp_vram",     "machine",         "region",       "tv"};
     for (size_t i = 0; i < sizeof named / sizeof named[0]; i++) {
         (void)field(n, named[i]);
     }
@@ -299,6 +296,97 @@ static void reject_other_profile(void)
         cogmaster_destroy(src);
         cogmaster_destroy(target);
     }
+}
+
+static uint8_t img_board[512u * 1024u];
+
+/* A new Master System instance running the first n bytes of img_board. */
+static cogmaster *make_board(size_t n)
+{
+    cogmaster_config cfg = make_config();
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    if (m == NULL) {
+        exit(1);
+    }
+    cogmaster_media media;
+    memset(&media, 0, sizeof media);
+    media.size = (uint32_t)sizeof media;
+    media.image = img_board;
+    media.image_size = n;
+    media.machine = COGMASTER_MACHINE_SMS2;
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    return m;
+}
+
+/* Pages, maps cartridge RAM and fills some of it, runs, then saves, loads
+   into a fresh instance and saves again: equal states, equal registers and
+   RAM. Every field one step out of range is refused, the registers and each
+   cartridge RAM byte are recorded, and a bank at or past the page count is
+   refused. */
+static void mapper_round_trip(size_t n, uint32_t board, uint32_t ram_size, const uint16_t *writes,
+                              size_t n_writes)
+{
+    cogmaster *a = make_board(n);
+    CHECK_EQ_U64(a->cart.board, board);
+    for (size_t i = 0; i < n_writes; i += 2u) {
+        cogmaster__bus_write(a, writes[i], (uint8_t)writes[i + 1u]);
+    }
+    for (uint32_t i = 0; i < 0x2000u; i++) {
+        cogmaster__bus_write(a, (uint16_t)(0xA000u + i), (uint8_t)(i * 7u + 1u));
+    }
+    run_frames(a, 2u);
+    cogmaster *b = make_board(n);
+    run_frames(b, 1u);
+    size_t size = save(a, good);
+    if (size != 0u) {
+        CHECK_EQ_U64(cogmaster__state_load(b, good, size), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(save(b, after), size);
+        CHECK(memcmp(good, after, size) == 0);
+        CHECK(memcmp(&a->mapper, &b->mapper, sizeof a->mapper) == 0);
+        CHECK(a->cart.ram_size == b->cart.ram_size &&
+              memcmp(a->cart.ram, b->cart.ram, a->cart.ram_size) == 0);
+        uint32_t set = 0;
+        for (uint32_t i = 0; i < b->cart.ram_size; i++) {
+            set += b->cart.ram[i] != 0u;
+        }
+        CHECK(set >= 0x1000u);
+    }
+    size_t fields_n = record(a);
+    size_t cart_ram = 0, banks = 0;
+    for (size_t i = 0; i < fields_n; i++) {
+        cart_ram += strcmp(fields[i].name, "cart_ram") == 0;
+        if (strcmp(fields[i].name, "mapper_bank") == 0) {
+            banks++;
+            CHECK_EQ_U64(fields[i].max, a->cart.pages - 1u);
+        }
+    }
+    CHECK_EQ_U64(cart_ram, ram_size);
+    CHECK_EQ_U64(banks, 3);
+    (void)field(fields_n, "mapper_board");
+    (void)field(fields_n, "mapper_ctrl");
+    cogmaster *target = make_board(n);
+    run_frames(target, 1u);
+    sweep(a, target);
+    cogmaster_destroy(a);
+    cogmaster_destroy(b);
+    cogmaster_destroy(target);
+}
+
+/* A 512 KiB Sega image with cartridge RAM bank 1 mapped and banks paged,
+   and a 128 KiB Codemasters image with its RAM mapped. */
+static void test_state_mapper(void)
+{
+    memset(img_board, 0, sizeof img_board);
+    static const uint16_t sega[] = {0xFFFCu, 0x0Cu, 0xFFFDu, 0x05u, 0xFFFEu, 0x1Fu, 0xFFFFu, 0x02u};
+    mapper_round_trip(512u * 1024u, COGMASTER__BOARD_SEGA, 32768u, sega, 8u);
+    /* The Codemasters header at $7FE0: 8 pages, 15 June 1994 12:30, checksum
+       $1234 and its complement, $7FEF zero. */
+    static const uint8_t header[16] = {0x08u, 0x15u, 0x06u, 0x94u, 0x12u, 0x30u, 0x34u, 0x12u,
+                                       0xCCu, 0xEDu, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u};
+    memcpy(img_board + 0x7FE0u, header, sizeof header);
+    static const uint16_t cm[] = {0x4000u, 0x83u, 0x8000u, 0x06u};
+    mapper_round_trip(128u * 1024u, COGMASTER__BOARD_CODEMASTERS, 8192u, cm, 4u);
 }
 
 /* save, load into a fresh instance of the same profile, save again: the two
@@ -360,11 +448,11 @@ static void test_record_sweep(void)
         cogmaster_destroy(target);
     }
     /* A Japanese PAL test card cannot exist; a PAL export one can. */
-    cogmaster *src = make_with(NULL, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT,
-                               COGMASTER_TV_PAL);
+    cogmaster *src =
+        make_with(NULL, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT, COGMASTER_TV_PAL);
     run_frames(src, 60u);
-    cogmaster *target = make_with(NULL, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT,
-                                  COGMASTER_TV_PAL);
+    cogmaster *target =
+        make_with(NULL, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT, COGMASTER_TV_PAL);
     run_frames(target, 5u);
     sweep(src, target);
     cogmaster_destroy(src);
@@ -925,6 +1013,7 @@ static const struct {
     {"fault.reset_clears", test_fault_reset_clears},
     {"fault.state_round_trip", test_fault_state_round_trip},
     {"state.frame_counter", test_frame_counter},
+    {"state.mapper", test_state_mapper},
     {"state.record_sweep", test_record_sweep},
     {"state.rejects_header", test_rejects_header},
     {"state.round_trip", test_round_trip},

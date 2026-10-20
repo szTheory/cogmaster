@@ -34,6 +34,7 @@ set_target_properties(cogmaster-test-state PROPERTIES
 cogmaster_warnings(cogmaster-test-state)
 
 foreach(case IN ITEMS state.round_trip state.record_sweep state.rejects_header state.frame_counter
+    state.mapper
     fault.empty_after_create fault.first_wins fault.reset_clears fault.state_round_trip
     api.error_changes_nothing)
   cogmaster_add_test(NAME core.${case}
