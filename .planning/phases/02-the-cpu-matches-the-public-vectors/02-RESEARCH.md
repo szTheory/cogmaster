@@ -658,14 +658,17 @@ printf("fault frame=%llu line=%lu dot=%lu pc=$%04X op=$%02X addr=$%04X width=%u 
 | A5 | The archive SHA-256 in D-15 is still current (the URL was re-checked, the 288 MB body was not re-downloaded) | Standard Stack | the nightly fetch fails loudly with a digest mismatch; D-15 says what to do |
 | A6 | `ed b*` repeat X/Y comes from the PC high byte for all repeating cases (one vector observed) | SST facts | ED shard failures; the vectors decide, not this note |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Where does the beam start after load and reset?**
    - What we know: D-18 makes (line 192, t 607) the frame origin; D-20 asserts 10 frames = exactly 10 × 179,208 ticks plus overshoot; ARCH §9, SMS-SYSTEM C7 and `docs/embedding.md` say "line 0, tick 0".
    - What's unclear: with the beam at line 0 tick 0, the first frame ends at line 192 t 607 after 131,935 ticks, which contradicts D-20's total.
    - Recommendation (Claude's discretion, "fast-boot hand-off details beyond DEC.43"): start `ticks = 0` at the frame origin (line 192, t 607, with that tick's frame-pending event treated as already fired and cleared). Every frame is then exactly 179,208/214,092 ticks, and update ARCH §9, SMS-SYSTEM C7 and `docs/embedding.md` in the same plan. The alternative is a short first frame, with the D-20 test counting from the end of frame 1.
+   - RESOLVED: the recommendation is adopted in plan 02-06 (objective "Recorded choice"; frame origin in its own constants `BUS_ORIGIN_LINE`/`BUS_ORIGIN_TICK`, `bus.frame_origin`, and the ARCH, SMS-SYSTEM and `docs/embedding.md` corrections in its Task 3).
 2. **Nightly vectors preset and inventory name.** ENGINEERING §2 names a `vectors-full` preset. Recommendation: preset `vectors-full`, option `COGMASTER_VECTORS_FULL`, inventory `tests/inventory/vectors-full.txt` (7 shards + `vectors.sample_equal`), run from `nightly.yml` after `scripts/fetch-pin.sh sst-z80 build/pins/sst-z80`.
+   - RESOLVED: adopted as recommended in plan 02-17 (objective "Recorded choices", Task 1).
 3. **Perf gate input.** The perf job currently benches the test card only. Once the Z80 runs, a ROM-driven perf case (for example the `mapper_sega` fixture, which is built in CI) is the natural Ir/frame subject. Whether that lands in phase 2 depends on the post-merge `ci:` PR (CONTEXT, Reviewed Todos).
+   - RESOLVED: no ROM-driven perf case lands in phase 2, recorded in plan 02-17 (objective "Recorded choices"; ARCHITECTURE section 12 note in its Task 2): the fixtures stop in a HALT loop once measured, so they describe no real workload; phase 3's `boot_to_play` is the first representative subject.
 
 ## Environment Availability
 
