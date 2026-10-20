@@ -91,6 +91,28 @@ int main(void)
     CHECK_EQ_U64(info.region, COGMASTER_REGION_JAPAN);
     CHECK_EQ_U64(info.fps_num, 1640625);
 
+    /* A probe needs no instance: a 1 KiB image with no header has no
+       mapper. */
+    CHECK_EQ_U64(COGMASTER_BOARD_ROM_ONLY, 1);
+    CHECK_EQ_U64(COGMASTER_BOARD_SEGA, 2);
+    CHECK_EQ_U64(COGMASTER_BOARD_CODEMASTERS, 3);
+    cogmaster_cart_info ci;
+    memset(&ci, 0, sizeof ci);
+    ci.size = (uint32_t)sizeof ci;
+    CHECK_EQ_U64(cogmaster_probe(image, sizeof image, &ci), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(ci.image_size, sizeof image);
+    CHECK_EQ_U64(ci.body_offset, 0);
+    CHECK_EQ_U64(ci.header_at, 0);
+    CHECK_EQ_U64(ci.checksum, 0);
+    CHECK_EQ_U64(ci.checksum_ok, 0);
+    CHECK_EQ_U64(ci.product_code, 0);
+    CHECK_EQ_U64(ci.version, 0);
+    CHECK_EQ_U64(ci.region_code, 0);
+    CHECK_EQ_U64(ci.rom_size_code, 0);
+    CHECK_EQ_U64(ci.machine_guess, COGMASTER_MACHINE_AUTO);
+    CHECK_EQ_U64(ci.region_guess, COGMASTER_REGION_AUTO);
+    CHECK_EQ_U64(ci.board, COGMASTER_BOARD_ROM_ONLY);
+
     cogmaster_destroy(m);
     CHECK_DONE();
 }

@@ -215,3 +215,11 @@ void cogmaster__cart_install(cogmaster *m, const struct cogmaster__cart *c)
     }
     m->cart = *c;
 }
+
+cogmaster_status cogmaster_probe(const void *image, size_t n, cogmaster_cart_info *out)
+{
+    (void)image;
+    (void)n;
+    (void)out;
+    return COGMASTER_STATUS_ERR_ARGUMENT;
+}

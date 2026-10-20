@@ -46,6 +46,10 @@ typedef uint32_t cogmaster_status;
 #define COGMASTER_RESET_SOFT 0u
 #define COGMASTER_RESET_POWER 1u
 
+#define COGMASTER_BOARD_ROM_ONLY 1u
+#define COGMASTER_BOARD_SEGA 2u
+#define COGMASTER_BOARD_CODEMASTERS 3u
+
 typedef struct cogmaster cogmaster;
 
 typedef struct cogmaster_allocator {
@@ -111,6 +115,18 @@ typedef struct cogmaster_fault {
     uint8_t device, kind; /* opaque codes, see docs/embedding.md */
 } cogmaster_fault;
 
+typedef struct cogmaster_cart_info {
+    uint32_t size;
+    uint32_t image_size;
+    uint32_t body_offset; /* 0, or 512 after a copier header */
+    uint32_t header_at;   /* 0 (none), 0x1FF0, 0x3FF0 or 0x7FF0 */
+    uint32_t checksum, checksum_ok;
+    uint32_t product_code, version, region_code, rom_size_code;
+    uint32_t machine_guess; /* COGMASTER_MACHINE_*, 0 when unknown */
+    uint32_t region_guess;  /* COGMASTER_REGION_*, 0 when unknown */
+    uint32_t board;         /* COGMASTER_BOARD_*, 0 when none is supported */
+} cogmaster_cart_info;
+
 cogmaster_status cogmaster_get_versions(cogmaster_versions *out);
 cogmaster_status cogmaster_create(const cogmaster_config *cfg, cogmaster **out);
 void cogmaster_destroy(cogmaster *m); /* NULL-safe */
@@ -120,6 +136,7 @@ cogmaster_status cogmaster_get_frame(const cogmaster *m, cogmaster_frame *io);
 cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out);
 cogmaster_status cogmaster_reset(cogmaster *m, uint32_t kind); /* COGMASTER_RESET_* */
 cogmaster_status cogmaster_get_fault(const cogmaster *m, cogmaster_fault *out);
+cogmaster_status cogmaster_probe(const void *image, size_t n, cogmaster_cart_info *out);
 
 #ifdef __cplusplus
 }

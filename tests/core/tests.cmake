@@ -9,7 +9,8 @@ set_target_properties(cogmaster-test-core PROPERTIES
 cogmaster_warnings(cogmaster-test-core)
 
 foreach(case IN ITEMS testcard.static testcard.boundaries testcard.all_colours testcard.full_field
-    info load.profile_rejected load.profiles load.sizes load.rejected_unchanged boot.handoff api.size_tags
+    info load.profile_rejected load.profiles load.sizes load.rejected_unchanged load.board
+    boot.handoff api.size_tags
     api.statuses api.first_released_sizes
     create.allocator frame.pitch_wide)
   cogmaster_add_test(NAME core.${case}

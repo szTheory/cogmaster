@@ -18,6 +18,9 @@ bus.halt_bound.ei_masked	bus,portable
 bus.halt_bound.ie_positive	bus,portable
 bus.hostile_vdp_loop	bus,portable
 bus.stamps	bus,portable
+cart.probe.branches	cart,portable
+cart.probe.pure	cart,portable
+cart.probe.sizes	cart,portable
 core.api.error_changes_nothing	core,portable
 core.api.first_released_sizes	core,portable
 core.api.size_tags	core,portable
@@ -30,6 +33,7 @@ core.fault.reset_clears	core,portable
 core.fault.state_round_trip	core,portable
 core.frame.pitch_wide	core,portable
 core.info	core,portable
+core.load.board	core,portable
 core.load.profile_rejected	core,portable
 core.load.profiles	core,portable
 core.load.rejected_unchanged	core,portable

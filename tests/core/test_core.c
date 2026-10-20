@@ -676,6 +676,13 @@ static void test_statuses(void)
     CHECK_EQ_U64(cogmaster_load(m, &cart), COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE);
     cart.image = NULL;
     CHECK_EQ_U64(cogmaster_load(m, &cart), COGMASTER_STATUS_ERR_ARGUMENT);
+    /* An 8 KiB image on a Game Gear is the X-Terminator, on no supported
+       board. */
+    static const uint8_t device[8192] = {0};
+    cart = make_media(COGMASTER_MACHINE_GG);
+    cart.image = device;
+    cart.image_size = sizeof device;
+    CHECK_EQ_U64(cogmaster_load(m, &cart), COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD);
     CHECK_EQ_U64(cogmaster_run_frame(m, &result), COGMASTER_STATUS_OK);
     CHECK_EQ_U64(result.stop, COGMASTER_STOP_FRAME);
     CHECK_EQ_U64(result.overshoot_ticks, 0);
@@ -1039,6 +1046,86 @@ static void test_load_rejected_unchanged(void)
     CHECK_EQ_U64(c.live_bytes, 0);
 }
 
+static uint8_t board_img[64u * 1024u];
+
+/* Loads n bytes of board_img as machine, which must be refused with
+   ERR_UNSUPPORTED_BOARD and leave the instance, its image and the
+   allocator untouched. */
+static void expect_board_refused(const char *what, cogmaster *m, const counts *c, size_t n,
+                                 uint32_t machine)
+{
+    memcpy(instance_before, m, sizeof instance_before);
+    uint32_t rom_size = m->cart.size;
+    if (m->cart.rom != NULL) {
+        memcpy(rom_before, m->cart.rom, rom_size);
+    }
+    uint32_t allocs = c->allocs;
+    cogmaster_media media = image_media(board_img, n, machine);
+    expect_status(what, (uint32_t)n, cogmaster_load(m, &media),
+                  COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD);
+    if (memcmp(instance_before, m, sizeof instance_before) != 0 || c->allocs != allocs ||
+        (m->cart.rom != NULL && memcmp(rom_before, m->cart.rom, rom_size) != 0)) {
+        fprintf(stderr, "%s: the refused load changed the instance\n", what);
+        check_failures++;
+    }
+}
+
+/* An image on no supported board is refused by load with the status the
+   probe gives, and the instance stays byte for byte as it was: a 64 KiB
+   image storing to $A000, an 8 KiB image whose header names the Game Gear,
+   and an 8 KiB image loaded as a Game Gear. As a Master System the last
+   loads with no mapper. */
+static void test_load_board(void)
+{
+    fill_big();
+    counts c;
+    memset(&c, 0, sizeof c);
+    cogmaster_config cfg = make_config();
+    cfg.allocator.alloc = count_alloc;
+    cfg.allocator.free = count_free;
+    cfg.allocator.user = &c;
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    if (m == NULL) {
+        return;
+    }
+    cogmaster_media first = image_media(big, 64u * 1024u, COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(cogmaster_load(m, &first), COGMASTER_STATUS_OK);
+    run_frames(m, 2);
+
+    /* Four LD ($A000),A stores, the Korean board's register. */
+    memset(board_img, 0, sizeof board_img);
+    for (uint32_t i = 0; i < 4u; i++) {
+        board_img[0x100u + 3u * i] = 0x32u;
+        board_img[0x101u + 3u * i] = 0x00u;
+        board_img[0x102u + 3u * i] = 0xA0u;
+    }
+    cogmaster_cart_info info;
+    memset(&info, 0, sizeof info);
+    info.size = (uint32_t)sizeof info;
+    CHECK_EQ_U64(cogmaster_probe(board_img, sizeof board_img, &info),
+                 COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD);
+    CHECK_EQ_U64(info.board, 0);
+    expect_board_refused("$A000 stores", m, &c, sizeof board_img, COGMASTER_MACHINE_SMS2);
+    expect_board_refused("$A000 stores as auto", m, &c, sizeof board_img, COGMASTER_MACHINE_AUTO);
+
+    /* The ROM header magic as bytes at $1FF0, region code 5 (Game Gear
+       Japan), size code $A. */
+    static const uint8_t header[16] = {0x54u, 0x4Du, 0x52u, 0x20u, 0x53u, 0x45u, 0x47u, 0x41u,
+                                       0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x5Au};
+    memset(board_img, 0, sizeof board_img);
+    memcpy(board_img + 0x1FF0u, header, sizeof header);
+    expect_board_refused("8 KiB Game Gear header", m, &c, 8192u, COGMASTER_MACHINE_SMS2);
+    memset(board_img + 0x1FF0u, 0, sizeof header);
+    expect_board_refused("8 KiB as a Game Gear", m, &c, 8192u, COGMASTER_MACHINE_GG);
+    cogmaster_media sms = image_media(board_img, 8192u, COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(cogmaster_load(m, &sms), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(m->cart.board, COGMASTER_BOARD_ROM_ONLY);
+    cogmaster_destroy(m);
+    CHECK_EQ_U64(c.frees, c.allocs);
+    CHECK_EQ_U64(c.live_bytes, 0);
+}
+
 /* Every profile pair: AUTO is an export console on an NTSC set; each legal
    pair loads, reports itself and runs frames of its TV's length; PAL on a
    Game Gear or a Japanese console, which were never made (SMS-SYSTEM C6),
@@ -1064,8 +1151,8 @@ static void test_load_profiles(void)
          COGMASTER_STATUS_ERR_PROFILE_REJECTED, 0u, 0u},
         {COGMASTER_MACHINE_SMS2, 3u, COGMASTER_TV_NTSC, COGMASTER_STATUS_ERR_PROFILE_REJECTED, 0u,
          0u},
-        {COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT, 3u,
-         COGMASTER_STATUS_ERR_PROFILE_REJECTED, 0u, 0u},
+        {COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT, 3u, COGMASTER_STATUS_ERR_PROFILE_REJECTED,
+         0u, 0u},
         {COGMASTER_MACHINE_SMS2, 0xFFFFFFFFu, COGMASTER_TV_AUTO,
          COGMASTER_STATUS_ERR_PROFILE_REJECTED, 0u, 0u},
         {COGMASTER_MACHINE_AUTO, COGMASTER_REGION_AUTO, COGMASTER_TV_PAL, COGMASTER_STATUS_OK,
@@ -1165,6 +1252,7 @@ static const struct {
     {"create.allocator", test_allocator},
     {"frame.pitch_wide", test_pitch_wide},
     {"info", test_info},
+    {"load.board", test_load_board},
     {"load.profile_rejected", test_profile_rejected},
     {"load.profiles", test_load_profiles},
     {"load.rejected_unchanged", test_load_rejected_unchanged},
