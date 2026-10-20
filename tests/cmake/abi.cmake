@@ -35,8 +35,11 @@ set(helpers
   # libgcc integer routines (GCC internals manual, "Integer library routines").
   "^Linux/(ppc|powerpc)$:__udivdi3 __umoddi3 __ashldi3 __lshrdi3"
   # MSVC x64's auto-vectorizer reads the C runtime's CPU level (measured: llvm-nm
-  # on the core, ci-msvc on windows-2025).
-  "^Windows/(AMD64|x86_64)$:__isa_available")
+  # on the core, ci-msvc on windows-2025). Its switch jump tables hold
+  # offsets from __ImageBase, the image start the linker itself defines
+  # (measured: the core's opcode switches, ci-msvc on windows-2025, run
+  # 39368145441).
+  "^Windows/(AMD64|x86_64)$:__isa_available __ImageBase")
 # Names a compiler gives its own constants, "system regex:name regex". They
 # are left out of the globals and symbols checks. MSVC puts each string
 # literal in a read-only COMDAT named ??_C@_ and each 128-bit vector constant

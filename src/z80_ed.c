@@ -236,7 +236,8 @@ static void io_flags(cogmaster *m, uint8_t v, unsigned k, int rep, uint16_t addr
         if (f & CF) {
             pb = (uint8_t)(v & 0x80u ? b - 1u : b + 1u);
             uint8_t lo = (uint8_t)(b & 0x0Fu);
-            f = (uint8_t)((f & ~HF) | ((v & 0x80u ? lo == 0x00u : lo == 0x0Fu) ? HF : 0u));
+            f = (uint8_t)((f & ~(unsigned)HF) |
+                          ((v & 0x80u ? lo == 0x00u : lo == 0x0Fu) ? HF : 0u));
         }
         f = (uint8_t)(f ^ parity((uint8_t)(pb & 7u)) ^ PF);
     }
