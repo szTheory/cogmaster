@@ -1,5 +1,6 @@
 # Nightly bench: 300,000 headless frames of the test card per platform, as
-# trend data, never a gate (docs/testing.md, "Performance"). The runner
+# trend data, never a gate (docs/testing.md, "Performance"), and libFuzzer
+# over the loader and a two-frame run (docs/testing.md, "Fuzzing"). The runner
 # reports its own frame-time percentiles and max_rss_kib. Reports go to job
 # summaries and artifacts, never to commits. A failed night opens or updates
 # the one open issue labelled nightly; a good night closes it.
@@ -14,11 +15,12 @@ on:
         description: "Fail the run on purpose, to show the nightly issue being written"
         type: boolean
         default: false
-  # A change to the bench or this file runs the bench jobs on its pull
-  # request; the report job writes no issue for pull requests.
+  # A change to the bench, the fuzz targets or this file runs the jobs on its
+  # pull request; the report job writes no issue for pull requests.
   pull_request:
     paths:
       - .github/workflows/nightly.yml
+      - tests/fuzz/**
       - runner/bench.c
       - runner/bench.h
       - runner/clock.c
@@ -98,10 +100,36 @@ jobs:
         if: inputs.force_failure
         run: exit 1
 
+  # libFuzzer with the address and undefined-behaviour sanitizers, each target
+  # 60 s from the generated seeds with -timeout=2 and -max_len=1049089. A
+  # finding is triaged as a harness or core bug; its minimised input is
+  # uploaded and joins tests/fuzz/regress with a manifest row.
+  fuzz:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5  # 5-minute floor (apt), provisional, 0 samples
+    # Report-only until ten green nightly runs; then this line goes.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # clang-21 is on the image; its sanitizer and libFuzzer runtimes may not be.
+      - name: Sanitizer and libFuzzer runtimes
+        run: dpkg -s libclang-rt-21-dev > /dev/null 2>&1 || { sudo apt-get update && sudo apt-get install -y libclang-rt-21-dev; }
+      - run: cmake --workflow --preset fuzz
+      - name: Every test ran
+        run: cmake -DJUNIT=build/fuzz/junit.xml -DINVENTORY=tests/inventory/fuzz.txt -P tests/cmake/check_junit.cmake
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: fuzz-artifacts
+          path: build/fuzz/tests/fuzz-artifacts
+          if-no-files-found: ignore
+
   # Decides from the jobs' results, never from a piped exit status: the
   # default shell has no pipefail.
   report:
-    needs: [bench, bench-wasm32]
+    needs: [bench, bench-wasm32, fuzz]
     if: always() && github.event_name != 'pull_request'
     runs-on: ubuntu-26.04
     timeout-minutes: 5  # provisional, 0 samples (skipped on pull requests)

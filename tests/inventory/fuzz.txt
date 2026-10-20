@@ -1,0 +1,4 @@
+# Every test the fuzz preset registers: name<TAB>labels.
+# Sorted; configure fails when this differs from what is registered.
+fuzz.libfuzzer.loader	fuzz
+fuzz.libfuzzer.run	fuzz

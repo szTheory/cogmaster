@@ -41,6 +41,7 @@ Each lane is one workflow preset, `cmake --workflow --preset <name>`, building i
 | `hygiene` | The repository is clean: tree scan, formatting, the integer-only text scan, the analyzer, the pins file, and the tests of CI itself. | `hygiene` | `hygiene` |
 | `be32` | The same hashes on a big-endian, 32-bit target with unsigned `char`: 32-bit PowerPC (`cmake/toolchains/ppc-linux-gnu.cmake`) under `qemu-ppc`. | `ci` | `portable` |
 | `wasm32` | The same hashes in WebAssembly: clang-21 for `wasm32-wasi` (`cmake/toolchains/wasm32-wasi.cmake`) under the pinned wasmtime. WASI cannot load a libretro core, so this lane builds none. | `wasm32` | `portable` |
+| `fuzz` | The nightly libFuzzer runs of the loader and a two-frame run under clang-21's ASan and UBSan (see [Fuzzing](#fuzzing)). No fixtures, no libretro core. | `fuzz` | `fuzz` |
 | `bench` | A Release runner for the bench and the instructions-per-frame job. Configure and build only, with no tests and no fixtures. | none | none |
 
 On the two emulated lanes CMake runs each test binary through `CMAKE_CROSSCOMPILING_EMULATOR`, and every script
@@ -83,8 +84,8 @@ selects by label.
 labels comma-separated (`cmake/CogmasterTests.cmake`). Configure fails when the registered tests differ from the
 file in either direction, so a test cannot be dropped, renamed or registered on one platform only without the file
 changing in the same commit. Every leg registers the same tests; a check only one platform can perform runs there
-as a CI step instead. Three lanes have their own list: `hygiene.txt`, `nofp.txt` (the `abi` tests plus the nofp
-fixture) and `wasm32.txt` (the `ci` list without the `libretro` tests).
+as a CI step instead. Four lanes have their own list: `hygiene.txt`, `nofp.txt` (the `abi` tests plus the nofp
+fixture), `wasm32.txt` (the `ci` list without the `libretro` tests) and `fuzz.txt` (the two timed libFuzzer runs).
 
 | Label | Tests |
 |---|---|
@@ -99,6 +100,7 @@ fixture) and `wasm32.txt` (the `ci` list without the `libretro` tests).
 | `install` | The library installed and found by an outside project, and embedded with `add_subdirectory`. |
 | `perf` | Allocation-free frames and the instructions-per-frame gate's own logic. |
 | `policy` | Rules about the repository, the documents and the tests themselves. |
+| `fuzz` | Every generated seed and committed regression replayed through the fuzz entries; on the nightly `fuzz` lane, the timed libFuzzer runs. |
 | `fixtures` | The images assembled from `tests/roms/src` with the pinned WLA-DX, their mailbox records judged against `tests/diag/expected.csv`, and the negative controls of the pin and of the judge. |
 | `release` | The packaged zips, run after the package step. |
 | `hygiene` | The hygiene lane's checks. |
@@ -253,6 +255,29 @@ committed. A failed night opens or comments on the one open issue labelled `nigh
 Dispatching the workflow with `force_failure` fails a run on purpose, after the reports are uploaded. A pull
 request that changes the bench or the workflow runs the bench jobs but writes no issue.
 
+## Fuzzing
+
+Two fuzz targets each define `LLVMFuzzerTestOneInput`: `tests/fuzz/fuzz_loader.c` probes the bytes and loads them
+on the profile the probe guesses, and fails when the probe and the load disagree on accepting them;
+`tests/fuzz/fuzz_run.c` loads them with fast boot and runs two frames. Their starting inputs are the images
+`tests/fuzz/seeds.c` writes into `build/<preset>/tests/seeds` at build time; no corpus is committed.
+
+**Replay, every pull request.** `fuzz.regress.loader` and `fuzz.regress.run` link each entry with a plain `main`
+(`tests/fuzz/replay.c`) and replay every seed, and every file in `tests/fuzz/regress` when it exists, on every
+lane that runs the `portable` label. Each prints `replayed N` and fails when N is 0. No libFuzzer is needed.
+
+**libFuzzer, nightly.** The `fuzz` job in `nightly.yml` runs `cmake --workflow --preset fuzz` on `ubuntu-26.04`:
+clang-21 with `-fsanitize=fuzzer-no-link,address,undefined`, the two targets linked with `-fsanitize=fuzzer`, each
+run for 60 s over a fresh copy of the seeds with `-timeout=2 -max_len=1049089` (1 MiB, a copier header and one
+byte, so the size-reject path is reachable). A crashing input is uploaded as the `fuzz-artifacts` artifact. The
+job is `continue-on-error` until ten green nightly runs. A finding is a harness or core bug to triage, never a
+release gate of its own.
+
+**Adding a regression.** Minimise the input (`cogmaster-fuzz-<target> -minimize_crash=1 -runs=10000 <file>`), fix
+the bug, commit the minimised file under `tests/fuzz/regress/` and add its `tests/roms/manifest.txt` row
+(`scripts/hygiene.sh` rejects a binary file without one). Reconfigure: the replay tests then read the directory.
+`docs.budgets` keeps `tests/fuzz` at most 512 KiB.
+
 ## Hosted RetroArch
 
 The `retroarch` job proves that a real frontend shows the frame the runner hashes. It is a CI step, not a CTest,
@@ -299,7 +324,8 @@ library's version numbers, the core's `display_version` and `cogmaster-run --ver
 
 ## Budgets
 
-`docs.budgets` keeps `README.md` under 12 KB, `include/cogmaster.h` under 24 KB and each `docs/*.md` under 40 KB.
+`docs.budgets` keeps `README.md` under 12 KB, `include/cogmaster.h` under 24 KB, each `docs/*.md` under 40 KB
+and `tests/fuzz` at most 512 KiB.
 `docs.api_names` requires every public name in the header to appear in [embedding.md](embedding.md), and the
 guide to name nothing the header lacks.
 

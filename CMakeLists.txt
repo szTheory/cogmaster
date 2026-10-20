@@ -190,6 +190,12 @@ if(COGMASTER_NOFP)
   target_compile_options(cogmaster PRIVATE -mgeneral-regs-only)
 endif()
 
+# The fuzz lane builds the two libFuzzer targets and registers only their
+# timed runs. The preset compiles everything with
+# -fsanitize=fuzzer-no-link,address,undefined; only the two targets link the
+# libFuzzer runtime, so no other executable gets its main.
+option(COGMASTER_LIBFUZZER "Build the libFuzzer targets; register only the fuzz runs" OFF)
+
 # Tests. COGMASTER_TIMEOUT_SCALE multiplies every test's timeout on slow
 # lanes; COGMASTER_INVENTORY names the tests/inventory/<name>.txt the
 # registered tests must equal.
@@ -202,6 +208,8 @@ if(COGMASTER_HYGIENE)
   set(inventory hygiene)
 elseif(COGMASTER_NOFP)
   set(inventory nofp)
+elseif(COGMASTER_LIBFUZZER)
+  set(inventory fuzz)
 endif()
 set(COGMASTER_INVENTORY ${inventory} CACHE STRING "Test inventory file under tests/inventory")
 # Fault prevented: every wasm32 test failing on a missing runtime, with a

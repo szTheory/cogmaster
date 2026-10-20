@@ -105,6 +105,22 @@
       }
     },
     {
+      "name": "fuzz",
+      "inherits": "base",
+      "$comment": "The nightly libFuzzer lane on Ubuntu: clang-21 with its runtimes. Everything is compiled with the fuzzer-no-link instrumentation; only the two fuzz targets link libFuzzer. Registers only the timed fuzz runs.",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "COGMASTER_FIXTURES": "OFF",
+        "COGMASTER_BUILD_LIBRETRO": "OFF",
+        "COGMASTER_LIBFUZZER": "ON",
+        "CMAKE_COMPILE_WARNING_AS_ERROR": "ON",
+        "CMAKE_C_COMPILER": "clang-21",
+        "CMAKE_CXX_COMPILER": "clang++-21",
+        "CMAKE_C_FLAGS": "-O1 -g -fsanitize=fuzzer-no-link,address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer",
+        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined"
+      }
+    },
+    {
       "name": "bench",
       "inherits": "base",
       "$comment": "The nightly bench: the runner only, built with the host compiler, with no tests and no fixtures.",
@@ -124,6 +140,7 @@
     { "name": "nofp", "configurePreset": "nofp" },
     { "name": "be32", "configurePreset": "be32" },
     { "name": "wasm32", "configurePreset": "wasm32" },
+    { "name": "fuzz", "configurePreset": "fuzz" },
     { "name": "bench", "configurePreset": "bench", "targets": ["cogmaster-run"] }
   ],
   "testPresets": [
@@ -226,6 +243,16 @@
       },
       "filter": { "include": { "label": "^portable$" } },
       "execution": { "noTestsAction": "error", "jobs": "" }
+    },
+    {
+      "name": "fuzz",
+      "configurePreset": "fuzz",
+      "output": {
+        "outputOnFailure": true,
+        "outputJUnitFile": "${sourceDir}/build/${presetName}/junit.xml"
+      },
+      "filter": { "include": { "label": "^fuzz$" } },
+      "execution": { "noTestsAction": "error", "jobs": "" }
     }
   ],
   "packagePresets": [
@@ -299,6 +326,14 @@
         { "type": "configure", "name": "wasm32" },
         { "type": "build", "name": "wasm32" },
         { "type": "test", "name": "wasm32" }
+      ]
+    },
+    {
+      "name": "fuzz",
+      "steps": [
+        { "type": "configure", "name": "fuzz" },
+        { "type": "build", "name": "fuzz" },
+        { "type": "test", "name": "fuzz" }
       ]
     },
     {
