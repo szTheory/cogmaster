@@ -17,9 +17,8 @@ static int presentation_test(void)
     uint16_t reference[MAX_W * MAX_H];
     /* Mode-4 register writes, followed by a bounded JP loop. Registers
        R0/R1 choose the active height (SMS-VDP sections 2 and 4). */
-    const uint8_t program[] = {0x3E, 0x04, 0xD3, 0xBF, 0x3E, 0x80, 0xD3, 0xBF,
-                               0x3E, 0x40, 0xD3, 0xBF, 0x3E, 0x81, 0xD3, 0xBF,
-                               0xC3, 0x10, 0x00};
+    const uint8_t program[] = {0x3E, 0x04, 0xD3, 0xBF, 0x3E, 0x80, 0xD3, 0xBF, 0x3E, 0x40,
+                               0xD3, 0xBF, 0x3E, 0x81, 0xD3, 0xBF, 0xC3, 0x10, 0x00};
     memcpy(image, program, sizeof program);
     memcpy(image + 0x7FF0u, "TMR SEGA", 8u);
     image[0x7FFFu] = 0x4Cu;
@@ -39,7 +38,8 @@ static int presentation_test(void)
                 image[9] = height == 1u ? 0x50u : (height == 2u ? 0x48u : 0x40u);
                 option_machine = machine == 0u ? "sms1" : "gg";
                 /* SMS1 cannot extend height; SMS2 exercises the full set. */
-                if (height != 0u && machine == 0u) option_machine = "sms2";
+                if (height != 0u && machine == 0u)
+                    option_machine = "sms2";
                 option_mode = machine == 2u ? "sms" : "auto";
                 option_region = pal ? "pal" : "auto";
                 option_view = "native";
@@ -48,7 +48,9 @@ static int presentation_test(void)
                 media.size = sizeof media;
                 media.image = image;
                 media.image_size = sizeof image;
-                media.machine = machine == 0u ? (height ? COGMASTER_MACHINE_SMS2 : COGMASTER_MACHINE_SMS1) : COGMASTER_MACHINE_GG;
+                media.machine = machine == 0u
+                                    ? (height ? COGMASTER_MACHINE_SMS2 : COGMASTER_MACHINE_SMS1)
+                                    : COGMASTER_MACHINE_GG;
                 media.tv = pal ? COGMASTER_TV_PAL : COGMASTER_TV_AUTO;
                 media.video_mode = machine == 2u ? COGMASTER_VIDEO_SMS : COGMASTER_VIDEO_AUTO;
                 CHECK_EQ_U64(cogmaster_load(ref, &media), COGMASTER_STATUS_OK);
@@ -66,11 +68,24 @@ static int presentation_test(void)
                    buffer; both callback fallbacks read every reported sample. */
                 unsigned frames = pal ? 80u : 8u;
                 for (unsigned n = 1u; n <= frames; n++) {
-                    if (n == 3u) { option_aspect = "square"; option_update = true; }
-                    if (n == 4u) { option_view = "full"; option_update = true; }
-                    if (n == 6u) { option_view = "native"; option_update = true; }
+                    if (n == 3u) {
+                        option_aspect = "square";
+                        option_update = true;
+                    }
+                    if (n == 4u) {
+                        option_view = "full";
+                        option_update = true;
+                    }
+                    if (n == 6u) {
+                        option_view = "native";
+                        option_update = true;
+                    }
                     /* Load-time changes must not switch the running machine. */
-                    if (n == 7u) { option_machine = "sms2"; option_mode = "sms"; option_update = true; }
+                    if (n == 7u) {
+                        option_machine = "sms2";
+                        option_mode = "sms";
+                        option_update = true;
+                    }
                     CHECK_EQ_U64(cogmaster_run_frame(ref, NULL), COGMASTER_STATUS_OK);
                     cogmaster_info ri = {0};
                     ri.size = sizeof ri;
@@ -85,7 +100,8 @@ static int presentation_test(void)
                     want_w = rf.w;
                     want_h = rf.h;
                     uint32_t pn = ri.par_num, pd = ri.par_den;
-                    if (machine == 1u && strcmp(option_aspect, "square") == 0) pn = pd = 1u;
+                    if (machine == 1u && strcmp(option_aspect, "square") == 0)
+                        pn = pd = 1u;
                     float aspect = (float)((double)rf.w * pn / ((double)rf.h * pd));
                     unsigned before = geometry_calls, vb = video_calls;
                     samples += run_one();
@@ -108,7 +124,9 @@ static int presentation_test(void)
                             CHECK_EQ_HEX(dot, reference[y * MAX_W + x]);
                         }
                     }
-                    last_w = rf.w; last_h = rf.h; last_aspect = aspect;
+                    last_w = rf.w;
+                    last_h = rf.h;
+                    last_aspect = aspect;
                 }
             }
         }

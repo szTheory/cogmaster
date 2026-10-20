@@ -448,3 +448,13 @@ geometry before the first completion. Height writes latch at final-line tick
 image remains stable while a following raster is in progress. SMS PAL pixel
 aspect is 2950000:2128137; NTSC is 8:7. See [video](hardware/video.md) for
 the selected latch model, extended name tables and fixed host deadlines.
+
+The libretro adapter reports the completed field geometry and notifies changes during
+`retro_run`, continuing delivery if the frontend rejects the notification. Conversion
+storage is fixed at load for 256×240. Game Gear defaults to the native 160×144 LCD
+crop with 6:5 pixels (4:3 display); the square-pixel option gives 10:9.
+The full-field option reveals normally hidden VDP content using the selected pixel
+aspect without changing native emulation or its hashes. These options take effect
+on the next frame. Machine, region/timing and Game Gear mode options require content
+reload. SMS PAL uses PAR 2950000:2128137 and exact rational silence pacing (965 or
+966 stereo frames at 48 kHz); NTSC delivers 801 or 802.

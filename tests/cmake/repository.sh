@@ -57,7 +57,7 @@ api_version)
   while(match(h,/struct [a-z_]+ {[^}]*}/)) {s=substr(h,RSTART,RLENGTH); h=substr(h,RSTART+RLENGTH); gsub(/[A-Za-z0-9_)]\([^()]*\)/,"",s); while(match(s,/[A-Za-z_][A-Za-z0-9_]*\)*;/)) {n=substr(s,RSTART,RLENGTH); gsub(/[);]/,"",n); names[n]=1; s=substr(s,RSTART+RLENGTH)} }
   for(n in names) if(tests !~ "[^A-Za-z0-9_]" n "[^A-Za-z0-9_]") { print "in no tests/api/vK.c with K <= " v ": " n; bad=1 } exit bad }' ;;
 info_claims)
-  awk 'BEGIN {claims["supports_no_game"]="libretro.host.xrgb8888"; claims["input_descriptors"]="libretro.host.content"; while((getline s < ENVIRON["INVENTORY"])>0) {split(s,a,"\t"); inventory[a[1]]=1} }
+  awk 'BEGIN {claims["supports_no_game"]="libretro.host.xrgb8888"; claims["input_descriptors"]="libretro.host.content"; claims["core_options"]="libretro.presentation.xrgb8888"; while((getline s < ENVIRON["INVENTORY"])>0) {split(s,a,"\t"); inventory[a[1]]=1} }
   /^[a-z_0-9]+ = "true"$/ && $1!="is_experimental" { if(!($1 in claims)) {print $0 " maps to no test"; bad=1} else if(!(claims[$1] in inventory)) {print $1 " needs " claims[$1] ", which is not in " ENVIRON["INVENTORY"]; bad=1} } END {exit bad}' "$INFO" ;;
 single_version)
   [ -n "$VERSION" ] || VERSION=$(cat "$ROOT/version.txt")

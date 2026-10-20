@@ -192,11 +192,16 @@ static bool RETRO_CALLCONV env(unsigned cmd, void *data)
 {
     if (cmd == RETRO_ENVIRONMENT_GET_VARIABLE) {
         struct retro_variable *v = data;
-        if (strcmp(v->key, "cogmaster_machine") == 0) v->value = option_machine;
-        if (strcmp(v->key, "cogmaster_gg_mode") == 0) v->value = option_mode;
-        if (strcmp(v->key, "cogmaster_region") == 0) v->value = option_region;
-        if (strcmp(v->key, "cogmaster_gg_aspect") == 0) v->value = option_aspect;
-        if (strcmp(v->key, "cogmaster_gg_view") == 0) v->value = option_view;
+        if (strcmp(v->key, "cogmaster_machine") == 0)
+            v->value = option_machine;
+        if (strcmp(v->key, "cogmaster_gg_mode") == 0)
+            v->value = option_mode;
+        if (strcmp(v->key, "cogmaster_region") == 0)
+            v->value = option_region;
+        if (strcmp(v->key, "cogmaster_gg_aspect") == 0)
+            v->value = option_aspect;
+        if (strcmp(v->key, "cogmaster_gg_view") == 0)
+            v->value = option_view;
         return v->value != NULL;
     }
     if (cmd == RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE) {
@@ -521,7 +526,8 @@ int main(int argc, char **argv)
 
     if (argc == 4 && strcmp(argv[2], "presentation") == 0) {
         rgb565 = strcmp(argv[3], "rgb565") == 0;
-        if (!module_open(argv[1])) return 1;
+        if (!module_open(argv[1]))
+            return 1;
         resolve_all();
         int rc = missing != NULL ? 1 : presentation_test();
         module_close();

@@ -19,8 +19,8 @@
 
 /* Fixed until the sound phase gives the core a configured output rate. */
 #define LR_SAMPLE_RATE 48000u
-/* Stereo frames per video frame are at most ceil(48000 / 59.92) = 802. */
-#define LR_AUDIO_CAPACITY 802u
+/* PAL needs ceil(48000 * 267615 / 13300856) = 966 stereo frames. */
+#define LR_AUDIO_CAPACITY 966u
 
 #ifdef COGMASTER_LIBRETRO_RGB565
 typedef uint16_t lr_pixel;
@@ -57,8 +57,31 @@ static lr_pixel *pixels;
 static uint64_t audio_acc;
 static int16_t silence[LR_AUDIO_CAPACITY * 2u];
 static unsigned controllers[2] = {RETRO_DEVICE_JOYPAD, RETRO_DEVICE_JOYPAD};
+static int full_field, square_pixels;
+static struct retro_game_geometry geometry;
 
 #include "options.h"
+
+static void lr_presentation(void)
+{
+    full_field = lr_option("cogmaster_gg_view", "full");
+    square_pixels = lr_option("cogmaster_gg_aspect", "square");
+}
+
+static struct retro_game_geometry lr_geometry(uint32_t w, uint32_t h)
+{
+    struct retro_game_geometry g;
+    uint32_t pn = info.par_num, pd = info.par_den;
+    if (info.video_mode == COGMASTER_VIDEO_GG && square_pixels) {
+        pn = pd = 1u;
+    }
+    g.base_width = w;
+    g.base_height = h;
+    g.max_width = info.max_w;
+    g.max_height = info.max_h;
+    g.aspect_ratio = (float)((double)w * pn / ((double)h * pd));
+    return g;
+}
 
 static const struct retro_controller_description lr_devices[] = {
     {"Control Pad", RETRO_DEVICE_JOYPAD}, {"None", RETRO_DEVICE_NONE}};
@@ -104,6 +127,8 @@ static void lr_unload(void)
     loaded = 0;
     memset(&info, 0, sizeof info);
     audio_acc = 0u;
+    full_field = square_pixels = 0;
+    memset(&geometry, 0, sizeof geometry);
 }
 
 /* L7511: called before retro_init. Declaring no-game support (L1051) makes
@@ -210,12 +235,7 @@ void retro_get_system_av_info(struct retro_system_av_info *av)
     if (!loaded) {
         return;
     }
-    av->geometry.base_width = info.crop_w;
-    av->geometry.base_height = info.crop_h;
-    av->geometry.max_width = info.max_w;
-    av->geometry.max_height = info.max_h;
-    av->geometry.aspect_ratio = (float)((double)info.crop_w * (double)info.par_num /
-                                        ((double)info.crop_h * (double)info.par_den));
+    av->geometry = geometry;
     av->timing.fps = (double)info.fps_num / (double)info.fps_den;
     av->timing.sample_rate = (double)LR_SAMPLE_RATE;
 }
@@ -294,6 +314,11 @@ void retro_run(void)
 {
     cogmaster_frame io;
     uint32_t x, y;
+    bool updated = false;
+
+    if (env_cb != NULL && env_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated) {
+        lr_presentation();
+    }
 
     if (input_poll_cb != NULL) {
         input_poll_cb();
@@ -308,9 +333,23 @@ void retro_run(void)
     io.size = (uint32_t)sizeof io;
     io.pixels = native;
     io.pitch_bytes = info.max_w * 2u;
+    if (info.video_mode == COGMASTER_VIDEO_GG && full_field) {
+        io.flags = COGMASTER_FRAME_FULL_FIELD;
+    }
     if (cogmaster_get_frame(inst, &io) != COGMASTER_STATUS_OK || io.w > info.max_w ||
         io.h > info.max_h) {
         return;
+    }
+    /* Completed metadata and pixels belong to the same field. A refusal
+       affects frontend presentation, never bounded core delivery. */
+    (void)cogmaster_get_info(inst, &info);
+    struct retro_game_geometry next = lr_geometry(io.w, io.h);
+    if (next.base_width != geometry.base_width || next.base_height != geometry.base_height ||
+        next.aspect_ratio != geometry.aspect_ratio) {
+        geometry = next;
+        if (env_cb != NULL) {
+            (void)env_cb(RETRO_ENVIRONMENT_SET_GEOMETRY, &geometry);
+        }
     }
     for (y = 0; y < io.h; y++) {
         const uint16_t *src = native + (size_t)y * info.max_w;
@@ -374,6 +413,26 @@ bool retro_load_game(const struct retro_game_info *game)
     media.size = (uint32_t)sizeof media;
     media.machine = game == NULL ? LR_NO_CONTENT_MACHINE : COGMASTER_MACHINE_AUTO;
     if (game != NULL) {
+        if (lr_option("cogmaster_machine", "sms2"))
+            media.machine = COGMASTER_MACHINE_SMS2;
+        if (lr_option("cogmaster_machine", "sms1"))
+            media.machine = COGMASTER_MACHINE_SMS1;
+        if (lr_option("cogmaster_machine", "gg"))
+            media.machine = COGMASTER_MACHINE_GG;
+        if (lr_option("cogmaster_gg_mode", "sms"))
+            media.video_mode = COGMASTER_VIDEO_SMS;
+        if (lr_option("cogmaster_gg_mode", "gg"))
+            media.video_mode = COGMASTER_VIDEO_GG;
+        if (lr_option("cogmaster_region", "pal"))
+            media.tv = COGMASTER_TV_PAL;
+        if (lr_option("cogmaster_region", "ntsc-u")) {
+            media.tv = COGMASTER_TV_NTSC;
+            media.region = COGMASTER_REGION_EXPORT;
+        }
+        if (lr_option("cogmaster_region", "ntsc-j")) {
+            media.tv = COGMASTER_TV_NTSC;
+            media.region = COGMASTER_REGION_JAPAN;
+        }
         media.image = game->data;
         media.image_size = game->size;
     }
@@ -397,6 +456,10 @@ bool retro_load_game(const struct retro_game_info *game)
         return false;
     }
     loaded = 1;
+    lr_presentation();
+    geometry = lr_geometry(
+        info.video_mode == COGMASTER_VIDEO_GG && full_field ? info.field_w : info.crop_w,
+        info.video_mode == COGMASTER_VIDEO_GG && full_field ? info.field_h : info.crop_h);
     return true;
 }
 
@@ -418,7 +481,7 @@ void retro_unload_game(void)
 /* L7812: the test card runs at the NTSC rate. */
 unsigned retro_get_region(void)
 {
-    return RETRO_REGION_NTSC;
+    return loaded && info.tv == COGMASTER_TV_PAL ? RETRO_REGION_PAL : RETRO_REGION_NTSC;
 }
 
 /* L7826: no memory regions are exposed in this release. */

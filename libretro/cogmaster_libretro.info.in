@@ -1,6 +1,6 @@
 # Core information for RetroArch's info directory. Generated from
 # libretro/cogmaster_libretro.info.in; display_version comes from version.txt.
-# Every "true" capability must map to a test (tests/cmake/info_claims.cmake).
+# Every "true" capability maps to a test in tests/cmake/repository.sh.
 display_name = "Sega - MS/GG (cogmaster)"
 authors = "cogmaster contributors"
 corename = "cogmaster"
@@ -18,7 +18,8 @@ needs_fullpath = "false"
 hw_render = "false"
 savestate = "false"
 libretro_saves = "false"
-core_options = "false"
+core_options = "true"
+core_options_version = "2.0"
 input_descriptors = "true"
 memory_descriptors = "false"
 cheats = "false"

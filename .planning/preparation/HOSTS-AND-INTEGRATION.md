@@ -21,27 +21,27 @@ Markers: (tested) run here on 2026-10-18, (derived), (untested), (unverified). "
 | Feature → host or core | 7 |
 
 ## 1. libretro contract
-**Exports.** All 25 entry points (L7511–7840) in nesturbator's ~350-line adapter shape, kept by muhtari [HI.22]: one instance `retro_init`→`retro_deinit`, statics reset in deinit, no game → test card (`SET_SUPPORT_NO_GAME` 18, L1051), XRGB8888 via `SET_PIXEL_FORMAT` 10 (L865) plus RGB565 when `USE_RGB565` is defined, stereo batch audio (GG is stereo; SMS mono duplicated), ROM copied at load (`need_fullpath` false). `retro_get_region` 0/1 from the loaded region. `retro_reset` = the console Reset button on SMS (a game-readable input, so "Restart" keeps RAM) and a power cycle on GG (no Reset button). **Rec:** as stated. **Alt:** power cycle everywhere (Gearsystem's Restart "resets the machine and preserves battery memory" [HI.06]). **Would change if:** users expect a cold boot from Restart.
+**Exports.** All 25 entry points (L7511–7840) in nesturbator's ~350-line adapter shape, kept by muhtari [HI.22]: one instance `retro_init`→`retro_deinit`, statics reset in deinit, no game → test card (`SET_SUPPORT_NO_GAME` 18, L1051), XRGB8888 via `SET_PIXEL_FORMAT` 10 (L865) plus RGB565 when `USE_RGB565` is defined, stereo batch audio (GG is stereo; SMS mono duplicated), ROM copied at load (`need_fullpath` false). `retro_get_region` 0/1 from the loaded region. `retro_reset` follows the settled context D-08 contract: SOFT on SMS, POWER on GG. The Select button is the separate physical SMS Reset level, never a CPU reset. This supersedes the original Reset-button recommendation here.
 
 | AV field | SMS NTSC | SMS PAL | GG | Derivation |
 |---|---|---|---|---|
 | base w × h | 256 × 192 (224/240 via `SET_GEOMETRY` 37 on mode change) | 256 × 192/224/240 | 160 × 144; 256 × 192 when the "full field" option is on | VDP active sizes per MAME `m_y_pixels` 192/224/240 [HI.19]; Gearsystem/GPGX ship the same bases [HI.06] |
 | max w × h | 256 × 240 | 256 × 240 | 256 × 240 | one buffer for every mode; border/overscan modes are a host filter (§7) (derived) |
 | fps | 1640625/27379 = 59.922751 | 13300856/267615 = 49.701459 | = NTSC | (945 MHz/88)/(2·342·262); (53,203,424/5)/(2·342·313); 342 dots/line, 262/313 lines [HI.19][HI.20] (tested) [HI.24] |
-| sample_rate | 48000 | 48000 | 48000 | 801.03 / 965.77 samples per frame → 1,024-sample buffer; Gearsystem and GPGX use 44100 [HI.06] (derived) |
-| aspect_ratio | 32/21 ≈ 1.5238 (192 rows), 64/49 (224), 128/105 (240) | 1.848 (192), 1.584 (224), 1.479 (240) | 10/9 ≈ 1.111 (square LCD pixels). *Phase 1 as built:* `cogmaster_get_info` reports the hardware PAR 6:5 (ARCHITECTURE §5), and the libretro adapter derives aspect 4:3 from it (160 × 6 / 5 : 144), tested in-process by `libretro.host.gg` through the test-only GG module; any square-pixel (10:9) presentation is left to phase 3, where a core option can offer it with a written reason | PAR = half the 4:3 square-pixel rate ÷ dot clock: (12.2727/2)/5.3693 = 8/7; (14.75/2)/5.3203 = 1.386; GPGX exposes these as "NTSC PAR"/"PAL PAR", Gearsystem defaults to square pixels (4:3 at 256×192, 10:9 at 160×144) [HI.06][HI.24] (derived) |
+| sample_rate | 48000 | 48000 | 48000 | 801.03 / 965.77 samples per frame → 966-stereo-frame silence buffer; Gearsystem and GPGX use 44100 [HI.06] (derived) |
+| aspect_ratio | W × 8 / (H × 7) | W × 2950000 / (H × 2128137) | Default PAR 6:5: native crop DAR 4:3. Square pixels: native DAR 10:9. Full field applies the same selected PAR to 256×H. | Context D-01–D-04 preserves the released GG default; no panel measurement justifies changing it. |
 
-**Rec:** dot-clock-correct PAR for SMS (8/7 NTSC), square pixels for GG, both computed in the adapter (its only floating point). **Strongest alternative:** Gearsystem's square pixels everywhere (4:3 for 256×192). **Would change if:** the owner prefers 4:3 fill; RetroArch can override per user anyway.
+**Settled presentation:** SMS uses its documented NTSC/PAL PAR. GG keeps 6:5 by default, with square pixels as a presentation-only option. Native crop is default; full field reveals normally hidden content without changing machine or mode. Completed geometry is notified inside `retro_run`; refusal never suppresses delivery. Both buffers are allocated at load for 256×240. PAL silence has capacity 966 stereo frames, with a carried rational remainder.
 
 **Core options** (`SET_CORE_OPTIONS_V2` 67, L2339; v1 fallback via `GET_CORE_OPTIONS_VERSION` 52). Keys follow the three existing cores so users recognise them [HI.06]:
 
 | Key | Values (default first) | In state hash | Lands |
 |---|---|---|---|
-| `cogmaster_machine` | auto (header region code / extension), sms, sms2, gg, gg_sms_mode (GPGX `system_hw`, Gearsystem `system`) | yes | v1.0 |
-| `cogmaster_region` | auto, ntsc-u, ntsc-j, pal (GPGX `region_detect`, smsplus `region`; rcheevos forbids `pal` on both, §2) | yes | v1.0 |
-| `cogmaster_boot` | fast (HLE hand-off), bios (file missing → fast + OSD; Gearsystem exposes `bios_sms`/`bios_gg` toggles) | yes | v1.0 |
-| `cogmaster_fm` | auto (header/known list), off, on (GPGX `ym2413`, Gearsystem `ym2413`) | yes | v1.0 phase 4 (DEC.08; SND-02) |
-| `cogmaster_gg_screen` | lcd (160×144), full (256×192 field; GPGX `gg_extra`) | no (adapter crop) | v1.0 |
+| `cogmaster_machine` | auto, sms2, sms1, gg; content reload required | yes | v1.0 |
+| `cogmaster_region` | auto, ntsc-u, ntsc-j, pal; content reload required | yes | v1.0 |
+| `cogmaster_gg_mode` | auto, gg, sms; content reload required | yes | v1.0 |
+| `cogmaster_gg_aspect` | 6:5, square | no | v1.0 |
+| `cogmaster_gg_view` | native, full (normally hidden content) | no | v1.0 |
 | `cogmaster_border` | off, top_bottom, full_284, full_320 (Gearsystem `overscan`; GPGX `overscan`) | no (host filter, §7) | v2.0 |
 | `cogmaster_left_column` | auto (crop when the VDP masks it), never, always (Gearsystem `hide_left_bar`, GPGX `left_border`) | no | v2.0 |
 | `cogmaster_3d_glasses` | both (off), left, right, anaglyph (Gearsystem `glasses` has the first three) | no (adapter) | v2.0 |
