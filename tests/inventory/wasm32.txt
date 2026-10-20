@@ -93,3 +93,16 @@ vectors.sst2bin.accept	portable,vectors
 vectors.sst2bin.bad_stream	portable,vectors
 vectors.sst2bin.missing_key	portable,vectors
 vectors.sst2bin.unknown_key	portable,vectors
+z80.ed.holes	portable,z80
+z80.int.block_op	portable,z80
+z80.int.di	portable,z80
+z80.int.ei_delay	portable,z80
+z80.int.halt_exit	portable,z80
+z80.int.im0	portable,z80
+z80.int.im1	portable,z80
+z80.int.im2	portable,z80
+z80.int.ld_a_i	portable,z80
+z80.int.nmi	portable,z80
+z80.int.prefix_run	portable,z80
+z80.int.r_prefixes	portable,z80
+z80.int.retn	portable,z80

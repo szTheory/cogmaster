@@ -132,3 +132,24 @@ foreach(shard IN ITEMS "cb;25600" "dd;25200" "fd;25200" "ddcb;25600" "ed;8000" "
       --allow ${PROJECT_SOURCE_DIR}/tests/vectors/z80/allow.txt --expect-count ${count}
     LABELS portable vectors TIMEOUT 60)
 endforeach()
+
+# Acceptance behaviour the vectors do not cover, one case per test, built
+# from the same z80 objects with its own bus seam. Fault prevented: an
+# interrupt, NMI, EI delay, HALT exit, prefix run or ED hole that drifts
+# from the documented behaviour while every vector still passes.
+add_executable(cogmaster-test-z80int
+  ${CMAKE_CURRENT_LIST_DIR}/int_tests.c
+  $<TARGET_OBJECTS:cogmaster-z80-sst>)
+target_include_directories(cogmaster-test-z80int PRIVATE
+  ${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR}/generated ${PROJECT_SOURCE_DIR}/src
+  ${PROJECT_SOURCE_DIR}/tests)
+set_target_properties(cogmaster-test-z80int PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-z80int)
+foreach(case IN ITEMS im0 im1 im2 ei_delay di nmi retn ld_a_i halt_exit block_op prefix_run
+    r_prefixes)
+  cogmaster_add_test(NAME z80.int.${case} COMMAND cogmaster-test-z80int ${case}
+    LABELS portable z80 TIMEOUT 10)
+endforeach()
+cogmaster_add_test(NAME z80.ed.holes COMMAND cogmaster-test-z80int holes
+  LABELS portable z80 TIMEOUT 10)
