@@ -503,6 +503,13 @@ static void test_background(void)
     CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
     CHECK_EQ_HEX(m->field[0][0], 0x555u);
     CHECK_EQ_HEX(m->field[191][255], 0x555u);
+    /* Stamped writes cannot repaint completed lines of this field. */
+    put_beam(m, 0u, 512u);
+    control(m, 2u, 0x87u);
+    put_beam(m, 1u, 512u);
+    control(m, 3u, 0x87u);
+    CHECK_EQ_HEX(m->field[0][0], 0x555u);
+    CHECK_EQ_HEX(m->field[1][0], 0u);
     cogmaster_destroy(m);
 }
 

@@ -62,6 +62,8 @@ fault.not_faults	bus,portable
 fault.rom_write	bus,portable
 fault.unmapped_read	bus,portable
 fault.unmapped_write	bus,portable
+fixtures.boot_to_play	fixtures,portable
+fixtures.boot_to_play.wrong_hash	fixtures,portable
 fixtures.hello	fixtures,portable
 fixtures.judge.hang	fixtures,portable
 fixtures.judge.missing_row	fixtures,portable

@@ -169,6 +169,7 @@ struct cogmaster {
     struct cogmaster__cart cart;
     struct cogmaster__mapper mapper;
     struct cogmaster__io io;
+    uint32_t render_line;
     uint8_t ram[COGMASTER__RAM_SIZE];
     uint16_t field[COGMASTER__FIELD_MAX_H][COGMASTER__FIELD_W]; /* RGB444 per dot */
 };
@@ -350,6 +351,8 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t);
 /* A CPU access to a decoded VDP port at the beam position. */
 uint8_t cogmaster__vdp_read(cogmaster *m, uint32_t port);
 void cogmaster__vdp_write(cogmaster *m, uint32_t port, uint8_t v);
+void cogmaster__vdp_render_to(cogmaster *m, uint32_t end);
+void cogmaster__vdp_finish_field(cogmaster *m);
 
 /* cogmaster_probe without the size tag: fills all of out (size 0) and
    returns OK, ERR_ARGUMENT for a NULL image, ERR_UNSUPPORTED_SIZE outside

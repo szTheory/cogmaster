@@ -38,7 +38,7 @@ cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out)
     }
     uint32_t overshoot = 0u;
     if (m->cart.rom != NULL) {
-        /* No renderer yet: the field stays as load cleared it. */
+        /* Beam events and stamped writes advance the production renderer. */
         overshoot = cogmaster__bus_run_frame(m);
     } else {
         for (uint32_t y = 0; y < COGMASTER__FIELD_H; y++) {

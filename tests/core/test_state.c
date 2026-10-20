@@ -11,8 +11,8 @@
 #include "state.h"
 #include "../check.h"
 
-#define BUF 65536u        /* bytes in each state buffer; up to about 57 KiB with cartridge RAM */
-#define MAX_FIELDS 60000u /* 8,192 work RAM, 16,384 VRAM and 32,768 cartridge RAM bytes */
+#define BUF 262144u        /* includes the emitted RGB444 field and cartridge RAM */
+#define MAX_FIELDS 125000u /* memory bytes plus emitted pixels and bounded scalar state */
 #define IMAGE_SIZE 1024u
 #define TICKS_PER_FRAME 179208u
 #define POISON 0xA5u
@@ -226,6 +226,12 @@ static void sweep(cogmaster *src, cogmaster *target)
         CHECK(fd->offset + fd->width <= size);
         if (strcmp(fd->name, "ram") == 0) {
             ram++;
+        }
+        /* One interior and both edge pixels exercise the shared RGB444 bound. */
+        if (strcmp(fd->name, "field_pixel") == 0 &&
+            fd->offset != fields[n - 1u].offset &&
+            (i == 0u || strcmp(fields[i - 1u].name, "field_pixel") == 0)) {
+            continue;
         }
         uint64_t type_max = fd->width == 8u ? UINT64_MAX : (UINT64_C(1) << (8u * fd->width)) - 1u;
         const uint64_t outside[2] = {fd->max + 1u, fd->min - 1u};

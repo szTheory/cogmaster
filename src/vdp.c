@@ -77,6 +77,7 @@ void cogmaster__vdp_reset(cogmaster *m, int power)
     v->code = 0u;
     v->buffer = 0u;
     v->pause = 0u;
+    m->render_line = 0u;
     if (power) {
         memset(v->cram, 0, sizeof v->cram);
         memset(v->vram, 0, sizeof v->vram);
@@ -104,6 +105,9 @@ static uint32_t vdp_nmi_line(const cogmaster *m)
 
 uint32_t cogmaster__vdp_next_event(const cogmaster *m, uint32_t line, uint32_t t)
 {
+    if (line < COGMASTER__FIELD_H && t < 512u) {
+        return 512u;
+    }
     if (line == VDP_INT_LINE && t < VDP_INT_TICK) {
         return VDP_INT_TICK;
     }
@@ -115,7 +119,11 @@ uint32_t cogmaster__vdp_next_event(const cogmaster *m, uint32_t line, uint32_t t
 
 void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t)
 {
+    if (line < COGMASTER__FIELD_H && t == 512u) {
+        cogmaster__vdp_render_to(m, line + 1u);
+    }
     if (line == VDP_INT_LINE && t == VDP_INT_TICK) {
+        cogmaster__vdp_finish_field(m);
         m->vdp.status = (uint8_t)(m->vdp.status | VDP_STATUS_FRAME);
         vdp_irq(m);
     } else if (line == vdp_nmi_line(m) && t == VDP_NMI_TICK && m->vdp.pause) {
@@ -229,6 +237,11 @@ uint8_t cogmaster__vdp_read(cogmaster *m, uint32_t port)
 
 void cogmaster__vdp_write(cogmaster *m, uint32_t port, uint8_t v)
 {
+    /* Catch up before a write changes a line's source (SMS-VDP section 6).
+       This line renderer samples a whole line at its first visible write. */
+    if (m->bus.line < COGMASTER__FIELD_H) {
+        cogmaster__vdp_render_to(m, m->bus.line + (m->bus.t != 0u ? 1u : 0u));
+    }
     if (port == COGMASTER__VDP_CONTROL) {
         vdp_control_write(m, v);
     } else if (port == COGMASTER__VDP_DATA) {

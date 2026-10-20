@@ -16,7 +16,22 @@ if(CMAKE_SCRIPT_MODE_FILE)
   if(NOT got STREQUAL want)
     message(FATAL_ERROR "${IMAGE}: SHA-256 ${got}, expected ${want}")
   endif()
-  if(CASE STREQUAL "image")
+  if(CASE STREQUAL "play")
+    execute_process(COMMAND ${EMULATOR} ${ORACLE} ${IMAGE} RESULT_VARIABLE rc
+      OUTPUT_VARIABLE want ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "0")
+      message(FATAL_ERROR "pixel oracle exit ${rc}: ${err}")
+    endif()
+    string(STRIP "${want}" want)
+    if(WRONG)
+      set(want "deliberately-wrong-pixel-digest")
+    endif()
+    execute_process(COMMAND ${EMULATOR} ${RUN} ${IMAGE} --frames 4 --hash
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "0" OR NOT out MATCHES "${want}")
+      message(FATAL_ERROR "native frame mismatch: exit ${rc}, ${out} ${err}")
+    endif()
+  elseif(CASE STREQUAL "image")
     # The runner's probe finds the header checksum good.
     execute_process(COMMAND ${EMULATOR} ${RUN} --probe ${IMAGE} RESULT_VARIABLE rc
       OUTPUT_VARIABLE out ERROR_VARIABLE out)
@@ -56,7 +71,7 @@ endif()
 set(COGMASTER_FIXTURES_DIR ${PROJECT_BINARY_DIR}/fixtures)
 set(fixtures_src ${PROJECT_SOURCE_DIR}/tests/roms/src)
 set(fixtures_images "")
-foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg)
+foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_to_play)
   set(image ${COGMASTER_FIXTURES_DIR}/${name}.sms)
   # The source directory is the assembler's working directory, so .INCLUDE
   # finds header.inc; the linker's is the build directory, so the link file
@@ -75,7 +90,34 @@ foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg)
 endforeach()
 add_custom_target(cogmaster-fixtures ALL DEPENDS ${fixtures_images})
 
+add_executable(cogmaster-test-play ${CMAKE_CURRENT_LIST_DIR}/play.c
+  ${PROJECT_SOURCE_DIR}/runner/sha256.c)
+target_include_directories(cogmaster-test-play PRIVATE ${PROJECT_SOURCE_DIR}/runner)
+target_link_libraries(cogmaster-test-play PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-play)
+
 string(REPLACE ";" "$<SEMICOLON>" fixtures_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
+
+# Fault prevented: blank content video or a runner digest shared with a bad renderer.
+cogmaster_add_test(NAME fixtures.boot_to_play
+  COMMAND ${CMAKE_COMMAND} -DCASE=play -DNAME=boot_to_play
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/boot_to_play.sms
+    -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+    -DORACLE=$<TARGET_FILE:cogmaster-test-play> -DRUN=$<TARGET_FILE:cogmaster-run>
+    "-DEMULATOR=${fixtures_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 10)
+
+set(cmd ${CMAKE_COMMAND} -DCASE=play -DNAME=boot_to_play -DWRONG=1
+  -DIMAGE=${COGMASTER_FIXTURES_DIR}/boot_to_play.sms
+  -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+  -DORACLE=$<TARGET_FILE:cogmaster-test-play> -DRUN=$<TARGET_FILE:cogmaster-run>
+  "-DEMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}" -P ${CMAKE_CURRENT_LIST_FILE})
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+# Fault prevented: a digest comparator accepting one changed expected pixel.
+cogmaster_add_test(NAME fixtures.boot_to_play.wrong_hash
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=native frame mismatch"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+  LABELS fixtures portable TIMEOUT 10)
 
 # Fault prevented: a fixture assembled to different bytes than the ones
 # pinned (another assembler, a changed source, CRLF line endings), or a

@@ -12,8 +12,8 @@
              then the I/O ports
    One field list drives every pass (state.h), so they cannot drift apart. A
    struct is never copied as a whole: padding, pointers and the allocator
-   never reach the bytes. The field buffer is not saved: every frame of the
-   test card redraws it, and a loaded image draws nothing yet. The cartridge
+   never reach the bytes. The emitted field and render cursor are saved so a partially drawn
+   field survives restoration. The cartridge
    image is the media, not state; its CRC-32 ties a state to it. The body
    CRC-32 covers every byte after the header. */
 #include <string.h>
@@ -286,6 +286,12 @@ static void state_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
     ram_io(io, m);
     mapper_io(io, m);
     io_io(io, m);
+    cogmaster__sio_u32(io, "render_line", &m->render_line, 0u, COGMASTER__FIELD_H);
+    for (uint32_t y = 0u; y < COGMASTER__FIELD_MAX_H; y++) {
+        for (uint32_t x = 0u; x < COGMASTER__FIELD_W; x++) {
+            cogmaster__sio_u16(io, "field_pixel", &m->field[y][x], 0u, 0xFFFu);
+        }
+    }
 }
 
 /* SIZE, WRITE and RECORD only read through the field pointers, and an
