@@ -177,6 +177,16 @@ jobs:
           name: hashes-${{ matrix.os }}-${{ matrix.arch }}
           path: build/${{ matrix.preset }}/hashes.txt
           if-no-files-found: error
+      - name: Owned fixture and replay-only checkpoint module
+        if: matrix.os == 'macos' && matrix.arch == 'arm64'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: retroarch-owned-input
+          path: |
+            build/ci/fixtures/boot_to_play.sms
+            build/ci/tests/play.input
+            build/ci/libretro/cogmaster_libretro_replay.dylib
+          if-no-files-found: error
 
   asan:
     needs: changes
@@ -358,9 +368,45 @@ jobs:
         run: >-
           cmake -DCOMPARE=./compare -DEXPECTED=shot.bmp -DBMP=runner.bmp -DFLIPPED=flipped.bmp
           -P ../../tests/retroarch/flip.cmake
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: retroarch-owned-input
+          path: build/owned
+      - name: SMS input and scrolling screenshot equality
+        run: |
+          cc -std=c17 -O2 -Wall -Wextra -Werror -o build/replay tests/retroarch/replay.c
+          for case in baseline input; do
+            replay="--record-replay=$PWD/build/baseline.bsv"
+            if [ "$case" = input ]; then
+              build/replay build/baseline.bsv build/input.bsv
+              replay="--play-replay=$PWD/build/input.bsv"
+            fi
+            cmake -DRETROARCH=build/RetroArch.app/Contents/MacOS/RetroArch \
+              -DCORE=build/owned/libretro/cogmaster_libretro_replay.dylib \
+              -DINFO=build/libretro/info/cogmaster_libretro.info -DTEMPLATE=tests/retroarch/test.cfg.in \
+              "-DRA_DIR=$PWD/build/ra-$case" -DFRAMES=14 "-DSHOT=$PWD/build/frames/$case.png" \
+              -DCONTENT=build/owned/fixtures/boot_to_play.sms "-DARGS=$replay" -P tests/retroarch/run_retroarch.cmake
+          done
+          build/runner/bin/cogmaster-run build/owned/fixtures/boot_to_play.sms --frames 14 --png 14:build/frames/expected-baseline.png
+          build/runner/bin/cogmaster-run build/owned/fixtures/boot_to_play.sms --frames 14 \
+            --input build/owned/tests/play.input --png 14:build/frames/expected-input.png
+          for f in baseline input expected-baseline expected-input; do
+            sips --deleteColorManagementProperties "build/frames/$f.png" > /dev/null
+            sips -s format bmp "build/frames/$f.png" --out "build/frames/$f.bmp" > /dev/null
+          done
+          EXPECT_SCROLL=0 build/frames/compare build/frames/expected-baseline.bmp build/frames/baseline.bmp
+          EXPECT_SCROLL=2 build/frames/compare build/frames/expected-input.bmp build/frames/input.bmp
+          cmake -DCOMPARE=build/frames/compare -DEXPECTED=build/frames/expected-input.bmp \
+            -DBMP=build/frames/input.bmp -P tests/retroarch/flip.cmake
+      - name: Owned screenshots
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: retroarch-owned-screenshots
+          path: build/frames/*.png
+          if-no-files-found: error
       - name: RetroArch log
         if: failure()
-        run: cat build/ra/retroarch.log || true
+        run: cat build/ra*/retroarch.log || true
 
   # Cachegrind instructions per frame of the test card: the pull request's
   # head commit against its merge base with the base branch, the base

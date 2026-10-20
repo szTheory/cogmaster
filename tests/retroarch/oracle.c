@@ -1,4 +1,3 @@
-/* Synthetic BMP for the independent screenshot oracle's negative control. */
 #include <stdint.h>
 #include <stdio.h>
 #include "../fixtures/play.h"

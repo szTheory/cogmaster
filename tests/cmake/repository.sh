@@ -132,7 +132,8 @@ check_junit)
   }' "$JUNIT" ;;
 e2e_budget)
   [ -d "$DIR" ] || fail 'e2e_budget: DIR must name a directory'
-  counts=$(find "$DIR" -type f -exec awk 'END {print NR}' {} +) || fail 'e2e_budget: unreadable helper'
+  counts=$({ find "$DIR" -type f -exec awk 'END {print NR}' {} + || exit;
+    if [ -f "$DIR/../fixtures/play.h" ]; then awk 'END {print NR}' "$DIR/../fixtures/play.h"; fi; }) || fail 'e2e_budget: unreadable helper'
   printf '%s\n' "$counts" | awk '{n+=$1} END {print "e2e_budget: " n+0 " lines under tests/retroarch, at most 300"; exit(n>300)}' ;;
 exit_table)
   awk 'BEGIN {while((getline s < ENVIRON["DOC"])>0) {doc[s]=1; if(s ~ /^  [0-9]+  [a-z]+ /) documented++}}
