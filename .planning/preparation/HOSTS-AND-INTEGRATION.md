@@ -144,7 +144,8 @@ Exit statuses: one X-macro table, printed by `--help`, README equality test [HI.
 | `--expect FILE`, `--capabilities` | compare printed hashes; JSON, writes nothing | `--expect` v1.0 phase 3; `--capabilities` v3.0 (phase 1 CONTEXT D-08) |
 | `--hash-audio` | PCM SHA-256 per channel | v1.0 |
 | `--trace first-fault` | stop at the first unmapped or illegal access and print it (format below) | v1.0 |
-| `--save-dir DIR`, `--save-interval F`, SIGUSR1 | `DIR/<rom basename>.sav`, temp → fsync → rename | v2.0 |
+| `--save-dir DIR` | Existing `DIR/<ROM stem>.srm`; classified battery only, bounded FF-padded import and checked native replacement [HI.25] | v1.0 |
+| `--save-interval F`, SIGUSR1 | Deferred periodic/on-demand flush; no current interval guarantee | v2.0 |
 | `--input FILE` (movie) | replays per-frame input; prints the lag count | v1.0 |
 | `--record FILE`, `--state-at-frame N:FILE`, `--load-state FILE`, `--hash-state N` | movie recording and states | v3.0 |
 | `--trace full`, `--symbols FILE.sym`, `--vdp-dump N`, `--lua` | §5 | v5.0 |
@@ -158,10 +159,10 @@ No window, config file, environment, stdin or network; invalid combinations exit
 | launch.executable_relative_path | `bin/cogmaster-run`; Playstead's installer mounts a DMG and copies one `.app` (`AdapterInstaller.swift` L306–340) → a zip/CLI path is a Playstead change | Playstead |
 | argument_template | `["--save-dir","{saveDir}","--rom","{romPath}"]` (`AdapterPin.swift` substitutes only `{romPath}` and `{saveDir}`) | v2.0 |
 | config_injection | `cli_flags`: save_directory `--save-dir {path}`; bios_path `--boot bios --bios {path}` (the host appends the rendered `bios_path` template, `AdapterHost.swift`); controller_mapping n/a (headless) | v1.0 / v2.0 |
-| save_contract | glob `{saveDir}/{romBaseName}.sav`; media `sram_8k` 8,192, `sram_16k` 16,384, `sram_32k` 32,768, `eeprom_93c46` 128; `size_is_medium_identity` true; binding `rom_sha256` = headerless SHA-256 | v2.0 |
-| flush triggers; on_demand_flush_supported | within `--save-interval` frames of a change, SIGUSR1, SIGTERM/SIGINT, exit; true | v2.0 |
-| worst_case_loss_seconds | interval ÷ 59.92 (60 frames ≈ 1.0 s) on SIGKILL/crash; 0 on SIGTERM (flush inside Playstead's 2 s grace before SIGKILL, `AdapterProcessRegistry.terminateAll`) | v2.0 |
-| exit_detection | clean 0/exit (also after SIGTERM); crash 6 or 11 uncaughtSignal; killed 9 | v2.0 |
+| save_contract | glob `{saveDir}/{romBaseName}.srm`; exact classified `sram_8k` 8,192, `sram_16k` 16,384 or `sram_32k` 32,768. Raw files have no identity binding; EEPROM and Playstead medium negotiation remain deferred [HI.25] | v1.0 runner / v2.0 Playstead |
+| flush triggers; on_demand_flush_supported | Changed generations on exit and SIGTERM/SIGINT; handlers set a flag and the bounded frame finishes before normal-control-flow flush. SIGUSR1 and periodic flush remain deferred [HI.25] | v1.0 runner / v2.0 interval |
+| worst_case_loss_seconds | No periodic bound yet: crash/SIGKILL can lose changes since import or last successful flush. Graceful signals flush, with exit 1 on failure; power-loss durability is filesystem-dependent [HI.25] | v1.0 |
+| exit_detection | clean 0/exit, including SIGTERM/SIGINT after successful flush; save I/O failure 1; oversized import 4 before running [HI.25] | v1.0 |
 
 **Rec:** SIGTERM → flush → 0. **Alt:** a dedicated "stopped by signal" status. **Would change if:** Playstead must tell host-stop from completion. Playstead today plays only through a GUI adapter (mGBA `.app`, `Contents/MacOS/mGBA`); the runner is headless, so play goes through the pinned RetroArch DMG + a core zip: RetroArch's DMG fits the one-`.app` installer, but the core and `.info` must land beside it and the launch needs `-L <core> --appendconfig <cfg with savefile_directory={saveDir}> {romPath}`, a private config Playstead already knows how to write (`MGBAInputBridge.writePrivateConfig`) → a two-artifact pin and a config writer are the Playstead-side change [HI.21]. RetroArch on macOS installs no SIGTERM handler (`platform_unix.c` L2735–2737 does; `platform_darwin.m` has none, `retroarch.c` L1013 leaves `install_signal_handler` NULL) → SIGTERM is status 15 "killed" with no `.srm` flush; `autosave_interval` bounds the loss (derived from the grep, untested) [HI.05].
 
@@ -170,7 +171,7 @@ Continuation protocol (v3.0) [HI.21]: an owner-local adapter wraps the runner wi
 | Action | Runner use | Facts asserted | Lands |
 |---|---|---|---|
 | qualify | `--capabilities` (dir stays empty) | initial_run, safe_exit, fresh_process, continue, repeatable_visible_oracle, oracle_agreement | v3.0 |
-| initial-run | `--rom F --input A --save-dir persistent-save --frames N` | save_transition (empty → populated), safe_exit (0, no temp files) | v3.0 (saves v2.0) |
+| initial-run | `--rom F --input A --save-dir persistent-save --frames N` | save_transition (empty → populated), safe_exit (0, no temp files) | v3.0 (runner saves v1.0) |
 | continue | per oracle run: copy the save dir, fresh process, `--input B --frames M --hash M` | fresh_process, continue_complete, oracle_agreement (≥ 2 equal hashes) | v3.0 |
 
 ## 5. Scripting and automation (YAGNI order)
@@ -215,7 +216,7 @@ Browser precedents for comparison (metadata only, none opened: all GPL-3) [HI.23
 | Input mapping, remaps, turbo | RetroArch; adapter maps RetroPad → device | pin model per port |
 | FM/PSG mix balance (Gearsystem `psg_volume`/`fm_volume`) | adapter mixes two streams | PSG and FM as separate sample streams |
 | Sprite-limit removal | core option, default on (hardware); off breaks frame hashes and is excluded from conformance | per-line 8-sprite logic with a bypass |
-| Battery files | host writes `.srm` / runner writes `.sav` | battery span + save generation |
+| Battery files | frontend or runner writes `.srm` | battery span + save generation |
 | Achievements | RetroArch (rcheevos) | `SYSTEM_RAM` + `SAVE_RAM` exports |
 | Region detect, fast boot, FM detect, mapper detect | core | header + hash list |
 | Lag counter, line stats, trace, coverage | core (zero cost off) | inspection + hooks |
@@ -255,3 +256,4 @@ Browser precedents for comparison (metadata only, none opened: all GPL-3) [HI.23
 | HI.22 | T1 | muhtari `.planning/preparation/HOSTS-AND-INTEGRATION.md`, `.github/workflows/ci.yml` L290–360, `tests/retroarch/{run_retroarch.cmake,test.cfg.in,bmp.c,compare.c}` (241 lines), `scripts/fetch-pin.sh`; nesturbator figures as cited there | local checkout `9499ad881a52`, accessed 2026-10-18 | adapter shape, e2e method, speeds, e2e size history |
 | HI.23 | T1 | GitHub repository metadata (`gh api`) for gmarty/jsSMS, mattgodbolt/Miracle, drhelius/Gearsystem, EmulatorJS/EmulatorJS; HTTP 200 on gmarty.github.io/jsSMS and xania.org/miracle; emulatorjs.org/docs/systems | accessed 2026-10-18 | licences, activity, hosted builds, systems list (no source opened) |
 | HI.24 | T1 | Arithmetic run here (Python `fractions`): fps rationals, PAR, samples per frame | 2026-10-18 | fps, aspect, buffer sizing (tested) |
+| HI.25 | T1 | `runner/save.c`, `runner/stop.c`, `docs/runner.md`, recurring `runner.save.*` cases and the phase's scoped save decisions | 2026-10-20 | Current runner .srm import, generation, signal, replacement and failure contract; EEPROM, interval and SIGUSR1 remain deferred |

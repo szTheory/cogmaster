@@ -269,6 +269,11 @@ Simultaneous writers to one target are unsupported. Same-stem ROMs share a save 
 directories to avoid collisions. Raw files have no game identity check, so exact-size wrong-game data
 cannot be detected. Windows uses Unicode paths; POSIX keeps path bytes unchanged.
 
+Recurring save tests force create, short-write, flush, sync, close and replacement failures for both
+first creation and overwrite. They check the old bytes, dirty retry, exclusive same-directory temporary
+cleanup and preservation of unrelated temporaries. Signal and abrupt-interruption runners are test-only
+builds; the installed runner has no fault injection. Periodic saves and SIGUSR1 remain deferred.
+
 ## Exit status
 
 `cogmaster-run --help` prints this table:

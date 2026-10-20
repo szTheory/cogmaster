@@ -14,6 +14,20 @@
 #include <unistd.h>
 #endif
 
+#ifdef COGMASTER_SAVE_TEST
+static int save_fault(const cogmaster__save *save, int point)
+{
+#ifdef COGMASTER_SAVE_FAIL
+    if (COGMASTER_SAVE_FAIL == point)
+        return 1;
+#endif
+    return save->fault == point;
+}
+#define SAVE_FAULT(s, point) save_fault(s, point)
+#else
+#define SAVE_FAULT(s, point) 0
+#endif
+
 static int save_error(const char *why)
 {
     fprintf(stderr, "cogmaster-run: save: %s\n", why);
@@ -209,11 +223,16 @@ int cogmaster__save_flush(cogmaster__save *save, cogmaster *m)
     if (b.generation == save->acknowledged)
         return COGMASTER__EXIT_OK;
     char *tmp = NULL;
+    if (SAVE_FAULT(save, COGMASTER_SAVE_CREATE))
+        return save_error("cannot create temporary");
     FILE *f = save_temporary(save->path, &tmp);
     if (f == NULL)
         return save_error("cannot create temporary");
-    int ok = fwrite(b.data, 1u, b.length, f) == b.length;
+    size_t n = b.length - (SAVE_FAULT(save, COGMASTER_SAVE_WRITE) ? 1u : 0u);
+    int ok = fwrite(b.data, 1u, n, f) == b.length;
     if (fflush(f) != 0)
+        ok = 0;
+    if (SAVE_FAULT(save, COGMASTER_SAVE_FLUSH))
         ok = 0;
 #ifdef _WIN32
     if (_commit(_fileno(f)) != 0)
@@ -222,7 +241,17 @@ int cogmaster__save_flush(cogmaster__save *save, cogmaster *m)
     if (fsync(fileno(f)) != 0)
         ok = 0;
 #endif
+    if (SAVE_FAULT(save, COGMASTER_SAVE_SYNC))
+        ok = 0;
     if (fclose(f) != 0)
+        ok = 0;
+    if (SAVE_FAULT(save, COGMASTER_SAVE_CLOSE))
+        ok = 0;
+#ifdef COGMASTER_SAVE_TEST
+    if (ok && SAVE_FAULT(save, COGMASTER_SAVE_INTERRUPT))
+        _Exit(93);
+#endif
+    if (SAVE_FAULT(save, COGMASTER_SAVE_REPLACE))
         ok = 0;
     if (ok)
         ok = save_replace(tmp, save->path);

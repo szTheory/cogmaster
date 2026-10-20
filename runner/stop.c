@@ -3,7 +3,9 @@
 #include <signal.h>
 
 /* Written only by the handler and read by the frame loop: ISO C17 7.14.1.1
-   allows a handler to store to a volatile sig_atomic_t and nothing more. */
+   allows a handler to store to a volatile sig_atomic_t and nothing more.
+   The frame loop finishes the admitted frame and flushes saves afterwards;
+   no file I/O or core calls happen in signal context. */
 static volatile sig_atomic_t stop_flag;
 
 static void on_signal(int sig)

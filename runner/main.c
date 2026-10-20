@@ -23,7 +23,7 @@
  * --bench N also times each frame with the host's monotonic clock and prints
  * the report described in bench.h. SIGINT or SIGTERM ends the run after the
  * frame in progress: what was asked is printed for the frames that ran, and
- * the status is 0.
+ * the status is 0 unless an output or save flush fails.
  *
  * --trace first-fault reads the core's first-fault record after each frame,
  * stops at the first fault and prints it as one line, or "fault none".
@@ -55,10 +55,13 @@
 #include "stop.h"
 
 /* The tests build a second runner with COGMASTER_RUN_RAISE_AT=N, which
-   raises SIGTERM from inside frame N, to show the stop is clean. The
+   raises SIGTERM after frame N is admitted, to show the stop is clean. The
    installed runner has no such hook. */
 #ifdef COGMASTER_RUN_RAISE_AT
 #include <signal.h>
+#ifndef COGMASTER_RUN_RAISE_SIGNAL
+#define COGMASTER_RUN_RAISE_SIGNAL SIGTERM
+#endif
 #endif
 
 /* The allocator the runner hands the core: the C library's malloc and free. */
@@ -324,17 +327,17 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
         uint64_t start_ns = opt->bench ? cogmaster__clock_ns() : 0u;
         cogmaster_run_result result = {0};
         result.size = sizeof result;
+#ifdef COGMASTER_RUN_RAISE_AT
+        if (n == COGMASTER_RUN_RAISE_AT) {
+            (void)raise(COGMASTER_RUN_RAISE_SIGNAL);
+        }
+#endif
         st = cogmaster_run_frame(m, &result);
         if (st == COGMASTER_STATUS_OK)
             lag_frames += result.lagged;
         if (opt->bench) {
             samples[ran] = cogmaster__bench_us(cogmaster__clock_ns() - start_ns);
         }
-#ifdef COGMASTER_RUN_RAISE_AT
-        if (n == COGMASTER_RUN_RAISE_AT) {
-            (void)raise(SIGTERM);
-        }
-#endif
         ran = (uint32_t)n;
         if (st != COGMASTER_STATUS_OK) {
             fprintf(stderr, "cogmaster-run: cogmaster_run_frame failed with status %lu\n",
@@ -396,6 +399,8 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     if (input != NULL && fclose(input) != 0) {
         status = COGMASTER__EXIT_FAILURE;
     }
+    /* Both signal handlers only request a stop. Persistence runs here after
+       the admitted frame and its outputs, outside signal context. */
     if (save_loaded && cogmaster__save_flush(&save, m) != COGMASTER__EXIT_OK)
         status = COGMASTER__EXIT_FAILURE;
     cogmaster__save_dispose(&save);
