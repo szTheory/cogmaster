@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 02
 current_phase_name: The CPU matches the public vectors
 status: executing
-stopped_at: Completed 02-09-PLAN.md
-last_updated: "2026-10-20T03:32:47.555Z"
+stopped_at: Completed 02-10-PLAN.md
+last_updated: "2026-10-20T03:51:19.631Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 02 execution started
-state_head: b7da844adf566a3a5b3894878546023486b43d24
+state_head: a6b09779bbce7b48b526d05370d34a69cec50d0f
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 29
-  completed_plans: 21
+  completed_plans: 22
   percent: 25
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 02 (The CPU matches the public vectors) — EXECUTING
-Plan: 10 of 17
+Plan: 11 of 17
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 02 execution started
 
@@ -79,6 +79,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P07 | 5min | 2 tasks | 16 files |
 | Phase 02 P08 | 9min | 2 tasks | 16 files |
 | Phase 02 P09 | 40min | 3 tasks | 21 files |
+| Phase 02 P10 | 40min | 3 tasks | 21 files |
 
 ## Accumulated Context
 
@@ -148,6 +149,10 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 02]: 02-09: Cartridge RAM lives after the padded ROM in one allocation (32 KiB Sega, 8 KiB Codemasters) and is state; format version stays 2
 - [Phase 02]: 02-09: cogmaster_cart_info first size is 52; machine_guess and region_guess are 0 when no header names them
 - [Phase 02]: 02-09: Load refuses any 8 KiB body loaded as a Game Gear with ERR_UNSUPPORTED_BOARD (8)
+- [Phase 02]: Game Gear $00 bit 5 reads 0 on NTSC ($C0 export, $80 Japan), per SMS-SYSTEM section 8
+- [Phase 02]: The step stores the instruction address and first byte after DD/FD in the bus struct for the fault record; both are saved in the state
+- [Phase 02]: Game Gear: $3E not decoded (write is unmapped_write), $3F latches, $DD reads $FF
+- [Phase 02]: unmapped_write covers $00-$3F and $80-$BF on full-decode consoles; sound-chip and I/O-chip writes never fault
 
 ### Pending Todos
 
@@ -183,6 +188,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T03:32:47.498Z
-Stopped at: Completed 02-09-PLAN.md
+Last session: 2026-10-20T03:51:19.522Z
+Stopped at: Completed 02-10-PLAN.md
 Resume file: None
