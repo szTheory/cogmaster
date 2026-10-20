@@ -1,16 +1,27 @@
 # Conformance
 
-The local `library` workflow enumerates one directory in byte order: regular `.sms`, `.gg`, `.bin`, and
+The local `library` workflow enumerates one directory in deterministic shell-glob order: regular `.sms`, `.gg`, `.bin`, and
 `.rom` files, case insensitive, including hidden names. It excludes symlinks, directories and other
 extensions, and never recurses. Filenames pass as inert environment data, including quotes and semicolons.
 Every candidate is probed once; supported metadata misses run 20 frames and remain `unknown`. Accepted
 ledger predicates run with their fixed configuration, capped at 600 frames each. Only exact admitted
 SHA-256 fixture bytes receive fixture expectations. Empty libraries explicitly report zero coverage;
 a missing directory fails configure. `unsupported`, `malformed_io` (invalid small image or read failure),
-and `infrastructure_error` remain separate from evaluated `pass`/`fail`. Counts of evaluated predicates
-are separate from candidate and attempted-image counts. Current observations never become expectations.
+and `infrastructure_error` remain separate from evaluated `pass`/`fail`. Evaluated-image coverage and
+predicate totals are separate from candidate and attempted-image counts. Current observations never become expectations.
 All probes, private names, hashes and diagnostics stay in ignored `build/library/results/`; the command
 prints aggregate counts only. These bounded observations establish no playable, completable or sound claim.
+
+To propose a public update, run `sh scripts/compat-update.sh build/library/results/public-facts.csv`.
+Stdout is a candidate ledger; review it before replacing `tests/compat/ledger.csv` and regenerating
+`docs/compatibility.md`. Only already seeded cases with a CC0 public identity and the exact accepted
+predicate, configuration and expectation can change. Titles come from `src/cartdb.inc`; filenames and
+local evidence are discarded. The update permits only the fixed predicate status, valid date and current
+core commit. Unknown IDs, new predicates or golden values, changed profiles, and fixture updates are
+discarded; extra columns and invalid dates reject. Owned fixtures stay managed by the reproducible CI
+fixture path. No screenshot, RAM/save dump, trace, path or newly observed hash is exported. A missing
+accepted expectation remains `unknown`, even if the image ran successfully. Metadata membership never
+guarantees support; `.info` stays experimental. The existing protected-base ratchet still judges a PR.
 
 The [compatibility ledger](compatibility.md) reports accepted predicates, never general support.
 `runner.expect.predicates` exercises independent frame/RAM values, mismatch/usage/refusal/I/O

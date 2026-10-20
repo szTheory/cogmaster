@@ -15,9 +15,4 @@ foreach(key ROOT HEADER DOC OTHER API_DIR DIR PINS INFO INVENTORY ROOTS VERSION 
 endforeach()
 execute_process(COMMAND ${CMAKE_COMMAND} -E env ${environment}
   ${repository_sh} ${CMAKE_CURRENT_LIST_DIR}/repository.sh "${CHECK}"
-  RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE out)
-if(NOT rc STREQUAL "0")
-  message("${out}")
-  message(FATAL_ERROR "${CHECK}: check failed")
-endif()
-message(STATUS "${CHECK}: ${out}")
+  COMMAND_ERROR_IS_FATAL ANY)

@@ -155,6 +155,14 @@ A row with source `oracle` names the oracle and pin in `citation`; a row with so
 are legal in quoted fields; semicolons stay data. Embedded record newlines and empty records reject.
 The bounded shared parser and current contracts are implemented in `scripts/compat-common.sh` and
 documented in `docs/conformance.md`; generated public counts are in `docs/compatibility.md`.
+Local enumeration is independent of public matching: `scripts/library.sh` runs every supported regular
+candidate in one flat directory, including metadata misses. Symlinks, directories and other extensions
+are excluded. Only admitted fixture hashes get fixture expectations; unknown observations remain local.
+`library.synthetic` proves the real preset using owned bytes. Private `library.local` is absent from CI.
+`scripts/compat-update.sh` accepts only pre-seeded public CC0 cases with unchanged predicates/configuration
+and expectations, takes titles from the immutable public catalog and replaces local evidence with the
+current core revision. New golden values, private identities and fixture changes are discarded. See
+`docs/conformance.md` for the fixed bounds and explicit update command; no library directory is uploaded.
 
 | Column | Meaning |
 |---|---|

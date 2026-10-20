@@ -35,5 +35,6 @@ check|scripts/compat-common.sh|Shared bounded quoted ledger normalization and de
 behavior|tests/compat/ratchet.cmake|Constructs independent ledger mutations and asserts observable protected-judge decisions
 behavior|tests/compat/update.cmake|Executes explicit public updates against synthetic private records and compares filtered output
 check|scripts/compat-ratchet.sh|Trusted compatibility judge entry point with adjacent parser dependency
+check|scripts/compat-update.sh|Explicit public ledger projection reuses the fully counted CSV parser and immutable CC0 identities
 operation|scripts/library.sh|Enumerates private local files and orchestrates bounded executable observations without asserting repository content
 operation|scripts/library.cmake|Probes and executes each local image against accepted expectations and writes private local results
