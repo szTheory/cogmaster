@@ -58,7 +58,7 @@ int main(int argc, char **argv)
             CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC200u), count);
         }
     }
-    uint16_t pixels[192][256];
+    static uint16_t pixels[192][256];
     cogmaster_frame frame = {0};
     frame.size = sizeof frame;
     frame.pixels = &pixels[0][0];

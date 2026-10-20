@@ -503,7 +503,7 @@ static void test_background(void)
     CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
     CHECK_EQ_HEX(m->field[0][0], 0x555u);
     CHECK_EQ_HEX(m->field[191][255], 0x555u);
-    uint16_t pixels[192][256];
+    static uint16_t pixels[192][256];
     cogmaster_frame frame = {0};
     frame.size = sizeof frame;
     frame.pixels = &pixels[0][0];
