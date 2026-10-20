@@ -1,0 +1,59 @@
+#!/bin/sh
+# Shared bounded quoted CSV: normalize, cases (safe CMake facts), or docs. No private execution.
+set -eu
+export LC_ALL=C
+[ "$#" = 2 ] && [ -f "$2" ] && [ "$(wc -c < "$2")" -le 4194304 ] || { echo 'compat: invalid ledger input' >&2; exit 2; }
+awk -v mode="$1" '
+function bad() { print "compat: invalid ledger record " NR > "/dev/stderr"; failed=1; exit 2 }
+function quote(s) { gsub(/"/,"\"\"",s); return "\"" s "\"" }
+function md(s) { gsub(/&/,"\&amp;",s); gsub(/</,"\&lt;",s); gsub(/>/,"\&gt;",s); gsub(/\|/,"\&#124;",s); return s }
+function hex(s, n,i,d) { n=0; s=toupper(s); for(i=1;i<=length(s);i++) { d=index("0123456789ABCDEF",substr(s,i,1))-1; if(d<0) bad(); n=n*16+d } return n }
+function predicate(s, machine, p,n,a,b,t,frame,address,value,cfg) {
+  cfg="cfg:video=" (machine=="gg"?"gg":"sms") ";port1=pad;port2=pad;script=none;sha256=" empty;
+  if(index(s,"cfg:")==1) { n=index(s,"/"); if(!n) bad(); cfg=substr(s,1,n-1); s=substr(s,n+1) }
+  if(cfg !~ /^cfg:video=(sms|gg);port1=(pad|none);port2=(pad|none);script=[A-Za-z0-9_.-]+;sha256=[0-9a-f]+$/) bad();
+  split(cfg,t,"sha256="); if(length(t[2])!=64 || (cfg ~ /;script=none;/ && t[2]!=empty)) bad();
+  p=index(s,"@"); kind=substr(s,1,p-1); s=substr(s,p+1); n=match(s,/[:=]/); frame=n?substr(s,1,n-1):s; value=""; address="";
+  if(frame !~ /^[0-9]+$/ || length(frame)>10 || frame+0<1 || frame+0>1000000) bad(); frame=sprintf("%.0f",frame+0);
+  if(kind=="frame") { value=substr(s,n+1); if(!n || substr(s,n,1)!="=" || value !~ /^[0-9a-f]+$/ || length(value)!=64) bad() }
+  else if(kind=="ram") { a=substr(s,n); if(a !~ /^:\$[0-9a-fA-F]+=[0-9a-fA-F]+$/) bad(); split(substr(a,3),b,"="); if(length(b[1])>4 || hex(b[1])<49152 || length(b[2])>2) bad(); address=sprintf("%04X",hex(b[1])); value=sprintf("%02X",hex(b[2])) }
+  else if((kind!="boots" && kind!="mailbox") || n) bad();
+  expected=value; parameter=kind "@" frame (kind=="ram"?":$" address:""); config=cfg; cap=frame;
+  return cfg "/" parameter (value!=""?"=" value:"")
+}
+BEGIN { header="id,title,machine,region,mapper,predicate,status,evidence,date"; empty="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"; if(mode!="normalize" && mode!="cases" && mode!="docs") bad() }
+{
+  sub(/\r$/,"" ); if(length($0)>4096 || $0=="" || $0 ~ /[[:cntrl:]]/ || NR>4097) bad();
+  delete f; field=1; text=""; state=0;
+  for(i=1;i<=length($0);i++) { c=substr($0,i,1);
+    if(state==1) { if(c=="\"") { if(substr($0,i+1,1)=="\"") { text=text "\""; i++ } else state=2 } else text=text c }
+    else if(c==",") { f[field++]=text; text=""; state=0 }
+    else if(c=="\"" && state==0 && text=="") state=1;
+    else if(c=="\"" || state==2) bad(); else { text=text c; state=3 }
+  }
+  f[field]=text; if(state==1 || field!=9) bad();
+  for(i=1;i<=9;i++) if(f[i]=="" || length(f[i])>1024) bad();
+  if(NR==1) { for(i=1;i<=9;i++) h=h (i>1?",":"") f[i]; if(h!=header) bad(); next }
+  if(!(f[1] ~ /^(fixture|built)\/[A-Za-z0-9_.-]+$/ || (f[1] ~ /^[0-9a-f]+$/ && length(f[1])==40)) || f[3] !~ /^(sms|sms1|gg|sg)$/ || f[4] !~ /^(ntsc-u|ntsc-j|pal|any)$/ || f[5] !~ /^[a-z][a-z0-9_-]*$/ || f[7] !~ /^(pass|fail|unknown|unsupported|infrastructure_error|skipped)$/ || f[9] !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/) bad();
+  if(f[4]=="any") f[4]="ntsc-u"; f[6]=predicate(f[6],f[3]); key=f[1] "|" f[3] "|" f[4] "|" f[5] "|" config "|" parameter;
+  if(key in seen) bad(); seen[key]=1; order[++count]=key;
+  for(i=1;i<=9;i++) r[key,i]=f[i]; r[key,10]=parameter; r[key,11]=expected; r[key,12]=config; r[key,13]=cap;
+}
+END {
+  if(failed) exit 2; if(NR==0) bad();
+  for(i=2;i<=count;i++) { key=order[i]; j=i-1; while(j>0 && order[j]>key) { order[j+1]=order[j]; j-- } order[j+1]=key }
+  if(mode=="normalize") { print header; for(i=1;i<=count;i++) { line=""; for(j=1;j<=9;j++) line=line (j>1?",":"") quote(r[order[i],j]); print line } }
+  if(mode=="cases") { print "set(compat_count " count+0 ")"; split("id title machine region mapper predicate status evidence date parameter expected config cap",names," "); for(i=1;i<=count;i++) for(j=1;j<=13;j++) if(j!=2 && j!=8) print "set(compat_" i "_" names[j] " [[" r[order[i],j] "]])" }
+  if(mode=="docs") {
+    for(i=1;i<=count;i++) { key=order[i]; status[r[key,7]]++; split(r[key,10],a,"@"); predicates[a[1]]++; if(r[key,1] ~ /^fixture\//) fixtures[r[key,1]]=1; group=r[key,3] "/" r[key,5] "/" r[key,7]; groups[group]++; }
+    for(key in fixtures) fixture_count++;
+    print "# Compatibility\n\nGenerated from `tests/compat/ledger.csv`; regenerate with `sh scripts/compat-common.sh docs tests/compat/ledger.csv`.\n";
+    print "Rows: " count+0 ". Evaluated coverage: " status["pass"]+status["fail"] ". Own fixtures: " fixture_count+0 ".";
+    print "\nPass/fail describe accepted predicates only. Unknown has no accepted evaluation; unsupported names an unavailable capability; infrastructure_error describes a runner/judge failure. Metadata membership proves no support. No playable, completable or sound claim; boots is sampled display/distinct-frame/first-fault smoke and may reject static screens. HALT is not a rejection. Experimental through v2.0.\n";
+    split("pass fail unknown unsupported infrastructure_error skipped",a," "); for(i=1;i<=6;i++) print "- " a[i] ": " status[a[i]]+0;
+    print ""; split("frame ram mailbox boots",a," "); for(i=1;i<=4;i++) print "- " a[i] " predicates: " predicates[a[i]]+0;
+    print "\n| Machine/mapper/status | Rows |\n|---|---:|"; for(i=1;i<=count;i++) { key=order[i]; group=r[key,3] "/" r[key,5] "/" r[key,7]; if(!printed[group]++) print "| " group " | " groups[group] " |" }
+    print "\n| ID | Title | Profile | Predicate | Status | Evidence | Date |\n|---|---|---|---|---|---|---|";
+    for(i=1;i<=count;i++) { key=order[i]; print "| " r[key,1] " | " md(r[key,2]) " | " r[key,3] "/" r[key,4] "/" r[key,5] " | " r[key,6] " | " r[key,7] " | " md(r[key,8]) " | " r[key,9] " |" }
+  }
+}' "$2"

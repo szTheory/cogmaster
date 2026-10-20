@@ -406,3 +406,4 @@ cogmaster_add_test(NAME policy.action_pins.self_test
   LABELS hygiene policy TIMEOUT 30)
 
 include(${PROJECT_SOURCE_DIR}/tests/policy/e2e_cases.cmake)
+include(${PROJECT_SOURCE_DIR}/tests/compat/tests.cmake)

@@ -1,5 +1,31 @@
 # Conformance
 
+The [compatibility ledger](compatibility.md) reports accepted predicates, never general support.
+`runner.expect.predicates` exercises independent frame/RAM values, mismatch/usage/refusal/I/O
+statuses, mailbox completion and interrupt-driven HALT smoke, with static-display and first-fault
+controls. `compat.fixtures` executes each evaluated own-fixture row only after checking its admitted
+build digest and resolved board; the initial four evaluations cover two fixtures. Its public result
+CSV stays under the build tree. CC0 game identities start unknown and metadata membership proves
+no behavior. Private-library execution and passing-case protection are separate subsequent work.
+
+`sh scripts/compat-common.sh normalize tests/compat/ledger.csv` emits canonical quoted CSV;
+`docs` emits this ledger page and `cases` emits validated CMake execution facts without title interpolation.
+The shared parser accepts conventional doubled quotes and commas inside quoted fields, preserving
+semicolons as data. It bounds files to 4 MiB, records to 4096 bytes, fields to 1024 bytes and rows to 4096;
+embedded record newlines, empty records and duplicate normalized cases reject. Header-only means
+zero evaluated coverage. Output is deterministic under row permutation. `policy.compat_doc_fresh`
+regenerates the public page; its corruption control and parser controls run in CI and hygiene.
+
+The nine columns are `id,title,machine,region,mapper,predicate,status,evidence,date`. Normalization
+resolves region `any` to `ntsc-u`, inserts default SMS/GG video and pad devices, and uses the empty
+SHA-256 for no script. A configuration prefix has the fixed grammar
+`cfg:video=sms;port1=pad;port2=pad;script=none;sha256=DIGEST/` before the runner predicate;
+video accepts `sms|gg`, devices accept `pad|none`, and script is a logical identifier plus its content
+SHA-256. Frame numbers are decimal; RAM addresses and expected bytes normalize to uppercase hex.
+Expected hashes/bytes remain separate from identity, which includes the resolved profile, board,
+devices, script identity/content, predicate kind, frame and address. A boot cap is at most 1,000,000
+frames; sound predicates are unavailable. The libretro core stays experimental through v2.0.
+
 Cartridge classification is covered by `cart.database` and `cart.generator`: known nonbattery, unknown,
 known battery and unsupported geometry are distinct from board allocation and ledger membership.
 `cart.fixture_identity` and `cart.fixture_hash` run the assembled battery fixture through production lookup,
