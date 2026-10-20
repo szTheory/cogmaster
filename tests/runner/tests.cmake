@@ -64,7 +64,19 @@ if(CMAKE_SCRIPT_MODE_FILE)
     endif()
   endfunction()
 
-  if(CASE STREQUAL "save_unit")
+  if(CASE STREQUAL "hash_matrix")
+    execute_process(COMMAND ${CMAKE_COMMAND} -DMODE=write -DRUN=${RUN}
+      "-DEMULATOR=${EMULATOR}" -DOUT=${OUT} -DFIXTURES=${FIXTURES} -P ${HASHES}
+      COMMAND_ERROR_IS_FATAL ANY)
+    file(READ "${OUT}/hashes.txt" hashes)
+    foreach(row IN ITEMS "playing boot_to_play.gg native ntsc-u input"
+        "playing boot_to_play.sms sms1 pal input" "playing boot_to_play.sms gg-sms pal input"
+        "playing vdp_lines_240.sms sms pal baseline")
+      if(NOT hashes MATCHES "${row} frame 14 sha256 [0-9a-f]+")
+        message(FATAL_ERROR "playing matrix missing ${row}")
+      endif()
+    endforeach()
+  elseif(CASE STREQUAL "save_unit")
     file(MAKE_DIRECTORY "${OUT}")
     file(REMOVE "${OUT}/round.trip.srm")
     file(WRITE "${OUT}/unrelated.tmp" "unrelated")
@@ -585,8 +597,9 @@ if(COGMASTER_FIXTURES)
   set(runner_fixtures -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures)
 endif()
 cogmaster_add_test(NAME runner.hashes_file
-  COMMAND ${CMAKE_COMMAND} -DMODE=write -DRUN=$<TARGET_FILE:cogmaster-run>
-    "-DEMULATOR=${runner_emulator}" -DOUT=${PROJECT_BINARY_DIR} ${runner_fixtures} -P ${runner_hashes}
+  COMMAND ${CMAKE_COMMAND} -DCASE=hash_matrix -DRUN=$<TARGET_FILE:cogmaster-run>
+    "-DEMULATOR=${runner_emulator}" -DOUT=${PROJECT_BINARY_DIR} ${runner_fixtures}
+    -DHASHES=${runner_hashes} -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS runner portable TIMEOUT 30)
 
 # Fault prevented: a comparison that passes lanes which differ, or a lane
