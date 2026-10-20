@@ -64,6 +64,13 @@ if(TARGET cogmaster_libretro)
       LABELS libretro portable TIMEOUT 60)
   endforeach()
   if(COGMASTER_FIXTURES)
+    foreach(machine sms2 gg)
+      # Fault prevented: save memory changes size, disappears on enable or is lost on Restart.
+      cogmaster_add_test(NAME libretro.battery.${machine}
+        COMMAND cogmaster-test-libretro-host $<TARGET_FILE:cogmaster_libretro>
+          battery ${PROJECT_BINARY_DIR}/fixtures/battery.sms ${machine}
+        LABELS libretro portable TIMEOUT 60)
+    endforeach()
     # Fault prevented: the installed adapter refusing content or polling after a frame starts.
     foreach(adapter content replay)
       foreach(machine sms gg)

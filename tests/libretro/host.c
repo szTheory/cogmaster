@@ -517,6 +517,7 @@ static int content_test(const char *path, const char *digest)
 
 #include "presentation.h"
 #include "controls.h"
+#include "battery.h"
 
 int main(int argc, char **argv)
 {
@@ -530,6 +531,15 @@ int main(int argc, char **argv)
     cogmaster_versions v;
     unsigned run, aspect_w, aspect_h, bad_counts = 0;
     size_t total = 0;
+
+    if (argc == 5 && strcmp(argv[2], "battery") == 0) {
+        if (!module_open(argv[1]))
+            return 1;
+        resolve_all();
+        int rc = missing != NULL ? 1 : battery_test(argv[3], argv[4]);
+        module_close();
+        return rc;
+    }
 
     if (argc == 4 && strcmp(argv[2], "controls") == 0) {
         rgb565 = strcmp(argv[3], "rgb565") == 0;
