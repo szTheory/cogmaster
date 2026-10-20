@@ -98,3 +98,9 @@ mismatch line names it, the upstream issue URL (`https://`), and a reason. Blank
 `allowed` and does not count as a failure. A malformed line fails the run, and so does a line whose file ran
 but which matched no failure, so a line is removed once the core or upstream is fixed. `vectors.allow.self_test`
 checks that rule. The list is empty today.
+
+### The shards
+
+`ctest -L vectors` runs the sample in shards, one per prefix group, each with `--allow` and the group's exact
+test count. `vectors.base` runs the main page (252 files, 25,200 tests). The remaining groups get a shard when
+their page is complete.
