@@ -133,6 +133,22 @@ static void excluded(cogmaster *m, const char *dir)
     CHECK_EQ_U64(cogmaster__save_flush(&s, m), 0);
     CHECK(s.path == NULL);
 }
+static void failures(cogmaster *m, const char *dir, const char *path)
+{
+    cogmaster__save s = {0};
+    CHECK_EQ_U64(cogmaster__save_load(&s, m, dir, "round.trip.sms"), 0);
+    cogmaster__bus_write(m, 0xfffcu, 8u);
+    cogmaster__bus_write(m, 0x8000u, 0x42u);
+    /* The write-stage error must reach the caller, preserving dirty state. */
+    s.fault = COGMASTER_SAVE_WRITE;
+    CHECK_EQ_U64(cogmaster__save_flush(&s, m), 1);
+    CHECK_EQ_U64(s.acknowledged, 0);
+    FILE *f = cogmaster__path_open(path, "rb");
+    CHECK(f == NULL);
+    if (f != NULL)
+        (void)fclose(f);
+    cogmaster__save_dispose(&s);
+}
 int main(int argc, char **argv)
 {
     if (argc != 5)
@@ -144,6 +160,8 @@ int main(int argc, char **argv)
         replacement(m, argv[3], argv[4]);
     else if (strcmp(argv[1], "excluded") == 0)
         excluded(m, argv[3]);
+    else if (strcmp(argv[1], "failures") == 0)
+        failures(m, argv[3], argv[4]);
     else
         CHECK(0);
     cogmaster_destroy(m);

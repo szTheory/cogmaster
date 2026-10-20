@@ -539,10 +539,10 @@ if(COGMASTER_FIXTURES)
     ${PROJECT_SOURCE_DIR}/runner/save.c)
   target_include_directories(cogmaster-test-save PRIVATE ${PROJECT_SOURCE_DIR}/src)
   target_link_libraries(cogmaster-test-save PRIVATE cogmaster::cogmaster)
-  target_compile_definitions(cogmaster-test-save PRIVATE _POSIX_C_SOURCE=200809L)
+  target_compile_definitions(cogmaster-test-save PRIVATE _POSIX_C_SOURCE=200809L COGMASTER_SAVE_TEST)
   set_target_properties(cogmaster-test-save PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
   cogmaster_warnings(cogmaster-test-save)
-  foreach(case imports replacement excluded)
+  foreach(case imports replacement excluded failures)
     # Fault prevented: raw import, clean flush or classified refusals corrupting host data.
     cogmaster_add_test(NAME runner.save.${case}
       COMMAND ${runner_check} -DCASE=save_unit -DSAVE_CASE=${case}
