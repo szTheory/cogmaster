@@ -14,3 +14,8 @@ foreach(case IN ITEMS halt_bound.di frame_origin)
   cogmaster_add_test(NAME bus.${case} COMMAND cogmaster-test-bus ${case}
     LABELS bus portable TIMEOUT 10)
 endforeach()
+
+# Fault prevented: an undefined ED opcode that runs silently, so the first
+# fault a host reads names nothing.
+cogmaster_add_test(NAME fault.ed_undefined COMMAND cogmaster-test-bus fault.ed_undefined
+  LABELS bus portable TIMEOUT 10)

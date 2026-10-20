@@ -1,6 +1,7 @@
 # Every test the nofp preset registers: name<TAB>labels.
 # Sorted; configure fails when this differs from what is registered.
 abi.api_v1	abi,portable
+abi.api_v2	abi,portable
 abi.api_version	abi
 abi.api_version.self_test	abi
 abi.globals	abi

@@ -606,7 +606,7 @@ static void count_free(void *user, void *ptr, size_t size)
 }
 
 /* The statuses a caller meets before content, with a short pitch and with a
-   cartridge image this release cannot load. */
+   cartridge image of a size the loader refuses. */
 static void test_statuses(void)
 {
     cogmaster_config cfg = make_config();
@@ -647,14 +647,15 @@ static void test_statuses(void)
     io = frame_io(NULL, GG_W * 2u, 0u);
     CHECK_EQ_U64(cogmaster_get_frame(m, &io), COGMASTER_STATUS_ERR_ARGUMENT);
 
-    /* This release loads only the test card: an image is refused and the
-       loaded card keeps running. */
+    /* An image of the wrong size, or a size with no image, is refused and
+       the loaded card keeps running. */
     static const uint8_t image[1] = {0};
     cogmaster_media cart = make_media(COGMASTER_MACHINE_SMS2);
     cart.image = image;
-    CHECK_EQ_U64(cogmaster_load(m, &cart), COGMASTER_STATUS_ERR_ARGUMENT);
-    cart.image = NULL;
+    CHECK_EQ_U64(cogmaster_load(m, &cart), COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE);
     cart.image_size = 1u;
+    CHECK_EQ_U64(cogmaster_load(m, &cart), COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE);
+    cart.image = NULL;
     CHECK_EQ_U64(cogmaster_load(m, &cart), COGMASTER_STATUS_ERR_ARGUMENT);
     CHECK_EQ_U64(cogmaster_run_frame(m, &result), COGMASTER_STATUS_OK);
     CHECK_EQ_U64(result.stop, COGMASTER_STOP_FRAME);
@@ -844,6 +845,205 @@ static void test_pitch_wide(void)
     }
 }
 
+/* Cartridge images. Sizes are bytes; a page is 16 KiB. */
+#define PAGE 16384u
+#define IMAGE_MIN 1024u
+#define IMAGE_MAX (1048576u + 512u)
+static uint8_t big[IMAGE_MAX + 64u];
+
+/* Fills big with bytes that differ from page to page and from $FF. */
+static void fill_big(void)
+{
+    for (size_t i = 0; i < sizeof big; i++) {
+        big[i] = (uint8_t)((i * 7u + (i >> 14)) % 255u);
+    }
+}
+
+static cogmaster_media image_media(const void *image, size_t n, uint32_t machine)
+{
+    cogmaster_media media = make_media(machine);
+    media.image = image;
+    media.image_size = n;
+    return media;
+}
+
+/* Loads n bytes of big into m and checks the buffer: the body after any
+   copier header, then $FF up to the next page. */
+static void expect_loaded(cogmaster *m, size_t n, size_t header, uint32_t padded)
+{
+    cogmaster_media media = image_media(big, n, COGMASTER_MACHINE_SMS2);
+    expect_status("load", (uint32_t)n, cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(m->cart.size, padded);
+    if (m->cart.rom == NULL || m->cart.size != padded) {
+        return;
+    }
+    size_t body = n - header;
+    CHECK(memcmp(m->cart.rom, big + header, body) == 0);
+    uint32_t not_ff = 0;
+    for (size_t i = body; i < padded; i++) {
+        if (m->cart.rom[i] != 0xFFu) {
+            not_ff++;
+        }
+    }
+    CHECK_EQ_U64(not_ff, 0);
+}
+
+/* The size rules: 1 KiB to 1 MiB + 512 bytes, a 512-byte copier header
+   stripped when the size is 512 past a whole page, $FF padding to a page. */
+static void test_load_sizes(void)
+{
+    fill_big();
+    cogmaster_config cfg = make_config();
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    if (m == NULL) {
+        return;
+    }
+    static const size_t refused[] = {0u, 1u, IMAGE_MIN - 1u, IMAGE_MAX + 1u, IMAGE_MAX + 64u};
+    for (size_t i = 0; i < sizeof refused / sizeof refused[0]; i++) {
+        cogmaster_media media = image_media(big, refused[i], COGMASTER_MACHINE_SMS2);
+        expect_status("load", (uint32_t)refused[i], cogmaster_load(m, &media),
+                      COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE);
+    }
+    /* No image pointer with a size is an argument error, not a size. */
+    cogmaster_media media = image_media(NULL, IMAGE_MIN, COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_ERR_ARGUMENT);
+
+    expect_loaded(m, IMAGE_MIN, 0u, PAGE);
+    expect_loaded(m, PAGE + 512u, 512u, PAGE);
+    expect_loaded(m, 3u * PAGE, 0u, 3u * PAGE);
+    expect_loaded(m, 20u * 1024u, 0u, 2u * PAGE);
+    expect_loaded(m, 1048576u, 0u, 1048576u);
+    expect_loaded(m, IMAGE_MAX, 512u, 1048576u);
+    /* A 20 KiB image reads $FF from 20,480 to 32,767 through the bus too. */
+    expect_loaded(m, 20u * 1024u, 0u, 2u * PAGE);
+    CHECK_EQ_HEX(cogmaster__bus_read(m, 20479u), big[20479]);
+    CHECK_EQ_HEX(cogmaster__bus_read(m, 20480u), 0xFF);
+    CHECK_EQ_HEX(cogmaster__bus_read(m, 32767u), 0xFF);
+    /* Loading the test card again frees the image. */
+    media = make_media(COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK(m->cart.rom == NULL);
+    cogmaster_destroy(m);
+}
+
+/* splitmix64 (Steele, Lea and Flood, 2014): a seeded sequence the same on
+   every platform. */
+static uint64_t splitmix64(uint64_t *s)
+{
+    uint64_t z = (*s += UINT64_C(0x9E3779B97F4A7C15));
+    z = (z ^ (z >> 30)) * UINT64_C(0xBF58476D1CE4E5B9);
+    z = (z ^ (z >> 27)) * UINT64_C(0x94D049BB133111EB);
+    return z ^ (z >> 31);
+}
+
+static uint8_t instance_before[sizeof(struct cogmaster)];
+/* An image up to 1 MiB + 511 bytes with no copier header pads to 65 pages. */
+static uint8_t rom_before[1048576u + PAGE];
+
+/* 200 seeded loads with sizes near both bounds and any machine value: each
+   refused load returns the status the rules give, allocates nothing and
+   leaves every byte of the instance and of its image as it was. */
+static void test_load_rejected_unchanged(void)
+{
+    fill_big();
+    counts c;
+    memset(&c, 0, sizeof c);
+    cogmaster_config cfg = make_config();
+    cfg.allocator.alloc = count_alloc;
+    cfg.allocator.free = count_free;
+    cfg.allocator.user = &c;
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    if (m == NULL) {
+        return;
+    }
+    cogmaster_media first = image_media(big, IMAGE_MIN, COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(cogmaster_load(m, &first), COGMASTER_STATUS_OK);
+    run_frames(m, 2);
+
+    uint64_t seed = UINT64_C(0x5EED0000C0C0A5A5);
+    const size_t bases[3] = {0u, IMAGE_MIN, IMAGE_MAX};
+    uint32_t refusals = 0, changed = 0;
+    for (uint32_t i = 0; i < 200u; i++) {
+        uint64_t r = splitmix64(&seed);
+        size_t base = bases[r % 3u];
+        size_t delta = (size_t)((r >> 8) % 33u);
+        size_t n = base + delta >= 16u ? base + delta - 16u : delta;
+        uint32_t machine = (r >> 24) % 4u == 0u ? (uint32_t)(r >> 32) : (uint32_t)((r >> 40) % 4u);
+        cogmaster_status want = COGMASTER_STATUS_OK;
+        if (n < IMAGE_MIN || n > IMAGE_MAX) {
+            want = COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE;
+        } else if (machine > COGMASTER_MACHINE_GG) {
+            want = COGMASTER_STATUS_ERR_PROFILE_REJECTED;
+        }
+        memcpy(instance_before, m, sizeof instance_before);
+        uint32_t rom_size = m->cart.size;
+        if (m->cart.rom != NULL) {
+            memcpy(rom_before, m->cart.rom, rom_size);
+        }
+        uint32_t allocs = c.allocs;
+        cogmaster_media media = image_media(big, n, machine);
+        cogmaster_status got = cogmaster_load(m, &media);
+        expect_status("seeded load", (uint32_t)n, got, want);
+        if (got != COGMASTER_STATUS_OK) {
+            refusals++;
+            if (memcmp(instance_before, m, sizeof instance_before) != 0 || c.allocs != allocs ||
+                (m->cart.rom != NULL && memcmp(rom_before, m->cart.rom, rom_size) != 0)) {
+                fprintf(stderr, "seeded load %lu: size %lu machine %lu changed the instance\n",
+                        (unsigned long)i, (unsigned long)n, (unsigned long)machine);
+                changed++;
+            }
+        } else {
+            run_frames(m, 1);
+        }
+    }
+    printf("seeded loads: 200 run, %lu refused, %lu changed the instance\n",
+           (unsigned long)refusals, (unsigned long)changed);
+    CHECK(refusals >= 50u);
+    CHECK_EQ_U64(changed, 0);
+    cogmaster_destroy(m);
+    CHECK_EQ_U64(c.frees, c.allocs);
+    CHECK_EQ_U64(c.live_bytes, 0);
+}
+
+/* After load the CPU and RAM are as the BIOS leaves them, with no BIOS code
+   in RAM: SP $DFF0, $C000 = $AB (Master System only), PC 0. */
+static void test_boot_handoff(void)
+{
+    fill_big();
+    cogmaster_config cfg = make_config();
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    if (m == NULL) {
+        return;
+    }
+    cogmaster_media media = image_media(big, IMAGE_MIN, COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(m->z80.sp, 0xDFF0);
+    CHECK_EQ_HEX(m->z80.pc, 0x0000);
+    CHECK_EQ_HEX(m->z80.reg[COGMASTER__Z80_A], 0xFF);
+    CHECK_EQ_HEX(m->z80.reg[COGMASTER__Z80_F], 0xFF);
+    CHECK_EQ_U64(m->z80.im, 0);
+    CHECK_EQ_U64(m->z80.iff1, 0);
+    CHECK_EQ_U64(m->z80.iff2, 0);
+    CHECK_EQ_U64(m->z80.halted, 0);
+    CHECK_EQ_HEX(cogmaster__bus_read(m, 0xC000u), 0xAB);
+    CHECK_EQ_HEX(cogmaster__bus_read(m, 0xE000u), 0xAB);
+    uint32_t written = 0;
+    for (size_t i = 1; i < sizeof m->ram; i++) {
+        if (m->ram[i] != 0u) {
+            written++;
+        }
+    }
+    CHECK_EQ_U64(written, 0);
+    media = image_media(big, IMAGE_MIN, COGMASTER_MACHINE_GG);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(m->z80.sp, 0xDFF0);
+    CHECK_EQ_HEX(m->ram[0], 0x00);
+    cogmaster_destroy(m);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
@@ -851,10 +1051,13 @@ static const struct {
     {"api.first_released_sizes", test_first_released_sizes},
     {"api.size_tags", test_size_tags},
     {"api.statuses", test_statuses},
+    {"boot.handoff", test_boot_handoff},
     {"create.allocator", test_allocator},
     {"frame.pitch_wide", test_pitch_wide},
     {"info", test_info},
     {"load.profile_rejected", test_profile_rejected},
+    {"load.rejected_unchanged", test_load_rejected_unchanged},
+    {"load.sizes", test_load_sizes},
     {"no_alloc_after_load", test_no_alloc_after_load},
     {"testcard.all_colours", test_all_colours},
     {"testcard.boundaries", test_boundaries},

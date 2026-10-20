@@ -25,7 +25,7 @@ static void v1_free(void *user, void *ptr, size_t size)
 
 int main(void)
 {
-    CHECK_EQ_U64(COGMASTER_API_VERSION, 1);
+    CHECK(COGMASTER_API_VERSION >= 1);
     CHECK(COGMASTER_ABI_VERSION >= 1);
     CHECK(COGMASTER_BEHAVIOUR_REVISION >= 1);
     CHECK(COGMASTER_STATE_FORMAT_VERSION >= 1);
@@ -56,7 +56,7 @@ int main(void)
     v.behaviour = 0u;
     v.state = 0u;
     CHECK_EQ_U64(cogmaster_get_versions(&v), COGMASTER_STATUS_OK);
-    CHECK_EQ_U64(v.api, 1);
+    CHECK_EQ_U64(v.api, COGMASTER_API_VERSION);
     CHECK_EQ_U64(v.abi, COGMASTER_ABI_VERSION);
     CHECK_EQ_U64(v.behaviour, COGMASTER_BEHAVIOUR_REVISION);
     CHECK_EQ_U64(v.state, COGMASTER_STATE_FORMAT_VERSION);

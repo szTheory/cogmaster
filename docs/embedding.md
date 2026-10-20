@@ -4,7 +4,8 @@ The library is one static archive and one header, `cogmaster.h`, written in C17.
 the allocator you pass, keeps all state in the instance, starts no threads, opens no files, reads no clock and uses
 no floating point. It needs nothing from the C library beyond `memcpy`, `memmove`, `memset` and `memcmp`.
 
-This release runs the built-in test card only: it loads no cartridge image yet.
+This release loads a cartridge image and runs its CPU, but draws no picture from it yet: the frame of a loaded
+image stays black. With no image it runs the built-in test card.
 
 ## Getting it
 
@@ -116,19 +117,29 @@ cogmaster_media media;
 memset(&media, 0, sizeof media);
 media.size = (uint32_t)sizeof media;
 media.machine = COGMASTER_MACHINE_AUTO;   /* or COGMASTER_MACHINE_SMS2, COGMASTER_MACHINE_GG */
-cogmaster_load(m, &media);                /* image NULL and image_size 0: the test card */
+media.image = rom;                        /* the image bytes, or NULL for the test card */
+media.image_size = rom_size;              /* 0 with a NULL image */
+cogmaster_load(m, &media);
 
 cogmaster_run_frame(m, NULL);             /* one frame; the result struct is optional */
 ```
 
-`cogmaster_media.image` must be NULL and `image_size` 0 in this release; anything else returns
-`COGMASTER_STATUS_ERR_ARGUMENT`. `machine` selects the profile: `COGMASTER_MACHINE_AUTO` (the default, a Master
+`cogmaster_media.image` with `image_size` 0 and a NULL `image` loads the built-in test card. Any other image must
+be 1,024 to 1,048,576 + 512 bytes; any other size returns `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE`, and a NULL
+`image` with a non-zero size returns `COGMASTER_STATUS_ERR_ARGUMENT`. When the size is 512 bytes past a multiple
+of 16 KiB the first 512 bytes are a copier's header and are skipped. The library copies the rest into one buffer
+from your allocator, padded with `$FF` to a multiple of 16 KiB, so you may free your copy once `load` returns.
+This release maps every image as a cartridge without a mapper: the first 48 KiB at `$0000` and 8 KiB of work RAM
+at `$C000`. The CPU starts as the console's BIOS leaves it (fast boot; no BIOS code runs): stack pointer `$DFF0`,
+`$AB` at `$C000` on the Master System, program counter 0. `machine` selects the profile: `COGMASTER_MACHINE_AUTO` (the default, a Master
 System II), `COGMASTER_MACHINE_SMS2` or `COGMASTER_MACHINE_GG`. Each `load` restarts the frame count and clears
 the fault record.
 
-`cogmaster_run_frame` runs one frame, 179,208 ticks of the 10,738,635 Hz video clock. If `out`, a
+`cogmaster_run_frame` runs one frame, 179,208 ticks of the 10,738,635 Hz video clock. The CPU runs whole
+instructions, so a frame stops at the first instruction boundary at or after its end, at most 69 ticks late, and
+the next frame ends 179,208 ticks after this one should have: the frames never drift. If `out`, a
 `cogmaster_run_result`, is not NULL it receives `stop`, always `COGMASTER_STOP_FRAME` in this release, and
-`overshoot_ticks`, always 0 for the test card.
+`overshoot_ticks`, the ticks run past the frame's end (always 0 for the test card).
 
 ## Frames
 
@@ -183,12 +194,15 @@ The record is part of the instance's saved state.
 | `present` | 1 when a fault was recorded, 0 otherwise; every other field is 0 when it is 0 |
 | `frame`, `line`, `dot` | where the beam was: the frame count, the line (0 to 312) and the dot (0 to 341) |
 | `pc` | the CPU's program counter at the faulting instruction |
-| `addr`, `width` | the address or port accessed and the access width in bytes |
+| `addr`, `width` | the full 16-bit address or port accessed and the access width in bits (8) |
 | `opcode` | the opcode byte being executed |
-| `device`, `kind` | which device faulted and how; opaque codes in this release, given names when the CPU and the bus exist |
+| `device`, `kind` | which device faulted and how, as the codes below |
 
-The test card runs no CPU, so in this release `present` is always 0. The call works before a load too, and then
-also reports `present` 0.
+`kind`: 0 none, 1 unmapped read, 2 unmapped write, 3 ROM write, 4 mapper range, 5 undefined ED opcode. `device`:
+0 none, 1 CPU, 2 cartridge, 3 work RAM, 4 mapper, 5 memory and I/O control. Both lists only grow. This release
+records kind 5: the CPU ran an opcode after `$ED` that the Z80 does not define, as an 8 T-state no-operation;
+`opcode` is that second byte, `pc` the address of the `$ED`. The test card runs no CPU, so it never records a
+fault. The call works before a load too, and then reports `present` 0.
 
 ## Information
 
@@ -213,19 +227,20 @@ changes no state; a failed `cogmaster_load` keeps the content that was loaded be
 | Status | Value | Returned when |
 |---|---|---|
 | `COGMASTER_STATUS_OK` | 0 | the call did what it says |
-| `COGMASTER_STATUS_ERR_ARGUMENT` | 1 | a required pointer is NULL; the allocator lacks `alloc` or `free`; `image` is not NULL or `image_size` is not 0; `flags` has an unknown bit; `pitch_bytes` is above 65536; the reset `kind` is unknown |
+| `COGMASTER_STATUS_ERR_ARGUMENT` | 1 | a required pointer is NULL; the allocator lacks `alloc` or `free`; `image` is NULL while `image_size` is not 0; `flags` has an unknown bit; `pitch_bytes` is above 65536; the reset `kind` is unknown |
 | `COGMASTER_STATUS_ERR_STRUCT_SIZE` | 2 | a size tag breaks the rules in [Structs and sizes](#structs-and-sizes) |
-| `COGMASTER_STATUS_ERR_NO_MEMORY` | 3 | `alloc` returned NULL in `cogmaster_create`; `*out` is left as it was |
+| `COGMASTER_STATUS_ERR_NO_MEMORY` | 3 | `alloc` returned NULL in `cogmaster_create` (`*out` is left as it was) or in `cogmaster_load` |
 | `COGMASTER_STATUS_ERR_BUFFER_TOO_SMALL` | 4 | `pitch_bytes` is below `w × 2` for the rectangle requested |
 | `COGMASTER_STATUS_ERR_NO_CONTENT` | 5 | `cogmaster_run_frame`, `cogmaster_get_frame`, `cogmaster_get_info` or `cogmaster_reset` before a successful `cogmaster_load` |
 | `COGMASTER_STATUS_ERR_PROFILE_REJECTED` | 6 | `cogmaster_media.machine` is not one of the `COGMASTER_MACHINE_*` values |
+| `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE` | 7 | an image is below 1,024 or above 1,048,576 + 512 bytes; checked before every other load rule |
 
 | Function | Can return |
 |---|---|
 | `cogmaster_get_versions(out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE |
 | `cogmaster_create(cfg, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_MEMORY |
 | `cogmaster_destroy(m)` | nothing; NULL is accepted |
-| `cogmaster_load(m, media)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_PROFILE_REJECTED |
+| `cogmaster_load(m, media)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_MEMORY, ERR_PROFILE_REJECTED, ERR_UNSUPPORTED_SIZE |
 | `cogmaster_run_frame(m, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT |
 | `cogmaster_get_frame(m, io)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT, ERR_BUFFER_TOO_SMALL |
 | `cogmaster_get_info(m, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT |
@@ -263,5 +278,5 @@ Every public name, for reference: the opaque instance `cogmaster`; the types `co
 `cogmaster_create`, `cogmaster_destroy`, `cogmaster_load`, `cogmaster_run_frame`, `cogmaster_get_frame`,
 `cogmaster_get_info`, `cogmaster_reset` and `cogmaster_get_fault`; the constants `COGMASTER_MACHINE_AUTO`,
 `COGMASTER_MACHINE_SMS2`, `COGMASTER_MACHINE_GG`, `COGMASTER_STOP_FRAME`, `COGMASTER_FRAME_FULL_FIELD`,
-`COGMASTER_RESET_SOFT` and `COGMASTER_RESET_POWER`, the seven `COGMASTER_STATUS_*` values above and the
+`COGMASTER_RESET_SOFT` and `COGMASTER_RESET_POWER`, the eight `COGMASTER_STATUS_*` values above and the
 version macros above.

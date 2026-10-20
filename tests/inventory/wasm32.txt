@@ -3,6 +3,7 @@
 # builds no libretro core. Sorted; configure fails when this differs from what
 # is registered.
 abi.api_v1	abi,portable
+abi.api_v2	abi,portable
 abi.api_version	abi
 abi.api_version.self_test	abi
 abi.globals	abi
@@ -18,6 +19,7 @@ core.api.error_changes_nothing	core,portable
 core.api.first_released_sizes	core,portable
 core.api.size_tags	core,portable
 core.api.statuses	core,portable
+core.boot.handoff	core,portable
 core.create.allocator	core,portable
 core.fault.empty_after_create	core,portable
 core.fault.first_wins	core,portable
@@ -26,6 +28,8 @@ core.fault.state_round_trip	core,portable
 core.frame.pitch_wide	core,portable
 core.info	core,portable
 core.load.profile_rejected	core,portable
+core.load.rejected_unchanged	core,portable
+core.load.sizes	core,portable
 core.no_alloc_after_load	perf,portable
 core.state.frame_counter	core,portable
 core.state.record_sweep	core,portable
@@ -39,6 +43,7 @@ docs.api_names	policy
 docs.api_names.self_test	policy
 docs.budgets	policy
 embed.subdirectory	install
+fault.ed_undefined	bus,portable
 host.palette	host,portable
 install.consumer	install
 install.consumer.cxx	install

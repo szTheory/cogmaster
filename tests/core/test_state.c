@@ -590,7 +590,11 @@ static void test_error_changes_nothing(void)
     static const uint8_t image[1] = {0};
     media.image = image;
     media.image_size = 1u;
-    expect_unchanged("load an image", cogmaster_load(m, &media), COGMASTER_STATUS_ERR_ARGUMENT, m);
+    expect_unchanged("load a 1-byte image", cogmaster_load(m, &media),
+                     COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE, m);
+    media.image = NULL;
+    expect_unchanged("load a size without an image", cogmaster_load(m, &media),
+                     COGMASTER_STATUS_ERR_ARGUMENT, m);
     media.image = NULL;
     media.image_size = 0u;
     media.machine = 3u;

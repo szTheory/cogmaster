@@ -63,7 +63,7 @@ set(abi_cmd ${CMAKE_COMMAND} -DHEADER=${PROJECT_BINARY_DIR}/tests/abi/added_func
 string(REPLACE ";" "$<SEMICOLON>" abi_cmd "${abi_cmd}")
 cogmaster_add_test(NAME abi.api_version.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${abi_cmd}" -DCODE=1
-    "-DREGEX=in no tests/api/vK.c with K <= 1: cogmaster_added" -P ${abi_scripts}/expect_fail.cmake
+    "-DREGEX=in no tests/api/vK.c with K <= [0-9]+: cogmaster_added" -P ${abi_scripts}/expect_fail.cmake
   LABELS abi TIMEOUT 10)
 
 # The frozen API v1 program: every function, field and constant of version 1.
@@ -73,6 +73,15 @@ set_target_properties(cogmaster-test-api-v1 PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
 cogmaster_warnings(cogmaster-test-api-v1)
 cogmaster_add_test(NAME abi.api_v1 COMMAND cogmaster-test-api-v1
+  LABELS abi portable TIMEOUT 10)
+
+# The API v2 program: every name version 2 adds.
+add_executable(cogmaster-test-api-v2 ${PROJECT_SOURCE_DIR}/tests/api/v2.c)
+target_link_libraries(cogmaster-test-api-v2 PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-api-v2 PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-api-v2)
+cogmaster_add_test(NAME abi.api_v2 COMMAND cogmaster-test-api-v2
   LABELS abi portable TIMEOUT 10)
 
 # The public header compiles alone as C17 and as C++17 with warnings fatal.

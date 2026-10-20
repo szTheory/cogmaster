@@ -122,10 +122,41 @@ static void test_frame_origin(void)
     cogmaster_destroy(m);
 }
 
+/* An undefined ED opcode runs as a no-operation and records the first
+   fault: kind ed_undefined (5), device cpu (1), the second byte as the
+   opcode and the instruction's own address as pc. */
+static void test_fault_ed_undefined(void)
+{
+    static const uint8_t prog[] = {0xEDu, 0x00u, 0x76u};
+    cogmaster *m = load(prog, sizeof prog);
+    (void)run(m);
+    cogmaster_fault f;
+    memset(&f, 0, sizeof f);
+    f.size = (uint32_t)sizeof f;
+    CHECK_EQ_U64(cogmaster_get_fault(m, &f), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(f.present, 1);
+    CHECK_EQ_U64(f.kind, COGMASTER__FAULT_ED_UNDEFINED);
+    CHECK_EQ_U64(f.kind, 5);
+    CHECK_EQ_U64(f.device, COGMASTER__DEVICE_CPU);
+    CHECK_EQ_U64(f.device, 1);
+    CHECK_EQ_HEX(f.opcode, 0x00);
+    CHECK_EQ_HEX(f.pc, 0x0000);
+    CHECK_EQ_HEX(f.addr, 0x0001);
+    CHECK_EQ_U64(f.width, 8);
+    CHECK_EQ_U64(f.frame, 0);
+    /* Eight T-states after the origin: line 192, dot (607 + 24) / 2. */
+    CHECK_EQ_U64(f.line, ORIGIN_LINE);
+    CHECK_EQ_U64(f.dot, (ORIGIN_TICK + 24u) / 2u);
+    /* The CPU ran on into the HALT. */
+    CHECK_EQ_U64(m->z80.halted, 1);
+    cogmaster_destroy(m);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
 } cases[] = {
+    {"fault.ed_undefined", test_fault_ed_undefined},
     {"frame_origin", test_frame_origin},
     {"halt_bound.di", test_halt_bound_di},
 };
