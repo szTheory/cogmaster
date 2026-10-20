@@ -257,6 +257,7 @@ Within a phase, opcode groups and devices that share no inventory run as paralle
 | `armhf`, console compile-only | 32-bit ARM handhelds; devkitPro/pspdev toolchain files | nightly, later |
 
 - **Budgets.** Ir/frame per PR (report-only until two zero-spread controls, armed by phase 2) [ARCH.06 §8][ARCH.07 XFER-051]; handheld ceilings `device_mips × frame_µs / 2` come from SMS-ECOSYSTEM-AND-USERS §4, not yet written [ARCH.11]: **pending**, the ceiling row stays empty in `quality.json` until that file lands [ARCH.06 §14]. Comparator only: the NES sibling runs at 23.3–24.7 M Ir/frame; a Z80 at 3.58 MHz with a per-line VDP should land near it (hypothesis, measured in P3).
+- **Perf subject.** Through phase 2 the `perf` job and the nightly bench measure the no-content path (the test card). The phase 2 fixtures stop in a HALT loop once they have measured, so their instructions per frame describe no real workload; the first representative subject is phase 3's `boot_to_play`, and arming the Ir/frame gate stays the post-merge `ci:` pull request's job.
 
 ## 13. Open conflicts and how each is settled
 | Conflict | Positions | Settlement | Local test that settles it |

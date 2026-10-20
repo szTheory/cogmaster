@@ -1,7 +1,17 @@
 # Conformance
 
-How the core is checked against public test data and assembled test programs. This page covers the Z80 vectors
-and the assembled fixtures; testing in general is in [testing.md](testing.md).
+How the core is checked against public test data, assembled test programs and generated inputs. This page covers
+the Z80 vectors, the assembled fixtures and their mailbox, and fuzzing; testing in general is in
+[testing.md](testing.md).
+
+| Label or preset | Command | What runs |
+|---|---|---|
+| `vectors` | `ctest --test-dir build/ci -L vectors` | The sample's seven shards, the converter's fixtures and the harness's negative controls |
+| `z80` | `ctest --test-dir build/ci -L z80` | The interrupt, NMI, HALT, prefix-run and ED-hole cases |
+| `fixtures` | `ctest --test-dir build/ci -L fixtures` | The assembled images, their mailbox records judged, and the judge's and the pin's negative controls |
+| `fuzz` | `ctest --test-dir build/ci -L fuzz` | Every seed replayed through the two fuzz entries |
+| `vectors-full` | `cmake --workflow --preset vectors-full` | Every vector, nightly; fetch the archive first |
+| `fuzz` preset | `cmake --workflow --preset fuzz` | 60 s of libFuzzer per entry, nightly, with clang-21 |
 
 ## Z80 vectors
 
@@ -108,6 +118,24 @@ bit operations (256 files each), and `vectors.ed` the ED page (80 files, 8,000 t
 of its own, so the harness steps until no prefix is pending and compares the whole instruction. A repeating block
 instruction (LDIR, CPIR, INIR, OTIR and their decrementing forms) runs one iteration per step and moves PC back
 to itself, so each vector is one iteration.
+
+### The nightly full run
+
+The sample holds a tenth of the set. The nightly `vectors` job runs all of it:
+
+```sh
+scripts/fetch-pin.sh sst-z80 build/pins/sst-z80
+cmake --workflow --preset vectors-full
+```
+
+`COGMASTER_VECTORS_FULL` makes the build convert all 1,000 tests of every file into
+`build/vectors-full/sst-full.bin` (about 130 MB), and the first 100 again into `build/vectors-full/sst-sample.bin`.
+Configure fails, naming the fetch command, when `build/pins/sst-z80/v1` is missing, so a night cannot pass on
+nothing. The lane registers eight tests (`tests/inventory/vectors-full.txt`): `vectors.full.base`, `.cb`, `.dd`,
+`.ddcb`, `.ed`, `.fd` and `.fdcb`, each with `--allow` and ten times its sample shard's count (252,000, 256,000,
+252,000, 256,000, 80,000, 252,000 and 256,000), and `vectors.sample_equal`, which requires the regenerated sample
+to equal the committed one byte for byte. A failure there means the converter or the pin changed without the
+sample being regenerated. The whole run takes a few seconds on a recent Mac.
 
 ### What the vectors do not cover
 
@@ -259,3 +287,11 @@ rows with profile `gg`. The records:
   values.
 
 The H counter latch, the Pause NMI counter and the Pause movies need input and are not in this fixture yet.
+
+## Fuzzing
+
+The loader and a two-frame run are fuzzed from generated seeds. Every pull request replays the seeds and the
+committed regressions (`ctest -L fuzz`); the nightly `fuzz` preset runs libFuzzer with the address and
+undefined-behaviour sanitizers. A finding is triaged as a harness or core bug: fix it, then commit the minimised
+input under `tests/fuzz/regress/` with its `tests/roms/manifest.txt` row so every lane replays it.
+[testing.md](testing.md#fuzzing) has the commands and limits.

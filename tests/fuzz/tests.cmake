@@ -64,12 +64,13 @@ if(COGMASTER_LIBFUZZER)
       RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
     cogmaster_warnings(cogmaster-fuzz-${target})
     add_dependencies(cogmaster-fuzz-${target} cogmaster-seeds)
+    # Timeout: 2 x 61.12 s, slowest of 2 runs, run 39375850717, provisional.
     cogmaster_add_test(NAME fuzz.libfuzzer.${target}
       COMMAND ${CMAKE_COMMAND} -DFUZZER=$<TARGET_FILE:cogmaster-fuzz-${target}>
         -DSEEDS=${COGMASTER_SEEDS_DIR} -DCORPUS=${PROJECT_BINARY_DIR}/tests/corpus-${target}
         ${regress} -DARTIFACTS=${PROJECT_BINARY_DIR}/tests/fuzz-artifacts
         -P ${CMAKE_CURRENT_LIST_FILE}
-      LABELS fuzz TIMEOUT 120)
+      LABELS fuzz TIMEOUT 123)
   endforeach()
   return()
 endif()
@@ -93,7 +94,8 @@ foreach(target IN ITEMS loader run)
     RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
   cogmaster_warnings(cogmaster-fuzz-replay-${target})
   add_dependencies(cogmaster-fuzz-replay-${target} cogmaster-seeds)
+  # Timeout: 10 s floor; 2 x 0.11 s, slowest of 2 runs, run 39376644025, provisional.
   cogmaster_add_test(NAME fuzz.regress.${target}
     COMMAND cogmaster-fuzz-replay-${target} ${COGMASTER_FUZZ_INPUTS}
-    LABELS fuzz portable TIMEOUT 60)
+    LABELS fuzz portable TIMEOUT 10)
 endforeach()

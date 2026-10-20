@@ -80,11 +80,12 @@ string(REPLACE ";" "$<SEMICOLON>" fixtures_emulator "${CMAKE_CROSSCOMPILING_EMUL
 # Fault prevented: a fixture assembled to different bytes than the ones
 # pinned (another assembler, a changed source, CRLF line endings), or a
 # header checksum the runner's probe disagrees with.
+# Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME fixtures.hello
   COMMAND ${CMAKE_COMMAND} -DCASE=image -DNAME=hello -DIMAGE=${COGMASTER_FIXTURES_DIR}/hello.sms
     -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt -DRUN=$<TARGET_FILE:cogmaster-run>
     "-DEMULATOR=${fixtures_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
-  LABELS fixtures portable TIMEOUT 30)
+  LABELS fixtures portable TIMEOUT 10)
 
 # Fault prevented: a fixture whose measurements are printed but never
 # compared, so a core that pages the wrong bank passes. The image's digest is
@@ -94,19 +95,21 @@ set(fixtures_mailbox -DCASE=mailbox -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built
   -DJUDGE=${PROJECT_SOURCE_DIR}/tests/cmake/mailbox.cmake -DPROFILE=sms-export)
 set(fixtures_out ${PROJECT_BINARY_DIR}/tests/mailbox)
 file(MAKE_DIRECTORY ${fixtures_out})
+# Timeout: 10 s floor; 2 x 0.02 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME fixtures.mapper_sega
   COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=mapper_sega
     -DIMAGE=${COGMASTER_FIXTURES_DIR}/mapper_sega.sms -DFRAMES=120
     -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/mapper_sega.txt
     -P ${CMAKE_CURRENT_LIST_FILE}
-  LABELS fixtures portable TIMEOUT 30)
+  LABELS fixtures portable TIMEOUT 10)
 # The Codemasters board has no TMR SEGA header to name the machine.
+# Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME fixtures.mapper_codemasters
   COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=mapper_codemasters -DMACHINE=sms
     -DIMAGE=${COGMASTER_FIXTURES_DIR}/mapper_codemasters.sms -DFRAMES=120
     -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/mapper_codemasters.txt
     -P ${CMAKE_CURRENT_LIST_FILE}
-  LABELS fixtures portable TIMEOUT 30)
+  LABELS fixtures portable TIMEOUT 10)
 # The ports fixture once per profile: the I/O chip and the VDP answer by
 # machine, region and TV standard. The Game Gear runs ports_gg, the same
 # source under a Game Gear header, judged against the ports rows.
@@ -122,12 +125,13 @@ foreach(profile IN ITEMS sms-export sms-japan sms-pal gg)
     set(name ports_gg)
     set(args -DMACHINE=gg -DROM=ports)
   endif()
+  # Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
   cogmaster_add_test(NAME fixtures.ports.${profile}
     COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=${name} ${args} -DPROFILE=${profile}
       -DIMAGE=${COGMASTER_FIXTURES_DIR}/${name}.sms -DFRAMES=120
       -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/ports.${profile}.txt
       -P ${CMAKE_CURRENT_LIST_FILE}
-    LABELS fixtures portable TIMEOUT 30)
+    LABELS fixtures portable TIMEOUT 10)
 endforeach()
 
 # Fault prevented: a judge that passes what it should fail. Each control
@@ -161,10 +165,11 @@ foreach(control IN ITEMS wrong_value missing_row hang)
     -DNAME=mapper_sega -DIMAGE=${COGMASTER_FIXTURES_DIR}/mapper_sega.sms -DFRAMES=${frames}
     -DCSV=${csv} -DOUT=${fixtures_out}/${control}.txt -P ${CMAKE_CURRENT_LIST_FILE})
   string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+  # Timeout: 10 s floor; 2 x 0.02 s, slowest of 2 runs, run 39376644025, provisional.
   cogmaster_add_test(NAME fixtures.judge.${control}
     COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=${regex}"
       -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
-    LABELS fixtures portable TIMEOUT 30)
+    LABELS fixtures portable TIMEOUT 10)
 endforeach()
 
 # Fault prevented: an assembler pin that accepts a tarball other than the
@@ -182,7 +187,8 @@ endif()
 set(cmd ${CMAKE_COMMAND} -DURL=${fixtures_url} -DSHA256=${COGMASTER_WLA_SHA256}
   -DOUT=${fixtures_tamper}/download.tar.gz -P ${PROJECT_SOURCE_DIR}/cmake/WlaDx.cmake)
 string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+# Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME fixtures.wla_pin.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=[Hh]ash|EXPECTED_HASH|mismatch"
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
-  LABELS fixtures TIMEOUT 30)
+  LABELS fixtures TIMEOUT 10)

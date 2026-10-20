@@ -14,6 +14,7 @@ cogmaster_warnings(cogmaster-test-mapper)
 # place.
 foreach(case IN ITEMS sega.banks sega.wrap sega.ram sega.mirror sega.shift codemasters.banks
                       codemasters.ram codemasters.wrap none.layout pad_wrap)
+  # Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
   cogmaster_add_test(NAME mapper.${case} COMMAND cogmaster-test-mapper ${case}
     LABELS mapper portable TIMEOUT 10)
 endforeach()

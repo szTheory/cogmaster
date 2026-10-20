@@ -13,6 +13,7 @@ foreach(case IN ITEMS testcard.static testcard.boundaries testcard.all_colours t
     boot.handoff api.size_tags
     api.statuses api.first_released_sizes
     create.allocator frame.pitch_wide)
+  # Timeout: 10 s floor; 2 x 0.06 s, slowest of 2 runs, run 39376644025, provisional.
   cogmaster_add_test(NAME core.${case}
     COMMAND cogmaster-test-core ${case}
     LABELS core portable TIMEOUT 10)
@@ -23,6 +24,7 @@ endforeach()
 # mailbox reading changes the run it measures; or a peek that returns a
 # byte the CPU would not read.
 foreach(case IN ITEMS peek.no_side_effects peek.args)
+  # Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
   cogmaster_add_test(NAME core.${case}
     COMMAND cogmaster-test-core ${case}
     LABELS core portable TIMEOUT 10)
@@ -48,6 +50,7 @@ foreach(case IN ITEMS state.round_trip state.record_sweep state.rejects_header s
     state.mapper
     fault.empty_after_create fault.first_wins fault.reset_clears fault.state_round_trip
     api.error_changes_nothing)
+  # Timeout: 10 s floor; 2 x 0.26 s, slowest of 2 runs, run 39376644025, provisional.
   cogmaster_add_test(NAME core.${case}
     COMMAND cogmaster-test-state ${case}
     LABELS core portable TIMEOUT 10)

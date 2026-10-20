@@ -9,6 +9,7 @@ cogmaster_warnings(cogmaster-test-cart)
 # the wrong place or past the image, or a probe whose answer depends on
 # anything but the bytes, so a host's probe and the load disagree.
 foreach(case IN ITEMS probe.branches probe.pure probe.sizes)
+  # Timeout: 10 s floor; 2 x 0.18 s, slowest of 2 runs, run 39376644025, provisional.
   cogmaster_add_test(NAME cart.${case} COMMAND cogmaster-test-cart ${case}
     LABELS cart portable TIMEOUT 10)
 endforeach()

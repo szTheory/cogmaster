@@ -443,6 +443,7 @@ set(bench_check ${runner_check} -DUNIT=$<TARGET_FILE:cogmaster-test-bench>)
 # Fault prevented: a mailbox CRC that differs from the ROM's CRC-16 CCITT,
 # so every fixture reports crc=bad, or a wrong one that agrees with a wrong
 # ROM routine.
+# Timeout: 10 s floor; 2 x 0.00 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME runner.mailbox.crc
   COMMAND cogmaster-test-bench mailbox_crc
   LABELS portable runner TIMEOUT 10)
@@ -509,68 +510,79 @@ cogmaster_add_test(NAME runner.version
 # Fault prevented: a --probe report that drops, reorders or reformats a key,
 # misreads the header, or guesses the wrong board, so a script parsing it
 # reads the wrong field.
+# Timeout: 10 s floor; 2 x 0.02 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME runner.probe.keys
   COMMAND ${runner_check} -DCASE=probe_keys -P ${CMAKE_CURRENT_LIST_FILE}
-  LABELS portable runner TIMEOUT 30)
+  LABELS portable runner TIMEOUT 10)
 
 # Fault prevented: a SHA-1 or MD5 that is wrong for some lengths, so the
 # printed md5 is not the RetroAchievements hash and the sha1 matches no
 # database entry.
+# Timeout: 10 s floor; 2 x 0.03 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME runner.probe.digests
   COMMAND ${bench_check} -DCASE=probe_digests -P ${CMAKE_CURRENT_LIST_FILE}
-  LABELS portable runner TIMEOUT 30)
+  LABELS portable runner TIMEOUT 10)
 
 # Fault prevented: *_headerless digests taken over the whole file, or
 # printed for a file with no copier header.
+# Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME runner.probe.headerless
   COMMAND ${runner_check} -DCASE=probe_headerless -P ${CMAKE_CURRENT_LIST_FILE}
-  LABELS portable runner TIMEOUT 30)
+  LABELS portable runner TIMEOUT 10)
 
 # Fault prevented: --probe hiding the report of an image it calls
 # unsupported, or calling it supported.
+# Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME runner.probe.unsupported
   COMMAND ${runner_check} -DCASE=probe_unsupported -P ${CMAKE_CURRENT_LIST_FILE}
-  LABELS portable runner TIMEOUT 30)
+  LABELS portable runner TIMEOUT 10)
 
 # Fault prevented: an image outside the accepted sizes run or reported as a
 # failure, or a huge file read into memory before it is refused.
+# Timeout: 10 s floor; 2 x 0.03 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME runner.refuse.size
   COMMAND ${runner_check} -DCASE=refuse_size -DOVERSIZE=${COGMASTER_OVERSIZE_FILE}
     -P ${CMAKE_CURRENT_LIST_FILE}
-  LABELS portable runner TIMEOUT 30)
+  LABELS portable runner TIMEOUT 10)
 
 # Fault prevented: an SG-1000 image run as a Master System cartridge.
+# Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME runner.refuse.sg1000
   COMMAND ${runner_check} -DCASE=refuse_sg1000 -DOUT=${PROJECT_BINARY_DIR}/tests
     -P ${CMAKE_CURRENT_LIST_FILE}
-  LABELS portable runner TIMEOUT 30)
+  LABELS portable runner TIMEOUT 10)
 
 # Fault prevented: a machine and region no console had, or a board the core
 # cannot run, reported as a failure instead of a refusal.
+# Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME runner.refuse.profile
   COMMAND ${runner_check} -DCASE=refuse_profile -P ${CMAKE_CURRENT_LIST_FILE}
-  LABELS portable runner TIMEOUT 30)
+  LABELS portable runner TIMEOUT 10)
 
 # Fault prevented: --machine auto running a Game Gear cartridge as a Master
 # System one, or the reverse.
+# Timeout: 10 s floor; 2 x 0.03 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME runner.load.machine_auto
   COMMAND ${runner_check} -DCASE=machine_auto -P ${CMAKE_CURRENT_LIST_FILE}
-  LABELS portable runner TIMEOUT 30)
+  LABELS portable runner TIMEOUT 10)
 
 # Fault prevented: a --region name that is refused, ignored or accepts a
 # misspelling.
+# Timeout: 10 s floor; 2 x 0.02 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME runner.load.region
   COMMAND ${runner_check} -DCASE=region -P ${CMAKE_CURRENT_LIST_FILE}
-  LABELS portable runner TIMEOUT 30)
+  LABELS portable runner TIMEOUT 10)
 
 # Fault prevented: --trace first-fault missing a fault, printing a later
 # one, or printing it in a form a script cannot parse.
+# Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME runner.trace.fault
   COMMAND ${runner_check} -DCASE=trace_fault -P ${CMAKE_CURRENT_LIST_FILE}
-  LABELS portable runner TIMEOUT 30)
+  LABELS portable runner TIMEOUT 10)
 
 # Fault prevented: --trace first-fault reporting a fault for a program that
 # makes none, or printing nothing when there is none.
+# Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME runner.trace.none
   COMMAND ${runner_check} -DCASE=trace_none -P ${CMAKE_CURRENT_LIST_FILE}
-  LABELS portable runner TIMEOUT 30)
+  LABELS portable runner TIMEOUT 10)

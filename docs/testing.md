@@ -42,6 +42,7 @@ Each lane is one workflow preset, `cmake --workflow --preset <name>`, building i
 | `be32` | The same hashes on a big-endian, 32-bit target with unsigned `char`: 32-bit PowerPC (`cmake/toolchains/ppc-linux-gnu.cmake`) under `qemu-ppc`. | `ci` | `portable` |
 | `wasm32` | The same hashes in WebAssembly: clang-21 for `wasm32-wasi` (`cmake/toolchains/wasm32-wasi.cmake`) under the pinned wasmtime. WASI cannot load a libretro core, so this lane builds none. | `wasm32` | `portable` |
 | `fuzz` | The nightly libFuzzer runs of the loader and a two-frame run under clang-21's ASan and UBSan (see [Fuzzing](#fuzzing)). No fixtures, no libretro core. | `fuzz` | `fuzz` |
+| `vectors-full` | The nightly run of all 1,604,000 Z80 vectors, and that the committed sample is what the converter writes from the pinned archive (see [conformance.md](conformance.md#the-nightly-full-run)). Fetch the archive first. | `vectors-full` | `vectors` |
 | `bench` | A Release runner for the bench and the instructions-per-frame job. Configure and build only, with no tests and no fixtures. | none | none |
 
 On the two emulated lanes CMake runs each test binary through `CMAKE_CROSSCOMPILING_EMULATOR`, and every script
@@ -84,8 +85,9 @@ selects by label.
 labels comma-separated (`cmake/CogmasterTests.cmake`). Configure fails when the registered tests differ from the
 file in either direction, so a test cannot be dropped, renamed or registered on one platform only without the file
 changing in the same commit. Every leg registers the same tests; a check only one platform can perform runs there
-as a CI step instead. Four lanes have their own list: `hygiene.txt`, `nofp.txt` (the `abi` tests plus the nofp
-fixture), `wasm32.txt` (the `ci` list without the `libretro` tests) and `fuzz.txt` (the two timed libFuzzer runs).
+as a CI step instead. Five lanes have their own list: `hygiene.txt`, `nofp.txt` (the `abi` tests plus the nofp
+fixture), `wasm32.txt` (the `ci` list without the `libretro` tests), `fuzz.txt` (the two timed libFuzzer runs) and
+`vectors-full.txt` (the seven full vector shards and the sample check).
 
 | Label | Tests |
 |---|---|
@@ -100,6 +102,12 @@ fixture), `wasm32.txt` (the `ci` list without the `libretro` tests) and `fuzz.tx
 | `install` | The library installed and found by an outside project, and embedded with `add_subdirectory`. |
 | `perf` | Allocation-free frames and the instructions-per-frame gate's own logic. |
 | `policy` | Rules about the repository, the documents and the tests themselves. |
+| `z80` | Z80 behaviour the vectors do not cover: interrupts, NMI, the EI delay, HALT, prefix runs and the undefined ED opcodes. |
+| `vectors` | The Z80 vector sample, one shard per prefix group, and the converter's and harness's own checks; on the nightly `vectors-full` lane, every vector. |
+| `vdp` | The VDP's control and data ports, their decoding, the status byte, the H and V counters and the Pause NMI. |
+| `mapper` | The Sega and Codemasters mappers and the mapperless layout: banking, wrap, padding, mirrors and cartridge RAM. |
+| `cart` | The image probe: its decision branches, the size rules, and that it changes nothing. |
+| `io` | The I/O ports: decoding and mirrors, `$3E`, the region bits of `$3F`, `$DC` and `$DD`, open bus and the Game Gear's ports. |
 | `fuzz` | Every generated seed and committed regression replayed through the fuzz entries; on the nightly `fuzz` lane, the timed libFuzzer runs. |
 | `fixtures` | The images assembled from `tests/roms/src` with the pinned WLA-DX, their mailbox records judged against `tests/diag/expected.csv`, and the negative controls of the pin and of the judge. |
 | `release` | The packaged zips, run after the package step. |

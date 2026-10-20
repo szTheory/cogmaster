@@ -109,7 +109,7 @@ jobs:
   # uploaded and joins tests/fuzz/regress with a manifest row.
   fuzz:
     runs-on: ubuntu-26.04
-    timeout-minutes: 5  # 5-minute floor (apt), provisional, 0 samples
+    timeout-minutes: 5  # 5-minute floor (apt); 2 x 77 s, slowest of 2 runs, run 39375850717, provisional
     # Report-only until ten green nightly runs; then this line goes.
     continue-on-error: true
     steps:
@@ -134,7 +134,7 @@ jobs:
   # sample is what the converter writes from that archive.
   vectors:
     runs-on: ubuntu-26.04
-    timeout-minutes: 5  # 5-minute floor (fetch and build; 2 x 4 s locally), provisional, 0 samples
+    timeout-minutes: 5  # 5-minute floor (fetch); 2 x 67 s, slowest of 1 run, run 39376646150, provisional
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

@@ -81,6 +81,7 @@ target_link_libraries(cogmaster-test-api-v2 PRIVATE cogmaster::cogmaster)
 set_target_properties(cogmaster-test-api-v2 PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
 cogmaster_warnings(cogmaster-test-api-v2)
+# Timeout: 10 s floor; 2 x 0.00 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME abi.api_v2 COMMAND cogmaster-test-api-v2
   LABELS abi portable TIMEOUT 10)
 
