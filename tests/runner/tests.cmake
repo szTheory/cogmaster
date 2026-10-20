@@ -74,7 +74,9 @@ if(CMAKE_SCRIPT_MODE_FILE)
     endif()
     foreach(row IN ITEMS "playing boot_to_play.gg native ntsc-u input"
         "playing boot_to_play.sms sms1 pal input" "playing boot_to_play.sms gg-sms ntsc-j input"
-        "playing vdp_lines_240.sms sms pal baseline")
+        "playing vdp_lines_240.sms sms pal baseline"
+        "playing vdp_lines_224.sms native ntsc-j baseline"
+        "playing vdp_lines_240.sms native ntsc-u baseline")
       if(NOT hashes MATCHES "${row} frame 14 sha256 [0-9a-f]+")
         message(FATAL_ERROR "playing matrix missing ${row}")
       endif()
