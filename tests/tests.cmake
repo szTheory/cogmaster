@@ -1,8 +1,8 @@
 # Every subsystem's tests. Each file is include()d, never add_subdirectory()d,
 # so the top-level directory's TESTS property holds every name and the
 # inventory check in cmake/CogmasterTests.cmake sees them all. The hygiene lane
-# registers only its own tests, the nofp lane only the abi tests, and the
-# fuzz lane only the libFuzzer runs.
+# registers only its own tests, the nofp lane only the abi tests, the fuzz
+# lane only the libFuzzer runs and the vectors-full lane only the full shards.
 if(COGMASTER_HYGIENE)
   include(${CMAKE_CURRENT_LIST_DIR}/hygiene/tests.cmake)
   return()
@@ -13,6 +13,10 @@ if(COGMASTER_NOFP)
 endif()
 if(COGMASTER_LIBFUZZER)
   include(${CMAKE_CURRENT_LIST_DIR}/fuzz/tests.cmake)
+  return()
+endif()
+if(COGMASTER_VECTORS_FULL)
+  include(${CMAKE_CURRENT_LIST_DIR}/z80/tests.cmake)
   return()
 endif()
 include(${CMAKE_CURRENT_LIST_DIR}/testcard_pins.cmake)

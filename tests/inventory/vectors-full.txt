@@ -1,0 +1,10 @@
+# Every test the vectors-full preset registers: name<TAB>labels.
+# Sorted; configure fails when this differs from what is registered.
+vectors.full.base	vectors
+vectors.full.cb	vectors
+vectors.full.dd	vectors
+vectors.full.ddcb	vectors
+vectors.full.ed	vectors
+vectors.full.fd	vectors
+vectors.full.fdcb	vectors
+vectors.sample_equal	vectors

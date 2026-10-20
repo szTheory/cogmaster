@@ -121,6 +121,18 @@
       }
     },
     {
+      "name": "vectors-full",
+      "inherits": "base",
+      "$comment": "The nightly full vector run. Needs the archive first: scripts/fetch-pin.sh sst-z80 build/pins/sst-z80. Registers only the seven full shards and the sample equality check.",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "COGMASTER_FIXTURES": "OFF",
+        "COGMASTER_BUILD_LIBRETRO": "OFF",
+        "COGMASTER_VECTORS_FULL": "ON",
+        "CMAKE_COMPILE_WARNING_AS_ERROR": "ON"
+      }
+    },
+    {
       "name": "bench",
       "inherits": "base",
       "$comment": "The nightly bench: the runner only, built with the host compiler, with no tests and no fixtures.",
@@ -141,6 +153,7 @@
     { "name": "be32", "configurePreset": "be32" },
     { "name": "wasm32", "configurePreset": "wasm32" },
     { "name": "fuzz", "configurePreset": "fuzz" },
+    { "name": "vectors-full", "configurePreset": "vectors-full" },
     { "name": "bench", "configurePreset": "bench", "targets": ["cogmaster-run"] }
   ],
   "testPresets": [
@@ -253,6 +266,16 @@
       },
       "filter": { "include": { "label": "^fuzz$" } },
       "execution": { "noTestsAction": "error", "jobs": "" }
+    },
+    {
+      "name": "vectors-full",
+      "configurePreset": "vectors-full",
+      "output": {
+        "outputOnFailure": true,
+        "outputJUnitFile": "${sourceDir}/build/${presetName}/junit.xml"
+      },
+      "filter": { "include": { "label": "^vectors$" } },
+      "execution": { "noTestsAction": "error", "jobs": "" }
     }
   ],
   "packagePresets": [
@@ -334,6 +357,14 @@
         { "type": "configure", "name": "fuzz" },
         { "type": "build", "name": "fuzz" },
         { "type": "test", "name": "fuzz" }
+      ]
+    },
+    {
+      "name": "vectors-full",
+      "steps": [
+        { "type": "configure", "name": "vectors-full" },
+        { "type": "build", "name": "vectors-full" },
+        { "type": "test", "name": "vectors-full" }
       ]
     },
     {

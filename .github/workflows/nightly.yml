@@ -1,7 +1,8 @@
 # Nightly bench: 300,000 headless frames of the test card per platform, as
 # trend data, never a gate (docs/testing.md, "Performance"), and libFuzzer
 # over the loader and a two-frame run (docs/testing.md, "Fuzzing"). The runner
-# reports its own frame-time percentiles and max_rss_kib. Reports go to job
+# reports its own frame-time percentiles and max_rss_kib. The vectors job
+# runs the full z80 vector set (docs/conformance.md). Reports go to job
 # summaries and artifacts, never to commits. A failed night opens or updates
 # the one open issue labelled nightly; a good night closes it.
 name: Nightly
@@ -21,6 +22,8 @@ on:
     paths:
       - .github/workflows/nightly.yml
       - tests/fuzz/**
+      - tests/z80/**
+      - tests/vectors/**
       - runner/bench.c
       - runner/bench.h
       - runner/clock.c
@@ -126,10 +129,25 @@ jobs:
           path: build/fuzz/tests/fuzz-artifacts
           if-no-files-found: ignore
 
+  # Every one of the 1,604,000 SingleStepTests z80 vectors at the pin, from
+  # the archive fetch-pin.sh verifies, plus the check that the committed
+  # sample is what the converter writes from that archive.
+  vectors:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5  # 5-minute floor (fetch and build; 2 x 4 s locally), provisional, 0 samples
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: scripts/fetch-pin.sh sst-z80 build/pins/sst-z80
+      - run: cmake --workflow --preset vectors-full
+      - name: Every test ran
+        run: cmake -DJUNIT=build/vectors-full/junit.xml -DINVENTORY=tests/inventory/vectors-full.txt -P tests/cmake/check_junit.cmake
+
   # Decides from the jobs' results, never from a piped exit status: the
   # default shell has no pipefail.
   report:
-    needs: [bench, bench-wasm32, fuzz]
+    needs: [bench, bench-wasm32, fuzz, vectors]
     if: always() && github.event_name != 'pull_request'
     runs-on: ubuntu-26.04
     timeout-minutes: 5  # provisional, 0 samples (skipped on pull requests)

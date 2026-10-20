@@ -50,6 +50,43 @@ set_target_properties(cogmaster-sst2bin PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
 cogmaster_warnings(cogmaster-sst2bin)
 
+# The nightly vectors lane (COGMASTER_VECTORS_FULL): the build converts all
+# 1,000 tests of each upstream file from the fetched archive, and the 100-test
+# sample again, and the lane registers only the full shards and the equality
+# check.
+if(COGMASTER_VECTORS_FULL)
+  set(sst_dir ${PROJECT_SOURCE_DIR}/build/pins/sst-z80/v1)
+  foreach(kind IN ITEMS "full;1000" "sample;100")
+    list(GET kind 0 name)
+    list(GET kind 1 count)
+    add_custom_command(OUTPUT ${PROJECT_BINARY_DIR}/sst-${name}.bin
+      COMMAND cogmaster-sst2bin --dir ${sst_dir} --count ${count}
+        --out ${PROJECT_BINARY_DIR}/sst-${name}.bin
+      DEPENDS cogmaster-sst2bin
+      VERBATIM)
+  endforeach()
+  add_custom_target(cogmaster-sst-full ALL DEPENDS
+    ${PROJECT_BINARY_DIR}/sst-full.bin ${PROJECT_BINARY_DIR}/sst-sample.bin)
+  # Fault prevented: an instruction that regresses outside the 100 tests per
+  # file the pull-request sample holds. Each shard asserts its executed count.
+  foreach(shard IN ITEMS "base;252000" "cb;256000" "dd;252000" "ddcb;256000" "ed;80000"
+      "fd;252000" "fdcb;256000")
+    list(GET shard 0 group)
+    list(GET shard 1 count)
+    cogmaster_add_test(NAME vectors.full.${group}
+      COMMAND cogmaster-test-sst --sample ${PROJECT_BINARY_DIR}/sst-full.bin --group ${group}
+        --allow ${PROJECT_SOURCE_DIR}/tests/vectors/z80/allow.txt --expect-count ${count}
+      LABELS vectors TIMEOUT 300)
+  endforeach()
+  # Fault prevented: a committed sample that no longer matches what the
+  # pinned converter produces from the pinned archive.
+  cogmaster_add_test(NAME vectors.sample_equal
+    COMMAND ${CMAKE_COMMAND} -E compare_files ${PROJECT_BINARY_DIR}/sst-sample.bin
+      ${PROJECT_SOURCE_DIR}/tests/vectors/z80/sst-sample.bin
+    LABELS vectors TIMEOUT 30)
+  return()
+endif()
+
 # Every command that starts a z80 tool goes through the build's
 # CMAKE_CROSSCOMPILING_EMULATOR, so an emulated lane runs its own guest binary.
 set(z80_sample ${PROJECT_SOURCE_DIR}/tests/vectors/z80/sst-sample.bin)

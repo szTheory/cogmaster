@@ -196,6 +196,17 @@ endif()
 # libFuzzer runtime, so no other executable gets its main.
 option(COGMASTER_LIBFUZZER "Build the libFuzzer targets; register only the fuzz runs" OFF)
 
+# The nightly vectors lane converts all 1,000 tests of every upstream file
+# from the fetched archive and registers only the full shards and the sample
+# equality check.
+option(COGMASTER_VECTORS_FULL "Convert the fetched z80 vectors; register only the full shards" OFF)
+# Fault prevented: a nightly run that reports green after converting nothing
+# because the fetched tree is missing.
+if(COGMASTER_VECTORS_FULL AND NOT EXISTS "${PROJECT_SOURCE_DIR}/build/pins/sst-z80/v1")
+  message(FATAL_ERROR "vectors-full: build/pins/sst-z80/v1 is missing; fetch it with\n"
+    "  scripts/fetch-pin.sh sst-z80 build/pins/sst-z80")
+endif()
+
 # Tests. COGMASTER_TIMEOUT_SCALE multiplies every test's timeout on slow
 # lanes; COGMASTER_INVENTORY names the tests/inventory/<name>.txt the
 # registered tests must equal.
@@ -210,6 +221,8 @@ elseif(COGMASTER_NOFP)
   set(inventory nofp)
 elseif(COGMASTER_LIBFUZZER)
   set(inventory fuzz)
+elseif(COGMASTER_VECTORS_FULL)
+  set(inventory vectors-full)
 endif()
 set(COGMASTER_INVENTORY ${inventory} CACHE STRING "Test inventory file under tests/inventory")
 # Fault prevented: every wasm32 test failing on a missing runtime, with a
