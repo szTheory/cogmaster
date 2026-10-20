@@ -140,7 +140,63 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. The `battery` fixture continues from its saved value in a fresh `cogmaster-run --save-dir` process after exit and after SIGTERM, and the missing-save and wrong-save controls produce a different result (GAME-05).
   5. One hosted RetroArch session, with at most 300 lines of end-to-end code in total, boots `boot_to_play.sms`, an input changes play, the picture scrolls, and the screenshot equals the runner's frame (GAME-07).
 
-**Plans**: TBD
+**Plans**: 18 plans, one sequential chain (waves 1–18; shared source and exact inventories)
+
+Plans:
+**Wave 1**
+- [ ] 03-01-PLAN.md — Owned SMS rendering/input tracer through library, runner and content-loaded libretro
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 03-02-PLAN.md — Consolidate repository checks and enforce the strict source ratio
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 03-03-PLAN.md — Hosted SMS input, scroll and screenshot proof within 300 lines
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 03-04-PLAN.md — Complete backgrounds, scroll locks and shared SMS1 profile masks
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 03-05-PLAN.md — Bounded sprites, zoom, priority, collision and overflow
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 03-06-PLAN.md — IRQ pending/clear races, all counters and TH capture
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [ ] 03-07-PLAN.md — Coherent completed heights and the vdp_lines fixture
+
+**Wave 8** *(blocked on Wave 7 completion)*
+- [ ] 03-08-PLAN.md — Native GG CRAM/crop/freeze, SMS mode and playing fixture
+
+**Wave 9** *(blocked on Wave 8 completion)*
+- [ ] 03-09-PLAN.md — GG/PAL presentation, geometry notifications and hosted GG crop
+
+**Wave 10** *(blocked on Wave 9 completion)*
+- [ ] 03-10-PLAN.md — Two pads, Pause/Start, Reset/Restart, disconnect and lag
+
+**Wave 11** *(blocked on Wave 10 completion)*
+- [ ] 03-11-PLAN.md — Pinned CC0 metadata, fixture identity and physical geometry disposition
+
+**Wave 12** *(blocked on Wave 11 completion)*
+- [ ] 03-12-PLAN.md — Exact battery spans, mapped-write generations and transactional import
+
+**Wave 13** *(blocked on Wave 12 completion)*
+- [ ] 03-13-PLAN.md — Native atomic .srm replacement and signal/failure behavior
+
+**Wave 14** *(blocked on Wave 13 completion)*
+- [ ] 03-14-PLAN.md — Fresh-process battery continuation and stable frontend memory
+
+**Wave 15** *(blocked on Wave 14 completion)*
+- [ ] 03-15-PLAN.md — Bounded predicates, quoted CSV ledger and generated compatibility docs
+
+**Wave 16** *(blocked on Wave 15 completion)*
+- [ ] 03-16-PLAN.md — Protected normalized ratchet, dated exceptions and trusted base judge
+
+**Wave 17** *(blocked on Wave 16 completion)*
+- [ ] 03-17-PLAN.md — Every-candidate local library and filtered public updates
+
+**Wave 18** *(blocked on Wave 17 completion)*
+- [ ] 03-18-PLAN.md — Playing hashes, boundedness, representative workload and review handoff
+
 **UI hint**: no
 **Canonical refs:** `.planning/preparation/SMS-VDP.md`, `.planning/preparation/SMS-CARTRIDGES-AND-PERIPHERALS.md`, `.planning/preparation/CONFORMANCE.md`, `.planning/preparation/ARCHITECTURE.md`, `.planning/preparation/HOSTS-AND-INTEGRATION.md`
 
@@ -169,5 +225,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. A test frame in RetroArch | 12/12 | Complete    | 2026-10-19 |
 | 2. The CPU matches the public vectors | 17/17 | Complete    | 2026-10-20 |
-| 3. Games play in RetroArch | 0/TBD | Not started | - |
+| 3. Games play in RetroArch | 0/18 | Planned | - |
 | 4. Sound | 0/TBD | Not started | - |

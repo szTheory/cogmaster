@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 milestone: v1.0
 milestone_name: SMS and Game Gear games play with sound in RetroArch
-current_phase: 3
+current_phase: 03
 current_phase_name: Games play in RetroArch
-status: Ready for phase 03 planning
-stopped_at: Phase 03 context gathered; runtime Codex; model GPT-6
-last_updated: "2026-10-20T16:56:08.510Z"
+status: Ready to execute
+stopped_at: Phase 03 planning verified; 18 plans in 18 waves; runtime Codex; model GPT-6
+last_updated: "2026-10-20T17:51:47.044Z"
 last_activity: 2026-10-20
-last_activity_desc: Phase 03 context gathered (gsd-discuss-phase); runtime Codex; model GPT-6
-state_head: c9f6bd60f43f1a40991ac4931345247c5422b0e2
+last_activity_desc: Phase 03 planning verified (gsd-plan-phase); runtime Codex; model GPT-6
+state_head: 2e59e6cda07e50633e0a2ffbafb26de8104c1f88
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 29
+  total_plans: 47
   completed_plans: 29
   percent: 50
 ---
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-20)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 03 — Games play in RetroArch; context gathered; next: $gsd-plan-phase 03
+**Current focus:** Phase 03 — Games play in RetroArch; planning verified; next: $gsd-execute-phase 03
 
 ## Current Position
 
-Phase: 3 — Games play in RetroArch
-Plan: Not started
-Status: Ready for phase 03 planning
-Last activity: 2026-10-20 — Phase 03 context gathered (gsd-discuss-phase); runtime Codex; model GPT-6
+Phase: 03 (Games play in RetroArch) — READY TO EXECUTE
+Plan: 0/18 complete; 18 sequential waves planned
+Status: Ready to execute
+Last activity: 2026-10-20 — Phase 03 planning verified (gsd-plan-phase); runtime Codex; model GPT-6
 
 Progress: [█████░░░░░] 50%
 
@@ -189,9 +189,9 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 
 ### Blockers/Concerns
 
-- [Phase 3]: VDP timing constants (frame/line interrupt tick, vertical scroll latch, SMS1 zoom slot rule, open-bus byte) conflict between sources; settled by fixtures against released binaries, hardware in v4.0.
+- [Phase 3]: Research retains sourced 607/608 interrupt edges; H-counter coordinate is an explicit inference. Fixtures test the selected model; binary oracles only locate differences, hardware measurements remain v4.0.
 - [Phase 3]: devkitSMS crt0 linking exception to be quoted and judged at the first third-party fixture admission.
-- [Phase 3]: SMS Power! returned 503 during preparation; facts taken from archived captures are flagged in SMSPOWER-EXTRACTS and re-read at the research steps.
+- [Phase 3]: SMS Power! timing and GG port references were accessible during planning research; Moldorian's 24 KiB metadata is confirmed, physical bank decoding remains unresolved and must not be guessed.
 - [Phase 4]: OPLL seed choice and FM:PSG mix need research during planning.
 - [Phase 2]: Sanitizer lanes are evidenced only in CI; local clang-21 ASan hangs at start-up on macOS.
 - [Phase 3]: Deferred review info items IN-01..IN-06 (fault-record precision, unread bus.vdp_at, odd-size padding, probe UX, saved fault validation); see 02-REVIEW-DISPOSITION.md.
@@ -209,6 +209,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-10-19 | Plan phase 2 (gsd-plan-phase) | Claude Code | claude-opus-5-5 |
 | 2026-10-19 | Execute phase 2 (gsd-execute-phase) | Claude Code | claude-opus-5-5 |
 | 2026-10-20 | Ship phase 2 (gsd-ship) | Codex | GPT-6 |
+| 2026-10-20 | Plan phase 3 (gsd-plan-phase) | Codex | GPT-6 |
 
 ## Deferred Items
 
@@ -220,6 +221,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T16:56:08.402Z
-Stopped at: Phase 03 context gathered; runtime Codex; model GPT-6
-Resume file: .planning/phases/03-games-play-in-retroarch/03-CONTEXT.md
+Last session: 2026-10-20T17:51:47.044Z
+Stopped at: Phase 03 planning verified; 18 plans in 18 waves; runtime Codex; model GPT-6
+Resume file: .planning/phases/03-games-play-in-retroarch/03-01-PLAN.md
