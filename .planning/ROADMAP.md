@@ -73,7 +73,21 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. The `ports` fixture reports the profile's values for ports `$3E`, `$3F`, `$7E`, `$7F`, `$BE`, `$BF`, `$DC`, `$DD` and GG `$00`–`$06` per machine profile and region, and a test shows the Pause NMI firing at the start of the last line (CPU-04).
   5. `cogmaster-run --probe` prints header fields, region, size, mapper guess, SHA-1, SHA-256, CRC-32 and the RetroAchievements MD5; `cogmaster-run --trace first-fault` prints the first fault (PC, opcode, address, width, device, frame, line, dot) for a ROM that touches an unmapped device; the bounded `fuzz.run` regression replays the loader fuzz seeds per PR (CPU-05).
 
-**Plans**: TBD
+**Plans**: 14 plans, 02-01 to 02-14, one sequential chain (waves 1–14; every plan registers tests in the shared inventories)
+- [ ] 02-01-PLAN.md — Vector pipeline: stream builder, sst2bin, committed sample, harness, NOP and LD (BC),A, negative controls
+- [ ] 02-02-PLAN.md — Z80 main page and the vectors.base shard
+- [ ] 02-03-PLAN.md — CB page, DD/FD prefix steps, DDCB/FDCB and five shards
+- [ ] 02-04-PLAN.md — ED page, block ops, holes, vectors.ed; interrupt, NMI, EI-delay and prefix-run tests
+- [ ] 02-05-PLAN.md — Images load and run bounded: bus lattice, loader, fast boot, frame origin, API version 2 region/TV/size
+- [ ] 02-06-PLAN.md — VDP timing half, frame interrupt, counters, ports, Pause NMI tick, stamps and hostile loop
+- [ ] 02-07-PLAN.md — cogmaster_probe and the Sega, Codemasters and no-mapper boards
+- [ ] 02-08-PLAN.md — I/O ports per profile and region; first-fault call sites
+- [ ] 02-09-PLAN.md — Runner: FILE, --machine auto, --region, --probe digests, exit 77, --trace first-fault
+- [ ] 02-10-PLAN.md — Pinned WLA-DX build, hello fixture, pin self test, fixture digests across lanes
+- [ ] 02-11-PLAN.md — cogmaster_peek, --mailbox, CSV judge, mapper_sega and mapper_codemasters fixtures
+- [ ] 02-12-PLAN.md — ports fixture under sms-export, sms-japan, sms-pal and gg
+- [ ] 02-13-PLAN.md — Fuzz entries, per-PR replay, nightly libFuzzer
+- [ ] 02-14-PLAN.md — Nightly full vectors, measured timeouts, all-legs CI run, maintainer docs
 **UI hint**: no
 **Canonical refs:** `.planning/preparation/SMS-SYSTEM.md`, `.planning/preparation/SMS-CARTRIDGES-AND-PERIPHERALS.md`, `.planning/preparation/ARCHITECTURE.md`, `.planning/preparation/CONFORMANCE.md`, `.planning/preparation/SMSPOWER-EXTRACTS.md`
 
@@ -117,6 +131,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. A test frame in RetroArch | 12/12 | Complete    | 2026-10-19 |
-| 2. The CPU matches the public vectors | 0/TBD | Not started | - |
+| 2. The CPU matches the public vectors | 0/14 | Planned | - |
 | 3. Games play in RetroArch | 0/TBD | Not started | - |
 | 4. Sound | 0/TBD | Not started | - |

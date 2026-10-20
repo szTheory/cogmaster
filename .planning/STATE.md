@@ -135,6 +135,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-10-19 | Execute phase 1 (gsd-execute-phase) | Claude Code | claude-opus-5-5 |
 | 2026-10-19 | Ship phase 1 (gsd-ship) | Claude Code | claude-opus-5-5 |
 | 2026-10-19 | Discuss phase 2 (gsd-discuss-phase) | Claude Code | claude-opus-5-5 |
+| 2026-10-19 | Plan phase 2 (gsd-plan-phase) | Claude Code | claude-opus-5-5 |
 
 ## Deferred Items
 
