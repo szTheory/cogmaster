@@ -124,6 +124,8 @@ libretro.host.rgb565	libretro,portable
 libretro.host.xrgb8888	libretro,portable
 libretro.info_claims	libretro
 libretro.info_claims.self_test	libretro
+libretro.presentation.rgb565	libretro,portable
+libretro.presentation.xrgb8888	libretro,portable
 libretro.screenshot.fixture	libretro,portable
 libretro.screenshot.oracle	libretro,portable
 libretro.screenshot.oracle_control	libretro,portable

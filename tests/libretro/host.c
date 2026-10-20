@@ -183,9 +183,33 @@ static unsigned content_frame, poll_calls;
 static int content_mode;
 static unsigned descriptors_calls, controllers_calls;
 static unsigned options_calls;
+static const char *option_machine, *option_mode, *option_region, *option_aspect, *option_view;
+static bool option_update, running;
+static unsigned geometry_calls;
+static struct retro_game_geometry notified;
 
 static bool RETRO_CALLCONV env(unsigned cmd, void *data)
 {
+    if (cmd == RETRO_ENVIRONMENT_GET_VARIABLE) {
+        struct retro_variable *v = data;
+        if (strcmp(v->key, "cogmaster_machine") == 0) v->value = option_machine;
+        if (strcmp(v->key, "cogmaster_gg_mode") == 0) v->value = option_mode;
+        if (strcmp(v->key, "cogmaster_region") == 0) v->value = option_region;
+        if (strcmp(v->key, "cogmaster_gg_aspect") == 0) v->value = option_aspect;
+        if (strcmp(v->key, "cogmaster_gg_view") == 0) v->value = option_view;
+        return v->value != NULL;
+    }
+    if (cmd == RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE) {
+        *(bool *)data = option_update;
+        option_update = false;
+        return true;
+    }
+    if (cmd == RETRO_ENVIRONMENT_SET_GEOMETRY) {
+        CHECK(running);
+        notified = *(struct retro_game_geometry *)data;
+        geometry_calls++;
+        return false;
+    }
     if (cmd == RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION) {
         *(unsigned *)data = 2u;
         return true;
@@ -263,6 +287,7 @@ static size_t RETRO_CALLCONV batch(const int16_t *data, size_t frames)
     size_t i;
     batch_calls++;
     batch_frames += frames;
+    CHECK(frames <= 966u);
     for (i = 0; i < frames * 2u; i++) {
         if (data[i] != 0) {
             batch_nonzero++;
@@ -372,7 +397,9 @@ static size_t run_one(void)
 {
     size_t before = batch_frames + sample_frames;
     memset(frame, POISON, sizeof frame);
+    running = true;
     p_run();
+    running = false;
     return batch_frames + sample_frames - before;
 }
 
@@ -477,6 +504,8 @@ static int content_test(const char *path, const char *digest)
     return check_failures != 0 ? 1 : 0;
 }
 
+#include "presentation.h"
+
 int main(int argc, char **argv)
 {
     static unsigned char first[MAX_W * MAX_H * 4u];
@@ -489,6 +518,15 @@ int main(int argc, char **argv)
     cogmaster_versions v;
     unsigned run, aspect_w, aspect_h, bad_counts = 0;
     size_t total = 0;
+
+    if (argc == 4 && strcmp(argv[2], "presentation") == 0) {
+        rgb565 = strcmp(argv[3], "rgb565") == 0;
+        if (!module_open(argv[1])) return 1;
+        resolve_all();
+        int rc = missing != NULL ? 1 : presentation_test();
+        module_close();
+        return rc;
+    }
 
     if (argc == 5 && strcmp(argv[2], "content") == 0) {
         if (!module_open(argv[1])) {
