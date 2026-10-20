@@ -345,7 +345,7 @@ static void inactive(void)
         for (uint32_t i = 0u; i < 9u; i++)
             sprite(m, i, 0xFFu, 0u, 2u);
         if (variant == 0u)
-            m->vdp.reg[1] &= (uint8_t)~0x40u;
+            m->vdp.reg[1] &= 0xBFu;
         if (variant == 1u)
             m->vdp.reg[0] |= 0x20u;
         if (variant == 2u) {
