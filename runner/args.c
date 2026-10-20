@@ -23,6 +23,7 @@ static const char synopsis[] =
     "  --bench N            run N frames and report the time per frame\n"
     "  --hash               print the SHA-256 of the last frame's crop\n"
     "  --input FILE         absolute pad and console record per frame\n"
+    "  --save-dir DIR       read and persist battery data in an existing directory\n"
     "  --port1 pad|none     first controller device (default pad)\n"
     "  --port2 pad|none     second controller device (default pad)\n"
     "  --png N:FILE         write frame N's crop to FILE as a PNG (1 <= N <= --frames)\n"
@@ -168,7 +169,7 @@ static int check_combination(const cogmaster__run_options *o)
             return usage("--probe needs a file");
         }
         if (o->frames != 0u || o->hash || o->png_count != 0u || o->trace || o->mailbox ||
-            o->input) {
+            o->input || o->save_dir) {
             return usage("--probe runs nothing, so it takes no run option");
         }
         return COGMASTER__EXIT_OK;
@@ -176,6 +177,8 @@ static int check_combination(const cogmaster__run_options *o)
     if (o->frames == 0u) {
         return usage("--frames N or --bench N is required");
     }
+    if (o->save_dir != NULL && o->file == NULL)
+        return usage("--save-dir requires content");
     for (uint32_t k = 0; k < o->png_count; k++) {
         if (o->pngs[k].frame > o->frames) {
             return usage("--png N must not exceed --frames");
@@ -211,6 +214,11 @@ int cogmaster__parse_options(int argc, char **argv, cogmaster__run_options *o)
             if (o->bench && cogmaster__bench_bytes(o->frames) == 0u) {
                 return usage("--bench is at most 1073741823");
             }
+            i++;
+        } else if (strcmp(arg, "--save-dir") == 0) {
+            if (value == NULL || *value == '\0' || o->save_dir != NULL)
+                return usage("--save-dir needs one directory");
+            o->save_dir = value;
             i++;
         } else if (strcmp(arg, "--input") == 0) {
             if (value == NULL || *value == '\0' || o->input != NULL) {

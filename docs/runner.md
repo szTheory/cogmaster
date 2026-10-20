@@ -56,6 +56,7 @@ cogmaster-run --help | --version
 | `--frames N` | Run N frames, N from 1 to 4294967295. Give either `--frames` or `--bench`, once. |
 | `--bench N` | Run N frames, time each one and print the report described under [Bench report](#bench-report). N is from 1 to 1073741823. The runner keeps 4 bytes per frame, so a very large N can exit 1 because memory ran out. |
 | `--hash` | After the last frame, print the SHA-256 of its picture. |
+| `--save-dir DIR` | Import and persist raw battery data in an existing directory. Requires content. |
 | `--png N:FILE` | After frame N, write its picture to FILE as a PNG. N is from 1 to the frame count. Repeat the option to write more frames or files. If the run stops before frame N, FILE is not written and a line on standard error names it. |
 | `--trace first-fault` | After each frame, read the core's first-fault record; stop at the first fault and print it, described under [First fault](#first-fault). |
 | `--mailbox` | After each frame, read the RAM mailbox a diagnostic ROM fills; stop at the first frame whose status reads done after reading running, and print the mailbox, described under [Mailbox](#mailbox). |
@@ -245,6 +246,29 @@ it, as after a `--trace` or `--mailbox` stop. `--hash` prints the last frame tha
 frames that ran. Output is flushed and the exit status is 0. A signal that was already ignored when the runner
 started, as under `nohup`, stays ignored.
 
+## Battery files
+
+`--save-dir DIR` reads `<ROM stem>.srm` before emulation and saves changed battery data on exit.
+Only the last extension is removed: `round.trip.sms` uses `round.trip.srm`. Missing files start fresh
+with FF bytes; empty and short files pad with FF. An oversized file exits 4 before running and stays
+unchanged. Other file errors exit 1. Unknown persistence and unsupported geometry refuse with distinct
+messages and exit 77 before running. Classified nonbattery cartridges need no file. Without this option,
+the runner does no battery file I/O.
+
+Only a changed generation writes a file. The runner exclusively creates a unique temporary beside the
+target, checks the complete write, flush, native synchronization where supported and close, then replaces
+the target with POSIX rename or Windows MoveFileExW. It acknowledges the generation only on success and
+cleans only its own failed temporary. The previous target is never predeleted or truncated. SIGINT and
+SIGTERM finish the bounded frame, then flush in ordinary control flow; a failed flush exits 1.
+
+Replacement provides old-or-complete-new visibility on native local filesystems with atomic rename;
+it is not a universal power-loss guarantee. The containing directory is not synchronized; filesystem,
+device and network behavior can limit crash durability. WASI lacks the native sync request. Abrupt
+termination can leave this process's temporary; the next run does not delete arbitrary temporaries.
+Simultaneous writers to one target are unsupported. Same-stem ROMs share a save name: use separate
+directories to avoid collisions. Raw files have no game identity check, so exact-size wrong-game data
+cannot be detected. Windows uses Unicode paths; POSIX keeps path bytes unchanged.
+
 ## Exit status
 
 `cogmaster-run --help` prints this table:
@@ -253,6 +277,7 @@ started, as under `nohup`, stays ignored.
   0  ok       every frame ran or the probe printed, or a signal stopped the run after a whole frame
   1  failure  a file could not be read or written, memory ran out or the core failed
   2  usage    the command line or input script is invalid, so nothing ran
+  4  save     the battery file is oversized, so nothing ran
   77  refused  the cartridge, its size or the machine and region is not supported, so nothing ran
 ```
 

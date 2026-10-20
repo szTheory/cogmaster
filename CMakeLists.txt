@@ -141,6 +141,7 @@ if(COGMASTER_BUILD_RUNNER)
     runner/png.c
     runner/probe.c
     runner/rss.c
+    runner/save.c
     runner/sha1.c
     runner/sha256.c
     runner/stop.c)

@@ -5,6 +5,7 @@
    for both machines (rcheevos rc_hash.c, generic whole-file case; HOSTS-AND-INTEGRATION section 2).
  */
 #include "probe.h"
+#include "path.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -42,7 +43,7 @@ int cogmaster__has_extension(const char *path, const char *ext)
 
 int cogmaster__read_file(const char *path, uint8_t **out, size_t *n)
 {
-    FILE *f = fopen(path, "rb");
+    FILE *f = cogmaster__path_open(path, "rb");
     if (f == NULL) {
         fprintf(stderr, "cogmaster-run: cannot read %s\n", path);
         return COGMASTER__EXIT_FAILURE;

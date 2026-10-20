@@ -46,9 +46,11 @@
 #include "input.h"
 #include "mailbox.h"
 #include "palette.h"
+#include "path.h"
 #include "png.h"
 #include "probe.h"
 #include "rss.h"
+#include "save.h"
 #include "sha256.h"
 #include "stop.h"
 
@@ -165,7 +167,7 @@ static int write_png(const cogmaster *m, const char *path, uint16_t *pixels)
         }
     }
     size_t n = cogmaster__png_write(file, size, rgb, io.w, io.h);
-    FILE *f = n != 0u ? fopen(path, "wb") : NULL;
+    FILE *f = n != 0u ? cogmaster__path_open(path, "wb") : NULL;
     int ok = f != NULL && fwrite(file, 1, n, f) == n;
     if (f != NULL && fclose(f) != 0) {
         ok = 0;
@@ -281,9 +283,15 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     media.tv = opt->tv;
     media.video_mode = opt->video_mode;
     int status = load_status(cogmaster_load(m, &media), image_size);
+    cogmaster__save save = {0};
+    int save_loaded = 0;
+    if (status == COGMASTER__EXIT_OK && opt->save_dir != NULL) {
+        status = cogmaster__save_load(&save, m, opt->save_dir, opt->file);
+        save_loaded = status == COGMASTER__EXIT_OK;
+    }
     FILE *input = NULL;
     if (status == COGMASTER__EXIT_OK && opt->input != NULL) {
-        input = fopen(opt->input, "rb");
+        input = cogmaster__path_open(opt->input, "rb");
         status =
             input != NULL ? cogmaster__input_validate(input, opt->frames) : COGMASTER__EXIT_FAILURE;
         if (status != COGMASTER__EXIT_OK) {
@@ -388,6 +396,9 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     if (input != NULL && fclose(input) != 0) {
         status = COGMASTER__EXIT_FAILURE;
     }
+    if (save_loaded && cogmaster__save_flush(&save, m) != COGMASTER__EXIT_OK)
+        status = COGMASTER__EXIT_FAILURE;
+    cogmaster__save_dispose(&save);
     cogmaster_destroy(m);
     free(pixels);
     free(samples);
@@ -418,7 +429,7 @@ static int start(const cogmaster__run_options *opt)
     return status;
 }
 
-int main(int argc, char **argv)
+static int run_main(int argc, char **argv)
 {
     cogmaster__run_options opt;
     memset(&opt, 0, sizeof opt);
@@ -440,3 +451,31 @@ int main(int argc, char **argv)
     }
     return status;
 }
+
+#ifdef _WIN32
+/* The CRT's narrow argv loses characters outside the active codepage. Keep
+   the OS's wide arguments and use UTF-8 inside the host. */
+int wmain(int argc, wchar_t **wide)
+{
+    char **argv = (char **)calloc((size_t)argc + 1u, sizeof *argv);
+    if (argv == NULL)
+        return COGMASTER__EXIT_FAILURE;
+    int ok = 1;
+    for (int i = 0; i < argc && ok; i++) {
+        int n = WideCharToMultiByte(CP_UTF8, 0, wide[i], -1, NULL, 0, NULL, NULL);
+        argv[i] = n > 0 ? (char *)malloc((size_t)n) : NULL;
+        ok = argv[i] != NULL &&
+             WideCharToMultiByte(CP_UTF8, 0, wide[i], -1, argv[i], n, NULL, NULL) != 0;
+    }
+    int status = ok ? run_main(argc, argv) : COGMASTER__EXIT_FAILURE;
+    for (int i = 0; i < argc; i++)
+        free(argv[i]);
+    free(argv);
+    return status;
+}
+#else
+int main(int argc, char **argv)
+{
+    return run_main(argc, argv);
+}
+#endif

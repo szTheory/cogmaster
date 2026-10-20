@@ -16,6 +16,7 @@ typedef struct cogmaster__run_options {
     int bench;
     int hash;
     const char *input;
+    const char *save_dir;
     uint32_t port1, port2;
     uint32_t machine; /* COGMASTER_MACHINE_*; AUTO is resolved from the file */
     uint32_t video_mode;
