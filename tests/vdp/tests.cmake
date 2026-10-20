@@ -1,5 +1,14 @@
 # Fault prevented: incorrect tile flags, wrap coordinates, scroll locks or
 # raster writes changing dots already emitted in this field.
+add_executable(cogmaster-test-geometry ${CMAKE_CURRENT_LIST_DIR}/test_geometry.c)
+target_include_directories(cogmaster-test-geometry PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-geometry PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-geometry PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-geometry)
+cogmaster_add_test(NAME vdp.geometry.heights COMMAND cogmaster-test-geometry heights
+  LABELS portable vdp TIMEOUT 10)
+
 add_executable(cogmaster-test-background ${CMAKE_CURRENT_LIST_DIR}/test_background.c)
 target_include_directories(cogmaster-test-background PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(cogmaster-test-background PRIVATE cogmaster::cogmaster)
