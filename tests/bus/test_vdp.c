@@ -469,10 +469,48 @@ static void test_pause_nmi(void)
     cogmaster_destroy(m);
 }
 
+/* Planes 80,40,20,10 give indices 1,2,4,8,0,0,0,0. The SMS
+   palette expands each two-bit channel by five (SMS-VDP sections 2-3). */
+static void test_background(void)
+{
+    cogmaster *m = load_sms();
+    m->vdp.reg[0] = 4u;
+    m->vdp.reg[1] = 0x40u;
+    m->vdp.reg[7] = 1u;
+    m->vdp.cram[1] = 3u;
+    m->vdp.cram[2] = 12u;
+    m->vdp.cram[4] = 48u;
+    m->vdp.cram[8] = 63u;
+    m->vdp.cram[17] = 0x15u;
+    for (uint32_t y = 0; y < 8u; y++) {
+        m->vdp.vram[y * 4u] = 0x80u;
+        m->vdp.vram[y * 4u + 1u] = 0x40u;
+        m->vdp.vram[y * 4u + 2u] = 0x20u;
+        m->vdp.vram[y * 4u + 3u] = 0x10u;
+    }
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    static const uint16_t row[] = {0xF00u, 0x0F0u, 0x00Fu, 0xFFFu, 0u, 0u, 0u, 0u};
+    for (uint32_t y = 0; y < 192u; y++) {
+        for (uint32_t x = 0; x < 256u; x++) {
+            if (m->field[y][x] != row[x & 7u]) {
+                CHECK_EQ_HEX(m->field[y][x], row[x & 7u]);
+                cogmaster_destroy(m);
+                return;
+            }
+        }
+    }
+    control(m, 0u, 0x81u);
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(m->field[0][0], 0x555u);
+    CHECK_EQ_HEX(m->field[191][255], 0x555u);
+    cogmaster_destroy(m);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
 } cases[] = {
+    {"background", test_background},
     {"control_port", test_control_port},   {"data_port", test_data_port},
     {"hcounter", test_hcounter},           {"pause_nmi", test_pause_nmi},
     {"port_decode", test_port_decode},     {"status", test_status},
