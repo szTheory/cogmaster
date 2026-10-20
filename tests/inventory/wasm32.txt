@@ -73,6 +73,8 @@ fixtures.ports.sms-export	fixtures,portable
 fixtures.ports.sms-japan	fixtures,portable
 fixtures.ports.sms-pal	fixtures,portable
 fixtures.wla_pin.self_test	fixtures
+fuzz.regress.loader	fuzz,portable
+fuzz.regress.run	fuzz,portable
 host.palette	host,portable
 install.consumer	install
 install.consumer.cxx	install
