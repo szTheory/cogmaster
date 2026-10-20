@@ -14,6 +14,10 @@ abi.header.cxx17	abi
 abi.symbols	abi
 abi.undefined	abi
 abi.undefined.self_test	abi
+battery.excluded	mapper,portable
+battery.fixture	mapper,portable
+battery.generation	mapper,portable
+battery.spans	mapper,portable
 bus.frame_origin	bus,portable
 bus.halt_bound.di	bus,portable
 bus.halt_bound.di_pal	bus,portable
