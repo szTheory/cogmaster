@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 03
 current_phase_name: Games play in RetroArch
 status: executing
-stopped_at: Completed 03-15-PLAN.md; runtime Codex; model GPT-6
-last_updated: "2026-10-20T22:04:39.136Z"
+stopped_at: Completed 03-16-PLAN.md; runtime Codex; model GPT-6
+last_updated: "2026-10-20T22:14:46.411Z"
 last_activity: 2026-10-20
-last_activity_desc: Completed plan 03-15; runtime Codex; model GPT-6
-state_head: 577c37012670dd674121daa1f64b9f7603c1f910
+last_activity_desc: Completed plan 03-16; runtime Codex; model GPT-6
+state_head: 06919dc56d9ae40511827aff48f7f67e5f34772e
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 47
-  completed_plans: 44
+  completed_plans: 45
   percent: 50
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 03 (Games play in RetroArch) — EXECUTING
-Plan: 16 of 18
+Plan: 17 of 18
 Status: Ready to execute
-Last activity: 2026-10-20 — Completed plan 03-15; runtime Codex; model GPT-6
+Last activity: 2026-10-20 — Completed plan 03-16; runtime Codex; model GPT-6
 
 Progress: [█████░░░░░] 50%
 
@@ -104,6 +104,7 @@ Progress: [█████░░░░░] 50%
 | Phase 03 P13 | 10min | 2 tasks | 16 files |
 | Phase 03 P14 | 5min | 2 tasks | 11 files |
 | Phase 03 P15 | 14min | 2 tasks | 30 files |
+| Phase 03 P16 | 7min | 2 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -228,6 +229,8 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 03]: Keep libretro_saves false and experimental status until separate hosted save-file and compatibility proof contracts are met.
 - [Phase 03]: Reuse the existing classified battery fixture identity; its CRC-checked mailbox already reports the previous and incremented counter.
 - [Phase 03]: Use bounded accepted predicates and a shared quoted CSV normalizer; keep expected values outside identity and healthy HALT outside boot-smoke rejection.
+- [Phase 03]: Copy the base compatibility judge and adjacent shared parser before candidate checkout; compare eligible fresh fixture results in both directions.
+- [Phase 03]: Compatibility exceptions name one unique old pass, require the actual new behaviour revision, and expire inclusively within 60 supplied-date days; GAME-06 remains pending through plan 03-17.
 
 ### Pending Todos
 
@@ -256,7 +259,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-10-19 | Execute phase 2 (gsd-execute-phase) | Claude Code | claude-opus-5-5 |
 | 2026-10-20 | Ship phase 2 (gsd-ship) | Codex | GPT-6 |
 | 2026-10-20 | Plan phase 3 (gsd-plan-phase) | Codex | GPT-6 |
-| 2026-10-20 | Execute phase 3 through plan 03-15 (gsd-execute-phase) | Codex | GPT-6 |
+| 2026-10-20 | Execute phase 3 through plan 03-16 (gsd-execute-phase) | Codex | GPT-6 |
 
 ## Deferred Items
 
@@ -268,6 +271,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T22:04:39.012Z
-Stopped at: Completed 03-15-PLAN.md; runtime Codex; model GPT-6
+Last session: 2026-10-20T22:14:46.280Z
+Stopped at: Completed 03-16-PLAN.md; runtime Codex; model GPT-6
 Resume file: None
