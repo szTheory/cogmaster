@@ -33,6 +33,13 @@ Markers: (tested) run here on 2026-10-18, (derived), (untested), (unverified). "
 
 **Settled presentation:** SMS uses its documented NTSC/PAL PAR. GG keeps 6:5 by default, with square pixels as a presentation-only option. Native crop is default; full field reveals normally hidden content without changing machine or mode. Completed geometry is notified inside `retro_run`; refusal never suppresses delivery. Both buffers are allocated at load for 256×240. PAL silence has capacity 966 stereo frames, with a carried rational remainder.
 
+Current consumers expose API 8 and internal state format 10. Runner input is exactly one absolute record
+before each frame, with `pad`/`none` device selection; input lag counts actual decoded guest reads. Restart
+uses SOFT on SMS and POWER on GG while physical Reset remains an input. SAVE_RAM is classified persistent
+media only, fixed until unload; native file replacement is POSIX rename or Windows MoveFileExW after checked
+write/flush/sync/close. Unknown or unsupported persistence never gains a guessed span. Owned SMS/GG frontend
+screenshots and fresh-process battery continuation are automated integration evidence, not hardware claims.
+
 **Core options** (`SET_CORE_OPTIONS_V2` 67, L2339; v1 fallback via `GET_CORE_OPTIONS_VERSION` 52). Keys follow the three existing cores so users recognise them [HI.06]:
 
 | Key | Values (default first) | In state hash | Lands |

@@ -416,8 +416,9 @@ replay input. Its baseline and press/hold/release/repeated-press screenshots mus
 independent coordinate oracle at counter/scroll 0 and 2. A one-pixel mutation must fail. The replay-only module
 adds existing internal state visitor forwarding for the frontend's initial checkpoint, while compiling the
 same input and video adapter source; it is excluded from installation and archives. The in-process host runs
-the richer sequence against both production and replay modules. This proves the SMS frontend path; two-pad,
-GG Start, region and lag expansions remain separately tested as they land.
+the richer sequence against both production and replay modules. Two-pad, region,
+reset and lag cases run through the public core/runner and in-process frontend tests;
+native GG Start and crop also have the hosted proof described below.
 
 ## Fuzzing
 

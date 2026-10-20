@@ -311,32 +311,37 @@ never cancelled, and a call from `release.yml` does not queue behind the push ru
 
 ## Performance
 
-**Instructions per frame.** The `perf` job counts the instructions `cogmaster-run` executes per frame of the test
-card under Cachegrind: Ir/frame = (Ir at 360 frames − Ir at 60) / 300, in integers, with `--cache-sim=no`, an
+**Instructions per frame.** The `perf` job counts instructions while `cogmaster-run` executes the owned
+`boot_to_play.sms` fixture under Cachegrind: Ir/frame = (Ir at 360 frames − Ir at 60) / 300, in integers, with `--cache-sim=no`, an
 empty environment and runner paths of equal length, so the count repeats exactly. It measures the pull request's
 head commit once and its merge base with the base branch twice, then `tests/cmake/perf_compare.cmake` prints one
 line to the log and the job summary:
 
 ```text
-perf testcard head=2146896 base=2146896 delta_bp=0 verdict=PASS
+perf boot_to_play head=2146896 base=2146896 delta_bp=0 verdict=PASS
 ```
 
 `delta_bp` is the change in basis points. `PASS` means at most 1.00 % slower (exactly +1.00 % passes); `FAIL`
 more than that or more than the allow file permits; `UNSTABLE` the two base measurements differ; `NO_BASE` the
-merge base has no `bench` preset. An empty or non-numeric measurement is an input error, never a pass.
+merge base lacks comparable rendering/input support. An empty or non-numeric measurement is an input error, never a pass.
+Head and base load the same head-built fixture and input files with explicit SMS2, SMS video and NTSC export
+configuration. Input presses button 1 at frames 5, 6 and 8, then releases it. The comparison requires a base
+with API at least 5, behaviour revision at least 8 and the playing fixture source; an older phase's card-only
+path cannot provide a meaningful base. `perf.playing` checks this bench path against the independent pixel oracle.
 
 **Report mode.** The job runs with `COGMASTER_PERF_MODE: report` in `ci.yml`: it prints the verdict and succeeds
 whatever the verdict. It is armed by one `ci:` pull request that sets the mode to `gate`, after two control runs
 dispatched on `main` show zero spread; on `workflow_dispatch` the job measures one commit three times and prints
-`perf control testcard runs=<a>,<b>,<c> spread=<n>`. Once armed, `FAIL`, `UNSTABLE` and `NO_BASE` fail it.
+`perf control boot_to_play runs=<a>,<b>,<c> spread=<n>`. Once armed, `FAIL`, `UNSTABLE` and `NO_BASE` fail it.
 
 **Exceptions.** A pull request that must be slower adds a line to `tests/perf/allow.txt`:
 `<rom> <max % × 100> <expiry YYYY-MM-DD> <reason>`. It raises that ROM's limit through its expiry, at most 60
 days away, and is removed after the pull request merges.
 
-**Nightly bench.** `.github/workflows/nightly.yml` runs `cogmaster-run --bench 300000` every night on
+**Nightly bench.** `.github/workflows/nightly.yml` runs the same owned fixture/profile/script with
+`--bench 300000` every night on
 `ubuntu-26.04`, `ubuntu-26.04-arm` and `macos-15`, and under wasmtime. Each report is the runner's nine lines
-(see [runner.md](runner.md#bench-report)) plus the runner's name; WASI has no resident set size, so wasm32's
+(see [runner.md](runner.md#bench-report)), the input lag count and the runner's name; WASI has no resident set size, so wasm32's
 `max_rss_kib` reads 0. Reports are trend data in the job summaries and `bench-*` artifacts, never a gate and never
 committed. A failed night opens or comments on the one open issue labelled `nightly`; a good night closes it.
 Dispatching the workflow with `force_failure` fails a run on purpose, after the reports are uploaded. A pull

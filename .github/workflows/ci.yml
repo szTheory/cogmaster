@@ -468,7 +468,7 @@ jobs:
         if: failure()
         run: cat build/ra*/retroarch.log || true
 
-  # Cachegrind instructions per frame of the test card: the pull request's
+  # Cachegrind instructions per frame of the scripted playing fixture: the pull request's
   # head commit against its merge base with the base branch, the base
   # measured twice. The merge commit's first parent is not used: it is the
   # base branch tip, which also counts commits that landed after the branch
@@ -478,7 +478,7 @@ jobs:
     needs: changes
     if: ${{ !inputs.ref && needs.changes.outputs.heavy == 'true' && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-26.04
-    timeout-minutes: 5  # 5-minute floor (apt); 2 x 19 s, slowest of 2 runs, run 39335167905, provisional
+    timeout-minutes: 10  # provisional: fixture build and full rendering now run under Cachegrind
     env:
       HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       BASE_REF: ${{ github.event.pull_request.base.ref || 'main' }}
@@ -503,18 +503,26 @@ jobs:
             mkdir -p "$2" && cp "$1/build/bench/cogmaster-run" "$2/cogmaster-run"
           }
           build . "$RUNNER_TEMP/perf/head"
+          cmake --preset ci
+          cmake --build --preset ci --target cogmaster-fixtures
+          mkdir -p "$RUNNER_TEMP/perf/workload"
+          cp build/ci/fixtures/boot_to_play.sms "$RUNNER_TEMP/perf/workload/boot_to_play.sms"
+          cmake -DCASE=workload "-DDIR=$RUNNER_TEMP/perf/workload" '-DCOUNTS=60;360' -P tests/perf/tests.cmake
           if [ "$EVENT" = workflow_dispatch ]; then
             echo no_base=none >> "$GITHUB_OUTPUT"
             exit 0
           fi
           base=$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")
           echo "perf: head $HEAD_SHA, merge base $base"
-          if git show "$base:CMakePresets.json" 2> /dev/null | grep -q '"name": "bench"'; then
+          base_api=$(git show "$base:include/cogmaster.h" | awk '/^#define COGMASTER_API_VERSION / {print $3}')
+          base_behavior=$(git show "$base:include/cogmaster.h" | awk '/^#define COGMASTER_BEHAVIOUR_REVISION / {print $3}')
+          if [ "${base_api:-0}" -ge 5 ] && [ "${base_behavior:-0}" -ge 8 ] &&
+            git cat-file -e "$base:tests/roms/src/boot_to_play.asm" 2> /dev/null; then
             git worktree add --detach "$RUNNER_TEMP/base" "$base"
             build "$RUNNER_TEMP/base" "$RUNNER_TEMP/perf/base"
             echo no_base=false >> "$GITHUB_OUTPUT"
           else
-            echo "perf: merge base $base has no bench preset; verdict NO_BASE"
+            echo "perf: merge base $base lacks comparable playing renderer/input; verdict NO_BASE"
             echo no_base=true >> "$GITHUB_OUTPUT"
           fi
       - name: Instructions per frame
@@ -527,7 +535,9 @@ jobs:
           ir() {
             rm -f "$RUNNER_TEMP/cg.out"
             env -i "$valgrind" --tool=cachegrind --cache-sim=no --cachegrind-out-file="$RUNNER_TEMP/cg.out" \
-              "$1/cogmaster-run" --frames "$2" > /dev/null 2>&1 || return 1
+              "$1/cogmaster-run" "$RUNNER_TEMP/perf/workload/boot_to_play.sms" --machine sms \
+                --region ntsc-u --video-mode sms --input "$RUNNER_TEMP/perf/workload/$2.input" \
+                --frames "$2" > /dev/null 2>&1 || return 1
             local v
             v=$(sed -n 's/^summary: *\([0-9][0-9]*\)$/\1/p' "$RUNNER_TEMP/cg.out")
             [ -n "$v" ] || return 1
@@ -549,7 +559,7 @@ jobs:
               if [ "$v" -gt "$max" ]; then max=$v; fi
               if [ "$v" -lt "$min" ]; then min=$v; fi
             done
-            line="perf control testcard runs=$head,$h2,$h3 spread=$((max - min))"
+            line="perf control boot_to_play runs=$head,$h2,$h3 spread=$((max - min))"
             echo "$line"
             echo "$line" >> "$GITHUB_STEP_SUMMARY"
             exit 0
@@ -560,7 +570,7 @@ jobs:
             base2=$(per_frame "$RUNNER_TEMP/perf/base")
           fi
           rc=0
-          cmake -DROM=testcard "-DHEAD=$head" "-DBASE1=$base1" "-DBASE2=$base2" -DALLOW=tests/perf/allow.txt \
+          cmake -DROM=boot_to_play "-DHEAD=$head" "-DBASE1=$base1" "-DBASE2=$base2" -DALLOW=tests/perf/allow.txt \
             "-DMODE=$COGMASTER_PERF_MODE" "-DTODAY=$(date -u +%Y-%m-%d)" "-DNO_BASE=$NO_BASE" \
             -P tests/cmake/perf_compare.cmake > perf.txt 2>&1 || rc=$?
           cat perf.txt

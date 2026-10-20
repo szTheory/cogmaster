@@ -6,7 +6,7 @@ to check that a build produces the expected picture. It can also describe a cart
 (see [Probe](#probe)).
 
 With no file, every run shows the built-in test card (see [Test card](#test-card)). Content uses the Mode 4
-background renderer; audio remains silent.
+background and sprite renderer; audio remains silent.
 
 `--machine sms` keeps the SMS2 profile; `--machine sms1` selects SMS1.
 `--video-mode auto|sms|gg` selects video independently of the machine.
@@ -51,8 +51,11 @@ cogmaster-run --help | --version
 | Option | Meaning |
 |---|---|
 | `FILE`, `--rom FILE` | The cartridge image to run: a Master System or Game Gear ROM from 1,024 bytes to 1 MiB, optionally after a 512-byte copier header. Give one file. Without one, the test card shows. |
-| `--machine NAME` | `sms` for the Master System, `gg` for the Game Gear. `auto`, the default, reads the cartridge's header: region codes 5 to 7 are the Game Gear and 3 or 4 the Master System. With no header, a file name ending in `.gg` is the Game Gear and anything else the Master System. With no file, `auto` is the Master System. |
-| `--region NAME` | The console's region and TV standard together: `ntsc-u` is an export console on NTSC, `ntsc-j` a Japanese console on NTSC and `pal` an export console on PAL. `auto`, the default, is `ntsc-u`. |
+| `--machine NAME` | `sms` selects SMS2, `sms1` selects SMS1, `gg` selects Game Gear. `auto` uses the public probe's hash metadata/header facts, then the `.gg` filename fallback. With no file, `auto` selects SMS2. |
+| `--region NAME` | Region and TV standard together: `ntsc-u` is export NTSC, `ntsc-j` Japanese NTSC and `pal` export PAL. `auto` uses probe metadata/header region when present, otherwise export NTSC. |
+| `--video-mode NAME` | `auto`, `sms` or `gg`; video selection is independent of the machine profile. |
+| `--input FILE` | Exactly one absolute input record per requested frame, applied before that frame. |
+| `--port1 NAME`, `--port2 NAME` | `pad` or `none`; disconnected pads release their pins. |
 | `--frames N` | Run N frames, N from 1 to 4294967295. Give either `--frames` or `--bench`, once. |
 | `--bench N` | Run N frames, time each one and print the report described under [Bench report](#bench-report). N is from 1 to 1073741823. The runner keeps 4 bytes per frame, so a very large N can exit 1 because memory ran out. |
 | `--hash` | After the last frame, print the SHA-256 of its picture. |

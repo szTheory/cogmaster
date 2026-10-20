@@ -45,6 +45,12 @@ bytes are refused. API version 6 appends the battery query; existing ABI layouts
 
 ## Getting it
 
+The H-counter origin's 32-tick translation is a coordinate inference from sourced timing discussions.
+The tick-600 display/scroll/height latches and native GG 240-line LCD freeze are selected sourced models;
+tests establish deterministic implementation, not hardware measurements. The measured IRQ edges remain
+607/608. Moldorian's metadata declares 24 KiB persistent media, but physical bank decoding remains unresolved;
+its persistence query/import is refused rather than guessing a mask or modulo mapping.
+
 **Source tree.** `add_subdirectory` or `FetchContent` gives the `cogmaster::cogmaster` target. Only the C compiler
 is needed: an embedding build gets the library alone, without the runner, the tests or this project's warning
 flags (`COGMASTER_BUILD_RUNNER`, `COGMASTER_BUILD_LIBRETRO` and `COGMASTER_BUILD_TESTS` default to off when

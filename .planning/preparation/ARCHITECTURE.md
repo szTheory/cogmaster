@@ -199,7 +199,7 @@ Integer-only (`hygiene.no_float`, `nofp`, `abi.undefined`); no mutable globals (
 | PSG + OPLL + synth rings (two rings on GG) | ≈ 1,100 (+ ≈ 700 with FM) | same | ≈ 1,600 |
 | total | ≈ 28.5 KiB | ≈ 60.5 KiB | ≈ 29 KiB |
 
-- **Battery.** `get_memory(BATTERY)` is one span fixed from load to unload, writable by the host after load and before the first frame; `save_generation` increments on each write while $FFFC b3 (or the EEPROM window) is enabled; the host flushes when it changes; the core does no file I/O [ARCH.04 §4][ARCH.05 §1]. Not saved: pending host input, hooks, caller buffers.
+- **Battery.** `cogmaster_get_battery` returns a classified persistent span fixed from load to unload and its generation; `cogmaster_import_battery` validates length/geometry before padding or applying raw bytes. Only writes to mapped persistent physical offsets increment generation. The host persists it; the core does no file I/O [ARCH.04 §4][ARCH.05 §1]. Pending/current absolute input and battery generation are internal state; caller buffers and hooks are not.
 
 ## 8. Observability
 - **Counters, always kept** (saved; reset by power cycle): per frame, `vdp_writes_active` (data/control-port writes during active lines), `vdp_fast_accesses` (data-port accesses < 26 T-states apart during active lines, `VDP_MIN_ACCESS_CYCLES`) [ARCH.02 4.A], `sprite_overflow_lines`, `collision_frames`, `lag_frames`, `frame_ints`, `line_ints`, `nmis`, `open_bus_reads`, `audio_dropped`; per line of the last frame: hscroll, display enable, sprite count, overflow and collision flags, data-port write count (≈ 6 B × 313). **Flip** to traced builds only if Cachegrind shows > 1 % [ARCH.06 §8].
@@ -257,7 +257,7 @@ Within a phase, opcode groups and devices that share no inventory run as paralle
 | `armhf`, console compile-only | 32-bit ARM handhelds; devkitPro/pspdev toolchain files | nightly, later |
 
 - **Budgets.** Ir/frame per PR (report-only until two zero-spread controls, armed by phase 2) [ARCH.06 §8][ARCH.07 XFER-051]; handheld ceilings `device_mips × frame_µs / 2` come from SMS-ECOSYSTEM-AND-USERS §4, not yet written [ARCH.11]: **pending**, the ceiling row stays empty in `quality.json` until that file lands [ARCH.06 §14]. Comparator only: the NES sibling runs at 23.3–24.7 M Ir/frame; a Z80 at 3.58 MHz with a per-line VDP should land near it (hypothesis, measured in P3).
-- **Perf subject.** Through phase 2 the `perf` job and the nightly bench measure the no-content path (the test card). The phase 2 fixtures stop in a HALT loop once they have measured, so their instructions per frame describe no real workload; the first representative subject is phase 3's `boot_to_play`, and arming the Ir/frame gate stays the post-merge `ci:` pull request's job.
+- **Perf subject.** `perf` and nightly bench load the owned `boot_to_play.sms` with explicit SMS2/SMS-video/NTSC-export and the same absolute button-1 script (press frames 5/6/8, released thereafter). Head/base share fixture bytes and resolved arguments; bases lacking API 5, behaviour 8 or fixture source are incomparable (`NO_BASE`). Arming the report-only Ir/frame gate stays the separate post-merge `ci:` follow-up. Card pins remain unchanged.
 
 ## 13. Open conflicts and how each is settled
 | Conflict | Positions | Settlement | Local test that settles it |

@@ -7,6 +7,14 @@ updated: 2026-10-20
 
 # Conformance, oracles and the compatibility ledger
 
+Implemented phase-3 evidence includes native/SMS-mode GG and SMS1/SMS2 playing hashes, input variants,
+owned frontend screenshots, enabled-video state rejection, allocation and hostile-run bounds. Hashes are
+compared across six native platforms and be32; wasm32 reports equality separately. Performance now measures
+the scripted playing fixture but remains report-only. Formal code review precedes phase verification.
+H-counter sub-dot origin, tick-600 latches and GG LCD freeze remain qualified sourced models. Three
+unclassified probe assumptions remain flagged in the phase research/source coverage; binary agreement is
+not hardware measurement. Moldorian persistence geometry remains unsupported.
+
 ## Where to look
 | Question | Section |
 |---|---|
