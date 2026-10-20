@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 02
 current_phase_name: The CPU matches the public vectors
 status: executing
-stopped_at: Completed 02-07-PLAN.md
-last_updated: "2026-10-20T03:02:06.375Z"
+stopped_at: Completed 02-08-PLAN.md
+last_updated: "2026-10-20T03:17:15.228Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 02 execution started
-state_head: e6e97bc54ed1da61ba389508e81310073151989e
+state_head: 946ecf25226a861c0990f48bb9a0cf7e5e87bcd2
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 29
-  completed_plans: 19
+  completed_plans: 20
   percent: 25
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 02 (The CPU matches the public vectors) — EXECUTING
-Plan: 8 of 17
+Plan: 9 of 17
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 02 execution started
 
@@ -77,6 +77,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P05 | 25min | 2 tasks | 9 files |
 | Phase 02 P06 | 9min | 3 tasks | 28 files |
 | Phase 02 P07 | 5min | 2 tasks | 16 files |
+| Phase 02 P08 | 9min | 2 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -137,6 +138,10 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 02]: API version checks in v1.c, header and consumer tests accept any version from 1 up
 - [Phase 02]: A first-size cogmaster_media tag reads region and tv as AUTO (region sits in the 64-bit tail padding)
 - [Phase 02]: State header profile word is machine, region, tv and a zero byte, each fixed to the instance
+- [Phase 02]: The V counter is computed from the beam at each read; no stored 604 step
+- [Phase 02]: The VDP access tick is m->bus.vdp_at, keeping the VDP struct free of 64-bit fields
+- [Phase 02]: The Game Gear profile raises no Pause NMI
+- [Phase 02]: VDP port decode: A7/A6/A0 mirrors on the export SMS, full decode on the Japanese SMS and Game Gear
 
 ### Pending Todos
 
@@ -172,6 +177,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T03:02:06.287Z
-Stopped at: Completed 02-07-PLAN.md
+Last session: 2026-10-20T03:17:15.150Z
+Stopped at: Completed 02-08-PLAN.md
 Resume file: None
