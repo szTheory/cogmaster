@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 02
 current_phase_name: The CPU matches the public vectors
 status: executing
-stopped_at: Completed 02-10-PLAN.md
-last_updated: "2026-10-20T03:51:19.631Z"
+stopped_at: Completed 02-11-PLAN.md
+last_updated: "2026-10-20T04:04:06.011Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 02 execution started
-state_head: a6b09779bbce7b48b526d05370d34a69cec50d0f
+state_head: 69b54212bf340125b4f2b42c82a3817d45517ff8
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 29
-  completed_plans: 22
+  completed_plans: 23
   percent: 25
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 02 (The CPU matches the public vectors) — EXECUTING
-Plan: 11 of 17
+Plan: 12 of 17
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 02 execution started
 
@@ -80,6 +80,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P08 | 9min | 2 tasks | 16 files |
 | Phase 02 P09 | 40min | 3 tasks | 21 files |
 | Phase 02 P10 | 40min | 3 tasks | 21 files |
+| Phase 02 P11 | 9min | 3 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -153,6 +154,9 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 02]: The step stores the instruction address and first byte after DD/FD in the bus struct for the fault record; both are saved in the state
 - [Phase 02]: Game Gear: $3E not decoded (write is unmapped_write), $3F latches, $DD reads $FF
 - [Phase 02]: unmapped_write covers $00-$3F and $80-$BF on full-decode consoles; sound-chip and I/O-chip writes never fault
+- [Phase 02]: Probe header fields print none without a ROM header; machine_guess and region_guess report what auto resolves to
+- [Phase 02]: The probe exits 77 for an unsupported size or board after printing every key; exit 77 is named refused
+- [Phase 02]: The first-fault trace prints its line before any hash or bench output
 
 ### Pending Todos
 
@@ -188,6 +192,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T03:51:19.522Z
-Stopped at: Completed 02-10-PLAN.md
+Last session: 2026-10-20T04:04:01.996Z
+Stopped at: Completed 02-11-PLAN.md
 Resume file: None
