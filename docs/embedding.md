@@ -4,10 +4,52 @@ The library is one static archive and one header, `cogmaster.h`, written in C17.
 the allocator you pass, keeps all state in the instance, starts no threads, opens no files, reads no clock and uses
 no floating point. It needs nothing from the C library beyond `memcpy`, `memmove`, `memset` and `memcmp`.
 
-This release loads a cartridge image and runs its CPU, but draws no picture from it yet: the frame of a loaded
-image stays black. With no image it runs the built-in test card.
+This release loads a cartridge image and draws its Mode 4 background. With no image it runs the built-in test card.
+
+`cogmaster_set_input` accepts a size-tagged `cogmaster_input` with `size`, `p1`, `p2`, `pause`, `reset`,
+`start`, `port1` and `port2`. It validates every field before replacing pending input. The two pad masks
+contain six independent bits (Up, Down, Left, Right, button 1, button 2). Console levels are binary.
+`COGMASTER_DEVICE_PAD` is zero, the default; `COGMASTER_DEVICE_NONE` is one and releases that port's pins.
+The native Game Gear has one local pad. Input latches before the next frame runs; identical submissions
+remain held levels. Pause queues an NMI only on a rising edge. A disconnected port releases its pins;
+reconnecting with Pause held requires release before another press can queue an NMI. Reset drives a
+level only on export SMS1; native GG Start drives its active-low level on `$00`. Opposing directions
+pass through independently. TR output directions override pad levels, with Japanese output echo low.
+The first input struct size is 32 bytes. Oversized zero tails follow the general size-tag rule.
+
+The appended `cogmaster_run_result.lagged` is one when no decoded controller read occurred in that frame.
+Legacy 12-byte callers receive only their original fields. The runner submits input before each frame and
+receives this result. Host peeks never earn lag credit.
+API version 8 appends `cogmaster_run_result.display_enabled`: the VDP display-enable latch
+observed at the end of this run call, zero for the test card. It is a sampled observation;
+it does not prove that every line was enabled. Older 12-byte and 16-byte callers keep their layouts.
+
+The libretro adapter accepts `game.data` and `game.size` in memory, advertises
+`sms|gg|bin|rom`, and keeps `need_fullpath` false. One input poll precedes each
+frame; D-pad/B/A map to the six pad bits. Port-1 Start maps to SMS Pause or native
+GG Start, and Select drives SMS Reset. Pad/none and button descriptors are sent
+to the frontend. Missing callbacks and none devices submit released levels.
+Their reconnection follows the same Pause arming rule as the library. Port 2 never supplies console
+controls. RetroArch Restart calls SOFT on SMS and POWER on GG; Select changes only the supported physical
+Reset level and cannot restart the CPU. Both restart kinds preserve cartridge RAM.
+The experimental flag remains enabled while the background tracer is expanded.
+API version 4 appends SMS1 and unsupported-video fault constants; all earlier
+values and struct layouts are retained. Behaviour revision 10 adds classified battery write generations.
+The input model includes pin-output mixing, export-SMS1-only Reset and held-reconnect Pause suppression. The renderer includes independent line
+IRQs, six mode/TV V-counter sequences, the translated H coordinate and TH capture
+to the sprite/background semantics. State format 10 saves battery generations and native LCD and palette-latch state,
+completed pixels/height/backdrop alongside the line counter
+and pending source, rolling NTSC-240 phase and held H value alongside the sprite
+slots, dot cursor, scroll/display latches and last driven bus byte, so older state
+bytes are refused. API version 6 appends the battery query; existing ABI layouts remain unchanged.
 
 ## Getting it
+
+The H-counter origin's 32-tick translation is a coordinate inference from sourced timing discussions.
+The tick-600 display/scroll/height latches and native GG 240-line LCD freeze are selected sourced models;
+tests establish deterministic implementation, not hardware measurements. The measured IRQ edges remain
+607/608. Moldorian's metadata declares 24 KiB persistent media, but physical bank decoding remains unresolved;
+its persistence query/import is refused rather than guessing a mask or modulo mapping.
 
 **Source tree.** `add_subdirectory` or `FetchContent` gives the `cogmaster::cogmaster` target. Only the C compiler
 is needed: an embedding build gets the library alone, without the runner, the tests or this project's warning
@@ -123,12 +165,28 @@ media.size = (uint32_t)sizeof media;
 media.machine = COGMASTER_MACHINE_AUTO;   /* or COGMASTER_MACHINE_SMS2, COGMASTER_MACHINE_GG */
 media.region = COGMASTER_REGION_AUTO;     /* or COGMASTER_REGION_EXPORT, COGMASTER_REGION_JAPAN */
 media.tv = COGMASTER_TV_AUTO;             /* or COGMASTER_TV_NTSC, COGMASTER_TV_PAL */
+media.video_mode = COGMASTER_VIDEO_AUTO;  /* or COGMASTER_VIDEO_SMS, COGMASTER_VIDEO_GG */
 media.image = rom;                        /* the image bytes, or NULL for the test card */
 media.image_size = rom_size;              /* 0 with a NULL image */
 cogmaster_load(m, &media);
 
 cogmaster_run_frame(m, NULL);             /* one frame; the result struct is optional */
 ```
+
+`video_mode` defaults to native GG on a Game Gear and SMS on either Master System.
+Explicit GG video requires a Game Gear. Explicit SMS video on a Game Gear retains
+the handheld machine and port decode, uses immediate SMS colours, and exposes the
+full SMS field with NTSC PAR 8:7. Physical LCD resampling belongs to the host.
+`cogmaster_info.video_mode` reports the resolved value. Media tags from before
+this extension (40 bytes on 64-bit, 24 on 32-bit) read video mode as AUTO,
+including the old tail padding. Zero the reserved media word on 64-bit systems.
+
+Native GG crops (48,24,160,144) at 192 lines and (48,40,160,144) at 224 lines.
+The selected 240-line LCD model holds the last native image and its descriptor
+until POWER reset; SOFT reset retains the freeze. FULL_FIELD continues to expose
+the current field independently. Both the held image and palette latch are state.
+GG controller reads decode C0/C1 and DC/DD; native Start is active low at port 00.
+In explicit SMS video mode Start instead raises the edge-detected Pause NMI.
 
 `cogmaster_media.image` with `image_size` 0 and a NULL `image` loads the built-in test card. Any other image must
 be 1,024 to 1,048,576 + 512 bytes; any other size returns `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE`, and a NULL
@@ -139,7 +197,10 @@ The library guesses the cartridge's board from the image (see [Probing an image]
 at `$0000`-`$BFFF`, with 8 KiB of work RAM at `$C000`; an image on no supported board returns
 `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD`. The CPU starts as the console's BIOS leaves it (fast boot; no BIOS code runs): stack pointer `$DFF0`,
 `$AB` at `$C000` on the Master System, program counter 0. `machine` selects the profile: `COGMASTER_MACHINE_AUTO` (the default, a Master
-System II), `COGMASTER_MACHINE_SMS2` or `COGMASTER_MACHINE_GG`. `region` selects the console's region:
+System II), `COGMASTER_MACHINE_SMS2`, `COGMASTER_MACHINE_GG` (2), or
+`COGMASTER_MACHINE_SMS1` (3, the 315-5124 VDP). SMS1 uses the console boot and
+port rules with address masks described in [video](hardware/video.md).
+`region` selects the console's region:
 `COGMASTER_REGION_AUTO` (the default, export), `COGMASTER_REGION_EXPORT` or `COGMASTER_REGION_JAPAN`. `tv` selects
 the video standard: `COGMASTER_TV_AUTO` (the default, NTSC), `COGMASTER_TV_NTSC` or `COGMASTER_TV_PAL`. No Game
 Gear and no Japanese console was made for PAL, so `COGMASTER_TV_PAL` with either returns
@@ -160,7 +221,16 @@ was pressed. The Game Gear has no Pause button.
 ## Probing an image
 
 `cogmaster_probe(image, n, out)` reads an image the way `load` does, without an instance: it fills a
-`cogmaster_cart_info` and returns the status `load` would give for the image alone. It reads only the `n` bytes
+`cogmaster_cart_info` and returns the status `load` would give for the image alone. Appended fields distinguish
+`COGMASTER_PERSISTENCE_UNKNOWN`, `COGMASTER_PERSISTENCE_NONE` and `COGMASTER_PERSISTENCE_BATTERY`.
+`persistent_size` is the declared extent, independent of mapper decoding. `persistence_geometry` is
+`COGMASTER_GEOMETRY_NONE`, `COGMASTER_GEOMETRY_SUPPORTED` or `COGMASTER_GEOMETRY_UNSUPPORTED`.
+Unknown/unsupported geometry provides no persistent span. `identified` means a whole-body SHA-1 match;
+`public_identity` distinguishes public CC0 identities from owned fixture facts. `sha1` and `title` are
+zero-terminated identity strings, empty on a miss. `video_mode` carries a verified GG SMS-mode fact.
+Old 52-byte output tags leave the appended fields untouched. AUTO machine/region use table/header facts
+before defaults; explicit choices win. These facts are independent of compatibility-ledger membership.
+The probe reads only the `n` bytes
 at `image`, never changes them, and gives the same answer for the same bytes. It returns
 `COGMASTER_STATUS_ERR_ARGUMENT` for a NULL `image` or `out`, `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE` outside the
 load bounds (with only `image_size` filled), and `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD` with `board` 0 and
@@ -219,7 +289,7 @@ io.pitch_bytes = 256 * 2;                 /* bytes from one row to the next */
 cogmaster_get_frame(m, &io);              /* io.x, io.y, io.w, io.h: what was copied */
 ```
 
-By default `cogmaster_get_frame` copies the machine's crop: the whole 256 × 192 field on the Master System, the
+By default `cogmaster_get_frame` copies the machine's crop: the whole completed 256 × H field on the Master System (H = 192, 224 or 240), the
 160 × 144 window at (48, 24) on the Game Gear. With `flags` set to `COGMASTER_FRAME_FULL_FIELD` it copies the
 whole 256-dot field instead; outside the Game Gear window the test card is magenta (`0x0F0F`). Any other flag bit
 returns `COGMASTER_STATUS_ERR_ARGUMENT`. The library fills `x`, `y`, `w` and `h` with the rectangle copied, in
@@ -238,7 +308,7 @@ and the tick count to zero, put the beam at the frame origin (line 192, tick 607
 does, start the CPU again from the fast-boot hand-off and clear the fault record. Every frame, the first after a
 load or reset included, is then exactly 179,208 ticks on NTSC and 214,092 on PAL:
 
-- `COGMASTER_RESET_SOFT` (0) is the console's reset: memory the machine keeps across a reset, such as work RAM,
+- `COGMASTER_RESET_SOFT` (0) reapplies the fast-boot hand-off: memory kept across this restart, such as work RAM,
   stays as it was.
 - `COGMASTER_RESET_POWER` (1) is a power cycle: it also zeroes the internal counters and, on machines that have
   them, work RAM, video RAM and colour RAM.
@@ -272,6 +342,7 @@ The record is part of the instance's saved state.
 | 3 | `COGMASTER_FAULT_KIND_ROM_WRITE` | a write to `$0000`–`$BFFF` that is neither a register of the cartridge's mapper nor cartridge RAM |
 | 4 | `COGMASTER_FAULT_KIND_MAPPER_RANGE` | a bank number at or past the end of an image whose page count is not a power of two, or a write to `$FFFC` that sets bit 7, bit 4 or bits 1–0 |
 | 5 | `COGMASTER_FAULT_KIND_ED_UNDEFINED` | the CPU ran an opcode after `$ED` that the Z80 does not define, as an 8 T-state no-operation; `opcode` is that second byte and `pc` the address of the `$ED` |
+| 6 | `COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE` | an enabled display selects an unsupported TMS or invalid text mode; output is backdrop and frame delivery stays bounded |
 
 | `device` | Constant | Meaning |
 |---|---|---|
@@ -281,6 +352,7 @@ The record is part of the instance's saved state.
 | 3 | `COGMASTER_FAULT_DEVICE_RAM` | work RAM |
 | 4 | `COGMASTER_FAULT_DEVICE_MAPPER` | the cartridge's mapper |
 | 5 | `COGMASTER_FAULT_DEVICE_CTRL` | the memory and I/O control ports `$3E` and `$3F` |
+| 6 | `COGMASTER_FAULT_DEVICE_VDP` | the video display processor |
 
 `addr` is the full 16-bit bus address; for `IN A,(n)` and `OUT (n),A` that is A × 256 + n. Outside kind 5, `pc`
 is the address of the instruction, its first `$DD` or `$FD` prefix included, and `opcode` its first byte after
@@ -290,7 +362,11 @@ Things shipped games do are never faults, so the record stays free for the real 
 port `$3E` has the I/O chip disabled, ports `$F0`–`$F2`, `$DE` and `$DF`, writes to the I/O chip's ports, the Game
 Gear's link ports `$01`–`$05`, a bank number past the end of an image whose page count is a power of two (it
 wraps), toggling port `$3E`, and undocumented CPU instructions. An undriven read returns `$FF` and counts in the
-instance's open-bus counter instead. The test card runs no CPU, so it never records a fault. The call works before
+instance's open-bus counter instead. SMS1 undriven memory/port reads retain the
+last byte driven by a CPU fetch, read or write; SMS2/GG pull it to `$FF`.
+Peeks observe it without changing it or the counter. The selected model follows
+preparation SMS-SYSTEM C5; instruction-specific electrical behavior remains unmeasured.
+The test card runs no CPU, so it never records a fault. The call works before
 a load too, and then reports `present` 0.
 
 ## Reading memory
@@ -336,6 +412,7 @@ changes no state; a failed `cogmaster_load` keeps the content that was loaded be
 | `COGMASTER_STATUS_ERR_NO_CONTENT` | 5 | `cogmaster_run_frame`, `cogmaster_get_frame`, `cogmaster_get_info` or `cogmaster_reset` before a successful `cogmaster_load` |
 | `COGMASTER_STATUS_ERR_PROFILE_REJECTED` | 6 | `cogmaster_media.machine`, `region` or `tv` is not one of its `COGMASTER_MACHINE_*`, `COGMASTER_REGION_*` or `COGMASTER_TV_*` values, or the pair was never made: `COGMASTER_TV_PAL` with `COGMASTER_MACHINE_GG` or with `COGMASTER_REGION_JAPAN` |
 | `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE` | 7 | an image is below 1,024 or above 1,048,576 + 512 bytes; checked before every other load rule |
+| `COGMASTER_STATUS_ERR_SAVE_SIZE` | 9 | raw save exceeds the classified persistent length |
 | `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD` | 8 | the image is on a cartridge board the library does not emulate, or is an 8 KiB Game Gear image (the X-Terminator cheat device) |
 
 | Function | Can return |
@@ -382,7 +459,8 @@ Every public name, for reference: the opaque instance `cogmaster`; the types `co
 `cogmaster_run_result` (`size`, `stop`, `overshoot_ticks`) and `cogmaster_fault` (`size`, `present`, `frame`,
 `line`, `dot`, `pc`, `addr`, `opcode`, `width`, `device`, `kind`) and `cogmaster_cart_info` (`size`,
 `image_size`, `body_offset`, `header_at`, `checksum`, `checksum_ok`, `product_code`, `version`, `region_code`,
-`rom_size_code`, `machine_guess`, `region_guess`, `board`); the functions `cogmaster_get_versions`,
+`rom_size_code`, `machine_guess`, `region_guess`, `board`, `identified`, `public_identity`, `persistence`,
+`persistent_size`, `persistence_geometry`, `video_mode`, `sha1`, `title`); the functions `cogmaster_get_versions`,
 `cogmaster_create`, `cogmaster_destroy`, `cogmaster_load`, `cogmaster_run_frame`, `cogmaster_get_frame`,
 `cogmaster_get_info`, `cogmaster_reset`, `cogmaster_get_fault`, `cogmaster_probe` and `cogmaster_peek`; the constants `COGMASTER_MACHINE_AUTO`,
 `COGMASTER_MACHINE_SMS2`, `COGMASTER_MACHINE_GG`, `COGMASTER_REGION_AUTO`, `COGMASTER_REGION_EXPORT`,
@@ -391,3 +469,71 @@ Every public name, for reference: the opaque instance `cogmaster`; the types `co
 `COGMASTER_BOARD_CODEMASTERS`, `COGMASTER_SPACE_BUS`, the five `COGMASTER_FAULT_KIND_*` and six `COGMASTER_FAULT_DEVICE_*` values
 above, the nine `COGMASTER_STATUS_*` values above and the
 version macros above.
+
+Video queries describe the same completed image, with initial black 192-line
+geometry before the first completion. Height writes latch at final-line tick
+600 for the next field; writes at the tick miss that latch. The completed
+image remains stable while a following raster is in progress. SMS PAL pixel
+aspect is 2950000:2128137; NTSC is 8:7. See [video](hardware/video.md) for
+the selected latch model, extended name tables and fixed host deadlines.
+
+The libretro adapter reports the completed field geometry and notifies changes during
+`retro_run`, continuing delivery if the frontend rejects the notification. Conversion
+storage is fixed at load for 256×240. Game Gear defaults to the native 160×144 LCD
+crop with 6:5 pixels (4:3 display); the square-pixel option gives 10:9.
+The full-field option reveals normally hidden VDP content using the selected pixel
+aspect without changing native emulation or its hashes. These options take effect
+on the next frame. Machine, region/timing and Game Gear mode options require content
+reload. SMS PAL uses PAR 2950000:2128137 and exact rational silence pacing (965 or
+966 stereo frames at 48 kHz); NTSC delivers 801 or 802.
+
+## Battery media
+
+`cogmaster_get_battery` fills `cogmaster_battery` (`size`, `data`, `length`, `knowledge`,
+`generation`). Set `size` to `sizeof(cogmaster_battery)`; a smaller tag is refused without
+changing the output or instance. Larger outputs retain their unknown tail. Before load it
+returns `COGMASTER_STATUS_ERR_NO_CONTENT`.
+
+`COGMASTER_BATTERY_KNOWN` exposes exactly the classified persistent bytes from load, before
+RAM is enabled. Its writable pointer and length stay fixed through frames, SOFT and POWER
+resets until the next successful load or destruction. Fresh bytes are FF. `COGMASTER_BATTERY_NONE`
+means known nonbattery content (including the test card); `COGMASTER_BATTERY_UNKNOWN` means
+unidentified persistence; `COGMASTER_BATTERY_UNSUPPORTED` means known battery with unsupported
+geometry. These three expose NULL, zero length and zero generation, never guessed storage.
+
+The uint64 generation starts at zero and increments once modulo 2^64 per CPU-mapped persistent
+write, including a same-value write. Reads, mapper register writes, disabled cartridge writes,
+volatile writes and direct host writes do not increment it. Both resets preserve bytes and
+generation. Internal states include and validate the generation, allowing only zero without
+supported persistence. Hosts compare generations with their last successful flush snapshot;
+acknowledge only after replacement succeeds. File persistence belongs to the host.
+
+API version 7 adds `cogmaster_import_battery(m, data, length)`. With supported media,
+lengths from zero through the exact span succeed: copy the supplied prefix and pad the
+suffix with FF. NULL is accepted only for an empty import. Overlapping sources inside
+the exposed span are supported. Import preserves generation, including repeated identical
+imports. Snapshot generation after loading a save, before running. Oversized input returns
+`COGMASTER_STATUS_ERR_SAVE_SIZE` before reading any source byte; NULL with a nonzero
+accepted length returns `COGMASTER_STATUS_ERR_ARGUMENT`. Before load, or for known-none
+media, import returns `COGMASTER_STATUS_ERR_NO_CONTENT`; unknown or unsupported persistence
+returns `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD`. Every refusal preserves all instance state.
+
+The core accepts exact-size wrong-game data: raw bytes carry no identity. Hosts must bound
+file reads to expected length plus one and keep save namespaces separate. For a missing
+file, leave the fresh FF bytes or import NULL with length zero. Neither operation marks
+the cartridge dirty.
+
+The libretro adapter exposes this same writable pointer and exact length through
+`retro_get_memory_data(RETRO_MEMORY_SAVE_RAM)` and `retro_get_memory_size` immediately
+after content load, before guest RAM enable. The frontend restores raw bytes through
+that pointer and owns file naming, reading and writing; direct restoration does not
+increment CPU-write generation. Frames and frontend Restart preserve the span; SMS
+Restart uses SOFT reset and Game Gear Restart uses POWER reset. Unload, failed reload
+and deinitialization make callbacks return NULL/0. A later successful load creates
+fresh FF storage; hosts must discard prior pointers even if the address is reused.
+Other memory IDs, known nonbattery, unknown persistence and unsupported geometry
+return NULL/0. The adapter performs no filesystem I/O.
+
+`libretro_saves` remains false and the core remains experimental in its `.info`:
+memory export and in-process continuation do not prove the deferred hosted save-file
+round trip or interoperability with another emulator.

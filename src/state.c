@@ -12,8 +12,8 @@
              then the I/O ports
    One field list drives every pass (state.h), so they cannot drift apart. A
    struct is never copied as a whole: padding, pointers and the allocator
-   never reach the bytes. The field buffer is not saved: every frame of the
-   test card redraws it, and a loaded image draws nothing yet. The cartridge
+   never reach the bytes. The emitted field and render cursor are saved so a partially drawn
+   field survives restoration. The cartridge
    image is the media, not state; its CRC-32 ties a state to it. The body
    CRC-32 covers every byte after the header. */
 #include <string.h>
@@ -47,7 +47,7 @@ static const uint8_t state_magic[8] = {0x8Au, 0x43u, 0x47u, 0x4Du, 0x0Du, 0x0Au,
 _Static_assert(sizeof(struct cogmaster__counters) == 40u, "counters changed: update counters_io");
 _Static_assert(sizeof(struct cogmaster__z80) == 38u, "z80 changed: update z80_io");
 _Static_assert(sizeof(struct cogmaster__bus) == 40u, "bus changed: update bus_io");
-_Static_assert(sizeof(struct cogmaster__vdp) == 16436u, "vdp changed: update vdp_io");
+_Static_assert(sizeof(struct cogmaster__vdp) == 16510u, "vdp changed: update vdp_io");
 _Static_assert(sizeof(struct cogmaster__mapper) == 4u, "mapper changed: update mapper_io");
 _Static_assert(sizeof(struct cogmaster__io) == 8u, "io changed: update io_io");
 
@@ -78,13 +78,13 @@ static struct state_time header_io(struct cogmaster__sio *io, cogmaster *m, uint
     fixed(io, "total_size", total, 4u);
     fixed(io, "behaviour_revision", COGMASTER_BEHAVIOUR_REVISION, 4u);
     fixed(io, "api_version", COGMASTER_API_VERSION, 4u);
-    /* The resolved profile, each field 1 or 2, then a zero byte. A state
+    /* The resolved profile, then a zero byte. A state
        loads only into an instance of the same profile, so the frame length
        below is the instance's. */
     fixed(io, "machine", m->machine, 1u);
     fixed(io, "region", m->region, 1u);
     fixed(io, "tv", m->tv, 1u);
-    fixed(io, "profile_reserved", 0u, 1u);
+    fixed(io, "video_mode", m->video_mode, 1u);
     /* The CRC-32 of the image after any copier header: 0 for the test
        card. */
     fixed(io, "rom_crc32", m->cart.crc32, 4u);
@@ -191,6 +191,7 @@ static void bus_io(struct cogmaster__sio *io, cogmaster *m, struct state_time ti
     uint32_t t = cogmaster__sio_u32(io, "bus_t", &b->t, 0u, STATE_T_MAX);
     cogmaster__sio_u16(io, "bus_op_pc", &b->op_pc, 0u, UINT16_MAX);
     cogmaster__sio_u8(io, "bus_op", &b->op, 0u, UINT8_MAX);
+    cogmaster__sio_u8(io, "bus_data", &b->data, 0u, UINT8_MAX);
     cogmaster__sio_check(io, deadline == (time.frame + 1u) * frame_ticks);
     cogmaster__sio_check(io, time.ticks < deadline);
     cogmaster__sio_check(io, at <= time.ticks && time.ticks - at <= STATE_STEP_TICKS_MAX);
@@ -203,33 +204,62 @@ static void bus_io(struct cogmaster__sio *io, cogmaster *m, struct state_time ti
 }
 
 /* Status flags are bits 7-5; the 14-bit address; codes 0 to 3 (SMS-VDP
-   section 2). Only the frame flag drives /INT yet, gated by R1 bit 5. */
+   section 2). Each independent pending source is gated by its enable. */
 #define STATE_VDP_FLAGS 0xE0u
 #define STATE_VDP_ADDR_MAX 0x3FFFu
 #define STATE_VDP_CODE_MAX 3u
 
-static void vdp_io(struct cogmaster__sio *io, struct cogmaster__vdp *v, uint8_t int_line)
+static uint8_t vdp_io(struct cogmaster__sio *io, struct cogmaster__vdp *v, uint8_t int_line,
+                      int native)
 {
-    uint8_t r1 = 0u;
+    uint8_t height = cogmaster__sio_u8(io, "vdp_height", &v->height, 192u, 240u);
+    cogmaster__sio_check(io, height == 192u || height == 224u || height == 240u);
+    uint8_t r0 = 0u, r1 = 0u;
     for (uint32_t i = 0; i < COGMASTER__VDP_REGS; i++) {
         uint8_t r = cogmaster__sio_u8(io, "vdp_reg", &v->reg[i], 0u, UINT8_MAX);
         r1 = i == 1u ? r : r1;
+        r0 = i == 0u ? r : r0;
     }
     uint8_t status = cogmaster__sio_u8(io, "vdp_status", &v->status, 0u, STATE_VDP_FLAGS);
     cogmaster__sio_u8(io, "vdp_latch", &v->latch, 0u, 1u);
     cogmaster__sio_u8(io, "vdp_first", &v->first, 0u, UINT8_MAX);
     cogmaster__sio_u8(io, "vdp_code", &v->code, 0u, STATE_VDP_CODE_MAX);
     cogmaster__sio_u16(io, "vdp_addr", &v->addr, 0u, STATE_VDP_ADDR_MAX);
+    cogmaster__sio_u16(io, "vdp_vline", &v->vline, 0u, 262u);
     cogmaster__sio_u8(io, "vdp_buffer", &v->buffer, 0u, UINT8_MAX);
     cogmaster__sio_u8(io, "vdp_pause", &v->pause, 0u, 1u);
+    cogmaster__sio_u8(io, "vdp_line_counter", &v->line_counter, 0u, UINT8_MAX);
+    uint8_t pending = cogmaster__sio_u8(io, "vdp_line_pending", &v->line_pending, 0u, 1u);
+    uint8_t h = cogmaster__sio_u8(io, "vdp_hcounter", &v->hcounter, 0u, UINT8_MAX);
+    uint8_t held = cogmaster__sio_u8(io, "vdp_hheld", &v->hheld, 0u, 1u);
+    cogmaster__sio_check(io, (!held && h == 0u) || (held && (h <= 0x93u || h >= 0xE9u)));
+    cogmaster__sio_u8(io, "vdp_hscroll", &v->hscroll, 0u, UINT8_MAX);
+    cogmaster__sio_u8(io, "vdp_vscroll", &v->vscroll, 0u, UINT8_MAX);
+    cogmaster__sio_u8(io, "vdp_display", &v->display, 0u, 1u);
+    cogmaster__sio_u8(io, "sprite_line", &v->sprite_line, 0u, COGMASTER__FIELD_MAX_H);
+    uint8_t count = cogmaster__sio_u8(io, "sprite_count", &v->sprite_count, 0u, 8u);
+    uint8_t scanned = cogmaster__sio_u8(io, "sprite_scanned", &v->sprite_scanned, 0u, 64u);
+    cogmaster__sio_check(io, count <= scanned);
+    cogmaster__sio_u8(io, "sprite_zoom", &v->sprite_zoom, 0u, 1u);
+    cogmaster__sio_u8(io, "sprite_shift", &v->sprite_shift, 0u, 1u);
+    uint8_t overflow = cogmaster__sio_u8(io, "sprite_overflow", &v->sprite_overflow, 0u, 1u);
+    cogmaster__sio_check(io, !overflow || (count == 8u && scanned >= 9u));
+    for (uint32_t i = 0u; i < 8u; i++) {
+        cogmaster__sio_u8(io, "sprite_x", &v->sprite[i].x, 0u, UINT8_MAX);
+        cogmaster__sio_u8(io, "sprite_tile", &v->sprite[i].tile, 0u, UINT8_MAX);
+        cogmaster__sio_u8(io, "sprite_row", &v->sprite[i].row, 0u, 7u);
+    }
+    cogmaster__sio_u8(io, "cram_latch", &v->cram_latch, 0u, UINT8_MAX);
     for (uint32_t i = 0; i < COGMASTER__CRAM_SIZE; i++) {
-        cogmaster__sio_u8(io, "vdp_cram", &v->cram[i], 0u, UINT8_MAX);
+        cogmaster__sio_u8(io, "vdp_cram", &v->cram[i], 0u, native && (i & 1u) ? 15u : UINT8_MAX);
     }
     for (uint32_t i = 0; i < COGMASTER__VRAM_SIZE; i++) {
         cogmaster__sio_u8(io, "vdp_vram", &v->vram[i], 0u, UINT8_MAX);
     }
     cogmaster__sio_check(io, (status & ~STATE_VDP_FLAGS) == 0u);
-    cogmaster__sio_check(io, int_line == ((status >> 7) & (r1 >> 5) & 1u));
+    cogmaster__sio_check(io, int_line ==
+                                 (((status >> 7) & (r1 >> 5) & 1u) | (pending & (r0 >> 4) & 1u)));
+    return height;
 }
 
 static void ram_io(struct cogmaster__sio *io, cogmaster *m)
@@ -246,6 +276,8 @@ static void mapper_io(struct cogmaster__sio *io, cogmaster *m)
     struct cogmaster__mapper *p = &m->mapper;
     uint32_t board = m->cart.board;
     fixed(io, "mapper_board", board, 1u);
+    cogmaster__sio_u64(io, "battery_generation", &m->cart.generation, 0u,
+                       cogmaster__battery_length(m) != 0u ? UINT64_MAX : 0u);
     uint8_t ctrl_max = board == COGMASTER__BOARD_SEGA          ? UINT8_MAX
                        : board == COGMASTER__BOARD_CODEMASTERS ? 0x80u
                                                                : 0u;
@@ -282,10 +314,58 @@ static void state_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
     fault_io(io, m);
     uint8_t int_line = z80_io(io, &m->z80);
     bus_io(io, m, time);
-    vdp_io(io, &m->vdp, int_line);
+    uint8_t height = vdp_io(io, &m->vdp, int_line, cogmaster__native_gg(m));
+    cogmaster__sio_check(io, m->machine != COGMASTER_MACHINE_SMS1 || height == 192u);
     ram_io(io, m);
     mapper_io(io, m);
     io_io(io, m);
+    cogmaster_input *inputs[2] = {&m->pending_input, &m->input};
+    for (uint32_t i = 0u; i < 2u; i++) {
+        cogmaster_input *p = inputs[i];
+        cogmaster__sio_u32(io, "input_p1", &p->p1, 0u, 63u);
+        cogmaster__sio_u32(io, "input_p2", &p->p2, 0u, 63u);
+        cogmaster__sio_u32(io, "input_pause", &p->pause, 0u, 1u);
+        cogmaster__sio_u32(io, "input_reset", &p->reset, 0u, 1u);
+        cogmaster__sio_u32(io, "input_start", &p->start, 0u, 1u);
+        cogmaster__sio_u32(io, "input_port1", &p->port1, 0u, 1u);
+        cogmaster__sio_u32(io, "input_port2", &p->port2, 0u, 1u);
+    }
+    cogmaster__sio_u8(io, "input_read", &m->input_read, 0u, 1u);
+    uint32_t line =
+        cogmaster__sio_u32(io, "render_line", &m->render_line, 0u, COGMASTER__FIELD_MAX_H);
+    uint32_t dot = cogmaster__sio_u32(io, "render_x", &m->render_x, 0u, COGMASTER__FIELD_W - 1u);
+    cogmaster__sio_check(io, line <= height && (line < height || dot == 0u));
+    uint32_t completed =
+        cogmaster__sio_u32(io, "completed_height", &m->completed.height, 192u, 240u);
+    cogmaster__sio_check(io, completed == 192u || completed == 224u || completed == 240u);
+    cogmaster__sio_check(io, m->machine != COGMASTER_MACHINE_SMS1 || completed == 192u);
+    cogmaster__sio_u32(io, "completed_backdrop", &m->completed.backdrop, 0u, 0xFFFu);
+    if (io->mode == COGMASTER__SIO_APPLY) {
+        m->completed.crop = cogmaster__crop(cogmaster__native_gg(m) ? COGMASTER_MACHINE_GG
+                                                                    : COGMASTER_MACHINE_SMS2);
+        if (!cogmaster__native_gg(m))
+            m->completed.crop.h = completed;
+        else if (completed == 224u)
+            m->completed.crop.y = 40u;
+    }
+    uint32_t lcd_h = cogmaster__sio_u32(io, "lcd_height", &m->lcd.height, 0u, 224u);
+    cogmaster__sio_check(io, lcd_h == 192u || (cogmaster__native_gg(m) && lcd_h == 224u));
+    uint32_t lcd_y = cogmaster__sio_u32(io, "lcd_y", &m->lcd.y, 0u, 40u);
+    cogmaster__sio_check(io, lcd_y == (lcd_h == 224u ? 40u : 24u));
+    cogmaster__sio_u32(io, "lcd_backdrop", &m->lcd.backdrop, 0u, 0xFFFu);
+    cogmaster__sio_u8(io, "lcd_frozen", &m->lcd.frozen, 0u, cogmaster__native_gg(m) ? 1u : 0u);
+    for (uint32_t y = 0u; y < 144u; y++)
+        for (uint32_t x = 0u; x < 160u; x++)
+            cogmaster__sio_u16(io, "lcd_pixel", &m->lcd.pixels[y][x], 0u, 0xFFFu);
+    for (uint32_t buffer = 0u; buffer < 2u; buffer++) {
+        for (uint32_t y = 0u; y < COGMASTER__FIELD_MAX_H; y++) {
+            for (uint32_t x = 0u; x < COGMASTER__FIELD_W; x++) {
+                uint16_t *pixel = buffer == 0u ? &m->field[y][x] : &m->completed.pixels[y][x];
+                cogmaster__sio_u16(io, buffer == 0u ? "field_pixel" : "completed_pixel", pixel, 0u,
+                                   0xFFFu);
+            }
+        }
+    }
 }
 
 /* SIZE, WRITE and RECORD only read through the field pointers, and an

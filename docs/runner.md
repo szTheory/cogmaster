@@ -5,8 +5,37 @@ device or input device. It can print a frame hash, write PNG images and report f
 to check that a build produces the expected picture. It can also describe a cartridge file without running it
 (see [Probe](#probe)).
 
-With no file, every run shows the built-in test card (see [Test card](#test-card)). This release has no input,
-sound or video chip drawing yet, so a cartridge runs but its picture stays black.
+With no file, every run shows the built-in test card (see [Test card](#test-card)). Content uses the Mode 4
+background and sprite renderer; audio remains silent.
+
+`--machine sms` keeps the SMS2 profile; `--machine sms1` selects SMS1.
+`--video-mode auto|sms|gg` selects video independently of the machine.
+AUTO uses native video on GG and SMS video on SMS. GG video on either SMS
+profile exits 77; unknown mode names exit 2. The existing sms/gg defaults
+and no-content card hashes are unchanged.
+
+Native GG output is the 160×144 crop at (48,24), or (48,40) at 224 lines.
+Its 240-line LCD freeze holds the last valid crop until POWER reset while
+the full field continues rendering. Explicit SMS video on GG exposes the
+full SMS field with NTSC PAR 8:7 and immediate six-bit palette writes;
+physical LCD resampling is a host presentation choice. In that mode Start
+press edges act as Pause. Native GG Start is the port-00 level. Embedders
+can inspect the resolved machine and video mode through `cogmaster_get_info`.
+
+`--input FILE` reads exactly one absolute record per requested frame, in this order:
+`p1=00 p2=00 pause=0 reset=0 start=0`. Masks have two hexadecimal digits; bits 0–5 are Up, Down, Left,
+Right, button 1 and button 2. Console values are 0 or 1. LF, CRLF and an optional final newline work.
+Blank lines, comments, unknown or repeated fields, high mask bits, overlong lines, missing and surplus
+records exit 2 before running. File errors exit 1. The reader uses fixed memory and validates the whole
+body before execution. Without `--input`, all levels are released. `--port1 pad|none` and `--port2 pad|none`
+default to pad; none releases that pad's pins. Opposing directions remain independent.
+With `--input`, a successful run appends `lag_frames=N` to standard output,
+counting completed frames without a decoded guest controller read. Host polling, peeks, disabled and
+undriven port reads do not remove lag. Early stops count only the frames actually completed.
+
+Record 1 applies before frame 1. For example, released, `p1=10`, `p1=10`, released means the first press
+is visible to CPU reads in frame 2, remains held in frame 3, and releases in frame 4. All five fields are
+required on every record. Pause is edge-triggered by the core; Reset and native Game Gear Start are levels.
 
 ## Synopsis
 
@@ -22,15 +51,20 @@ cogmaster-run --help | --version
 | Option | Meaning |
 |---|---|
 | `FILE`, `--rom FILE` | The cartridge image to run: a Master System or Game Gear ROM from 1,024 bytes to 1 MiB, optionally after a 512-byte copier header. Give one file. Without one, the test card shows. |
-| `--machine NAME` | `sms` for the Master System, `gg` for the Game Gear. `auto`, the default, reads the cartridge's header: region codes 5 to 7 are the Game Gear and 3 or 4 the Master System. With no header, a file name ending in `.gg` is the Game Gear and anything else the Master System. With no file, `auto` is the Master System. |
-| `--region NAME` | The console's region and TV standard together: `ntsc-u` is an export console on NTSC, `ntsc-j` a Japanese console on NTSC and `pal` an export console on PAL. `auto`, the default, is `ntsc-u`. |
+| `--machine NAME` | `sms` selects SMS2, `sms1` selects SMS1, `gg` selects Game Gear. `auto` uses the public probe's hash metadata/header facts, then the `.gg` filename fallback. With no file, `auto` selects SMS2. |
+| `--region NAME` | Region and TV standard together: `ntsc-u` is export NTSC, `ntsc-j` Japanese NTSC and `pal` export PAL. `auto` uses probe metadata/header region when present, otherwise export NTSC. |
+| `--video-mode NAME` | `auto`, `sms` or `gg`; video selection is independent of the machine profile. |
+| `--input FILE` | Exactly one absolute input record per requested frame, applied before that frame. |
+| `--port1 NAME`, `--port2 NAME` | `pad` or `none`; disconnected pads release their pins. |
 | `--frames N` | Run N frames, N from 1 to 4294967295. Give either `--frames` or `--bench`, once. |
 | `--bench N` | Run N frames, time each one and print the report described under [Bench report](#bench-report). N is from 1 to 1073741823. The runner keeps 4 bytes per frame, so a very large N can exit 1 because memory ran out. |
 | `--hash` | After the last frame, print the SHA-256 of its picture. |
+| `--save-dir DIR` | Import and persist raw battery data in an existing directory. Requires content. |
 | `--png N:FILE` | After frame N, write its picture to FILE as a PNG. N is from 1 to the frame count. Repeat the option to write more frames or files. If the run stops before frame N, FILE is not written and a line on standard error names it. |
 | `--trace first-fault` | After each frame, read the core's first-fault record; stop at the first fault and print it, described under [First fault](#first-fault). |
 | `--mailbox` | After each frame, read the RAM mailbox a diagnostic ROM fills; stop at the first frame whose status reads done after reading running, and print the mailbox, described under [Mailbox](#mailbox). |
 | `--probe` | Print the file's header fields and digests, described under [Probe](#probe), and run nothing. Give it only with a file. |
+| `--expect FILE` | Judge accepted bounded frame, RAM, mailbox and boot observations. |
 | `--help` | Print the usage text and the exit statuses. Give it alone. |
 | `--version` | Print `cogmaster-run` and the version, for example `cogmaster-run 1.2.3`. Give it alone. |
 
@@ -95,6 +129,12 @@ add keys at the end. Integers are decimal and digests lowercase hexadecimal.
 | `mapper_guess` | `none` (no mapper, 48 KiB or less), `sega`, `codemasters`, or `unsupported` for an image the core will not load |
 | `sha1`, `sha256`, `crc32`, `md5` | digests of the whole file |
 | `sha1_headerless`, `sha256_headerless`, `crc32_headerless`, `md5_headerless` | the same digests of the file after its copier header, or `none` when it has none |
+| `identified`, `public_identity` | whole-body metadata match, and whether that match is public CC0 data (1) rather than an owned fixture (0) |
+| `persistence` | 0 unknown, 1 known nonbattery/volatile, 2 known battery |
+| `persistent_size` | declared persistent byte count, independently of mapper allocation |
+| `persistence_geometry` | 0 no battery geometry, 1 supported power-of-two layout, 2 unsupported persistence geometry |
+| `video_mode` | verified metadata mode: 0 unspecified, 1 SMS, 2 native GG |
+| `identity_sha1`, `title` | body identity and metadata title; empty on a miss |
 
 Each header field from `checksum` to `rom_size_code` is `none` when the image has no ROM header. `md5` is the
 RetroAchievements hash for both machines: the MD5 of the whole file, copier header included. `crc32` is the value
@@ -123,8 +163,8 @@ the guest, not a failure of the run. `--hash` and `--bench` output follows the l
 | `op` | the instruction's first byte after any prefix; for `ed_undefined`, the byte after `$ED` |
 | `addr` | the full 16-bit bus address; for `IN` and `OUT` with an immediate port, A × 256 + the port |
 | `width` | the access width in bits, 8 |
-| `dev` | `none`, `cpu`, `cart`, `ram`, `mapper` or `ctrl` (the memory and I/O control ports `$3E` and `$3F`) |
-| `kind` | `unmapped_read`, `unmapped_write`, `rom_write`, `mapper_range` or `ed_undefined` |
+| `dev` | `none`, `cpu`, `cart`, `ram`, `mapper`, `ctrl` (the memory and I/O control ports `$3E` and `$3F`) or `vdp` |
+| `kind` | `unmapped_read`, `unmapped_write`, `rom_write`, `mapper_range`, `ed_undefined` or `unsupported_video_mode` |
 
 [Embedding](embedding.md) says when each kind is recorded and which guest behaviour is never a fault. Later
 releases add kinds and devices; scripts should accept names they do not know.
@@ -210,6 +250,72 @@ it, as after a `--trace` or `--mailbox` stop. `--hash` prints the last frame tha
 frames that ran. Output is flushed and the exit status is 0. A signal that was already ignored when the runner
 started, as under `nohup`, stays ignored.
 
+## Battery files
+
+Native POSIX and WASI create temporary files exclusively with `open`, then replace
+within the same directory with `rename`; native POSIX also synchronizes the file.
+Windows uses wide paths and `MoveFileExW`. WASI filesystem rights and durable
+storage remain properties of the host's preopened directory.
+
+`--save-dir DIR` reads `<ROM stem>.srm` before emulation and saves changed battery data on exit.
+Only the last extension is removed: `round.trip.sms` uses `round.trip.srm`. Missing files start fresh
+with FF bytes; empty and short files pad with FF. An oversized file exits 4 before running and stays
+unchanged. Other file errors exit 1. Unknown persistence and unsupported geometry refuse with distinct
+messages and exit 77 before running. Classified nonbattery cartridges need no file. Without this option,
+the runner does no battery file I/O.
+
+Only a changed generation writes a file. The runner exclusively creates a unique temporary beside the
+target, checks the complete write, flush, native synchronization where supported and close, then replaces
+the target with POSIX rename or Windows MoveFileExW. It acknowledges the generation only on success and
+cleans only its own failed temporary. The previous target is never predeleted or truncated. SIGINT and
+SIGTERM finish the bounded frame, then flush in ordinary control flow; a failed flush exits 1.
+
+Replacement provides old-or-complete-new visibility on native local filesystems with atomic rename;
+it is not a universal power-loss guarantee. The containing directory is not synchronized; filesystem,
+device and network behavior can limit crash durability. WASI lacks the native sync request. Abrupt
+termination can leave this process's temporary; the next run does not delete arbitrary temporaries.
+Simultaneous writers to one target are unsupported. Same-stem ROMs share a save name: use separate
+directories to avoid collisions. Raw files have no game identity check, so exact-size wrong-game data
+cannot be detected. Windows uses Unicode paths; POSIX keeps path bytes unchanged.
+
+Recurring save tests force create, short-write, flush, sync, close and replacement failures for both
+first creation and overwrite. They check the old bytes, dirty retry, exclusive same-directory temporary
+cleanup and preservation of unrelated temporaries. Signal and abrupt-interruption runners are test-only
+builds; the installed runner has no fault injection. Periodic saves and SIGUSR1 remain deferred.
+
+## Accepted expectations
+
+`--frames N --expect FILE` reads an LF-terminated ASCII file before running. It accepts
+1–64 records, each at most 255 bytes; every requested frame is within `1..N`, and N is
+at most 1,000,000. Each record is one of:
+
+```text
+frame@14=e14d77ce564f0b1498f703134e82e6c1fc718a27c94e49b5a35b95a981857ae7
+ram@14:$C200=02
+mailbox@20
+boots@20
+```
+
+The frame value is an accepted full lowercase SHA-256 of the completed native crop,
+serialized RGB444 low byte first. RAM compares a byte at `$C000..$FFFF` without side
+effects. Mailbox checks magic, protocol version, done status, bounded nonempty distinct
+records with valid/not-timed-out flags, and CRC; it does not validate record values.
+Use independent RAM/frame expectations or the diagnostic judge for numeric claims.
+
+`boots@F` is strict smoke: a display-enabled latch was observed after a run call, at
+least two distinct native crop hashes occurred by F, and no first fault was recorded.
+Distinct counting saturates at two. An interrupt-driven HALT loop is healthy and is
+never rejected for HALT. A static display may fail this heuristic. Neither pass nor
+fail establishes gameplay, completion or sound; sound has no predicate yet.
+
+Each observation prints its frame, normalized kind/address and observed hash alongside
+display/distinct/fault facts. Expected values stay in the accepted file. The execution
+line reports resolved machine/region/TV/video/board, both devices, cap, behaviour revision
+and SHA-256 of input bytes (the empty digest without a script). The first fault remains
+a diagnostic and does not stop the capped run. `--trace`, `--mailbox`, `--bench` and
+`--probe` conflict with `--expect`. A signal before an expected frame is infrastructure
+failure; mismatches exit 3, unsupported capabilities 77, invalid syntax 2 and I/O errors 1.
+
 ## Exit status
 
 `cogmaster-run --help` prints this table:
@@ -217,7 +323,9 @@ started, as under `nohup`, stays ignored.
 ```text
   0  ok       every frame ran or the probe printed, or a signal stopped the run after a whole frame
   1  failure  a file could not be read or written, memory ran out or the core failed
-  2  usage    the command line is invalid, so nothing ran
+  2  usage    the command line or input script is invalid, so nothing ran
+  3  mismatch  an accepted expectation did not match the observed predicate
+  4  save     the battery file is oversized, so nothing ran
   77  refused  the cartridge, its size or the machine and region is not supported, so nothing ran
 ```
 

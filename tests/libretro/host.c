@@ -30,6 +30,7 @@
 #include "libretro.h"
 #include "palette.h"
 #include "sha256.h"
+#include "../fixtures/play.h"
 
 #define MAX_W 256u
 #define MAX_H 240u
@@ -178,9 +179,75 @@ static unsigned sample_nonzero;
 static unsigned batch_calls;
 static size_t batch_frames;
 static unsigned batch_nonzero;
+static unsigned content_frame, poll_calls;
+static int content_mode;
+static int content_gg;
+static unsigned descriptors_calls, controllers_calls;
+static unsigned options_calls;
+static const char *option_machine, *option_mode, *option_region, *option_aspect, *option_view;
+static bool option_update, running;
+static unsigned geometry_calls;
+static struct retro_game_geometry notified;
 
 static bool RETRO_CALLCONV env(unsigned cmd, void *data)
 {
+    if (cmd == RETRO_ENVIRONMENT_GET_VARIABLE) {
+        struct retro_variable *v = data;
+        if (strcmp(v->key, "cogmaster_machine") == 0)
+            v->value = option_machine;
+        if (strcmp(v->key, "cogmaster_gg_mode") == 0)
+            v->value = option_mode;
+        if (strcmp(v->key, "cogmaster_region") == 0)
+            v->value = option_region;
+        if (strcmp(v->key, "cogmaster_gg_aspect") == 0)
+            v->value = option_aspect;
+        if (strcmp(v->key, "cogmaster_gg_view") == 0)
+            v->value = option_view;
+        return v->value != NULL;
+    }
+    if (cmd == RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE) {
+        *(bool *)data = option_update;
+        option_update = false;
+        return true;
+    }
+    if (cmd == RETRO_ENVIRONMENT_SET_GEOMETRY) {
+        CHECK(running);
+        notified = *(struct retro_game_geometry *)data;
+        geometry_calls++;
+        return false;
+    }
+    if (cmd == RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION) {
+        *(unsigned *)data = 2u;
+        return true;
+    }
+    if (cmd == RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2) {
+        const struct retro_core_options_v2 *options = data;
+        CHECK(options->definitions != NULL);
+        options_calls++;
+        return true;
+    }
+    if (cmd == RETRO_ENVIRONMENT_SET_CONTROLLER_INFO) {
+        const struct retro_controller_info *ports = data;
+        controllers_calls++;
+        CHECK_EQ_U64(ports[0].num_types, 2u);
+        CHECK_EQ_U64(ports[1].num_types, 2u);
+        CHECK_EQ_U64(ports[0].types[0].id, RETRO_DEVICE_JOYPAD);
+        CHECK_EQ_U64(ports[0].types[1].id, RETRO_DEVICE_NONE);
+        CHECK_EQ_U64(ports[2].num_types, 0u);
+        return true;
+    }
+    if (cmd == RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS) {
+        const struct retro_input_descriptor *desc = data;
+        unsigned n = 0u;
+        descriptors_calls++;
+        while (n < 32u && desc[n].description != NULL) {
+            CHECK(desc[n].port < 2u);
+            CHECK_EQ_U64(desc[n].device, RETRO_DEVICE_JOYPAD);
+            n++;
+        }
+        CHECK_EQ_U64(n, 14u);
+        return true;
+    }
     if (cmd == RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME) {
         no_game_calls++;
         no_game_value = *(const bool *)data ? 1 : 0;
@@ -226,6 +293,7 @@ static size_t RETRO_CALLCONV batch(const int16_t *data, size_t frames)
     size_t i;
     batch_calls++;
     batch_frames += frames;
+    CHECK(frames <= 966u);
     for (i = 0; i < frames * 2u; i++) {
         if (data[i] != 0) {
             batch_nonzero++;
@@ -236,14 +304,16 @@ static size_t RETRO_CALLCONV batch(const int16_t *data, size_t frames)
 
 static void RETRO_CALLCONV on_poll(void)
 {
+    poll_calls++;
 }
 
 static int16_t RETRO_CALLCONV input(unsigned port, unsigned device, unsigned index, unsigned id)
 {
-    (void)port;
-    (void)device;
-    (void)index;
-    (void)id;
+    if (content_mode && port == 0u && device == RETRO_DEVICE_JOYPAD && index == 0u &&
+        id == (unsigned)(content_gg ? RETRO_DEVICE_ID_JOYPAD_START : RETRO_DEVICE_ID_JOYPAD_B)) {
+        CHECK_EQ_U64(poll_calls, content_frame);
+        return content_frame == 5u || content_frame == 6u || content_frame == 8u ? 1 : 0;
+    }
     return 0;
 }
 
@@ -333,7 +403,9 @@ static size_t run_one(void)
 {
     size_t before = batch_frames + sample_frames;
     memset(frame, POISON, sizeof frame);
+    running = true;
     p_run();
+    running = false;
     return batch_frames + sample_frames - before;
 }
 
@@ -352,6 +424,101 @@ static unsigned parse(const char *s)
     return (unsigned)strtoul(s, NULL, 10);
 }
 
+/* The same production module, owned ROM, script and independent pixels as
+   the runner. All scripted levels belong to this frontend. */
+static int content_test(const char *path, const char *digest)
+{
+    uint8_t image[32768];
+    FILE *f = fopen(path, "rb");
+    if (f == NULL) {
+        return 1;
+    }
+    size_t n = fread(image, 1u, sizeof image, f);
+    CHECK_EQ_U64(n, sizeof image);
+    CHECK_EQ_U64(fclose(f), 0u);
+    content_gg = (image[0x7FFFu] >> 4) == 6u;
+    want_w = content_gg ? 160u : 256u;
+    want_h = content_gg ? 144u : 192u;
+    content_mode = 1;
+    p_set_environment(env);
+    p_init();
+    set_callbacks();
+    struct retro_game_info game = {0};
+    game.data = image;
+    game.size = n;
+    bool loaded = p_load_game(&game);
+    CHECK(loaded);
+    if (!loaded) {
+        p_deinit();
+        return 1;
+    }
+    CHECK_EQ_U64(descriptors_calls, 1u);
+    CHECK_EQ_U64(controllers_calls, 1u);
+    for (content_frame = 1u; content_frame <= 14u; content_frame++) {
+        unsigned before = video_calls;
+        (void)run_one();
+        CHECK_EQ_U64(video_calls, before + 1u);
+        CHECK_EQ_U64(poll_calls, content_frame);
+        if (content_frame >= 4u) {
+            uint32_t scroll = content_frame >= 8u ? 2u : (content_frame >= 5u ? 1u : 0u);
+            for (uint32_t y = 0u; y < want_h; y++) {
+                for (uint32_t x = 0u; x < want_w; x++) {
+                    uint16_t got;
+                    uint16_t expected = play_pixel(x + (content_gg ? 48u : 0u),
+                                                   y + (content_gg ? 24u : 0u), scroll);
+                    if (!to_rgb444(y * want_w + x, &got) || got != expected) {
+                        CHECK_EQ_HEX(got, expected);
+                        p_deinit();
+                        return 1;
+                    }
+                }
+            }
+        }
+    }
+    char hex[65];
+    hash_frame(hex);
+    check_string("content runner digest", hex, digest);
+    CHECK_EQ_U64(video_bad, 0u);
+    /* A disconnected device and absent state callback both submit released
+       levels, even while the frontend's scripted button would be held. */
+    for (unsigned mode = 0u; mode < 3u; mode++) {
+        CHECK(p_load_game(&game));
+        poll_calls = 0u;
+        p_set_input_poll(on_poll);
+        p_set_input_state(input);
+        p_set_controller_port_device(0u, mode == 0u ? RETRO_DEVICE_NONE : RETRO_DEVICE_JOYPAD);
+        if (mode == 1u) {
+            p_set_input_state(NULL);
+        }
+        if (mode == 2u) {
+            p_set_input_poll(NULL);
+        }
+        for (content_frame = 1u; content_frame <= 14u; content_frame++) {
+            (void)run_one();
+        }
+        for (uint32_t y = 0u; y < want_h; y++) {
+            for (uint32_t x = 0u; x < want_w; x++) {
+                uint16_t got;
+                CHECK(to_rgb444(y * want_w + x, &got));
+                uint16_t expected =
+                    play_pixel(x + (content_gg ? 48u : 0u), y + (content_gg ? 24u : 0u), 0u);
+                if (got != expected) {
+                    CHECK_EQ_HEX(got, expected);
+                    p_deinit();
+                    return 1;
+                }
+            }
+        }
+    }
+    p_unload_game();
+    p_deinit();
+    return check_failures != 0 ? 1 : 0;
+}
+
+#include "presentation.h"
+#include "controls.h"
+#include "battery.h"
+
 int main(int argc, char **argv)
 {
     static unsigned char first[MAX_W * MAX_H * 4u];
@@ -365,6 +532,48 @@ int main(int argc, char **argv)
     unsigned run, aspect_w, aspect_h, bad_counts = 0;
     size_t total = 0;
 
+    if (argc == 5 && strcmp(argv[2], "battery") == 0) {
+        if (!module_open(argv[1]))
+            return 1;
+        resolve_all();
+        int rc = missing != NULL ? 1 : battery_test(argv[3], argv[4]);
+        module_close();
+        return rc;
+    }
+
+    if (argc == 4 && strcmp(argv[2], "controls") == 0) {
+        rgb565 = strcmp(argv[3], "rgb565") == 0;
+        if (!module_open(argv[1]))
+            return 1;
+        resolve_all();
+        int rc = missing != NULL ? 1 : controls_test();
+        module_close();
+        return rc;
+    }
+
+    if (argc == 4 && strcmp(argv[2], "presentation") == 0) {
+        rgb565 = strcmp(argv[3], "rgb565") == 0;
+        if (!module_open(argv[1]))
+            return 1;
+        resolve_all();
+        int rc = missing != NULL ? 1 : presentation_test();
+        module_close();
+        return rc;
+    }
+
+    if (argc == 5 && strcmp(argv[2], "content") == 0) {
+        if (!module_open(argv[1])) {
+            return 1;
+        }
+        resolve_all();
+        if (missing != NULL) {
+            module_close();
+            return 1;
+        }
+        int rc = content_test(argv[3], argv[4]);
+        module_close();
+        return rc;
+    }
     if (argc != 8 || (strcmp(argv[2], "xrgb8888") != 0 && strcmp(argv[2], "rgb565") != 0) ||
         strlen(argv[3]) != 64u) {
         fprintf(stderr, "usage: cogmaster-test-libretro-host <module> xrgb8888|rgb565 <sha256> "
@@ -402,6 +611,7 @@ int main(int argc, char **argv)
     CHECK_EQ_U64(p_api_version(), RETRO_API_VERSION);
     p_set_environment(env);
     CHECK_EQ_U64(no_game_calls, 1);
+    CHECK_EQ_U64(options_calls, 1u);
     CHECK_EQ_U64(no_game_value, 1);
     p_init();
 
@@ -409,7 +619,7 @@ int main(int argc, char **argv)
     p_get_system_info(&sys);
     check_string("library_name", sys.library_name, "cogmaster");
     check_string("library_version", sys.library_version, version);
-    check_string("valid_extensions", sys.valid_extensions, "");
+    check_string("valid_extensions", sys.valid_extensions, "sms|gg|bin|rom");
     CHECK_EQ_U64(sys.need_fullpath, 0);
     set_callbacks();
 
@@ -441,6 +651,7 @@ int main(int argc, char **argv)
     CHECK_EQ_U64(p_serialize_size(), 0);
     CHECK_EQ_U64(p_serialize(first, sizeof first), 0);
     CHECK_EQ_U64(p_unserialize(first, sizeof first), 0);
+    CHECK_EQ_U64(p_unserialize(NULL, 0u), 0);
     CHECK_EQ_U64(p_get_memory_size(RETRO_MEMORY_SAVE_RAM), 0);
     CHECK_EQ_U64(p_get_memory_size(RETRO_MEMORY_SYSTEM_RAM), 0);
     CHECK(p_get_memory_data(RETRO_MEMORY_SAVE_RAM) == NULL);

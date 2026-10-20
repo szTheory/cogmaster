@@ -68,7 +68,7 @@ cogmaster_warnings(cogmaster-test-vdp)
 # Fault prevented: a counter read, port, status flag or decode that differs
 # from the documented hardware, or a Pause NMI a line early or late, which
 # moves every raster effect and pause handler that reads the counters.
-foreach(case IN ITEMS vcounter.ntsc vcounter.pal hcounter control_port data_port status
+foreach(case IN ITEMS background vcounter.ntsc vcounter.pal hcounter control_port data_port status
                       port_decode pause_nmi)
   # Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
   cogmaster_add_test(NAME vdp.${case} COMMAND cogmaster-test-vdp ${case}

@@ -25,8 +25,9 @@
 ;       section 2.2)
 ;   0B  the second of two status reads: the flags clear, bits 4-0 set
 ;       (SMS-VDP section 2.6)
-;   0C  the H counter's step between two $7F reads 15 cycles apart (SMS-VDP
-;       section 4.3)
+;   0C  the difference between two $7F reads 15 cycles apart: SMS holds
+;       the earlier region-test TH capture; GG has no TH and reads live
+;       (SMS-VDP section 4.3, SMS-SYSTEM section 4)
 ; Game Gear only (SMS-SYSTEM section 8):
 ;   0D  $00: b7 Start (1 = up), b6 0 = Japan, b5 0 = NTSC
 ;   0E  $01 | $02 << 8
@@ -184,8 +185,8 @@ vc_count:
     inc hl
     or a
     jr nz,vc_count
-    ; Line 0 has just begun, so the two H reads below are far from the
-    ; counter's jump at pixel 296.
+    ; Line 0 has just begun: GG's live reads are far from the H jump;
+    ; SMS still holds the earlier region-test capture and reports zero.
     in a,($7F)
     ld b,a
     in a,($7F)

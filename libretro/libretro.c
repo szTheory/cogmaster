@@ -2,8 +2,8 @@
  * client of cogmaster.h. "Lnnn" is a line of the vendored libretro.h
  * (RetroArch v1.22.2, see PROVENANCE.md).
  *
- * This release loads no content: retro_load_game(NULL) loads the built-in
- * test card and any content is refused. Audio is silence of the exact
+ * retro_load_game(NULL) loads the built-in test card; game.data loads a
+ * cartridge through the public library API. Audio is silence of the exact
  * per-frame length, so a frontend that paces on audio runs at the core's
  * rate. The av_info division is the only floating point in the shipped
  * code; the core itself is integer only. */
@@ -19,8 +19,8 @@
 
 /* Fixed until the sound phase gives the core a configured output rate. */
 #define LR_SAMPLE_RATE 48000u
-/* Stereo frames per video frame are at most ceil(48000 / 59.92) = 802. */
-#define LR_AUDIO_CAPACITY 802u
+/* PAL needs ceil(48000 * 267615 / 13300856) = 966 stereo frames. */
+#define LR_AUDIO_CAPACITY 966u
 
 #ifdef COGMASTER_LIBRETRO_RGB565
 typedef uint16_t lr_pixel;
@@ -56,6 +56,52 @@ static uint16_t *native;
 static lr_pixel *pixels;
 static uint64_t audio_acc;
 static int16_t silence[LR_AUDIO_CAPACITY * 2u];
+static unsigned controllers[2] = {RETRO_DEVICE_JOYPAD, RETRO_DEVICE_JOYPAD};
+static int full_field, square_pixels;
+static struct retro_game_geometry geometry;
+
+#include "options.h"
+
+static void lr_presentation(void)
+{
+    full_field = lr_option("cogmaster_gg_view", "full");
+    square_pixels = lr_option("cogmaster_gg_aspect", "square");
+}
+
+static struct retro_game_geometry lr_geometry(uint32_t w, uint32_t h)
+{
+    struct retro_game_geometry g;
+    uint32_t pn = info.par_num, pd = info.par_den;
+    if (info.video_mode == COGMASTER_VIDEO_GG && square_pixels) {
+        pn = pd = 1u;
+    }
+    g.base_width = w;
+    g.base_height = h;
+    g.max_width = info.max_w;
+    g.max_height = info.max_h;
+    g.aspect_ratio = (float)((double)w * pn / ((double)h * pd));
+    return g;
+}
+
+static const struct retro_controller_description lr_devices[] = {
+    {"Control Pad", RETRO_DEVICE_JOYPAD}, {"None", RETRO_DEVICE_NONE}};
+static struct retro_controller_info lr_ports[] = {{lr_devices, 2u}, {lr_devices, 2u}, {NULL, 0u}};
+static struct retro_input_descriptor lr_inputs[] = {
+    {0u, RETRO_DEVICE_JOYPAD, 0u, RETRO_DEVICE_ID_JOYPAD_UP, "Up"},
+    {0u, RETRO_DEVICE_JOYPAD, 0u, RETRO_DEVICE_ID_JOYPAD_DOWN, "Down"},
+    {0u, RETRO_DEVICE_JOYPAD, 0u, RETRO_DEVICE_ID_JOYPAD_LEFT, "Left"},
+    {0u, RETRO_DEVICE_JOYPAD, 0u, RETRO_DEVICE_ID_JOYPAD_RIGHT, "Right"},
+    {0u, RETRO_DEVICE_JOYPAD, 0u, RETRO_DEVICE_ID_JOYPAD_B, "Button 1"},
+    {0u, RETRO_DEVICE_JOYPAD, 0u, RETRO_DEVICE_ID_JOYPAD_A, "Button 2"},
+    {0u, RETRO_DEVICE_JOYPAD, 0u, RETRO_DEVICE_ID_JOYPAD_START, "Pause / Start"},
+    {0u, RETRO_DEVICE_JOYPAD, 0u, RETRO_DEVICE_ID_JOYPAD_SELECT, "Console Reset"},
+    {1u, RETRO_DEVICE_JOYPAD, 0u, RETRO_DEVICE_ID_JOYPAD_UP, "Up"},
+    {1u, RETRO_DEVICE_JOYPAD, 0u, RETRO_DEVICE_ID_JOYPAD_DOWN, "Down"},
+    {1u, RETRO_DEVICE_JOYPAD, 0u, RETRO_DEVICE_ID_JOYPAD_LEFT, "Left"},
+    {1u, RETRO_DEVICE_JOYPAD, 0u, RETRO_DEVICE_ID_JOYPAD_RIGHT, "Right"},
+    {1u, RETRO_DEVICE_JOYPAD, 0u, RETRO_DEVICE_ID_JOYPAD_B, "Button 1"},
+    {1u, RETRO_DEVICE_JOYPAD, 0u, RETRO_DEVICE_ID_JOYPAD_A, "Button 2"},
+    {0u, 0u, 0u, 0u, NULL}};
 
 /* The allocator the adapter hands the core: the C library's malloc and free. */
 static void *lr_alloc(void *user, size_t size)
@@ -81,6 +127,8 @@ static void lr_unload(void)
     loaded = 0;
     memset(&info, 0, sizeof info);
     audio_acc = 0u;
+    full_field = square_pixels = 0;
+    memset(&geometry, 0, sizeof geometry);
 }
 
 /* L7511: called before retro_init. Declaring no-game support (L1051) makes
@@ -91,6 +139,7 @@ void retro_set_environment(retro_environment_t cb)
     env_cb = cb;
     if (cb != NULL) {
         (void)cb(RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME, &no_game);
+        lr_register_options(cb);
     }
 }
 
@@ -150,6 +199,8 @@ void retro_deinit(void)
     audio_batch_cb = NULL;
     input_poll_cb = NULL;
     input_state_cb = NULL;
+    controllers[0] = RETRO_DEVICE_JOYPAD;
+    controllers[1] = RETRO_DEVICE_JOYPAD;
 }
 
 unsigned retro_api_version(void)
@@ -157,7 +208,7 @@ unsigned retro_api_version(void)
     return RETRO_API_VERSION;
 }
 
-/* L7627: static strings. No content loads yet, so no extension is listed. */
+/* L7627: in-memory content enables frontend archive extraction and patches. */
 void retro_get_system_info(struct retro_system_info *sys)
 {
     if (sys == NULL) {
@@ -166,7 +217,7 @@ void retro_get_system_info(struct retro_system_info *sys)
     memset(sys, 0, sizeof *sys);
     sys->library_name = "cogmaster";
     sys->library_version = COGMASTER_LIBRETRO_VERSION;
-    sys->valid_extensions = "";
+    sys->valid_extensions = "sms|gg|bin|rom";
     sys->need_fullpath = false;
     sys->block_extract = false;
 }
@@ -184,27 +235,59 @@ void retro_get_system_av_info(struct retro_system_av_info *av)
     if (!loaded) {
         return;
     }
-    av->geometry.base_width = info.crop_w;
-    av->geometry.base_height = info.crop_h;
-    av->geometry.max_width = info.max_w;
-    av->geometry.max_height = info.max_h;
-    av->geometry.aspect_ratio = (float)((double)info.crop_w * (double)info.par_num /
-                                        ((double)info.crop_h * (double)info.par_den));
+    av->geometry = geometry;
     av->timing.fps = (double)info.fps_num / (double)info.fps_den;
     av->timing.sample_rate = (double)LR_SAMPLE_RATE;
 }
 
 void retro_set_controller_port_device(unsigned port, unsigned device)
 {
-    (void)port;
-    (void)device;
+    if (port < 2u) {
+        controllers[port] = device == RETRO_DEVICE_JOYPAD ? device : RETRO_DEVICE_NONE;
+    }
 }
 
-/* L7680: a power cycle; the test card has no other reset. */
+static uint32_t lr_button(unsigned port, unsigned id)
+{
+    return input_poll_cb != NULL && input_state_cb != NULL &&
+                   controllers[port] == RETRO_DEVICE_JOYPAD &&
+                   input_state_cb(port, RETRO_DEVICE_JOYPAD, 0u, id) != 0
+               ? 1u
+               : 0u;
+}
+
+static void lr_input(void)
+{
+    static const unsigned buttons[6] = {RETRO_DEVICE_ID_JOYPAD_UP,   RETRO_DEVICE_ID_JOYPAD_DOWN,
+                                        RETRO_DEVICE_ID_JOYPAD_LEFT, RETRO_DEVICE_ID_JOYPAD_RIGHT,
+                                        RETRO_DEVICE_ID_JOYPAD_B,    RETRO_DEVICE_ID_JOYPAD_A};
+    cogmaster_input in = {0};
+    in.size = sizeof in;
+    int connected = input_poll_cb != NULL && input_state_cb != NULL;
+    in.port1 = connected && controllers[0] != RETRO_DEVICE_NONE ? COGMASTER_DEVICE_PAD
+                                                                : COGMASTER_DEVICE_NONE;
+    in.port2 = connected && controllers[1] != RETRO_DEVICE_NONE ? COGMASTER_DEVICE_PAD
+                                                                : COGMASTER_DEVICE_NONE;
+    for (unsigned bit = 0u; bit < 6u; bit++) {
+        in.p1 |= lr_button(0u, buttons[bit]) << bit;
+        in.p2 |= lr_button(1u, buttons[bit]) << bit;
+    }
+    if (info.machine == COGMASTER_MACHINE_GG) {
+        in.start = lr_button(0u, RETRO_DEVICE_ID_JOYPAD_START);
+    } else {
+        in.pause = lr_button(0u, RETRO_DEVICE_ID_JOYPAD_START);
+        in.reset = lr_button(0u, RETRO_DEVICE_ID_JOYPAD_SELECT);
+    }
+    (void)cogmaster_set_input(inst, &in);
+}
+
+/* L7680 prefers soft reset. Frontend Restart reapplies the hand-off on SMS,
+   or power-cycles GG; Select is the separate physical Reset pin. */
 void retro_reset(void)
 {
     if (loaded) {
-        (void)cogmaster_reset(inst, COGMASTER_RESET_POWER);
+        (void)cogmaster_reset(inst, info.machine == COGMASTER_MACHINE_GG ? COGMASTER_RESET_POWER
+                                                                         : COGMASTER_RESET_SOFT);
     }
 }
 
@@ -236,9 +319,17 @@ void retro_run(void)
 {
     cogmaster_frame io;
     uint32_t x, y;
+    bool updated = false;
+
+    if (env_cb != NULL && env_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated) {
+        lr_presentation();
+    }
 
     if (input_poll_cb != NULL) {
         input_poll_cb();
+    }
+    if (loaded) {
+        lr_input();
     }
     if (!loaded || cogmaster_run_frame(inst, NULL) != COGMASTER_STATUS_OK) {
         return;
@@ -247,9 +338,23 @@ void retro_run(void)
     io.size = (uint32_t)sizeof io;
     io.pixels = native;
     io.pitch_bytes = info.max_w * 2u;
+    if (info.video_mode == COGMASTER_VIDEO_GG && full_field) {
+        io.flags = COGMASTER_FRAME_FULL_FIELD;
+    }
     if (cogmaster_get_frame(inst, &io) != COGMASTER_STATUS_OK || io.w > info.max_w ||
         io.h > info.max_h) {
         return;
+    }
+    /* Completed metadata and pixels belong to the same field. A refusal
+       affects frontend presentation, never bounded core delivery. */
+    (void)cogmaster_get_info(inst, &info);
+    struct retro_game_geometry next = lr_geometry(io.w, io.h);
+    if (next.base_width != geometry.base_width || next.base_height != geometry.base_height ||
+        next.aspect_ratio != geometry.aspect_ratio) {
+        geometry = next;
+        if (env_cb != NULL) {
+            (void)env_cb(RETRO_ENVIRONMENT_SET_GEOMETRY, &geometry);
+        }
     }
     for (y = 0; y < io.h; y++) {
         const uint16_t *src = native + (size_t)y * info.max_w;
@@ -295,8 +400,8 @@ void retro_cheat_set(unsigned index, bool enabled, const char *code)
     (void)code;
 }
 
-/* L7761. A NULL game loads the test card; content is refused in this
-   release. XRGB8888, or RGB565 in the test build, is requested here (L865);
+/* L7761. A NULL game loads the test card; content uses game.data and size.
+   XRGB8888, or RGB565 in the test build, is requested here (L865);
    the default 0RGB1555 is deprecated. The frame buffers are allocated once,
    here, at the largest field. */
 bool retro_load_game(const struct retro_game_info *game)
@@ -306,21 +411,57 @@ bool retro_load_game(const struct retro_game_info *game)
     size_t dots;
 
     lr_unload();
-    if (game != NULL || inst == NULL) {
-        return false;
-    }
-    if (env_cb == NULL || !env_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &format)) {
+    if (inst == NULL || (game != NULL && (game->data == NULL || game->size == 0u))) {
         return false;
     }
     memset(&media, 0, sizeof media);
     media.size = (uint32_t)sizeof media;
-    media.machine = LR_NO_CONTENT_MACHINE;
+    media.machine = game == NULL ? LR_NO_CONTENT_MACHINE : COGMASTER_MACHINE_AUTO;
+    if (game != NULL) {
+        cogmaster_cart_info cart = {0};
+        cart.size = sizeof cart;
+        if (cogmaster_probe(game->data, game->size, &cart) != COGMASTER_STATUS_OK) {
+            return false;
+        }
+        media.machine = cart.machine_guess;
+        media.region = cart.region_guess;
+        if (lr_option("cogmaster_machine", "sms2"))
+            media.machine = COGMASTER_MACHINE_SMS2;
+        if (lr_option("cogmaster_machine", "sms1"))
+            media.machine = COGMASTER_MACHINE_SMS1;
+        if (lr_option("cogmaster_machine", "gg"))
+            media.machine = COGMASTER_MACHINE_GG;
+        if (lr_option("cogmaster_gg_mode", "sms"))
+            media.video_mode = COGMASTER_VIDEO_SMS;
+        if (lr_option("cogmaster_gg_mode", "gg"))
+            media.video_mode = COGMASTER_VIDEO_GG;
+        if (lr_option("cogmaster_region", "pal")) {
+            media.tv = COGMASTER_TV_PAL;
+            media.region = COGMASTER_REGION_EXPORT;
+        }
+        if (lr_option("cogmaster_region", "ntsc-u")) {
+            media.tv = COGMASTER_TV_NTSC;
+            media.region = COGMASTER_REGION_EXPORT;
+        }
+        if (lr_option("cogmaster_region", "ntsc-j")) {
+            media.tv = COGMASTER_TV_NTSC;
+            media.region = COGMASTER_REGION_JAPAN;
+        }
+        media.image = game->data;
+        media.image_size = game->size;
+    }
     info.size = (uint32_t)sizeof info;
     if (cogmaster_load(inst, &media) != COGMASTER_STATUS_OK ||
         cogmaster_get_info(inst, &info) != COGMASTER_STATUS_OK || info.fps_num == 0u) {
         lr_unload();
         return false;
     }
+    if (env_cb == NULL || !env_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &format)) {
+        lr_unload();
+        return false;
+    }
+    (void)env_cb(RETRO_ENVIRONMENT_SET_CONTROLLER_INFO, lr_ports);
+    (void)env_cb(RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, lr_inputs);
     dots = (size_t)info.max_w * info.max_h;
     native = (uint16_t *)malloc(dots * sizeof *native);
     pixels = (lr_pixel *)malloc(dots * sizeof *pixels);
@@ -329,6 +470,10 @@ bool retro_load_game(const struct retro_game_info *game)
         return false;
     }
     loaded = 1;
+    lr_presentation();
+    geometry = lr_geometry(
+        info.video_mode == COGMASTER_VIDEO_GG && full_field ? info.field_w : info.crop_w,
+        info.video_mode == COGMASTER_VIDEO_GG && full_field ? info.field_h : info.crop_h);
     return true;
 }
 
@@ -350,18 +495,26 @@ void retro_unload_game(void)
 /* L7812: the test card runs at the NTSC rate. */
 unsigned retro_get_region(void)
 {
-    return RETRO_REGION_NTSC;
+    return loaded && info.tv == COGMASTER_TV_PAL ? RETRO_REGION_PAL : RETRO_REGION_NTSC;
 }
 
-/* L7826: no memory regions are exposed in this release. */
+/* L7826: only the classified persistent span is SAVE_RAM. Its lifetime
+   follows load/unload, not mapper enable; the frontend owns file I/O. */
+static cogmaster_battery lr_battery(unsigned id)
+{
+    cogmaster_battery b = {0};
+    b.size = sizeof b;
+    if (loaded && id == RETRO_MEMORY_SAVE_RAM)
+        (void)cogmaster_get_battery(inst, &b);
+    return b;
+}
+
 void *retro_get_memory_data(unsigned id)
 {
-    (void)id;
-    return NULL;
+    return lr_battery(id).data;
 }
 
 size_t retro_get_memory_size(unsigned id)
 {
-    (void)id;
-    return 0u;
+    return lr_battery(id).length;
 }

@@ -1,0 +1,60 @@
+# Fault prevented: incorrect tile flags, wrap coordinates, scroll locks or
+# raster writes changing dots already emitted in this field.
+add_executable(cogmaster-test-gg ${CMAKE_CURRENT_LIST_DIR}/test_gg.c)
+target_include_directories(cogmaster-test-gg PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-gg PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-gg PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-gg)
+foreach(case IN ITEMS palette colours intervals coordinates freeze profiles ports state)
+  cogmaster_add_test(NAME vdp.gg.${case} COMMAND cogmaster-test-gg ${case} LABELS portable vdp TIMEOUT 10)
+endforeach()
+
+add_executable(cogmaster-test-geometry ${CMAKE_CURRENT_LIST_DIR}/test_geometry.c)
+target_include_directories(cogmaster-test-geometry PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-geometry PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-geometry PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-geometry)
+foreach(case IN ITEMS heights coordinates transitions buffers state hostile)
+  cogmaster_add_test(NAME vdp.geometry.${case} COMMAND cogmaster-test-geometry ${case}
+    LABELS portable vdp TIMEOUT 10)
+endforeach()
+
+add_executable(cogmaster-test-background ${CMAKE_CURRENT_LIST_DIR}/test_background.c)
+target_include_directories(cogmaster-test-background PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-background PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-background PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-background)
+foreach(case IN ITEMS tiles scroll locks intervals latches empty priority state_interval
+                      sms1_masks sms1_state unsupported)
+  cogmaster_add_test(NAME vdp.background.${case} COMMAND cogmaster-test-background ${case}
+    LABELS portable vdp TIMEOUT 10)
+endforeach()
+
+# Fault prevented: missed IRQ edges, lost pending sources or premature reloads.
+add_executable(cogmaster-test-timing ${CMAKE_CURRENT_LIST_DIR}/test_timing.c)
+target_include_directories(cogmaster-test-timing PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-timing PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-timing PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-timing)
+foreach(case IN ITEMS irq_edges irq_reload irq_pending irq_cpu irq_state hcounter th_capture
+                      mode_edges deadlines counter_state th_edges
+                      v_ntsc_192 v_ntsc_224 v_ntsc_240 v_pal_192 v_pal_224 v_pal_240)
+  cogmaster_add_test(NAME vdp.timing.${case} COMMAND cogmaster-test-timing ${case}
+    LABELS portable vdp TIMEOUT 10)
+endforeach()
+
+# Fault prevented: incorrect sprite shapes, SAT ordering and zoom slots.
+add_executable(cogmaster-test-sprites ${CMAKE_CURRENT_LIST_DIR}/test_sprites.c)
+target_include_directories(cogmaster-test-sprites PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-sprites PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-sprites PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-sprites)
+foreach(case IN ITEMS shapes wrap_clip zoom sms1_zoom priority gg_slots intervals bounds_state
+                      collision overflow inactive sms1_collision)
+  cogmaster_add_test(NAME vdp.sprites.${case} COMMAND cogmaster-test-sprites ${case}
+    LABELS portable vdp TIMEOUT 10)
+endforeach()

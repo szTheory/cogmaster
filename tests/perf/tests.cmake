@@ -6,6 +6,34 @@
 # expect_fail.cmake, so it passes only on the exact exit status and verdict.
 # The date is fixed, so no case depends on the clock.
 if(CMAKE_SCRIPT_MODE_FILE STREQUAL CMAKE_CURRENT_LIST_FILE)
+  if(CASE STREQUAL "workload" OR CASE STREQUAL "playing")
+    foreach(count IN LISTS COUNTS)
+      set(body "")
+      foreach(frame RANGE 1 8)
+        set(pad 00)
+        if(frame EQUAL 5 OR frame EQUAL 6 OR frame EQUAL 8)
+          set(pad 10)
+        endif()
+        string(APPEND body "p1=${pad} p2=00 pause=0 reset=0 start=0\n")
+      endforeach()
+      math(EXPR released "${count}-8")
+      string(REPEAT "p1=00 p2=00 pause=0 reset=0 start=0\n" ${released} tail)
+      string(APPEND body "${tail}")
+      file(WRITE "${DIR}/${count}.input" "${body}")
+    endforeach()
+    if(CASE STREQUAL "playing")
+      execute_process(COMMAND ${EMULATOR} "${ORACLE}" "${IMAGE}" scripted
+        OUTPUT_VARIABLE want COMMAND_ERROR_IS_FATAL ANY)
+      string(STRIP "${want}" want)
+      execute_process(COMMAND ${EMULATOR} "${RUN}" "${IMAGE}" --machine sms --region ntsc-u
+        --video-mode sms --input "${DIR}/14.input" --bench 14 --hash
+        OUTPUT_VARIABLE got COMMAND_ERROR_IS_FATAL ANY)
+      if(NOT got MATCHES "${want}" OR NOT got MATCHES "frames 14\n" OR NOT got MATCHES "max_rss_kib [0-9]+")
+        message(FATAL_ERROR "playing bench did not reach the independent scripted frame: ${got}")
+      endif()
+    endif()
+    return()
+  endif()
   set(today 2026-01-02)
 
   # Runs the gate with ARGN; requires exit code and output matching regex.
@@ -64,3 +92,13 @@ foreach(case allowed identical missing no_base plus_1_00 plus_1_01 unstable)
       -DDIR=${perf_dir} -DCASE=${case} -P ${CMAKE_CURRENT_LIST_FILE}
     LABELS perf TIMEOUT 10)
 endforeach()
+
+if(COGMASTER_FIXTURES)
+  string(REPLACE ";" "$<SEMICOLON>" perf_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
+  cogmaster_add_test(NAME perf.playing
+    COMMAND ${CMAKE_COMMAND} -DCASE=playing -DCOUNTS=14 -DDIR=${perf_dir}
+      -DRUN=$<TARGET_FILE:cogmaster-run> -DORACLE=$<TARGET_FILE:cogmaster-test-play>
+      -DIMAGE=${PROJECT_BINARY_DIR}/fixtures/boot_to_play.sms "-DEMULATOR=${perf_emulator}"
+      -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS perf portable TIMEOUT 10)
+endif()

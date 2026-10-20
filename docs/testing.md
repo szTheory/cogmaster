@@ -1,10 +1,31 @@
 # Testing
 
+`runner.save.continuation.normal`, `.term` and `.int` verify fresh-process numeric
+continuation, missing and exact-size wrong-save controls, full save bytes and unchanged
+oversize rejection; see [conformance](conformance.md). `libretro.battery.sms2` and
+`.gg` restore the real classified battery fixture through the frontend's SAVE_RAM
+pointer, continue 7 to 8, Restart to 9, unload/reload and restore again. They check
+pre-enable and post-frame span stability, fresh FF bytes, invalidation, unknown and
+no-content NULL/0 controls. `battery.continuation` independently checks both SOFT
+and POWER resets with real media on SMS2 and GG: pointer, size, all bytes and generation
+are unchanged, direct host writes and API imports are generation-neutral, and the
+next guest write increments generation once. `battery.excluded` covers known-none,
+unknown and unsupported geometry at the public battery-query boundary; mapper tests
+keep volatile RAM separate. In-process tests load the production module and do not
+count toward the hosted RetroArch code budget. They do not establish the deferred
+hosted save-file or cross-emulator interoperability claims.
+
 Every check CI runs, a contributor can run with one command. This page covers that command, the lanes, the test
 inventories, the negative controls, the pinned hashes, the hosted RetroArch check, the performance job and how to
 reproduce a CI failure. Releases and repository settings are in [maintaining.md](maintaining.md).
 
 ## The entry point
+
+For private dumps, put a literal directory in `COGMASTER_ROM_DIR` in ignored `.env.local`, then run
+`sh scripts/library.sh` from the repository root. This invokes the local `library` configure/build/test
+workflow; an exported variable takes precedence. Direct `cmake --workflow --preset library` needs the
+variable already exported. CI runs `library.synthetic` with owned temporary images, never `library.local`.
+No library build directory is uploaded. Local per-file results stay in ignored `build/library/results/`.
 
 ```sh
 cmake --workflow --preset ci
@@ -27,6 +48,26 @@ required` fixture copies `ci.yml`). A new file is seen only once git tracks it, 
 as fresh as the last configure. After adding or committing files, rerun the whole workflow preset, which
 reconfigures, rather than `ctest` alone.
 
+Tree hygiene scans text for private paths, addresses and forbidden licences. Binary images still need a
+manifest entry and pass the image-name/content checks; their arbitrary bytes are not interpreted as text.
+`hygiene.tree.binary_manifest` and `hygiene.tree.binary_unlisted` prove both sides with synthetic binary data.
+MSVC builds retain ISO C stdio through `_CRT_SECURE_NO_WARNINGS`, with all other selected warnings still fatal.
+
+The Linux x64 build lane first checks out the pull request's exact base SHA and copies its ledger, public
+behaviour revision, ratchet and adjacent shared parser into the runner's temporary directory. After checking
+out and testing the candidate, that copied judge compares base passes to the committed ledger and compares
+the ledger's eligible own-fixture cases to freshly executed results in both directions. Improvements must be
+committed. The step prints the actual base/head SHAs and run URL; its failure fails the existing build job and
+`CI required`. `compat.trusted_judge` proves that candidate judge/helper replacements cannot change the copied
+judge's decision, and tests missing/extra results and status/value disagreements. Results exclude unevaluated
+and non-fixture metadata. `compat.ratchet` exercises deletion, aliases, adjacent cases, script digests,
+profiles, devices and dated revision exceptions. Both run in CI and hygiene.
+
+When the base has no ratchet, CI explicitly reports first introduction, validates candidate tests and fresh
+results with the candidate judge, and establishes protected-baseline comparison after merge. This case does
+not claim that an absent baseline judge ran. To reproduce a protected comparison locally, use
+`sh scripts/compat-ratchet.sh BASE.csv HEAD.csv ALLOW.txt YYYY-MM-DD BASE_REV HEAD_REV RESULTS.csv`.
+
 ## Lanes
 
 Each lane is one workflow preset, `cmake --workflow --preset <name>`, building into `build/<name>`.
@@ -41,7 +82,7 @@ Each lane is one workflow preset, `cmake --workflow --preset <name>`, building i
 | `hygiene` | The repository is clean: tree scan, formatting, the integer-only text scan, the analyzer, the pins file, and the tests of CI itself. | `hygiene` | `hygiene` |
 | `be32` | The same hashes on a big-endian, 32-bit target with unsigned `char`: 32-bit PowerPC (`cmake/toolchains/ppc-linux-gnu.cmake`) under `qemu-ppc`. | `ci` | `portable` |
 | `wasm32` | The same hashes in WebAssembly: clang-21 for `wasm32-wasi` (`cmake/toolchains/wasm32-wasi.cmake`) under the pinned wasmtime. WASI cannot load a libretro core, so this lane builds none. | `wasm32` | `portable` |
-| `fuzz` | The nightly libFuzzer runs of the loader and a two-frame run under clang-21's ASan and UBSan (see [Fuzzing](#fuzzing)). No fixtures, no libretro core. | `fuzz` | `fuzz` |
+| `fuzz` | The nightly libFuzzer runs of the loader, two-frame execution and raw save import under clang-21's ASan and UBSan (see [Fuzzing](#fuzzing)). No fixtures, no libretro core. | `fuzz` | `fuzz` |
 | `vectors-full` | The nightly run of all 1,604,000 Z80 vectors, and that the committed sample is what the converter writes from the pinned archive (see [conformance.md](conformance.md#the-nightly-full-run)). Fetch the archive first. | `vectors-full` | `vectors` |
 | `bench` | A Release runner for the bench and the instructions-per-frame job. Configure and build only, with no tests and no fixtures. | none | none |
 
@@ -61,6 +102,19 @@ emulator scales are measured on the hosted runners: the tests a lane shares with
 under wasmtime. Each scale is the largest ratio rounded up; `CMakePresets.json` cites the runs.
 
 ### Comparing hashes across lanes
+
+Playing rows cover the owned boot fixture with released input, each pad separately,
+both pads together and native GG Start. SMS1/SMS2 run NTSC export, NTSC Japan and PAL;
+native GG and GG SMS mode run the two NTSC regions. The three line fixtures cover
+192/224/240-line output on those profiles. PAL Game Gear profiles remain refused.
+Every `.sms` and `.gg` fixture also contributes its image SHA-256. Hashes serialize
+the crop's RGB444 words little-endian; host aspect ratios and colour conversion do
+not enter them. Independent fixture oracles and wrong-pixel controls remain separate.
+`core.no_alloc_after_load` uses loaded content across supported machine/TV/video
+profiles with input, VRAM/CRAM/register writes, interleaved instances, bounded sprite
+scans and state round trips. State-field refusal sweeps also exercise enabled,
+populated video. Fuzz replay checks allocation counts, raster bounds and the fixed
+deadline with at most 69 ticks of instruction overshoot.
 
 `runner.hashes_file` (`tests/cmake/hashes.cmake`, mode `write`) writes `build/<preset>/hashes.txt`: the frame 60
 hash line of the Master System card and of the Game Gear card, then a `fixture <name> sha256 <hex>` line per
@@ -86,7 +140,7 @@ labels comma-separated (`cmake/CogmasterTests.cmake`). Configure fails when the 
 file in either direction, so a test cannot be dropped, renamed or registered on one platform only without the file
 changing in the same commit. Every leg registers the same tests; a check only one platform can perform runs there
 as a CI step instead. Five lanes have their own list: `hygiene.txt`, `nofp.txt` (the `abi` tests plus the nofp
-fixture), `wasm32.txt` (the `ci` list without the `libretro` tests), `fuzz.txt` (the two timed libFuzzer runs) and
+fixture), `wasm32.txt` (the `ci` list without the `libretro` tests), `fuzz.txt` (the three timed libFuzzer runs) and
 `vectors-full.txt` (the seven full vector shards and the sample check).
 
 | Label | Tests |
@@ -119,9 +173,9 @@ A zero exit from CTest does not prove that each test ran. After each test step C
 
 ```sh
 cmake -DJUNIT=build/ci/junit.xml -DINVENTORY=tests/inventory/ci.txt -DEXCLUDE=release \
-  -P tests/cmake/check_junit.cmake
+  -DCHECK=check_junit -P tests/cmake/repository.cmake
 cmake -DJUNIT=build/ci/junit-release.xml -DINVENTORY=tests/inventory/ci.txt -DLABELS=release \
-  -P tests/cmake/check_junit.cmake
+  -DCHECK=check_junit -P tests/cmake/repository.cmake
 ```
 
 Each fails unless every selected inventory test appears exactly once, ran, and did not fail, error or skip, with at
@@ -156,7 +210,32 @@ matches the expected message; a crash or a missing file does not count as the ex
 | `policy.publish_set.self_test` | 17 of the 18 release zips; `publish.sh prepare` must name the missing one. |
 | `policy.ci_required.self_test` | A copy of `ci.yml` whose roll-up ignores `heavy`, so a skipped build would pass. |
 | `policy.action_pins.self_test` | An action referenced by a tag. |
-| `policy.e2e_budget.self_test` | A 301-line file under the RetroArch test budget. |
+| `policy.e2e_budget.self_test` | Two files totaling 301 lines under the RetroArch test budget. |
+| `docs.budgets.ratio_equal` | One physical check line against ten core lines, including unterminated final lines. |
+| `docs.budgets.unclassified` | A checker omitted from the responsibility inventory. |
+| `docs.budgets.helper` | An additional counted compatibility helper exceeds an otherwise passing ratio. |
+| `docs.budgets.helper_unclassified` | An unclassified compatibility parser helper beside a classified checker. |
+
+`docs.budgets.ratio_below` supplies the passing boundary: one check line against eleven core lines. Both `ci`
+and `hygiene` execute these cases and `docs.budgets`; the equality and omission cases require the intended
+nonzero status and diagnostic. The hosted-size negative control totals two files, including a nested helper
+whose last line has no newline, to prove the complete helper tree counts.
+
+`tests/policy/repository-checks.txt` classifies every implementation under `tests/cmake`, `scripts`, `cmake`
+and `.githooks` by responsibility. The `check` rows include the complete shared CMake/POSIX scanner, core ABI,
+JUnit, inventory, negative-control and hook helpers. Every physical line counts, including comments, blanks
+and an unterminated last line. Their sum multiplied by ten must be strictly less than the physical C/H lines
+under `src`; neither rounding nor an exemption for an older checker applies. Unclassified code fails first,
+so new compatibility parser and judge scripts cannot silently escape the numerator.
+
+Build/bootstrap operations, remote administration and release publication, fixture execution, packaged-output
+integration tests and the CI job router have individual reasons for exclusion in that file. The archive/floor
+tests still execute their positive and negative cases in `ci-release`; their responsibility is installed
+deliverable contents and loader compatibility. Registration and fixture construction are test cases rather
+than checker implementations. Core ABI policy and every shared assertion helper remain counted in full.
+`repository.cmake` dispatches the source policy checks to one POSIX scanner; established test names identify
+their faults. `policy.e2e_budget` counts every file under `tests/retroarch` and its shared pixel oracle
+`tests/fixtures/play.h`, at most 300 lines. Its shared-helper control rejects 280 driver plus 21 oracle lines.
 
 The `perf.gate.*` tests feed the instructions-per-frame comparison its edge cases: identical, exactly +1.00 %,
 +1.01 %, an allowed exception, unstable bases, no base and a missing measurement. `policy.publish_ref` and
@@ -173,7 +252,7 @@ behaviour it describes, and the new values come from the same independent comput
 
 ## The core library's symbols
 
-`tests/cmake/abi.cmake` reads the built `cogmaster` library with `nm -P` (`llvm-nm` for MSVC's archives):
+`tests/cmake/repository.cmake` with `CHECK=abi` reads the built `cogmaster` library with `nm -P` (`llvm-nm` for MSVC's archives):
 
 - `abi.undefined`: every symbol the library needs and does not define is a C memory function or a compiler helper
   listed in the script for that system;
@@ -232,32 +311,37 @@ never cancelled, and a call from `release.yml` does not queue behind the push ru
 
 ## Performance
 
-**Instructions per frame.** The `perf` job counts the instructions `cogmaster-run` executes per frame of the test
-card under Cachegrind: Ir/frame = (Ir at 360 frames − Ir at 60) / 300, in integers, with `--cache-sim=no`, an
+**Instructions per frame.** The `perf` job counts instructions while `cogmaster-run` executes the owned
+`boot_to_play.sms` fixture under Cachegrind: Ir/frame = (Ir at 360 frames − Ir at 60) / 300, in integers, with `--cache-sim=no`, an
 empty environment and runner paths of equal length, so the count repeats exactly. It measures the pull request's
 head commit once and its merge base with the base branch twice, then `tests/cmake/perf_compare.cmake` prints one
 line to the log and the job summary:
 
 ```text
-perf testcard head=2146896 base=2146896 delta_bp=0 verdict=PASS
+perf boot_to_play head=2146896 base=2146896 delta_bp=0 verdict=PASS
 ```
 
 `delta_bp` is the change in basis points. `PASS` means at most 1.00 % slower (exactly +1.00 % passes); `FAIL`
 more than that or more than the allow file permits; `UNSTABLE` the two base measurements differ; `NO_BASE` the
-merge base has no `bench` preset. An empty or non-numeric measurement is an input error, never a pass.
+merge base lacks comparable rendering/input support. An empty or non-numeric measurement is an input error, never a pass.
+Head and base load the same head-built fixture and input files with explicit SMS2, SMS video and NTSC export
+configuration. Input presses button 1 at frames 5, 6 and 8, then releases it. The comparison requires a base
+with API at least 5, behaviour revision at least 8 and the playing fixture source; an older phase's card-only
+path cannot provide a meaningful base. `perf.playing` checks this bench path against the independent pixel oracle.
 
 **Report mode.** The job runs with `COGMASTER_PERF_MODE: report` in `ci.yml`: it prints the verdict and succeeds
 whatever the verdict. It is armed by one `ci:` pull request that sets the mode to `gate`, after two control runs
 dispatched on `main` show zero spread; on `workflow_dispatch` the job measures one commit three times and prints
-`perf control testcard runs=<a>,<b>,<c> spread=<n>`. Once armed, `FAIL`, `UNSTABLE` and `NO_BASE` fail it.
+`perf control boot_to_play runs=<a>,<b>,<c> spread=<n>`. Once armed, `FAIL`, `UNSTABLE` and `NO_BASE` fail it.
 
 **Exceptions.** A pull request that must be slower adds a line to `tests/perf/allow.txt`:
 `<rom> <max % × 100> <expiry YYYY-MM-DD> <reason>`. It raises that ROM's limit through its expiry, at most 60
 days away, and is removed after the pull request merges.
 
-**Nightly bench.** `.github/workflows/nightly.yml` runs `cogmaster-run --bench 300000` every night on
+**Nightly bench.** `.github/workflows/nightly.yml` runs the same owned fixture/profile/script with
+`--bench 300000` every night on
 `ubuntu-26.04`, `ubuntu-26.04-arm` and `macos-15`, and under wasmtime. Each report is the runner's nine lines
-(see [runner.md](runner.md#bench-report)) plus the runner's name; WASI has no resident set size, so wasm32's
+(see [runner.md](runner.md#bench-report)), the input lag count and the runner's name; WASI has no resident set size, so wasm32's
 `max_rss_kib` reads 0. Reports are trend data in the job summaries and `bench-*` artifacts, never a gate and never
 committed. A failed night opens or comments on the one open issue labelled `nightly`; a good night closes it.
 Dispatching the workflow with `force_failure` fails a run on purpose, after the reports are uploaded. A pull
@@ -265,17 +349,23 @@ request that changes the bench or the workflow runs the bench jobs but writes no
 
 ## Fuzzing
 
-Two fuzz targets each define `LLVMFuzzerTestOneInput`: `tests/fuzz/fuzz_loader.c` probes the bytes and loads them
+Three fuzz targets each define `LLVMFuzzerTestOneInput`: `tests/fuzz/fuzz_loader.c` probes the bytes and loads them
 on the profile the probe guesses, and fails when the probe and the load disagree on accepting them;
-`tests/fuzz/fuzz_run.c` loads them with fast boot and runs two frames. Their starting inputs are the images
+`tests/fuzz/fuzz_run.c` loads them with fast boot and runs two frames.
+`tests/fuzz/fuzz_save.c` imports the bytes against independently constructed physical RAM
+with known, none, unknown and unsupported persistence. It checks FF padding, exact bytes,
+generation-neutral repeated import and full-state equality after refusal, including SIZE_MAX
+without a large source buffer. `battery.continuation` separately runs production image
+classification and the owned guest: two same-size accepted inputs continue from different counters.
+Their starting inputs are the images
 `tests/fuzz/seeds.c` writes into `build/<preset>/tests/seeds` at build time; no corpus is committed.
 
-**Replay, every pull request.** `fuzz.regress.loader` and `fuzz.regress.run` link each entry with a plain `main`
+**Replay, every pull request.** `fuzz.regress.loader`, `fuzz.regress.run` and `fuzz.regress.save` link each entry with a plain `main`
 (`tests/fuzz/replay.c`) and replay every seed, and every file in `tests/fuzz/regress` when it exists, on every
 lane that runs the `portable` label. Each prints `replayed N` and fails when N is 0. No libFuzzer is needed.
 
 **libFuzzer, nightly.** The `fuzz` job in `nightly.yml` runs `cmake --workflow --preset fuzz` on `ubuntu-26.04`:
-clang-21 with `-fsanitize=fuzzer-no-link,address,undefined`, the two targets linked with `-fsanitize=fuzzer`, each
+clang-21 with `-fsanitize=fuzzer-no-link,address,undefined`, the three targets linked with `-fsanitize=fuzzer`, each
 run for 60 s over a fresh copy of the seeds with `-timeout=2 -max_len=1049089` (1 MiB, a copier header and one
 byte, so the size-reject path is reachable). A crashing input is uploaded as the `fuzz-artifacts` artifact. The
 job is `continue-on-error` until ten green nightly runs. A finding is a harness or core bug to triage, never a
@@ -298,15 +388,49 @@ so it never skips itself off macOS. On `macos-15` it:
    configuration from `tests/retroarch/test.cfg.in`, and starts with `--verbose -L <core>`, no content and
    `--max-frames=60 --max-frames-ss`. The launch is bounded at 50 seconds; a failure prints RetroArch's log;
 4. writes the runner's frame with `cogmaster-run --frames 60 --png 60:runner.png`, converts both PNGs to BMP with
-   `sips`, builds `tests/retroarch/compare.c`, and requires `256x192, every pixel equal`;
-5. runs the negative control `tests/retroarch/flip.cmake`: one byte of pixel (7,3) inverted in a copy, and the
-   compare must exit 1 naming that pixel.
+   `sips`, builds `tests/retroarch/compare.c`, and requires successful equality with a tolerant diagnostic match;
+5. runs `tests/retroarch/flip.cmake`: the comparator inverts one channel of actual pixel (7,3) in memory,
+   and must exit 1 naming that pixel;
+6. downloads only the owned fixture, runner input and replay-only module from the same build. A 14-frame
+   baseline records a replay in the released frontend. `replay.c` checks the observed v2 event layout and
+   changes only port 0 RetroPad B: press, hold, release, press again. The frontend plays that stream into
+   the adapter's normal input callback in a fresh session. The final released frames remain at counter 2;
+7. compares both screenshots with runner frames and, independently, every coordinate with `play_pixel`:
+   baseline counter/scroll 0 and input counter/scroll 2. Both must match. The changed-frame comparison also
+   runs the pixel control. Only PNGs of these owned images are uploaded for inspection.
 
-Everything under `tests/retroarch` stays within 300 lines in total; `policy.e2e_budget` counts them.
+The shared driver, helpers, synthetic comparator fixture and shared pixel oracle total at most 300 physical
+lines; `policy.e2e_budget` counts them. The BMP reader accepts the uncompressed RGB24 output from `sips`.
+The test-only replay module compiles the production adapter unchanged and forwards only its three state
+entrypoints to the existing core state visitor. This enables the frontend's mandatory initial checkpoint;
+it supplies no input. It is never installed or packaged. The production module still refuses save states.
+`libretro.host.content` and `libretro.host.replay` run the same callback/pixel sequence against both modules.
+The portable screenshot tests prove matching pixels pass, equal images with wrong scroll fail, and a changed
+pixel fails. The replay layout was measured from the released 1.22.2 binary; no emulator source was read.
 
 **Rerunning it.** Rerun the job from the run page, or `gh run rerun <run-id> --failed`. On a Mac with a desktop
 session the same steps run locally from the job's commands, with `-DRETROARCH` pointing at an installed
 `RetroArch.app/Contents/MacOS/RetroArch`.
+
+## Content rendering and input
+
+`fixtures.boot_to_play` compares every native crop coordinate with a hand-expanded
+diamond and bar construction, then compares its independently calculated digest with
+the runner. `fixtures.boot_to_play.wrong_hash` proves that a changed expected digest
+fails. The image digest is checked after assembly. The mailbox test checks eight
+released samples and their CRC. `fixtures.boot_to_play.input` checks press in frame 5,
+hold in 6, release in 7 and another press in 8, with independently expected counter,
+scroll and final pixels. `runner.input` exercises the bounded grammar, both newline
+forms, optional final newline, missing/surplus records and invalid fields.
+
+`libretro.host.content` loads those same bytes into the production module with
+`need_fullpath=false`. Its frontend supplies the same script, checks one poll before
+each frame, reconstructs every callback pixel as RGB444 and checks each coordinate
+from frame 4 against the independent oracle. Its final digest equals the runner's.
+It also checks descriptor and pad/none claims, disconnected pads and missing input
+callbacks. Existing no-content SMS/GG, RGB565, single-sample and batch silence tests
+remain registered. This is in-process integration evidence; the real RetroArch job
+described above remains the separate frontend check.
 
 ## Release archives
 
@@ -328,7 +452,7 @@ library's version numbers, the core's `display_version` and `cogmaster-run --ver
 `release.single_version_source` fails, naming the file, when that version appears in any other tracked file;
 `.next` checks the next minor and patch versions, which a release pull request writes. Out of scope are
 `version.txt`, the release-please files, `CHANGELOG.md` and `.planning/`. To check one version by hand:
-`cmake -DVERSION=<x.y.z> -P tests/cmake/single_version.cmake`.
+`cmake -DCHECK=single_version -DVERSION=<x.y.z> -P tests/cmake/repository.cmake`.
 
 ## Budgets
 
@@ -371,3 +495,24 @@ apart from the host's: `docker run --rm -v "$PWD:/src" -v /src/build -w /src ubu
 anything else happens; only then does it unpack an archive into `DEST` or copy the file there. `policy.pins`
 requires four fields per row, a unique name, an `https://` URL and a 64-digit digest. Packages installed with apt
 stay unpinned: they are signed, and drift fails loudly as a build failure or a hash change.
+
+The hosted Game Gear case uses the same driver and owned fixture schedule, with
+Start held on frames 5, 6 and 8. It compares both baseline and input screenshots
+with the runner native 160×144 crop and the shared coordinate oracle at field
+origin (48,24), retaining SMS input/scroll, no-content and one-pixel controls.
+Only owned fixture screenshots are uploaded. The implementation commit is pushed
+before dispatching CI; accepted evidence is a successful workflow_dispatch run for
+that exact SHA, with all four named RetroArch screenshot/control steps successful.
+The hosted helper budget includes the shared oracle.
+
+The in-process presentation cases exercise RGB565 and XRGB8888, all active heights,
+native GG and SMS compatibility, default and square pixels, full field, rejected
+geometry notifications, content-load-only overrides and exact PAL audio totals.
+They compare each delivered pixel against a separate public-library instance.
+
+The save seeds include 0, 1, 32767, 32768 and 32769 bytes and each persistence refusal
+class. The ordinary CI and ASan replay runs include them. `battery.import` also covers
+0, 1, N-1, N, N+1 and SIZE_MAX for all supported 8/16/32 KiB spans, overlapping sources,
+NULL arguments and byte-identical whole-state refusal. `battery.spans`, `battery.generation`
+and `battery.excluded` cover physical aliases, same-value writes, reset/pointer stability
+and generation exclusions, with exact executed inventory entries on native and WASI lanes.

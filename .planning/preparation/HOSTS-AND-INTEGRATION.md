@@ -2,7 +2,7 @@
 title: "Hosts and integration: libretro, RetroAchievements, RetroArch on Mac, runner + Playstead, automation, WASM"
 summary: "What every host needs from cogmaster (libretro adapter for SMS and Game Gear, rcheevos memory and hash rules, RetroArch on Apple Silicon, cogmaster-run and Playstead's protocol, scripting, WASM) and which milestone each piece lands in."
 read_when: "Building the libretro adapter or .info, the runner CLI, saves, the RetroArch e2e job, a Playstead pin, scripting/Gym/TAS surfaces, or a web build."
-updated: 2026-10-18
+updated: 2026-10-20
 ---
 
 # Hosts and integration
@@ -21,27 +21,34 @@ Markers: (tested) run here on 2026-10-18, (derived), (untested), (unverified). "
 | Feature → host or core | 7 |
 
 ## 1. libretro contract
-**Exports.** All 25 entry points (L7511–7840) in nesturbator's ~350-line adapter shape, kept by muhtari [HI.22]: one instance `retro_init`→`retro_deinit`, statics reset in deinit, no game → test card (`SET_SUPPORT_NO_GAME` 18, L1051), XRGB8888 via `SET_PIXEL_FORMAT` 10 (L865) plus RGB565 when `USE_RGB565` is defined, stereo batch audio (GG is stereo; SMS mono duplicated), ROM copied at load (`need_fullpath` false). `retro_get_region` 0/1 from the loaded region. `retro_reset` = the console Reset button on SMS (a game-readable input, so "Restart" keeps RAM) and a power cycle on GG (no Reset button). **Rec:** as stated. **Alt:** power cycle everywhere (Gearsystem's Restart "resets the machine and preserves battery memory" [HI.06]). **Would change if:** users expect a cold boot from Restart.
+**Exports.** All 25 entry points (L7511–7840) in nesturbator's ~350-line adapter shape, kept by muhtari [HI.22]: one instance `retro_init`→`retro_deinit`, statics reset in deinit, no game → test card (`SET_SUPPORT_NO_GAME` 18, L1051), XRGB8888 via `SET_PIXEL_FORMAT` 10 (L865) plus RGB565 when `USE_RGB565` is defined, stereo batch audio (GG is stereo; SMS mono duplicated), ROM copied at load (`need_fullpath` false). `retro_get_region` 0/1 from the loaded region. `retro_reset` follows the settled context D-08 contract: SOFT on SMS, POWER on GG. The Select button is the separate physical SMS Reset level, never a CPU reset. This supersedes the original Reset-button recommendation here.
 
 | AV field | SMS NTSC | SMS PAL | GG | Derivation |
 |---|---|---|---|---|
 | base w × h | 256 × 192 (224/240 via `SET_GEOMETRY` 37 on mode change) | 256 × 192/224/240 | 160 × 144; 256 × 192 when the "full field" option is on | VDP active sizes per MAME `m_y_pixels` 192/224/240 [HI.19]; Gearsystem/GPGX ship the same bases [HI.06] |
 | max w × h | 256 × 240 | 256 × 240 | 256 × 240 | one buffer for every mode; border/overscan modes are a host filter (§7) (derived) |
 | fps | 1640625/27379 = 59.922751 | 13300856/267615 = 49.701459 | = NTSC | (945 MHz/88)/(2·342·262); (53,203,424/5)/(2·342·313); 342 dots/line, 262/313 lines [HI.19][HI.20] (tested) [HI.24] |
-| sample_rate | 48000 | 48000 | 48000 | 801.03 / 965.77 samples per frame → 1,024-sample buffer; Gearsystem and GPGX use 44100 [HI.06] (derived) |
-| aspect_ratio | 32/21 ≈ 1.5238 (192 rows), 64/49 (224), 128/105 (240) | 1.848 (192), 1.584 (224), 1.479 (240) | 10/9 ≈ 1.111 (square LCD pixels). *Phase 1 as built:* `cogmaster_get_info` reports the hardware PAR 6:5 (ARCHITECTURE §5), and the libretro adapter derives aspect 4:3 from it (160 × 6 / 5 : 144), tested in-process by `libretro.host.gg` through the test-only GG module; any square-pixel (10:9) presentation is left to phase 3, where a core option can offer it with a written reason | PAR = half the 4:3 square-pixel rate ÷ dot clock: (12.2727/2)/5.3693 = 8/7; (14.75/2)/5.3203 = 1.386; GPGX exposes these as "NTSC PAR"/"PAL PAR", Gearsystem defaults to square pixels (4:3 at 256×192, 10:9 at 160×144) [HI.06][HI.24] (derived) |
+| sample_rate | 48000 | 48000 | 48000 | 801.03 / 965.77 samples per frame → 966-stereo-frame silence buffer; Gearsystem and GPGX use 44100 [HI.06] (derived) |
+| aspect_ratio | W × 8 / (H × 7) | W × 2950000 / (H × 2128137) | Default PAR 6:5: native crop DAR 4:3. Square pixels: native DAR 10:9. Full field applies the same selected PAR to 256×H. | Context D-01–D-04 preserves the released GG default; no panel measurement justifies changing it. |
 
-**Rec:** dot-clock-correct PAR for SMS (8/7 NTSC), square pixels for GG, both computed in the adapter (its only floating point). **Strongest alternative:** Gearsystem's square pixels everywhere (4:3 for 256×192). **Would change if:** the owner prefers 4:3 fill; RetroArch can override per user anyway.
+**Settled presentation:** SMS uses its documented NTSC/PAL PAR. GG keeps 6:5 by default, with square pixels as a presentation-only option. Native crop is default; full field reveals normally hidden content without changing machine or mode. Completed geometry is notified inside `retro_run`; refusal never suppresses delivery. Both buffers are allocated at load for 256×240. PAL silence has capacity 966 stereo frames, with a carried rational remainder.
+
+Current consumers expose API 8 and internal state format 10. Runner input is exactly one absolute record
+before each frame, with `pad`/`none` device selection; input lag counts actual decoded guest reads. Restart
+uses SOFT on SMS and POWER on GG while physical Reset remains an input. SAVE_RAM is classified persistent
+media only, fixed until unload; native file replacement is POSIX rename or Windows MoveFileExW after checked
+write/flush/sync/close. Unknown or unsupported persistence never gains a guessed span. Owned SMS/GG frontend
+screenshots and fresh-process battery continuation are automated integration evidence, not hardware claims.
 
 **Core options** (`SET_CORE_OPTIONS_V2` 67, L2339; v1 fallback via `GET_CORE_OPTIONS_VERSION` 52). Keys follow the three existing cores so users recognise them [HI.06]:
 
 | Key | Values (default first) | In state hash | Lands |
 |---|---|---|---|
-| `cogmaster_machine` | auto (header region code / extension), sms, sms2, gg, gg_sms_mode (GPGX `system_hw`, Gearsystem `system`) | yes | v1.0 |
-| `cogmaster_region` | auto, ntsc-u, ntsc-j, pal (GPGX `region_detect`, smsplus `region`; rcheevos forbids `pal` on both, §2) | yes | v1.0 |
-| `cogmaster_boot` | fast (HLE hand-off), bios (file missing → fast + OSD; Gearsystem exposes `bios_sms`/`bios_gg` toggles) | yes | v1.0 |
-| `cogmaster_fm` | auto (header/known list), off, on (GPGX `ym2413`, Gearsystem `ym2413`) | yes | v1.0 phase 4 (DEC.08; SND-02) |
-| `cogmaster_gg_screen` | lcd (160×144), full (256×192 field; GPGX `gg_extra`) | no (adapter crop) | v1.0 |
+| `cogmaster_machine` | auto, sms2, sms1, gg; content reload required | yes | v1.0 |
+| `cogmaster_region` | auto, ntsc-u, ntsc-j, pal; content reload required | yes | v1.0 |
+| `cogmaster_gg_mode` | auto, gg, sms; content reload required | yes | v1.0 |
+| `cogmaster_gg_aspect` | 6:5, square | no | v1.0 |
+| `cogmaster_gg_view` | native, full (normally hidden content) | no | v1.0 |
 | `cogmaster_border` | off, top_bottom, full_284, full_320 (Gearsystem `overscan`; GPGX `overscan`) | no (host filter, §7) | v2.0 |
 | `cogmaster_left_column` | auto (crop when the VDP masks it), never, always (Gearsystem `hide_left_bar`, GPGX `left_border`) | no | v2.0 |
 | `cogmaster_3d_glasses` | both (off), left, right, anaglyph (Gearsystem `glasses` has the first three) | no (adapter) | v2.0 |
@@ -60,7 +67,7 @@ Port devices are `SET_CONTROLLER_INFO` (35, L1506) subclasses, not options: SMS 
 | D-pad | directions | |
 | B, A | button 1, button 2 | all three cores; `RETRO_DEVICE_ID_JOYPAD_MASK` 256 (L380) for one poll |
 | Start | Pause (SMS, NMI) / Start (GG) | all three cores |
-| Select (port 1) | Reset (SMS) | Gearsystem only; GPGX/smsplus leave Select unused |
+| Select (port 1) | Physical Reset (export SMS1 only) | Separate from frontend Restart; never resets the CPU |
 | Light Phaser | `RETRO_DEVICE_LIGHTGUN` 4 (L238): SCREEN_X/Y 13/14 → column/row, TRIGGER 2, IS_OFFSCREEN 15, RELOAD 16 (L411–417); GPGX names A/B/C/Start aux ids; a pointer (touchscreen) variant as both cores offer | L238–420 |
 | Paddle | `RETRO_DEVICE_ANALOG` 5 (L260): left stick X → paddle (GPGX); Gearsystem also maps RetroMouse X | L389–393 |
 | Sports Pad | left stick X/Y → trackball, B/A → 1/2 | both cores |
@@ -144,7 +151,8 @@ Exit statuses: one X-macro table, printed by `--help`, README equality test [HI.
 | `--expect FILE`, `--capabilities` | compare printed hashes; JSON, writes nothing | `--expect` v1.0 phase 3; `--capabilities` v3.0 (phase 1 CONTEXT D-08) |
 | `--hash-audio` | PCM SHA-256 per channel | v1.0 |
 | `--trace first-fault` | stop at the first unmapped or illegal access and print it (format below) | v1.0 |
-| `--save-dir DIR`, `--save-interval F`, SIGUSR1 | `DIR/<rom basename>.sav`, temp → fsync → rename | v2.0 |
+| `--save-dir DIR` | Existing `DIR/<ROM stem>.srm`; classified battery only, bounded FF-padded import and checked native replacement [HI.25] | v1.0 |
+| `--save-interval F`, SIGUSR1 | Deferred periodic/on-demand flush; no current interval guarantee | v2.0 |
 | `--input FILE` (movie) | replays per-frame input; prints the lag count | v1.0 |
 | `--record FILE`, `--state-at-frame N:FILE`, `--load-state FILE`, `--hash-state N` | movie recording and states | v3.0 |
 | `--trace full`, `--symbols FILE.sym`, `--vdp-dump N`, `--lua` | §5 | v5.0 |
@@ -158,10 +166,10 @@ No window, config file, environment, stdin or network; invalid combinations exit
 | launch.executable_relative_path | `bin/cogmaster-run`; Playstead's installer mounts a DMG and copies one `.app` (`AdapterInstaller.swift` L306–340) → a zip/CLI path is a Playstead change | Playstead |
 | argument_template | `["--save-dir","{saveDir}","--rom","{romPath}"]` (`AdapterPin.swift` substitutes only `{romPath}` and `{saveDir}`) | v2.0 |
 | config_injection | `cli_flags`: save_directory `--save-dir {path}`; bios_path `--boot bios --bios {path}` (the host appends the rendered `bios_path` template, `AdapterHost.swift`); controller_mapping n/a (headless) | v1.0 / v2.0 |
-| save_contract | glob `{saveDir}/{romBaseName}.sav`; media `sram_8k` 8,192, `sram_16k` 16,384, `sram_32k` 32,768, `eeprom_93c46` 128; `size_is_medium_identity` true; binding `rom_sha256` = headerless SHA-256 | v2.0 |
-| flush triggers; on_demand_flush_supported | within `--save-interval` frames of a change, SIGUSR1, SIGTERM/SIGINT, exit; true | v2.0 |
-| worst_case_loss_seconds | interval ÷ 59.92 (60 frames ≈ 1.0 s) on SIGKILL/crash; 0 on SIGTERM (flush inside Playstead's 2 s grace before SIGKILL, `AdapterProcessRegistry.terminateAll`) | v2.0 |
-| exit_detection | clean 0/exit (also after SIGTERM); crash 6 or 11 uncaughtSignal; killed 9 | v2.0 |
+| save_contract | glob `{saveDir}/{romBaseName}.srm`; exact classified `sram_8k` 8,192, `sram_16k` 16,384 or `sram_32k` 32,768. Raw files have no identity binding; EEPROM and Playstead medium negotiation remain deferred [HI.25] | v1.0 runner / v2.0 Playstead |
+| flush triggers; on_demand_flush_supported | Changed generations on exit and SIGTERM/SIGINT; handlers set a flag and the bounded frame finishes before normal-control-flow flush. SIGUSR1 and periodic flush remain deferred [HI.25] | v1.0 runner / v2.0 interval |
+| worst_case_loss_seconds | No periodic bound yet: crash/SIGKILL can lose changes since import or last successful flush. Graceful signals flush, with exit 1 on failure; power-loss durability is filesystem-dependent [HI.25] | v1.0 |
+| exit_detection | clean 0/exit, including SIGTERM/SIGINT after successful flush; save I/O failure 1; oversized import 4 before running [HI.25] | v1.0 |
 
 **Rec:** SIGTERM → flush → 0. **Alt:** a dedicated "stopped by signal" status. **Would change if:** Playstead must tell host-stop from completion. Playstead today plays only through a GUI adapter (mGBA `.app`, `Contents/MacOS/mGBA`); the runner is headless, so play goes through the pinned RetroArch DMG + a core zip: RetroArch's DMG fits the one-`.app` installer, but the core and `.info` must land beside it and the launch needs `-L <core> --appendconfig <cfg with savefile_directory={saveDir}> {romPath}`, a private config Playstead already knows how to write (`MGBAInputBridge.writePrivateConfig`) → a two-artifact pin and a config writer are the Playstead-side change [HI.21]. RetroArch on macOS installs no SIGTERM handler (`platform_unix.c` L2735–2737 does; `platform_darwin.m` has none, `retroarch.c` L1013 leaves `install_signal_handler` NULL) → SIGTERM is status 15 "killed" with no `.srm` flush; `autosave_interval` bounds the loss (derived from the grep, untested) [HI.05].
 
@@ -170,7 +178,7 @@ Continuation protocol (v3.0) [HI.21]: an owner-local adapter wraps the runner wi
 | Action | Runner use | Facts asserted | Lands |
 |---|---|---|---|
 | qualify | `--capabilities` (dir stays empty) | initial_run, safe_exit, fresh_process, continue, repeatable_visible_oracle, oracle_agreement | v3.0 |
-| initial-run | `--rom F --input A --save-dir persistent-save --frames N` | save_transition (empty → populated), safe_exit (0, no temp files) | v3.0 (saves v2.0) |
+| initial-run | `--rom F --input A --save-dir persistent-save --frames N` | save_transition (empty → populated), safe_exit (0, no temp files) | v3.0 (runner saves v1.0) |
 | continue | per oracle run: copy the save dir, fresh process, `--input B --frames M --hash M` | fresh_process, continue_complete, oracle_agreement (≥ 2 equal hashes) | v3.0 |
 
 ## 5. Scripting and automation (YAGNI order)
@@ -215,7 +223,7 @@ Browser precedents for comparison (metadata only, none opened: all GPL-3) [HI.23
 | Input mapping, remaps, turbo | RetroArch; adapter maps RetroPad → device | pin model per port |
 | FM/PSG mix balance (Gearsystem `psg_volume`/`fm_volume`) | adapter mixes two streams | PSG and FM as separate sample streams |
 | Sprite-limit removal | core option, default on (hardware); off breaks frame hashes and is excluded from conformance | per-line 8-sprite logic with a bypass |
-| Battery files | host writes `.srm` / runner writes `.sav` | battery span + save generation |
+| Battery files | frontend or runner writes `.srm` | battery span + save generation |
 | Achievements | RetroArch (rcheevos) | `SYSTEM_RAM` + `SAVE_RAM` exports |
 | Region detect, fast boot, FM detect, mapper detect | core | header + hash list |
 | Lag counter, line stats, trace, coverage | core (zero cost off) | inspection + hooks |
@@ -255,3 +263,4 @@ Browser precedents for comparison (metadata only, none opened: all GPL-3) [HI.23
 | HI.22 | T1 | muhtari `.planning/preparation/HOSTS-AND-INTEGRATION.md`, `.github/workflows/ci.yml` L290–360, `tests/retroarch/{run_retroarch.cmake,test.cfg.in,bmp.c,compare.c}` (241 lines), `scripts/fetch-pin.sh`; nesturbator figures as cited there | local checkout `9499ad881a52`, accessed 2026-10-18 | adapter shape, e2e method, speeds, e2e size history |
 | HI.23 | T1 | GitHub repository metadata (`gh api`) for gmarty/jsSMS, mattgodbolt/Miracle, drhelius/Gearsystem, EmulatorJS/EmulatorJS; HTTP 200 on gmarty.github.io/jsSMS and xania.org/miracle; emulatorjs.org/docs/systems | accessed 2026-10-18 | licences, activity, hosted builds, systems list (no source opened) |
 | HI.24 | T1 | Arithmetic run here (Python `fractions`): fps rationals, PAR, samples per frame | 2026-10-18 | fps, aspect, buffer sizing (tested) |
+| HI.25 | T1 | `runner/save.c`, `runner/stop.c`, `docs/runner.md`, recurring `runner.save.*` cases and the phase's scoped save decisions | 2026-10-20 | Current runner .srm import, generation, signal, replacement and failure contract; EEPROM, interval and SIGUSR1 remain deferred |

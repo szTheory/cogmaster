@@ -139,11 +139,16 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     uint32_t machine;
     switch (media->machine) {
     case COGMASTER_MACHINE_AUTO:
+        machine = probe.machine_guess != 0u ? probe.machine_guess : COGMASTER_MACHINE_SMS2;
+        break;
     case COGMASTER_MACHINE_SMS2:
         machine = COGMASTER_MACHINE_SMS2;
         break;
     case COGMASTER_MACHINE_GG:
         machine = COGMASTER_MACHINE_GG;
+        break;
+    case COGMASTER_MACHINE_SMS1:
+        machine = COGMASTER_MACHINE_SMS1;
         break;
     default:
         return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
@@ -154,8 +159,21 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     if (region > COGMASTER_REGION_JAPAN || tv > COGMASTER_TV_PAL) {
         return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
     }
-    region = region == COGMASTER_REGION_AUTO ? COGMASTER_REGION_EXPORT : region;
+    region = region == COGMASTER_REGION_AUTO
+                 ? (probe.region_guess != 0u ? probe.region_guess : COGMASTER_REGION_EXPORT)
+                 : region;
     tv = tv == COGMASTER_TV_AUTO ? COGMASTER_TV_NTSC : tv;
+    uint32_t video = 0u;
+    /* Previous media ended at 40/24 bytes, including its tail padding. */
+    if (media->size > (sizeof(void *) == 8u ? 40u : 24u))
+        video = media_field(media, offsetof(cogmaster_media, video_mode));
+    if (video > COGMASTER_VIDEO_GG ||
+        (video == COGMASTER_VIDEO_GG && machine != COGMASTER_MACHINE_GG))
+        return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
+    if (video == COGMASTER_VIDEO_AUTO)
+        video = machine == COGMASTER_MACHINE_GG
+                    ? (probe.video_mode != 0u ? probe.video_mode : COGMASTER_VIDEO_GG)
+                    : COGMASTER_VIDEO_SMS;
     /* No Game Gear and no Japanese console was made for PAL (SMS-SYSTEM C6). */
     if (tv == COGMASTER_TV_PAL &&
         (machine == COGMASTER_MACHINE_GG || region == COGMASTER_REGION_JAPAN)) {
@@ -180,9 +198,13 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     }
     cogmaster__cart_install(m, &cart);
     m->machine = machine;
+    m->video_mode = video;
     m->region = region;
     m->tv = tv;
     m->loaded = 1u;
+    memset(&m->pending_input, 0, sizeof m->pending_input);
+    memset(&m->input, 0, sizeof m->input);
+    m->input_read = 0u;
     memset(&m->counters, 0, sizeof m->counters);
     m->fault_present = 0u;
     memset(&m->fault, 0, sizeof m->fault);
@@ -209,8 +231,9 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out)
     memset(&info, 0, sizeof info);
     info.size = out->size;
     info.machine = m->machine;
+    info.video_mode = m->video_mode;
     info.field_w = COGMASTER__FIELD_W;
-    info.field_h = COGMASTER__FIELD_H;
+    info.field_h = cogmaster__native_gg(m) ? m->lcd.height : m->completed.height;
     info.max_w = COGMASTER__FIELD_W;
     info.max_h = COGMASTER__FIELD_MAX_H;
     info.region = m->region;
@@ -224,18 +247,11 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out)
         info.fps_num = 1640625u;
         info.fps_den = 27379u;
     }
-    cogmaster__rect crop = cogmaster__crop(m->machine);
+    cogmaster__rect crop = m->completed.crop;
     info.crop_w = crop.w;
     info.crop_h = crop.h;
-    /* Pixel aspect, reported and never applied: 8:7 for the NTSC SMS, 6:5
-       for the Game Gear (ARCHITECTURE section 5). */
-    if (m->machine == COGMASTER_MACHINE_GG) {
-        info.par_num = 6u;
-        info.par_den = 5u;
-    } else {
-        info.par_num = 8u;
-        info.par_den = 7u;
-    }
+    info.par_num = m->completed.par_num;
+    info.par_den = m->completed.par_den;
     cogmaster__write_out(out, &info, (uint32_t)sizeof info);
     return COGMASTER_STATUS_OK;
 }

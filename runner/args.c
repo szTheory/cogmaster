@@ -16,11 +16,17 @@ static const char synopsis[] =
     "       cogmaster-run --probe FILE\n"
     "       cogmaster-run --help | --version\n"
     "  FILE, --rom FILE     the cartridge image to run; without one, the test card\n"
-    "  --machine NAME       auto (default), sms or gg\n"
+    "  --machine NAME       auto (default), sms, sms1 or gg\n"
+    "  --video-mode NAME    auto (default), sms or gg\n"
     "  --region NAME        auto (default), ntsc-u, ntsc-j or pal\n"
     "  --frames N           run N frames (N >= 1)\n"
     "  --bench N            run N frames and report the time per frame\n"
     "  --hash               print the SHA-256 of the last frame's crop\n"
+    "  --expect FILE        judge bounded accepted frame/RAM/mailbox/boot predicates\n"
+    "  --input FILE         absolute pad and console record per frame\n"
+    "  --save-dir DIR       read and persist battery data in an existing directory\n"
+    "  --port1 pad|none     first controller device (default pad)\n"
+    "  --port2 pad|none     second controller device (default pad)\n"
     "  --png N:FILE         write frame N's crop to FILE as a PNG (1 <= N <= --frames)\n"
     "  --trace first-fault  stop at the first fault and print it, or 'fault none'\n"
     "  --mailbox            stop when the RAM mailbox reports done; print its records\n"
@@ -111,6 +117,8 @@ static int parse_machine(const char *value, uint32_t *machine)
         *machine = COGMASTER_MACHINE_AUTO;
     } else if (is(value, "sms")) {
         *machine = COGMASTER_MACHINE_SMS2;
+    } else if (is(value, "sms1")) {
+        *machine = COGMASTER_MACHINE_SMS1;
     } else if (is(value, "gg")) {
         *machine = COGMASTER_MACHINE_GG;
     } else {
@@ -161,7 +169,8 @@ static int check_combination(const cogmaster__run_options *o)
         if (o->file == NULL) {
             return usage("--probe needs a file");
         }
-        if (o->frames != 0u || o->hash || o->png_count != 0u || o->trace || o->mailbox) {
+        if (o->frames != 0u || o->hash || o->png_count != 0u || o->trace || o->mailbox ||
+            o->input || o->save_dir || o->expect) {
             return usage("--probe runs nothing, so it takes no run option");
         }
         return COGMASTER__EXIT_OK;
@@ -169,6 +178,10 @@ static int check_combination(const cogmaster__run_options *o)
     if (o->frames == 0u) {
         return usage("--frames N or --bench N is required");
     }
+    if (o->save_dir != NULL && o->file == NULL)
+        return usage("--save-dir requires content");
+    if (o->expect && (o->trace || o->mailbox || o->bench))
+        return usage("--expect requires the complete --frames run");
     for (uint32_t k = 0; k < o->png_count; k++) {
         if (o->pngs[k].frame > o->frames) {
             return usage("--png N must not exceed --frames");
@@ -205,6 +218,33 @@ int cogmaster__parse_options(int argc, char **argv, cogmaster__run_options *o)
                 return usage("--bench is at most 1073741823");
             }
             i++;
+        } else if (strcmp(arg, "--save-dir") == 0) {
+            if (value == NULL || *value == '\0' || o->save_dir != NULL)
+                return usage("--save-dir needs one directory");
+            o->save_dir = value;
+            i++;
+        } else if (strcmp(arg, "--expect") == 0) {
+            if (value == NULL || *value == '\0' || o->expect != NULL)
+                return usage("--expect needs one file");
+            o->expect = value;
+            i++;
+        } else if (strcmp(arg, "--input") == 0) {
+            if (value == NULL || *value == '\0' || o->input != NULL) {
+                return usage("--input needs one file");
+            }
+            o->input = value;
+            i++;
+        } else if (strcmp(arg, "--port1") == 0 || strcmp(arg, "--port2") == 0) {
+            if (!is(value, "pad") && !is(value, "none")) {
+                return usage("--port1 and --port2 need pad or none");
+            }
+            uint32_t device = is(value, "none") ? COGMASTER_DEVICE_NONE : COGMASTER_DEVICE_PAD;
+            if (strcmp(arg, "--port1") == 0) {
+                o->port1 = device;
+            } else {
+                o->port2 = device;
+            }
+            i++;
         } else if (strcmp(arg, "--hash") == 0) {
             o->hash = 1;
         } else if (strcmp(arg, "--png") == 0) {
@@ -215,8 +255,15 @@ int cogmaster__parse_options(int argc, char **argv, cogmaster__run_options *o)
             i++;
         } else if (strcmp(arg, "--machine") == 0) {
             if (!parse_machine(value, &o->machine)) {
-                return usage("--machine needs auto, sms or gg");
+                return usage("--machine needs auto, sms, sms1 or gg");
             }
+            i++;
+        } else if (strcmp(arg, "--video-mode") == 0) {
+            if (!is(value, "auto") && !is(value, "sms") && !is(value, "gg"))
+                return usage("--video-mode needs auto, sms or gg");
+            o->video_mode = is(value, "gg")    ? COGMASTER_VIDEO_GG
+                            : is(value, "sms") ? COGMASTER_VIDEO_SMS
+                                               : COGMASTER_VIDEO_AUTO;
             i++;
         } else if (strcmp(arg, "--region") == 0) {
             if (!parse_region(value, &o->region, &o->tv)) {

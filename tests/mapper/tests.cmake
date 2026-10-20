@@ -19,3 +19,18 @@ foreach(case IN ITEMS sega.banks sega.wrap sega.ram sega.mirror sega.shift codem
   cogmaster_add_test(NAME mapper.${case} COMMAND cogmaster-test-mapper ${case}
     LABELS mapper portable TIMEOUT 10)
 endforeach()
+
+# Fault prevented: guessed battery spans, lost same-value writes and reset data loss.
+add_executable(cogmaster-test-battery ${CMAKE_CURRENT_LIST_DIR}/test_battery.c)
+target_include_directories(cogmaster-test-battery PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-battery PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-battery PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-battery)
+foreach(case IN ITEMS spans generation excluded fixture import continuation)
+  set(args ${case})
+  if(case STREQUAL "fixture" OR case STREQUAL "continuation")
+    list(APPEND args ${PROJECT_BINARY_DIR}/fixtures/battery.sms)
+  endif()
+  cogmaster_add_test(NAME battery.${case} COMMAND cogmaster-test-battery ${args}
+    LABELS mapper portable TIMEOUT 10)
+endforeach()

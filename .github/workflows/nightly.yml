@@ -1,4 +1,4 @@
-# Nightly bench: 300,000 headless frames of the test card per platform, as
+# Nightly bench: 300,000 scripted playing frames per platform, as
 # trend data, never a gate (docs/testing.md, "Performance"), and libFuzzer
 # over the loader and a two-frame run (docs/testing.md, "Fuzzing"). The runner
 # reports its own frame-time percentiles and max_rss_kib. The vectors job
@@ -42,7 +42,7 @@ jobs:
   bench:
     name: bench (${{ matrix.runner }})
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 3  # 2 x 62 s (macos-15), slowest of 3 runs, run 39335167849, provisional
+    timeout-minutes: 5  # provisional: playing renderer replaces the cheaper card; remeasure on hosted runners
     strategy:
       fail-fast: false
       matrix:
@@ -52,13 +52,19 @@ jobs:
         with:
           persist-credentials: false
       - run: cmake --workflow --preset bench
+      - name: Owned playing workload
+        run: |
+          cmake --preset ci
+          cmake --build --preset ci --target cogmaster-fixtures
+          cmake -DCASE=workload -DDIR=build/bench -DCOUNTS=300000 -P tests/perf/tests.cmake
       # A report without the percentiles or the RSS line fails the job.
       - name: Bench 300,000 frames
         env:
           LABEL: ${{ matrix.runner }}
         run: |
           mkdir -p report
-          build/bench/cogmaster-run --bench 300000 > report/bench.txt
+          build/bench/cogmaster-run build/ci/fixtures/boot_to_play.sms --machine sms --region ntsc-u \
+            --video-mode sms --input build/bench/300000.input --bench 300000 > report/bench.txt
           for key in p50_us p99.999_us max_us max_rss_kib; do
             grep -q "^$key [0-9]" report/bench.txt || { echo "bench: no $key line"; cat report/bench.txt; exit 1; }
           done
@@ -75,7 +81,7 @@ jobs:
   # has no resident set size, so its max_rss_kib line reads 0.
   bench-wasm32:
     runs-on: ubuntu-26.04
-    timeout-minutes: 3  # 2 x 82 s, slowest of 3 runs, run 39334762549, provisional
+    timeout-minutes: 20  # provisional: playing workload with the measured wasm32 scale of 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -85,11 +91,16 @@ jobs:
           sudo apt-get update && sudo apt-get install -y --no-install-recommends wasi-libc libclang-rt-21-dev-wasm32
           scripts/fetch-pin.sh wasmtime-x86_64-linux build/pins/wasmtime
       - name: Build the runner
-        run: cmake --preset wasm32 && cmake --build --preset wasm32 --target cogmaster-run
+        run: |
+          cmake --preset wasm32
+          cmake --build --preset wasm32 --target cogmaster-run cogmaster-fixtures
+          cmake -DCASE=workload -DDIR=build/wasm32 -DCOUNTS=300000 -P tests/perf/tests.cmake
       - name: Bench 300,000 frames
         run: |
           mkdir -p report
-          build/pins/wasmtime/wasmtime run build/wasm32/cogmaster-run --bench 300000 > report/bench.txt
+          build/pins/wasmtime/wasmtime run --dir="$PWD::$PWD" build/wasm32/cogmaster-run \
+            build/wasm32/fixtures/boot_to_play.sms --machine sms --region ntsc-u --video-mode sms \
+            --input build/wasm32/300000.input --bench 300000 > report/bench.txt
           { cat report/bench.txt; echo "runner wasm32-wasmtime"; } > report/report.txt
           cat report/report.txt
           { echo "### bench wasm32-wasmtime"; echo '```'; cat report/report.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
@@ -121,7 +132,7 @@ jobs:
         run: dpkg -s libclang-rt-21-dev > /dev/null 2>&1 || { sudo apt-get update && sudo apt-get install -y libclang-rt-21-dev; }
       - run: cmake --workflow --preset fuzz
       - name: Every test ran
-        run: cmake -DJUNIT=build/fuzz/junit.xml -DINVENTORY=tests/inventory/fuzz.txt -P tests/cmake/check_junit.cmake
+        run: cmake -DJUNIT=build/fuzz/junit.xml -DINVENTORY=tests/inventory/fuzz.txt -DCHECK=check_junit -P tests/cmake/repository.cmake
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
@@ -142,7 +153,7 @@ jobs:
       - run: scripts/fetch-pin.sh sst-z80 build/pins/sst-z80
       - run: cmake --workflow --preset vectors-full
       - name: Every test ran
-        run: cmake -DJUNIT=build/vectors-full/junit.xml -DINVENTORY=tests/inventory/vectors-full.txt -P tests/cmake/check_junit.cmake
+        run: cmake -DJUNIT=build/vectors-full/junit.xml -DINVENTORY=tests/inventory/vectors-full.txt -DCHECK=check_junit -P tests/cmake/repository.cmake
 
   # Decides from the jobs' results, never from a piped exit status: the
   # default shell has no pipefail.

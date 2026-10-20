@@ -3,6 +3,14 @@
 # inventory check in cmake/CogmasterTests.cmake sees them all. The hygiene lane
 # registers only its own tests, the nofp lane only the abi tests, the fuzz
 # lane only the libFuzzer runs and the vectors-full lane only the full shards.
+if(COGMASTER_LIBRARY)
+  find_program(library_sh sh REQUIRED)
+  add_test(NAME library.local COMMAND ${CMAKE_COMMAND} -E env
+    "COGMASTER_LIBRARY_RUN=$<TARGET_FILE:cogmaster-run>" "COGMASTER_LIBRARY_EMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}"
+    ${library_sh} ${PROJECT_SOURCE_DIR}/scripts/library.sh run)
+  set_tests_properties(library.local PROPERTIES LABELS local)
+  return()
+endif()
 if(COGMASTER_HYGIENE)
   include(${CMAKE_CURRENT_LIST_DIR}/hygiene/tests.cmake)
   return()
@@ -23,6 +31,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/testcard_pins.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/abi/tests.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/core/tests.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/bus/tests.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/vdp/tests.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/io/tests.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/mapper/tests.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cart/tests.cmake)
@@ -33,6 +42,8 @@ include(${CMAKE_CURRENT_LIST_DIR}/fuzz/tests.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/runner/tests.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/perf/tests.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/policy/tests.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/compat/tests.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/library/tests.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/release/tests.cmake)
 # After the hygiene and nofp returns, so those lanes never download WLA-DX.
 if(COGMASTER_FIXTURES)

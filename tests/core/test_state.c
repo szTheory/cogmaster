@@ -11,8 +11,8 @@
 #include "state.h"
 #include "../check.h"
 
-#define BUF 65536u        /* bytes in each state buffer; up to about 57 KiB with cartridge RAM */
-#define MAX_FIELDS 60000u /* 8,192 work RAM, 16,384 VRAM and 32,768 cartridge RAM bytes */
+#define BUF 393216u        /* includes the emitted RGB444 field and cartridge RAM */
+#define MAX_FIELDS 240000u /* memory bytes plus emitted pixels and bounded scalar state */
 #define IMAGE_SIZE 1024u
 #define TICKS_PER_FRAME 179208u
 #define POISON 0xA5u
@@ -226,6 +226,13 @@ static void sweep(cogmaster *src, cogmaster *target)
         CHECK(fd->offset + fd->width <= size);
         if (strcmp(fd->name, "ram") == 0) {
             ram++;
+        }
+        /* One interior and both edge pixels exercise the shared RGB444 bound. */
+        if ((strcmp(fd->name, "field_pixel") == 0 || strcmp(fd->name, "completed_pixel") == 0 ||
+             strcmp(fd->name, "lcd_pixel") == 0) &&
+            fd->offset != fields[n - 1u].offset &&
+            (i == 0u || strcmp(fields[i - 1u].name, fd->name) == 0)) {
+            continue;
         }
         uint64_t type_max = fd->width == 8u ? UINT64_MAX : (UINT64_C(1) << (8u * fd->width)) - 1u;
         const uint64_t outside[2] = {fd->max + 1u, fd->min - 1u};
@@ -469,6 +476,11 @@ static void test_record_sweep(void)
     const uint32_t tvs[] = {COGMASTER_TV_NTSC, COGMASTER_TV_PAL};
     for (size_t k = 0; k < 2u; k++) {
         cogmaster *src = make_with(img_loop, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO, tvs[k]);
+        cogmaster__bus_out(src, 0xBFu, 6u);
+        cogmaster__bus_out(src, 0xBFu, 0x80u);
+        cogmaster__bus_out(src, 0xBFu, 0x50u);
+        cogmaster__bus_out(src, 0xBFu, 0x81u);
+        memset(src->vdp.vram, 0x55, sizeof src->vdp.vram);
         run_frames(src, 3u);
         cogmaster *target =
             make_with(img_loop, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO, tvs[k]);
@@ -1001,7 +1013,7 @@ static void test_error_changes_nothing(void)
                      COGMASTER_STATUS_ERR_ARGUMENT, m);
     media.image = NULL;
     media.image_size = 0u;
-    media.machine = 3u;
+    media.machine = 4u;
     expect_unchanged("load another machine", cogmaster_load(m, &media),
                      COGMASTER_STATUS_ERR_PROFILE_REJECTED, m);
 
@@ -1094,7 +1106,7 @@ static void test_error_changes_nothing(void)
                      COGMASTER_STATUS_ERR_NO_CONTENT, e);
     expect_untouched("reset before load", cogmaster_reset(e, COGMASTER_RESET_POWER),
                      COGMASTER_STATUS_ERR_NO_CONTENT, e);
-    media.machine = 3u;
+    media.machine = 4u;
     expect_untouched("load another machine before load", cogmaster_load(e, &media),
                      COGMASTER_STATUS_ERR_PROFILE_REJECTED, e);
     cogmaster_destroy(e);

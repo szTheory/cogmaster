@@ -5,6 +5,27 @@
    address (section 4, "Full decode exceptions"). */
 #include "internal.h"
 
+cogmaster_status cogmaster_set_input(cogmaster *m, const cogmaster_input *in)
+{
+    if (m == NULL || in == NULL) {
+        return COGMASTER_STATUS_ERR_ARGUMENT;
+    }
+    cogmaster_status st = cogmaster__check_size(in, 32u, (uint32_t)sizeof *in);
+    if (st != COGMASTER_STATUS_OK) {
+        return st;
+    }
+    if (!m->loaded) {
+        return COGMASTER_STATUS_ERR_NO_CONTENT;
+    }
+    if (in->p1 > 63u || in->p2 > 63u || in->pause > 1u || in->reset > 1u || in->start > 1u ||
+        in->port1 > COGMASTER_DEVICE_NONE || in->port2 > COGMASTER_DEVICE_NONE) {
+        return COGMASTER_STATUS_ERR_ARGUMENT;
+    }
+    m->pending_input = *in;
+    m->pending_input.size = 0u;
+    return COGMASTER_STATUS_OK;
+}
+
 /* $3E is active low (section 4). */
 #define IO_CART_OFF 0x40u
 #define IO_RAM_OFF 0x10u
@@ -36,13 +57,14 @@ static int full_decode(const cogmaster *m)
     return is_gg(m) || m->region == COGMASTER_REGION_JAPAN;
 }
 
-/* An undriven read: the SMS2 and the Game Gear pull the data bus up to $FF
+/* An undriven read: SMS1 retains the last driven byte, whereas the SMS2
+   and the Game Gear pull the data bus up to $FF
    (SMS-SYSTEM C5). Shipped software makes such reads, so they are counted,
    not faults. */
 uint8_t cogmaster__io_open_bus(cogmaster *m)
 {
     m->counters.open_bus_reads++;
-    return 0xFFu;
+    return (uint8_t)(m->bus.data | cogmaster__profile(m).bus_pullup);
 }
 
 void cogmaster__io_reset(cogmaster *m)
@@ -55,12 +77,54 @@ void cogmaster__io_reset(cogmaster *m)
     }
 }
 
+/* An output TR replaces the pad level, with the Japanese region echo low
+   (SMS-CARTRIDGES-AND-PERIPHERALS section 3.1). GG has no external TR. */
+static uint8_t tr_pin(const cogmaster *m, uint8_t v, uint8_t pin, uint8_t dir, uint8_t level)
+{
+    if (!is_gg(m) && (m->io.io_ctrl & dir) == 0u) {
+        v = (uint8_t)(v & ~pin);
+        if (m->region != COGMASTER_REGION_JAPAN && (m->io.io_ctrl & level) != 0u)
+            v |= pin;
+    }
+    return v;
+}
+
 /* $DC: port A up, down, left, right, TL, TR, then port B up and down, 0 =
-   pressed. No input reaches the core yet, so every button is up. */
+   pressed. Independent direction bits pass through, including SOCD. */
 static uint8_t port_dc(const cogmaster *m)
 {
-    (void)m;
-    return 0xFFu;
+    uint32_t p1 = m->input.port1 == COGMASTER_DEVICE_NONE ? 0u : m->input.p1;
+    uint32_t p2 = m->input.port2 == COGMASTER_DEVICE_NONE || is_gg(m) ? 0u : m->input.p2;
+    return tr_pin(m, (uint8_t)~(p1 | ((p2 & 3u) << 6)), 0x20u, 1u, 0x10u);
+}
+
+/* Effective TH pins, shared by readback and the rising-edge H latch.
+   Unconnected pad inputs pull high; Japanese output TH reads low; native
+   GG has no TH pins (SMS-SYSTEM section 4, PeripheralPorts). */
+static uint8_t th_pins(const cogmaster *m, uint8_t ctrl)
+{
+    uint8_t pins = 0xC0u;
+    uint8_t echo = m->region == COGMASTER_REGION_JAPAN ? 0u : ctrl;
+    if (!is_gg(m)) {
+        if ((ctrl & 2u) == 0u) {
+            pins = (uint8_t)((pins & ~0x40u) | ((echo & 0x20u) << 1));
+        }
+        if ((ctrl & 8u) == 0u) {
+            pins = (uint8_t)((pins & ~0x80u) | (echo & 0x80u));
+        }
+    }
+    return pins;
+}
+
+static void io_control(cogmaster *m, uint8_t ctrl)
+{
+    uint8_t old = th_pins(m, m->io.io_ctrl);
+    m->io.io_ctrl = ctrl;
+    /* Low-to-high on either effective TH captures, including release to
+       the input pull-up (SMS-SYSTEM section 4). */
+    if (((uint8_t)~old & th_pins(m, ctrl) & 0xC0u) != 0u) {
+        cogmaster__vdp_latch_h(m);
+    }
 }
 
 /* $DD: b3-0 port B left, right, TL, TR; b4 the reset button, 1 where there
@@ -71,19 +135,14 @@ static uint8_t port_dc(const cogmaster *m)
    the regions apart (section 5). The Game Gear has no TH lines. */
 static uint8_t port_dd(const cogmaster *m)
 {
-    uint8_t v = 0xFFu;
-    uint8_t c = m->io.io_ctrl;
-    if (is_gg(m)) {
-        return v;
-    }
-    uint8_t echo = m->region == COGMASTER_REGION_JAPAN ? 0x00u : c;
-    if ((c & 0x02u) == 0u) {
-        v = (uint8_t)((v & ~0x40u) | ((echo & 0x20u) << 1));
-    }
-    if ((c & 0x08u) == 0u) {
-        v = (uint8_t)((v & ~0x80u) | (echo & 0x80u));
-    }
-    return v;
+    uint32_t p2 = m->input.port2 == COGMASTER_DEVICE_NONE || is_gg(m) ? 0u : m->input.p2;
+    /* Only export SMS1 has the physical switch (SMS-SYSTEM section 7). */
+    uint32_t reset = m->machine == COGMASTER_MACHINE_SMS1 && m->region == COGMASTER_REGION_EXPORT &&
+                             m->input.port1 != COGMASTER_DEVICE_NONE
+                         ? m->input.reset
+                         : 0u;
+    uint8_t v = tr_pin(m, (uint8_t)~((p2 >> 2) | (reset << 4)), 8u, 4u, 0x40u);
+    return (uint8_t)((v & 0x3Fu) | th_pins(m, m->io.io_ctrl));
 }
 
 /* $C0-$FF: the I/O chip, unless $3E b2 has turned it off; then the bus is
@@ -94,9 +153,10 @@ static uint8_t chip_in(cogmaster *m, uint32_t p)
     if ((m->io.mem_ctrl & IO_CHIP_OFF) != 0u) {
         return cogmaster__io_open_bus(m);
     }
-    if (full_decode(m) && p != 0xDCu && p != 0xDDu) {
+    if (full_decode(m) && p != 0xDCu && p != 0xDDu && !(is_gg(m) && (p == 0xC0u || p == 0xC1u))) {
         return cogmaster__io_open_bus(m);
     }
+    m->input_read = 1u;
     return (p & 1u) != 0u ? port_dd(m) : port_dc(m);
 }
 
@@ -107,10 +167,14 @@ uint8_t cogmaster__io_in(cogmaster *m, uint16_t port)
         return chip_in(m, p);
     }
     if (is_gg(m) && p <= 6u) {
-        if (p == 0u) {
-            return (uint8_t)(GG_START_UP | (m->region == COGMASTER_REGION_JAPAN ? 0u : GG_EXPORT));
+        if (p == 0u && cogmaster__native_gg(m)) {
+            m->input_read = 1u;
+            return (uint8_t)((m->input.port1 != COGMASTER_DEVICE_NONE && m->input.start
+                                  ? 0u
+                                  : GG_START_UP) |
+                             (m->region == COGMASTER_REGION_JAPAN ? 0u : GG_EXPORT));
         }
-        return m->io.gg[p - 1u];
+        return p == 0u ? cogmaster__io_open_bus(m) : m->io.gg[p - 1u];
     }
     if (p < 0x40u) {
         /* $3E and $3F are write-only; nothing drives a read there. */
@@ -136,12 +200,12 @@ void cogmaster__io_out(cogmaster *m, uint16_t port, uint8_t v)
             return;
         }
         if (p == 0x3Fu) {
-            io->io_ctrl = v;
+            io_control(m, v);
             return;
         }
     } else if (p < 0x40u && (!full_decode(m) || p >= 0x3Eu)) {
         if ((p & 1u) != 0u) {
-            io->io_ctrl = v;
+            io_control(m, v);
         } else {
             io->mem_ctrl = v;
         }

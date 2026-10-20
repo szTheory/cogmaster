@@ -3,6 +3,11 @@
 How a release is made, rehearsed, re-run and withdrawn, how the release App and the repository's settings are set
 up and checked, and how the pinned downloads move. Tests and CI are in [testing.md](testing.md).
 
+Execution hands off to code review before phase verification. Keep review fixes to at most two rounds and
+allow one gap round only when new evidence warrants it. Test/tooling review findings become later seeds.
+Automate owned-fixture and frontend checks; no routine owner UAT is required. Performance remains report-only;
+arming it and promoting wasm32 remain the separate post-merge CI follow-up. Do not chain GSD steps.
+
 ## How a release happens
 
 Nobody tags or uploads by hand. `.github/workflows/release.yml` runs on every push to `main` and does each step:
@@ -147,6 +152,33 @@ and after changing anything on the repository's settings page. Change a setting 
 apply it.
 
 ## Pinned downloads
+
+Cartridge metadata comes only from the three per-file CC0 MAME hash lists at
+`1d7a454ed79e97d35d2a9f127ac029ead94711d6`. Fetch the `mame-sms`, `mame-gamegear` and `mame-sg1000`
+rows with `scripts/fetch-pin.sh`, then run
+`cogmaster-cartdb sms.xml gamegear.xml sg1000.xml --fixture tests/cart/fixture_facts.txt` and replace
+`src/cartdb.inc`. The fixture input is a fixed owned fact, never the assembler output. Assembly checks
+its SHA-1 after linking; no core target depends on fixture assembly. The bounded C17 converter never expands DTDs or
+external entities. It emits sorted whole-image SHA-1 facts only for a single full-size, offset-zero ROM;
+compound/incomplete records are counted on stderr and excluded. The pinned conversion has 1,669 candidates,
+21 excluded records and 1,656 unique facts. Identical hardware facts with card/cart title aliases coalesce;
+the title sorts deterministically. The image distributed for both SMS and GG SMS mode defaults to SMS.
+Conflicting board, size, persistence or video facts fail conversion. Unknown devices remain unsupported.
+This table identifies content; membership makes no gameplay claim. Generator tests use authored XML,
+not commercial bytes. Owned fixture facts remain separate from the CC0 records.
+The owned input has columns SHA-1, bytes, board, machine, region, video, persistence, declared bytes,
+geometry and title. Its public-identity flag is always zero; commercial rows have one. The merged table
+contains 1,657 unique facts. `cart.fixture_hash` renames the image and tests the production loader;
+`cart.fixture_wrong_hash` proves a changed expected identity is refused.
+
+When adding a repository check or a shared parser/judge helper, add its responsibility to
+`tests/policy/repository-checks.txt`. Keep check implementations in CMake script mode or POSIX sh and count
+shared helpers in full. Exclusions explain actual build, runtime or release operations individually; moving
+a check to another directory does not change its responsibility. The recurring `docs.budgets` check rejects
+unclassified implementations and a numerator at or above one tenth of `src` C/H physical lines. Run
+`cmake --workflow --preset ci` and `cmake --workflow --preset hygiene` after changing the inventory or helpers.
+Keep the existing fault diagnostics and negative controls when consolidating checks. Hosted RetroArch code,
+including any helper, stays under `tests/retroarch` so its independent 300-line check sees the whole driver.
 
 `pins.txt` lists every pinned download as `name version url sha256`, and `scripts/fetch-pin.sh` checks the
 SHA-256 before use. Take a long-term-support patch release when it fixes a security advisory, and move to the

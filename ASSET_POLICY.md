@@ -64,6 +64,12 @@ byte-identical files. Built files stay in the build directory; they never reach 
 - `.env.local` (git-ignored; template `.env.example`) sets `COGMASTER_ROM_DIR` (your cartridge dumps) and
   `COGMASTER_BIOS_DIR` (your BIOS dumps, recognised by digest). Local runs read these, and everything they produce
   stays on that machine. The local `library` preset is never registered in the `ci` inventory.
+- `library.local` runs only in that preset. CI's separate `library.synthetic` uses owned temporary bytes.
+  The library reads one flat directory without symlinks, attempts supported metadata misses, and stores
+  all private observations under ignored `build/library/results/`. Never upload that directory wholesale.
+  Explicit `scripts/compat-update.sh` projects only existing public CC0 ledger cases, canonical public
+  titles, unchanged accepted predicates, statuses, dates and core revision. It discards local labels,
+  evidence, unknown identities and observed golden proposals. Owned fixtures use their CI build path.
 - Firmware is identified by digest. The digests are facts and may be committed; the bytes may not. From MAME's
   BSD-3 driver source at `1d7a454ed79e` [AP.02]:
 

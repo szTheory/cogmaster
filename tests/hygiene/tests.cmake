@@ -1,5 +1,6 @@
 # Hygiene tests, registered only by the hygiene preset (COGMASTER_HYGIENE).
 set(hygiene_scripts ${CMAKE_CURRENT_LIST_DIR}/../cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/../policy/budget_cases.cmake)
 
 # Fault prevented: a personal path or address, an unlisted binary, a game
 # image or GPL text in any file git would track, ignored build output aside.
@@ -30,6 +31,33 @@ cogmaster_add_test(NAME hygiene.tree.self_test
     -P ${hygiene_scripts}/expect_fail.cmake
   LABELS hygiene TIMEOUT 60)
 
+# Fault prevented: arbitrary licensed binary bytes mistaken for private text,
+# while an unlisted binary must still fail before any text scanning.
+set(hygiene_address "binary")
+string(APPEND hygiene_address "@" "invalid.test")
+foreach(case manifest unlisted)
+  set(tree ${CMAKE_BINARY_DIR}/hygiene/binary_${case})
+  file(REMOVE_RECURSE ${tree})
+  file(MAKE_DIRECTORY ${tree}/scripts ${tree}/tests/roms)
+  file(COPY ${CMAKE_SOURCE_DIR}/scripts/hygiene.sh DESTINATION ${tree}/scripts)
+  execute_process(COMMAND ${GIT_EXECUTABLE} init -q ${tree} COMMAND_ERROR_IS_FATAL ANY)
+  execute_process(COMMAND ${COGMASTER_SH} -c "printf '\\000%s\\n' \"$1\" > \"$2\""
+    sh "${hygiene_address}" ${tree}/tests/roms/synthetic.bin COMMAND_ERROR_IS_FATAL ANY)
+  if(case STREQUAL "manifest")
+    file(WRITE ${tree}/tests/roms/manifest.txt "tests/roms/synthetic.bin MIT synthetic fixture\n")
+  endif()
+  set(command ${COGMASTER_SH} -c "cd \"$1\" && sh scripts/hygiene.sh --tree" sh ${tree})
+  if(case STREQUAL "manifest")
+    cogmaster_add_test(NAME hygiene.tree.binary_manifest COMMAND ${command} LABELS hygiene TIMEOUT 60)
+  else()
+    string(REPLACE ";" "$<SEMICOLON>" command "${command}")
+    cogmaster_add_test(NAME hygiene.tree.binary_unlisted
+      COMMAND ${CMAKE_COMMAND} "-DCMD=${command}" -DCODE=1 "-DREGEX=binary file not in manifest"
+        -P ${hygiene_scripts}/expect_fail.cmake
+      LABELS hygiene TIMEOUT 60)
+  endif()
+endforeach()
+
 # Fault prevented: code that drifts from .clang-format. Every tracked C file
 # but the vendored libretro.h, which is never edited.
 cogmaster_add_test(NAME hygiene.format
@@ -42,12 +70,12 @@ cogmaster_add_test(NAME hygiene.format
 # fixture with six float lines beside two lines that only look like them.
 cogmaster_add_test(NAME hygiene.no_float
   COMMAND ${CMAKE_COMMAND} "-DROOTS=${CMAKE_SOURCE_DIR}/src$<SEMICOLON>${CMAKE_SOURCE_DIR}/include"
-    -P ${hygiene_scripts}/no_float.cmake
+    -DCHECK=no_float -P ${hygiene_scripts}/repository.cmake
   LABELS hygiene TIMEOUT 30)
 set(hygiene_fixture ${CMAKE_BINARY_DIR}/hygiene/no_float_fixture)
 file(WRITE ${hygiene_fixture}/sample.c "int y = 0x1E5;\nint double_free = 2;\nx = 1.5;\n"
   "z = 0x1p3;\nw = 1e3;\ndouble d;\n#include <math.h>\n#include <float.h>\n")
-set(hygiene_cmd ${CMAKE_COMMAND} -DROOTS=${hygiene_fixture} -P ${hygiene_scripts}/no_float.cmake)
+set(hygiene_cmd ${CMAKE_COMMAND} -DROOTS=${hygiene_fixture} -DCHECK=no_float -P ${hygiene_scripts}/repository.cmake)
 string(REPLACE ";" "$<SEMICOLON>" hygiene_cmd "${hygiene_cmd}")
 cogmaster_add_test(NAME hygiene.no_float.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${hygiene_cmd}" -DCODE=1
@@ -71,7 +99,7 @@ cogmaster_add_test(NAME hygiene.analyzer
 # runs scripts/fetch-pin.sh on a row whose digest is wrong for its file,
 # which must stop before DEST is touched.
 cogmaster_add_test(NAME policy.pins
-  COMMAND ${CMAKE_COMMAND} -DPINS=${CMAKE_SOURCE_DIR}/pins.txt -P ${hygiene_scripts}/pins.cmake
+  COMMAND ${CMAKE_COMMAND} -DPINS=${CMAKE_SOURCE_DIR}/pins.txt -DCHECK=pins -P ${hygiene_scripts}/repository.cmake
   LABELS hygiene policy TIMEOUT 10)
 set(hygiene_pins ${CMAKE_BINARY_DIR}/hygiene/pins_fixture)
 file(REMOVE_RECURSE ${hygiene_pins})
@@ -344,14 +372,14 @@ cogmaster_add_test(NAME policy.ci_required.self_test
 # timeout-minutes line names a run ID or says provisional. The self test
 # scans a fixture with two good lines and two bad ones.
 cogmaster_add_test(NAME hygiene.timeout_comments
-  COMMAND ${CMAKE_COMMAND} -DDIR=${CMAKE_SOURCE_DIR}/.github/workflows -P ${hygiene_scripts}/timeouts.cmake
+  COMMAND ${CMAKE_COMMAND} -DDIR=${CMAKE_SOURCE_DIR}/.github/workflows -DCHECK=timeouts -P ${hygiene_scripts}/repository.cmake
   LABELS hygiene TIMEOUT 30)
 set(hygiene_timeouts ${CMAKE_BINARY_DIR}/hygiene/timeouts_fixture)
 file(REMOVE_RECURSE ${hygiene_timeouts})
 file(WRITE ${hygiene_timeouts}/sample.yml "jobs:\n  a:\n    timeout-minutes: 5  # provisional\n"
   "  b:\n    timeout-minutes: 30\n  c:\n    timeout-minutes: 8  # 2 x 3 min, run 38935647258\n"
   "  d:\n    timeout-minutes: 15  # a guess\n")
-set(hygiene_cmd ${CMAKE_COMMAND} -DDIR=${hygiene_timeouts} -P ${hygiene_scripts}/timeouts.cmake)
+set(hygiene_cmd ${CMAKE_COMMAND} -DDIR=${hygiene_timeouts} -DCHECK=timeouts -P ${hygiene_scripts}/repository.cmake)
 string(REPLACE ";" "$<SEMICOLON>" hygiene_cmd "${hygiene_cmd}")
 cogmaster_add_test(NAME hygiene.timeout_comments.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${hygiene_cmd}" -DCODE=1
@@ -362,14 +390,14 @@ cogmaster_add_test(NAME hygiene.timeout_comments.self_test
 # Fault prevented: an action referenced by a tag that can be moved under the
 # release. The self test scans a fixture that uses a tag.
 cogmaster_add_test(NAME policy.action_pins
-  COMMAND ${CMAKE_COMMAND} -DDIR=${CMAKE_SOURCE_DIR}/.github/workflows -P ${hygiene_scripts}/action_pins.cmake
+  COMMAND ${CMAKE_COMMAND} -DDIR=${CMAKE_SOURCE_DIR}/.github/workflows -DCHECK=action_pins -P ${hygiene_scripts}/repository.cmake
   LABELS hygiene policy TIMEOUT 30)
 set(hygiene_actions ${CMAKE_BINARY_DIR}/hygiene/action_pins_fixture)
 file(REMOVE_RECURSE ${hygiene_actions})
 string(REPEAT "0" 40 hygiene_sha)
 file(WRITE ${hygiene_actions}/sample.yml "steps:\n  - uses: ./.github/actions/local\n"
   "  - uses: actions/checkout@${hygiene_sha} # v7.0.1\n  - uses: actions/checkout@v4\n")
-set(hygiene_cmd ${CMAKE_COMMAND} -DDIR=${hygiene_actions} -P ${hygiene_scripts}/action_pins.cmake)
+set(hygiene_cmd ${CMAKE_COMMAND} -DDIR=${hygiene_actions} -DCHECK=action_pins -P ${hygiene_scripts}/repository.cmake)
 string(REPLACE ";" "$<SEMICOLON>" hygiene_cmd "${hygiene_cmd}")
 cogmaster_add_test(NAME policy.action_pins.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${hygiene_cmd}" -DCODE=1
@@ -377,19 +405,5 @@ cogmaster_add_test(NAME policy.action_pins.self_test
     -P ${hygiene_scripts}/expect_fail.cmake
   LABELS hygiene policy TIMEOUT 30)
 
-# Fault prevented: real-host test code growing without bound. Every line
-# under tests/retroarch counts, at most 300; the self test counts a fixture
-# directory holding one 301-line file.
-cogmaster_add_test(NAME policy.e2e_budget
-  COMMAND ${CMAKE_COMMAND} -DDIR=${CMAKE_SOURCE_DIR}/tests/retroarch -P ${hygiene_scripts}/e2e_budget.cmake
-  LABELS hygiene policy TIMEOUT 30)
-set(hygiene_e2e ${CMAKE_BINARY_DIR}/hygiene/e2e_budget_fixture)
-file(REMOVE_RECURSE ${hygiene_e2e})
-string(REPEAT "line\n" 301 hygiene_lines)
-file(WRITE ${hygiene_e2e}/sample.cmake "${hygiene_lines}")
-set(hygiene_cmd ${CMAKE_COMMAND} -DDIR=${hygiene_e2e} -P ${hygiene_scripts}/e2e_budget.cmake)
-string(REPLACE ";" "$<SEMICOLON>" hygiene_cmd "${hygiene_cmd}")
-cogmaster_add_test(NAME policy.e2e_budget.self_test
-  COMMAND ${CMAKE_COMMAND} "-DCMD=${hygiene_cmd}" -DCODE=1 "-DREGEX=e2e_budget: 301 lines"
-    -P ${hygiene_scripts}/expect_fail.cmake
-  LABELS hygiene policy TIMEOUT 30)
+include(${PROJECT_SOURCE_DIR}/tests/policy/e2e_cases.cmake)
+include(${PROJECT_SOURCE_DIR}/tests/compat/tests.cmake)

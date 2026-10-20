@@ -43,6 +43,7 @@ void cogmaster__bus_origin(cogmaster *m)
     m->bus.t = BUS_ORIGIN_TICK;
     m->bus.op_pc = 0u;
     m->bus.op = 0u;
+    m->bus.data = 0xFFu;
     m->bus.deadline = cogmaster__frame_ticks(m);
 }
 
@@ -139,8 +140,8 @@ static uint8_t mem_read(cogmaster *m, uint16_t addr)
 }
 
 /* What the CPU would read at addr, without the read: no beam sync, no
-   fault and no open-bus count. An undriven address reads $FF, the value
-   cogmaster__io_open_bus returns. */
+   fault and no open-bus count. An undriven address observes the retained
+   SMS1 byte or the SMS2/GG pull-ups (SMS-SYSTEM C5). */
 #define BUS_PEEK_NONE 0x100u
 
 uint32_t cogmaster_peek(const cogmaster *m, uint32_t space, uint32_t addr)
@@ -149,7 +150,7 @@ uint32_t cogmaster_peek(const cogmaster *m, uint32_t space, uint32_t addr)
         return BUS_PEEK_NONE;
     }
     if (mem_undriven(m, (uint16_t)addr)) {
-        return 0xFFu;
+        return (uint8_t)(m->bus.data | cogmaster__profile(m).bus_pullup);
     }
     return mem_driven(m, (uint16_t)addr);
 }
@@ -158,13 +159,15 @@ uint8_t cogmaster__bus_fetch(cogmaster *m, uint16_t addr, uint16_t refresh)
 {
     (void)refresh;
     cogmaster__bus_sync(m);
-    return mem_read(m, addr);
+    m->bus.data = mem_read(m, addr);
+    return m->bus.data;
 }
 
 uint8_t cogmaster__bus_read(cogmaster *m, uint16_t addr)
 {
     cogmaster__bus_sync(m);
-    return mem_read(m, addr);
+    m->bus.data = mem_read(m, addr);
+    return m->bus.data;
 }
 
 /* A write to the Sega registers at $FFFC-$FFFF also lands in work RAM, the
@@ -180,6 +183,7 @@ uint8_t cogmaster__bus_read(cogmaster *m, uint16_t addr)
 void cogmaster__bus_write(cogmaster *m, uint16_t addr, uint8_t v)
 {
     cogmaster__bus_sync(m);
+    m->bus.data = v;
     int cart_on = (m->io.mem_ctrl & BUS_CART_OFF) == 0u;
     if (addr >= 0xC000u) {
         int ram_on = (m->io.mem_ctrl & BUS_RAM_OFF) == 0u;
@@ -233,15 +237,18 @@ uint8_t cogmaster__bus_in(cogmaster *m, uint16_t port)
     int vp = vdp_port(m, port);
     if (vp >= 0) {
         m->bus.vdp_at = m->ticks;
-        return cogmaster__vdp_read(m, (uint32_t)vp);
+        m->bus.data = cogmaster__vdp_read(m, (uint32_t)vp);
+    } else {
+        m->bus.data = cogmaster__io_in(m, port);
     }
-    return cogmaster__io_in(m, port);
+    return m->bus.data;
 }
 
 /* Writes to $40-$7F go to the sound chip, which is not modelled yet. */
 void cogmaster__bus_out(cogmaster *m, uint16_t port, uint8_t v)
 {
     cogmaster__bus_sync(m);
+    m->bus.data = v;
     int vp = vdp_port(m, port);
     if (vp == COGMASTER__VDP_DATA || vp == COGMASTER__VDP_CONTROL) {
         m->bus.vdp_at = m->ticks;

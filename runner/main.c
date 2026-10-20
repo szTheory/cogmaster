@@ -23,7 +23,7 @@
  * --bench N also times each frame with the host's monotonic clock and prints
  * the report described in bench.h. SIGINT or SIGTERM ends the run after the
  * frame in progress: what was asked is printed for the frames that ran, and
- * the status is 0.
+ * the status is 0 unless an output or save flush fails.
  *
  * --trace first-fault reads the core's first-fault record after each frame,
  * stops at the first fault and prints it as one line, or "fault none".
@@ -43,19 +43,26 @@
 #include "clock.h"
 #include "cogmaster.h"
 #include "exit_status.h"
+#include "expect.h"
+#include "input.h"
 #include "mailbox.h"
 #include "palette.h"
+#include "path.h"
 #include "png.h"
 #include "probe.h"
 #include "rss.h"
+#include "save.h"
 #include "sha256.h"
 #include "stop.h"
 
 /* The tests build a second runner with COGMASTER_RUN_RAISE_AT=N, which
-   raises SIGTERM from inside frame N, to show the stop is clean. The
+   raises SIGTERM after frame N is admitted, to show the stop is clean. The
    installed runner has no such hook. */
 #ifdef COGMASTER_RUN_RAISE_AT
 #include <signal.h>
+#ifndef COGMASTER_RUN_RAISE_SIGNAL
+#define COGMASTER_RUN_RAISE_SIGNAL SIGTERM
+#endif
 #endif
 
 /* The allocator the runner hands the core: the C library's malloc and free. */
@@ -164,7 +171,7 @@ static int write_png(const cogmaster *m, const char *path, uint16_t *pixels)
         }
     }
     size_t n = cogmaster__png_write(file, size, rgb, io.w, io.h);
-    FILE *f = n != 0u ? fopen(path, "wb") : NULL;
+    FILE *f = n != 0u ? cogmaster__path_open(path, "wb") : NULL;
     int ok = f != NULL && fwrite(file, 1, n, f) == n;
     if (f != NULL && fclose(f) != 0) {
         ok = 0;
@@ -172,7 +179,7 @@ static int write_png(const cogmaster *m, const char *path, uint16_t *pixels)
     if (!ok) {
         fprintf(stderr, "cogmaster-run: cannot write %s\n", path);
         if (f != NULL) {
-            (void)remove(path);
+            (void)cogmaster__path_remove(path);
         }
         status = COGMASTER__EXIT_FAILURE;
     }
@@ -198,9 +205,21 @@ static int read_fault(const cogmaster *m, cogmaster_fault *fault)
    COGMASTER_FAULT_* constant. */
 static void print_fault(const cogmaster_fault *f)
 {
-    static const char *const kinds[] = {"none",      "unmapped_read", "unmapped_write",
-                                        "rom_write", "mapper_range",  "ed_undefined"};
-    static const char *const devices[] = {"none", "cpu", "cart", "ram", "mapper", "ctrl"};
+    static const char *const kinds[] = {
+        [0] = "none",
+        [COGMASTER_FAULT_KIND_UNMAPPED_READ] = "unmapped_read",
+        [COGMASTER_FAULT_KIND_UNMAPPED_WRITE] = "unmapped_write",
+        [COGMASTER_FAULT_KIND_ROM_WRITE] = "rom_write",
+        [COGMASTER_FAULT_KIND_MAPPER_RANGE] = "mapper_range",
+        [COGMASTER_FAULT_KIND_ED_UNDEFINED] = "ed_undefined",
+        [COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE] = "unsupported_video_mode",
+    };
+    static const char *const devices[] = {
+        [COGMASTER_FAULT_DEVICE_NONE] = "none",     [COGMASTER_FAULT_DEVICE_CPU] = "cpu",
+        [COGMASTER_FAULT_DEVICE_CART] = "cart",     [COGMASTER_FAULT_DEVICE_RAM] = "ram",
+        [COGMASTER_FAULT_DEVICE_MAPPER] = "mapper", [COGMASTER_FAULT_DEVICE_CTRL] = "ctrl",
+        [COGMASTER_FAULT_DEVICE_VDP] = "vdp",
+    };
     if (!f->present) {
         printf("fault none\n");
         return;
@@ -244,6 +263,12 @@ static int load_status(cogmaster_status st, size_t image_size)
    take 4 bytes per frame. Returns the exit status. */
 static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t image_size)
 {
+    cogmaster__expect expectations;
+    if (opt->expect != NULL) {
+        int rc = cogmaster__expect_load(&expectations, opt->expect, opt->frames);
+        if (rc != COGMASTER__EXIT_OK)
+            return rc;
+    }
     uint16_t *pixels = (uint16_t *)malloc((size_t)256u * 240u * sizeof *pixels);
     uint32_t *samples = opt->bench ? (uint32_t *)malloc(cogmaster__bench_bytes(opt->frames)) : NULL;
     if (pixels == NULL || (opt->bench && samples == NULL)) {
@@ -278,31 +303,102 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     }
     media.region = opt->region;
     media.tv = opt->tv;
+    media.video_mode = opt->video_mode;
     int status = load_status(cogmaster_load(m, &media), image_size);
+    cogmaster__save save = {0};
+    int save_loaded = 0;
+    if (status == COGMASTER__EXIT_OK && opt->save_dir != NULL) {
+        status = cogmaster__save_load(&save, m, opt->save_dir, opt->file);
+        save_loaded = status == COGMASTER__EXIT_OK;
+    }
+    FILE *input = NULL;
+    if (status == COGMASTER__EXIT_OK && opt->input != NULL) {
+        input = cogmaster__path_open(opt->input, "rb");
+        status =
+            input != NULL ? cogmaster__input_validate(input, opt->frames) : COGMASTER__EXIT_FAILURE;
+        if (status != COGMASTER__EXIT_OK) {
+            fprintf(stderr, "cogmaster-run: input file error (status %d)\n", status);
+        }
+    }
+    if (status == COGMASTER__EXIT_OK && opt->expect != NULL) {
+        cogmaster_info info = {0};
+        info.size = sizeof info;
+        cogmaster_cart_info cart = {0};
+        cart.size = sizeof cart;
+        cogmaster_versions versions = {0};
+        versions.size = sizeof versions;
+        if (cogmaster_get_info(m, &info) != COGMASTER_STATUS_OK ||
+            cogmaster_get_versions(&versions) != COGMASTER_STATUS_OK ||
+            (image != NULL && cogmaster_probe(image, image_size, &cart) != COGMASTER_STATUS_OK))
+            status = COGMASTER__EXIT_FAILURE;
+        cogmaster__sha256 hash;
+        cogmaster__sha256_init(&hash);
+        if (input != NULL) {
+            int ch;
+            while ((ch = fgetc(input)) != EOF) {
+                uint8_t byte = (uint8_t)ch;
+                cogmaster__sha256_update(&hash, &byte, 1u);
+            }
+            if (ferror(input) || fseek(input, 0, SEEK_SET) != 0)
+                status = COGMASTER__EXIT_FAILURE;
+        }
+        uint8_t digest[32];
+        char hex[65];
+        cogmaster__sha256_final(&hash, digest);
+        cogmaster__sha256_hex(digest, hex);
+        printf("execution machine=%lu region=%lu tv=%lu video=%lu mapper=%lu port1=%lu port2=%lu "
+               "script_sha256=%s cap=%lu behaviour=%lu\n",
+               (unsigned long)info.machine, (unsigned long)info.region, (unsigned long)info.tv,
+               (unsigned long)info.video_mode, (unsigned long)cart.board, (unsigned long)opt->port1,
+               (unsigned long)opt->port2, hex, (unsigned long)opt->frames,
+               (unsigned long)versions.behaviour);
+    }
     cogmaster_fault fault;
     memset(&fault, 0, sizeof fault);
     fault.size = (uint32_t)sizeof fault;
     /* A 64-bit count, so the loop ends when --frames is 4294967295. Only
        cogmaster_run_frame is timed, not hashing or writing files. */
     uint32_t ran = 0;
+    uint32_t lag_frames = 0;
     int mailbox_running = 0;
     for (uint64_t n = 1; n <= opt->frames && status == COGMASTER__EXIT_OK; n++) {
+        cogmaster_input in = {0};
+        in.size = sizeof in;
+        if (input != NULL) {
+            status = cogmaster__input_read(input, &in);
+            if (status != COGMASTER__EXIT_OK) {
+                break;
+            }
+        }
+        in.port1 = opt->port1;
+        in.port2 = opt->port2;
+        if (cogmaster_set_input(m, &in) != COGMASTER_STATUS_OK) {
+            status = COGMASTER__EXIT_FAILURE;
+            break;
+        }
         uint64_t start_ns = opt->bench ? cogmaster__clock_ns() : 0u;
-        st = cogmaster_run_frame(m, NULL);
+        cogmaster_run_result result = {0};
+        result.size = sizeof result;
+#ifdef COGMASTER_RUN_RAISE_AT
+        if (n == COGMASTER_RUN_RAISE_AT) {
+            (void)raise(COGMASTER_RUN_RAISE_SIGNAL);
+        }
+#endif
+        st = cogmaster_run_frame(m, &result);
+        if (st == COGMASTER_STATUS_OK)
+            lag_frames += result.lagged;
         if (opt->bench) {
             samples[ran] = cogmaster__bench_us(cogmaster__clock_ns() - start_ns);
         }
-#ifdef COGMASTER_RUN_RAISE_AT
-        if (n == COGMASTER_RUN_RAISE_AT) {
-            (void)raise(SIGTERM);
-        }
-#endif
         ran = (uint32_t)n;
         if (st != COGMASTER_STATUS_OK) {
             fprintf(stderr, "cogmaster-run: cogmaster_run_frame failed with status %lu\n",
                     (unsigned long)st);
             status = COGMASTER__EXIT_FAILURE;
         }
+        if (status == COGMASTER__EXIT_OK && opt->expect != NULL)
+            status = cogmaster__expect_frame(&expectations, m, (uint32_t)n, result.display_enabled,
+                                             pixels);
         for (uint32_t k = 0; k < opt->png_count && status == COGMASTER__EXIT_OK; k++) {
             if (opt->pngs[k].frame == n) {
                 status = write_png(m, opt->pngs[k].path, pixels);
@@ -352,6 +448,24 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
             cogmaster__bench_format(report, sizeof report, samples, ran, cogmaster__max_rss_kib());
         fwrite(report, 1u, len, stdout);
     }
+    if (status == COGMASTER__EXIT_OK && opt->input != NULL) {
+        printf("lag_frames=%lu\n", (unsigned long)lag_frames);
+    }
+    if (status == COGMASTER__EXIT_OK && opt->expect != NULL) {
+        status = read_fault(m, &fault);
+        if (status == COGMASTER__EXIT_OK)
+            print_fault(&fault);
+    }
+    if (status == COGMASTER__EXIT_OK && opt->expect != NULL)
+        status = cogmaster__expect_finish(&expectations);
+    if (input != NULL && fclose(input) != 0) {
+        status = COGMASTER__EXIT_FAILURE;
+    }
+    /* Both signal handlers only request a stop. Persistence runs here after
+       the admitted frame and its outputs, outside signal context. */
+    if (save_loaded && cogmaster__save_flush(&save, m) != COGMASTER__EXIT_OK)
+        status = COGMASTER__EXIT_FAILURE;
+    cogmaster__save_dispose(&save);
     cogmaster_destroy(m);
     free(pixels);
     free(samples);
@@ -382,7 +496,7 @@ static int start(const cogmaster__run_options *opt)
     return status;
 }
 
-int main(int argc, char **argv)
+static int run_main(int argc, char **argv)
 {
     cogmaster__run_options opt;
     memset(&opt, 0, sizeof opt);
@@ -404,3 +518,31 @@ int main(int argc, char **argv)
     }
     return status;
 }
+
+#ifdef _WIN32
+/* The CRT's narrow argv loses characters outside the active codepage. Keep
+   the OS's wide arguments and use UTF-8 inside the host. */
+int wmain(int argc, wchar_t **wide)
+{
+    char **argv = (char **)calloc((size_t)argc + 1u, sizeof *argv);
+    if (argv == NULL)
+        return COGMASTER__EXIT_FAILURE;
+    int ok = 1;
+    for (int i = 0; i < argc && ok; i++) {
+        int n = WideCharToMultiByte(CP_UTF8, 0, wide[i], -1, NULL, 0, NULL, NULL);
+        argv[i] = n > 0 ? (char *)malloc((size_t)n) : NULL;
+        ok = argv[i] != NULL &&
+             WideCharToMultiByte(CP_UTF8, 0, wide[i], -1, argv[i], n, NULL, NULL) != 0;
+    }
+    int status = ok ? run_main(argc, argv) : COGMASTER__EXIT_FAILURE;
+    for (int i = 0; i < argc; i++)
+        free(argv[i]);
+    free(argv);
+    return status;
+}
+#else
+int main(int argc, char **argv)
+{
+    return run_main(argc, argv);
+}
+#endif

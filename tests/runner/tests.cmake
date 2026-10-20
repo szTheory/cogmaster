@@ -1,4 +1,7 @@
 # cogmaster-run tests.
+if(NOT CMAKE_SCRIPT_MODE_FILE)
+  include(${CMAKE_CURRENT_LIST_DIR}/expect.cmake)
+endif()
 #
 # Run as a script (cmake -DCASE=<case> ... -P tests.cmake), this file is one
 # runner check; include()d by tests/tests.cmake, it registers the tests.
@@ -44,10 +47,13 @@ if(CMAKE_SCRIPT_MODE_FILE)
       "region_guess=(ntsc-u|ntsc-j|pal)\nmapper_guess=(none|sega|codemasters|unsupported)\n"
       "sha1=${h40}\nsha256=${h64}\ncrc32=${h8}\nmd5=${h32}\n"
       "sha1_headerless=(${h40}|none)\nsha256_headerless=(${h64}|none)\n"
-      "crc32_headerless=(${h8}|none)\nmd5_headerless=(${h32}|none)\n$")
+      "crc32_headerless=(${h8}|none)\nmd5_headerless=(${h32}|none)\n"
+      "identified=[01]\npublic_identity=[01]\npersistence=[012]\npersistent_size=[0-9]+\n"
+      "persistence_geometry=[012]\nvideo_mode=[012]\nidentity_sha1=(${h40}|)\ntitle=[^\n]*\n"
+      "$")
     string(CONCAT form ${form})
     if(NOT out MATCHES "${form}")
-      message(FATAL_ERROR "--probe output is not the documented 21 keys in order:\n${out}")
+      message(FATAL_ERROR "--probe output keys or values differ from the documented form:\n${out}")
     endif()
   endfunction()
 
@@ -58,7 +64,231 @@ if(CMAKE_SCRIPT_MODE_FILE)
     endif()
   endfunction()
 
-  if(CASE STREQUAL "probe_keys")
+  if(CASE STREQUAL "hash_matrix")
+    execute_process(COMMAND ${CMAKE_COMMAND} -DMODE=write -DRUN=${RUN}
+      "-DEMULATOR=${EMULATOR}" -DOUT=${OUT} -DFIXTURES=${FIXTURES} -P ${HASHES}
+      COMMAND_ERROR_IS_FATAL ANY)
+    file(READ "${OUT}/hashes.txt" hashes)
+    if(NOT FIXTURES)
+      return()
+    endif()
+    foreach(row IN ITEMS "playing boot_to_play.gg native ntsc-u input"
+        "playing boot_to_play.sms sms1 pal input" "playing boot_to_play.sms gg-sms ntsc-j input"
+        "playing vdp_lines_240.sms sms pal baseline"
+        "playing vdp_lines_224.sms native ntsc-j baseline"
+        "playing vdp_lines_240.sms native ntsc-u baseline")
+      if(NOT hashes MATCHES "${row} frame 14 sha256 [0-9a-f]+")
+        message(FATAL_ERROR "playing matrix missing ${row}")
+      endif()
+    endforeach()
+    file(MAKE_DIRECTORY "${OUT}/card-only")
+    execute_process(COMMAND ${CMAKE_COMMAND} -DMODE=write -DRUN=${RUN}
+      "-DEMULATOR=${EMULATOR}" -DOUT=${OUT}/card-only -DFIXTURES= -P ${HASHES}
+      COMMAND_ERROR_IS_FATAL ANY)
+  elseif(CASE STREQUAL "save_unit")
+    file(MAKE_DIRECTORY "${OUT}")
+    file(REMOVE "${OUT}/round.trip.srm")
+    file(WRITE "${OUT}/unrelated.tmp" "unrelated")
+    file(WRITE "${OUT}/round.trip.srm.tmp-0" "existing")
+    execute_process(COMMAND ${EMULATOR} ${UNIT} ${SAVE_CASE} "${BATTERY}" "${OUT}"
+      "${OUT}/round.trip.srm" RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE out)
+    if(NOT rc STREQUAL "0")
+      message(FATAL_ERROR "save ${SAVE_CASE}: exit ${rc}\n${out}")
+    endif()
+    file(GLOB temps "${OUT}/*.tmp-*")
+    list(REMOVE_ITEM temps "${OUT}/round.trip.srm.tmp-0")
+    file(READ "${OUT}/unrelated.tmp" unrelated)
+    file(READ "${OUT}/round.trip.srm.tmp-0" collision)
+    if(temps OR NOT unrelated STREQUAL "unrelated" OR NOT collision STREQUAL "existing")
+      message(FATAL_ERROR "save temporary cleanup affected unrelated data or leaked its temporary")
+    endif()
+  elseif(CASE STREQUAL "save_process")
+    file(MAKE_DIRECTORY "${OUT}")
+    file(WRITE "${OUT}/battery.srm.tmp-unrelated" "unrelated")
+    foreach(existing 0 1)
+      file(REMOVE "${OUT}/battery.srm")
+      if(existing)
+        file(WRITE "${OUT}/battery.srm" "old")
+      endif()
+      expect_exit(${CODE} "${REGEX}" --frames 60 --hash --save-dir "${OUT}" "${BATTERY}")
+      file(GLOB temps "${OUT}/battery.srm.tmp-*")
+      list(REMOVE_ITEM temps "${OUT}/battery.srm.tmp-unrelated")
+      if(CODE EQUAL 0)
+        file(READ "${OUT}/battery.srm" data LIMIT 3 HEX)
+        file(SIZE "${OUT}/battery.srm" n)
+        if(NOT data STREQUAL "a55a01" OR NOT n EQUAL 32768)
+          message(FATAL_ERROR "signal save differs from a completed frame")
+        endif()
+      elseif(existing)
+        file(READ "${OUT}/battery.srm" data)
+        if(NOT data STREQUAL "old")
+          message(FATAL_ERROR "failed or interrupted write changed previous target")
+        endif()
+      elseif(EXISTS "${OUT}/battery.srm")
+        message(FATAL_ERROR "failed or interrupted first creation published a target")
+      endif()
+      if(CODE EQUAL 93)
+        list(LENGTH temps n)
+        if(NOT n EQUAL 1)
+          message(FATAL_ERROR "interrupted writer did not leave exactly its own temporary")
+        endif()
+        list(GET temps 0 temp)
+        file(READ "${temp}" data LIMIT 3 HEX)
+        file(SIZE "${temp}" n)
+        if(NOT data STREQUAL "a55a01" OR NOT n EQUAL 32768)
+          message(FATAL_ERROR "interrupted writer's temporary is not the complete new data")
+        endif()
+        file(REMOVE "${temp}")
+      elseif(temps)
+        message(FATAL_ERROR "writer leaked a failed temporary")
+      endif()
+      file(READ "${OUT}/battery.srm.tmp-unrelated" data)
+      if(NOT data STREQUAL "unrelated")
+        message(FATAL_ERROR "writer touched another process's temporary")
+      endif()
+    endforeach()
+  elseif(CASE STREQUAL "save_continuation")
+    file(MAKE_DIRECTORY "${OUT}")
+    file(REMOVE "${OUT}/battery.srm")
+    # Each execute_process starts a new runner; the second always uses the
+    # installed production path, including after a signalled first child.
+    function(continue_save runner old next prefix)
+      execute_process(COMMAND ${EMULATOR} ${runner} --frames 60 --hash --mailbox
+        --save-dir "${OUT}" "${BATTERY}" RESULT_VARIABLE rc
+        OUTPUT_VARIABLE out ERROR_VARIABLE err)
+      if(NOT rc STREQUAL "0" OR NOT out MATCHES "status=00\nrom=07\nmagic=ok\ncrc=ok\n"
+          OR NOT out MATCHES "01=${next}${old} flags=1\n"
+          OR NOT out MATCHES "frame 3 sha256 [0-9a-f]+")
+        message(FATAL_ERROR "fresh-process continuation: exit ${rc}\n${out}${err}")
+      endif()
+      file(READ "${OUT}/battery.srm" data HEX)
+      string(REPEAT ff 32765 tail)
+      if(NOT data STREQUAL "a55a${prefix}${tail}")
+        message(FATAL_ERROR "fresh-process save bytes or exact length differ")
+      endif()
+      file(GLOB temps "${OUT}/battery.srm.tmp-*")
+      if(temps)
+        message(FATAL_ERROR "fresh-process writer leaked temporary files")
+      endif()
+    endfunction()
+    continue_save("${RUN}" 00 01 01)
+    continue_save("${CONTINUE}" 01 02 02)
+    file(REMOVE "${OUT}/battery.srm")
+    continue_save("${CONTINUE}" 00 01 01)
+    # Wrong save keeps the signature but supplies counter 41, so the guest
+    # must report 41 -> 42 rather than either 0 -> 1 or 1 -> 2.
+    string(ASCII 165 90 41 signature)
+    string(ASCII 255 erased)
+    string(REPEAT "${erased}" 32765 tail)
+    file(WRITE "${OUT}/battery.srm" "${signature}${tail}")
+    continue_save("${CONTINUE}" 29 2A 2a)
+    file(APPEND "${OUT}/battery.srm" x)
+    file(SHA256 "${OUT}/battery.srm" before)
+    execute_process(COMMAND ${EMULATOR} ${CONTINUE} --frames 60 --save-dir "${OUT}" "${BATTERY}"
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    file(SHA256 "${OUT}/battery.srm" after)
+    if(NOT rc STREQUAL "4" OR NOT err MATCHES "oversized" OR NOT before STREQUAL after)
+      message(FATAL_ERROR "oversize control: exit ${rc}; target changed or refusal missing: ${err}")
+    endif()
+  elseif(CASE STREQUAL "save_import")
+    file(MAKE_DIRECTORY "${OUT}")
+    file(REMOVE "${OUT}/battery.srm")
+    expect_exit(0 "^$" --frames 1 --save-dir "${OUT}" "${BATTERY}")
+    if(NOT EXISTS "${OUT}/battery.srm")
+      message(FATAL_ERROR "dirty battery was not persisted")
+    endif()
+    file(READ "${OUT}/battery.srm" first LIMIT 3 HEX)
+    expect_exit(0 "^$" --frames 1 --save-dir "${OUT}" "${BATTERY}")
+    file(READ "${OUT}/battery.srm" second LIMIT 3 HEX)
+    file(SIZE "${OUT}/battery.srm" n)
+    if(NOT first STREQUAL "a55a01" OR NOT second STREQUAL "a55a02" OR NOT n EQUAL 32768)
+      message(FATAL_ERROR "first-create/overwrite continuation bytes differ")
+    endif()
+    expect_exit(2 "requires content" --frames 1 --save-dir "${OUT}")
+    expect_exit(2 "usage" --frames 1 --save-dir)
+    expect_exit(2 "usage" --probe "${BATTERY}" --save-dir "${OUT}")
+    expect_exit(1 "existing directory" --frames 1 --save-dir "${OUT}/missing" "${BATTERY}")
+    expect_exit(1 "existing directory" --frames 1 --save-dir "${BATTERY}" "${BATTERY}")
+    expect_exit(77 "unknown persistence" --frames 1 --save-dir "${OUT}" "${SEEDS}/di-halt.sms")
+    string(REPEAT x 32769 large)
+    file(WRITE "${OUT}/battery.srm" "${large}")
+    file(SHA256 "${OUT}/battery.srm" before)
+    expect_exit(4 "oversized" --frames 1 --save-dir "${OUT}" "${BATTERY}")
+    file(SHA256 "${OUT}/battery.srm" after)
+    if(NOT before STREQUAL after)
+      message(FATAL_ERROR "oversize save was changed")
+    endif()
+    file(REMOVE "${OUT}/battery.srm")
+    file(MAKE_DIRECTORY "${OUT}/battery.srm")
+    expect_exit(1 "cannot read" --frames 1 --save-dir "${OUT}" "${BATTERY}")
+    file(REMOVE_RECURSE "${OUT}/battery.srm")
+    file(MAKE_DIRECTORY "${OUT}/save café 游戏")
+    configure_file("${BATTERY}" "${OUT}/round.trip café 游戏.sms" COPYONLY)
+    expect_exit(0 "^$" --frames 1 --save-dir "${OUT}/save café 游戏" "${OUT}/round.trip café 游戏.sms")
+    if(NOT EXISTS "${OUT}/save café 游戏/round.trip café 游戏.srm")
+      message(FATAL_ERROR "Unicode save target missing")
+    endif()
+  elseif(CASE STREQUAL "video_override")
+    expect_exit(0 "^$" --frames 1 --machine sms1)
+    expect_exit(0 "^$" --frames 1 --machine sms --video-mode sms)
+    expect_exit(0 "^$" --frames 1 --machine gg --video-mode gg)
+    expect_exit(0 "^$" --frames 1 --machine gg --video-mode sms)
+    expect_exit(0 "^$" --frames 1 --machine gg --video-mode auto)
+    expect_exit(77 "unsupported" --frames 1 --machine sms --video-mode gg)
+    expect_exit(77 "unsupported" --frames 1 --machine sms1 --video-mode gg)
+    expect_exit(2 "usage" --frames 1 --video-mode invalid)
+    expect_exit(2 "usage" --frames 1 --video-mode)
+  elseif(CASE STREQUAL "lag")
+    string(REPEAT "p1=00 p2=00 pause=0 reset=0 start=0\n" 14 body)
+    file(WRITE "${OUT}" "${body}")
+    expect_exit(0 "(^|\n)lag_frames=14\n" ${SEEDS}/di-halt.sms --frames 14 --input ${OUT})
+    expect_exit(0 "(^|\n)lag_frames=4\n" ${READ_ROM} --frames 14 --input ${OUT})
+    expect_exit(0 "(^|\n)lag_frames=4\n" ${READ_ROM} --frames 14 --input ${OUT}
+      --port1 none --port2 none)
+  elseif(CASE STREQUAL "input")
+    set(record "p1=00 p2=00 pause=0 reset=0 start=0")
+    foreach(ending IN ITEMS lf crlf none)
+      set(eol "\n")
+      if(ending STREQUAL "crlf")
+        set(eol "\r\n")
+      elseif(ending STREQUAL "none")
+        set(eol "")
+      endif()
+      set(style LF)
+      if(ending STREQUAL "crlf")
+        set(style CRLF)
+      endif()
+      if(ending STREQUAL "none")
+        file(WRITE "${OUT}" "${record}")
+      else()
+        file(CONFIGURE OUTPUT "${OUT}" CONTENT "${record}${eol}" NEWLINE_STYLE ${style})
+      endif()
+      file(READ "${OUT}" actual HEX)
+      string(HEX "${record}${eol}" expected)
+      if(NOT actual STREQUAL expected)
+        message(FATAL_ERROR "input fixture ${ending}: byte mismatch ${actual}")
+      endif()
+      message(STATUS "input fixture ${ending}: exact bytes verified")
+      expect_exit(0 "frame 1 sha256" --frames 1 --input ${OUT} --hash)
+    endforeach()
+    set(bad "" "${record}\n${record}\n" "p1=40 p2=00 pause=0 reset=0 start=0\n"
+      "p1=00 p2=80 pause=0 reset=0 start=0\n" "p1=0G p2=00 pause=0 reset=0 start=0\n"
+      "p1=00 p1=00 pause=0 reset=0 start=0\n" "p1=00 p2=00 pause=2 reset=0 start=0\n"
+      "p1=00 p2=00 pause=0 reset=2 start=0\n" "p1=00 p2=00 pause=0 reset=0 start=2\n"
+      "${record} unknown=0\n" "\n" "#comment\n" "p1=00\n" "${record}\r")
+    string(REPEAT x 100 long)
+    list(APPEND bad "${long}\n")
+    foreach(body IN LISTS bad)
+      file(WRITE "${OUT}" "${body}")
+      expect_exit(2 "input file error" --frames 1 --input ${OUT} --hash)
+    endforeach()
+    file(WRITE "${OUT}" "${record}\n")
+    expect_exit(2 "input file error" --frames 2 --input ${OUT} --hash)
+    expect_exit(1 "input file error" --frames 1 --input ${OUT}.missing)
+    expect_exit(2 "usage" --frames 1 --port1 other)
+    expect_exit(2 "usage" --frames 1 --port2)
+    expect_exit(0 "frame 1 sha256" --frames 1 --port1 none --port2 none --hash)
+  elseif(CASE STREQUAL "probe_keys")
     # A 128 KiB export image with a good header and no mapper stores: the
     # keys in order, the header read at $7FF0 and the Sega board guessed.
     probe(${SEEDS}/header-export-128k.sms)
@@ -174,6 +404,14 @@ if(CMAKE_SCRIPT_MODE_FILE)
     set(hex "[0-9A-F]")
     expect_exit(0 "^fault frame=[0-9]+ line=[0-9]+ dot=[0-9]+ pc=[$]${hex}${hex}${hex}${hex} op=[$]DB addr=[$]0000 width=8 dev=ctrl kind=unmapped_read\n$"
       ${SEEDS}/in-a-00.sms --frames 10 --trace first-fault)
+    # Enable display without Mode 4: the VDP fault must keep its public names.
+    string(ASCII 243 62 64 211 191 62 129 211 191 118 code)
+    string(REPEAT "v" 1014 padding)
+    set(rom "${SEEDS}/../unsupported-video.sms")
+    file(WRITE "${rom}" "${code}${padding}")
+    expect_exit(0 "^fault frame=[0-9]+ [^\n]*dev=vdp kind=unsupported_video_mode\n$"
+      "${rom}" --frames 2 --trace first-fault)
+    file(REMOVE "${rom}")
   elseif(CASE STREQUAL "mailbox_stop")
     # The stop rule frame by frame, then an image that never writes a
     # mailbox: its status reads $00 from power-on, which is not done, so
@@ -216,6 +454,21 @@ if(CMAKE_SCRIPT_MODE_FILE)
     endif()
     # A file the runner cannot write is a failure, not a success.
     expect_exit(1 "cannot write" --frames 1 --png "1:${OUT}.missing/x.png")
+    # A failed close removes the wide-opened target and preserves its CP1252 alias.
+    set(target "${OUT}.café.png")
+    set(alias "${OUT}.cafÃ©.png")
+    file(WRITE "${alias}" "unrelated")
+    execute_process(COMMAND ${EMULATOR} ${FAIL_CLOSE} --frames 1 --png "1:${target}"
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "1" OR NOT err MATCHES "cannot write" OR EXISTS "${target}"
+        OR NOT EXISTS "${alias}")
+      message(FATAL_ERROR "PNG close cleanup changed the wrong path: exit ${rc}\n${out}${err}")
+    endif()
+    file(READ "${alias}" data)
+    if(NOT data STREQUAL "unrelated")
+      message(FATAL_ERROR "PNG cleanup changed unrelated file bytes")
+    endif()
+    file(REMOVE "${alias}")
   elseif(CASE STREQUAL "png_syntax")
     # Each malformed or out-of-range --png is a usage error, whichever order
     # the options come in, and writes nothing.
@@ -264,6 +517,10 @@ if(CMAKE_SCRIPT_MODE_FILE)
     set(RUN ${HOOKED})
     expect_exit(0 "^frame 3 sha256 ${EXPECTED}\n$" --frames 60 --hash)
     expect_exit(0 "^frames 3\n.*max_rss_kib [0-9]+\n$" --bench 60)
+    string(REPEAT "p1=00 p2=00 pause=0 reset=0 start=0\n" 60 body)
+    file(WRITE "${SEEDS}/stop.input" "${body}")
+    expect_exit(0 "^frame 3 sha256 ${EXPECTED}\nlag_frames=3\n$"
+      --frames 60 --input ${SEEDS}/stop.input --hash)
   elseif(CASE STREQUAL "exit_failure")
     # A --png path that cannot be opened is a failure, not a usage error.
     expect_exit(1 "cannot write" --frames 1 --png "1:${OUT}.missing/x.png")
@@ -273,7 +530,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     # Options a later release adds are refused now, and --help does not
     # mention them; --help and --version take nothing else; --trace takes
     # only first-fault and --region only its four names.
-    foreach(opt --expect --port1 --port2 --input --hash-audio --capabilities --boot --bios)
+    foreach(opt --hash-audio --capabilities --boot --bios)
       expect_exit(2 "unknown option" --frames 1 ${opt})
       expect_exit(2 "unknown option" --frames 1 ${opt} x)
     endforeach()
@@ -287,7 +544,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     expect_exit(2 "usage" --probe)
     expect_exit(2 "usage" --probe --frames 1 ${SEEDS}/di-halt.sms)
     execute_process(COMMAND ${EMULATOR} ${RUN} --help RESULT_VARIABLE rc OUTPUT_VARIABLE out)
-    if(NOT rc STREQUAL "0" OR out MATCHES "--(expect|port|input|hash-audio|capabilities|boot|bios)")
+    if(NOT rc STREQUAL "0" OR out MATCHES "--(hash-audio|capabilities|boot|bios)")
       message(FATAL_ERROR "--help: expected exit 0 and no later option, got exit ${rc}\n${out}")
     endif()
   elseif(CASE STREQUAL "positional")
@@ -375,8 +632,9 @@ if(COGMASTER_FIXTURES)
   set(runner_fixtures -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures)
 endif()
 cogmaster_add_test(NAME runner.hashes_file
-  COMMAND ${CMAKE_COMMAND} -DMODE=write -DRUN=$<TARGET_FILE:cogmaster-run>
-    "-DEMULATOR=${runner_emulator}" -DOUT=${PROJECT_BINARY_DIR} ${runner_fixtures} -P ${runner_hashes}
+  COMMAND ${CMAKE_COMMAND} -DCASE=hash_matrix -DRUN=$<TARGET_FILE:cogmaster-run>
+    "-DEMULATOR=${runner_emulator}" -DOUT=${PROJECT_BINARY_DIR} ${runner_fixtures}
+    -DHASHES=${runner_hashes} -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS runner portable TIMEOUT 30)
 
 # Fault prevented: a comparison that passes lanes which differ, or a lane
@@ -421,12 +679,62 @@ cogmaster_add_test(NAME runner.png
 set(runner_check ${CMAKE_COMMAND} -DRUN=$<TARGET_FILE:cogmaster-run>
   "-DEMULATOR=${runner_emulator}" -DSEEDS=${COGMASTER_SEEDS_DIR})
 
+if(COGMASTER_FIXTURES)
+  add_executable(cogmaster-test-save ${CMAKE_CURRENT_LIST_DIR}/test_save.c
+    ${PROJECT_SOURCE_DIR}/runner/save.c ${PROJECT_SOURCE_DIR}/runner/stop.c)
+  target_include_directories(cogmaster-test-save PRIVATE ${PROJECT_SOURCE_DIR}/src)
+  target_link_libraries(cogmaster-test-save PRIVATE cogmaster::cogmaster)
+  target_compile_definitions(cogmaster-test-save PRIVATE _POSIX_C_SOURCE=200809L COGMASTER_SAVE_TEST)
+  set_target_properties(cogmaster-test-save PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+  cogmaster_warnings(cogmaster-test-save)
+  foreach(case imports replacement excluded failures clean_sigint clean_sigterm native_error)
+    # Fault prevented: raw import, clean flush or classified refusals corrupting host data.
+    cogmaster_add_test(NAME runner.save.${case}
+      COMMAND ${runner_check} -DCASE=save_unit -DSAVE_CASE=${case}
+        -DUNIT=$<TARGET_FILE:cogmaster-test-save>
+        -DOUT=${PROJECT_BINARY_DIR}/tests/save-${case}
+        -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
+      LABELS runner portable TIMEOUT 10)
+  endforeach()
+  # Fault prevented: --save-dir silently dropping a guest battery write.
+  cogmaster_add_test(NAME runner.save.import
+    COMMAND ${runner_check} -DCASE=save_import
+      -DOUT=${PROJECT_BINARY_DIR}/tests/save-import
+      -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS runner portable TIMEOUT 10)
+endif()
+
+if(COGMASTER_FIXTURES)
+  # Fault prevented: host polling credited as guest reads, or lag output omitted.
+  cogmaster_add_test(NAME runner.lag
+    COMMAND ${runner_check} -DCASE=lag -DOUT=${PROJECT_BINARY_DIR}/tests/lag.input
+      -DREAD_ROM=${PROJECT_BINARY_DIR}/fixtures/boot_to_play.sms
+      -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS runner portable TIMEOUT 10)
+endif()
+
+# Fault prevented: malformed, truncated or surplus absolute input being run as released input.
+cogmaster_add_test(NAME runner.input
+  COMMAND ${runner_check} -DCASE=input -DOUT=${PROJECT_BINARY_DIR}/tests/input.txt
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS runner portable TIMEOUT 30)
+
 # Fault prevented: the reference PNG the RetroArch screenshot is compared
 # with changes bytes (palette, layout or encoder) while the frame hash still
 # passes, or no longer shows the card.
+set(png_failure_sources ${COGMASTER_RUNNER_SOURCES})
+list(REMOVE_ITEM png_failure_sources ${PROJECT_SOURCE_DIR}/runner/main.c)
+add_executable(cogmaster-test-png-close ${CMAKE_CURRENT_LIST_DIR}/png_close_failure.c
+  ${png_failure_sources})
+target_link_libraries(cogmaster-test-png-close PRIVATE cogmaster::cogmaster cogmaster-host)
+target_compile_definitions(cogmaster-test-png-close PRIVATE _POSIX_C_SOURCE=200809L)
+set_target_properties(cogmaster-test-png-close PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-png-close)
 cogmaster_add_test(NAME runner.png_file
   COMMAND ${runner_check} -DCASE=png_file -DOUT=${PROJECT_BINARY_DIR}/tests/card.png
     -DDECODE=$<TARGET_FILE:cogmaster-test-runner> -DEXPECTED=${COGMASTER_TESTCARD_PNG_SHA256_SMS}
+    -DFAIL_CLOSE=$<TARGET_FILE:cogmaster-test-png-close>
     -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS runner portable TIMEOUT 30)
 
@@ -458,6 +766,71 @@ target_compile_definitions(cogmaster-test-run-stop PRIVATE _POSIX_C_SOURCE=20080
 set_target_properties(cogmaster-test-run-stop PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
 cogmaster_warnings(cogmaster-test-run-stop)
+
+if(COGMASTER_FIXTURES)
+  # Share uninstrumented helpers; only main and save carry the test-only hooks.
+  set(save_support ${COGMASTER_RUNNER_SOURCES})
+  list(REMOVE_ITEM save_support ${PROJECT_SOURCE_DIR}/runner/main.c ${PROJECT_SOURCE_DIR}/runner/save.c)
+  add_library(cogmaster-test-save-support OBJECT ${save_support})
+  target_link_libraries(cogmaster-test-save-support PRIVATE cogmaster::cogmaster cogmaster-host)
+  target_compile_definitions(cogmaster-test-save-support PRIVATE _POSIX_C_SOURCE=200809L)
+  cogmaster_warnings(cogmaster-test-save-support)
+  foreach(case term int create write flush sync close replace interrupt int_write normal_write)
+    set(run $<TARGET_FILE:cogmaster-test-run-stop>)
+    set(code 0)
+    set(regex "frame 3 sha256")
+    if(NOT case STREQUAL "term")
+      set(target cogmaster-test-save-${case})
+      add_executable(${target} ${PROJECT_SOURCE_DIR}/runner/main.c ${PROJECT_SOURCE_DIR}/runner/save.c
+        $<TARGET_OBJECTS:cogmaster-test-save-support>)
+      target_link_libraries(${target} PRIVATE cogmaster::cogmaster cogmaster-host)
+      target_compile_definitions(${target} PRIVATE _POSIX_C_SOURCE=200809L
+        COGMASTER_SAVE_TEST)
+      if(NOT case STREQUAL "normal_write")
+        target_compile_definitions(${target} PRIVATE COGMASTER_RUN_RAISE_AT=3)
+      endif()
+      if(case MATCHES "^int")
+        target_compile_definitions(${target} PRIVATE COGMASTER_RUN_RAISE_SIGNAL=SIGINT)
+      endif()
+      if(NOT case STREQUAL "int")
+        string(REGEX REPLACE "^(int_|normal_)" "" fault ${case})
+        string(TOUPPER ${fault} fault)
+        target_compile_definitions(${target} PRIVATE COGMASTER_SAVE_FAIL=COGMASTER_SAVE_${fault})
+        set(code 1)
+        set(regex "save: cannot")
+      endif()
+      set_target_properties(${target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+      cogmaster_warnings(${target})
+      set(run $<TARGET_FILE:${target}>)
+    endif()
+    if(case STREQUAL "interrupt")
+      set(code 93)
+      set(regex ".*")
+    endif()
+    # Fault prevented: signal/failure paths reporting success or damaging an old save.
+    cogmaster_add_test(NAME runner.save.process.${case}
+      COMMAND ${runner_check} -DRUN=${run} -DCASE=save_process -DCODE=${code} "-DREGEX=${regex}"
+        -DOUT=${PROJECT_BINARY_DIR}/tests/save-process-${case}
+        -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
+      LABELS runner portable TIMEOUT 10)
+    if(case STREQUAL "term" OR case STREQUAL "int")
+      # Fault prevented: signal flush writes bytes that a fresh process cannot continue.
+      cogmaster_add_test(NAME runner.save.continuation.${case}
+        COMMAND ${runner_check} -DRUN=${run} -DCONTINUE=$<TARGET_FILE:cogmaster-run>
+          -DCASE=save_continuation
+          -DOUT=${PROJECT_BINARY_DIR}/tests/save-continuation-${case}
+          -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
+        LABELS runner portable TIMEOUT 10)
+    endif()
+  endforeach()
+  # Fault prevented: successful normal exit loses the numeric guest continuation.
+  cogmaster_add_test(NAME runner.save.continuation.normal
+    COMMAND ${runner_check} -DCONTINUE=$<TARGET_FILE:cogmaster-run>
+      -DCASE=save_continuation
+      -DOUT=${PROJECT_BINARY_DIR}/tests/save-continuation-normal
+      -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS runner portable TIMEOUT 10)
+endif()
 
 set(bench_check ${runner_check} -DUNIT=$<TARGET_FILE:cogmaster-test-bench>)
 
@@ -512,7 +885,7 @@ cogmaster_add_test(NAME runner.stop
 # --help prints.
 cogmaster_add_test(NAME runner.exit.table
   COMMAND ${runner_check} -DDOC=${PROJECT_SOURCE_DIR}/docs/runner.md
-    -P ${PROJECT_SOURCE_DIR}/tests/cmake/exit_table.cmake
+    -DCHECK=exit_table -P ${PROJECT_SOURCE_DIR}/tests/cmake/repository.cmake
   LABELS runner TIMEOUT 30)
 
 # Fault prevented: a runner that exits 0 after failing to write a file, or
@@ -606,6 +979,9 @@ cogmaster_add_test(NAME runner.load.machine_auto
 # Timeout: 10 s floor; 2 x 0.02 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME runner.load.region
   COMMAND ${runner_check} -DCASE=region -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 10)
+cogmaster_add_test(NAME runner.load.video_override
+  COMMAND ${runner_check} -DCASE=video_override -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS portable runner TIMEOUT 10)
 
 # Fault prevented: --trace first-fault missing a fault, printing a later

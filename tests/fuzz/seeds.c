@@ -62,6 +62,10 @@ static void program(size_t off, size_t n, const uint8_t *code, size_t code_n)
 }
 
 static const uint8_t di_halt[] = {0xF3u, 0x76u};
+/* Mode 4 display enabled, zero palette/pixels, then permanent HALT. */
+static const uint8_t static_display[] = {0xF3u, 0x3Eu, 0x04u, 0xD3u, 0xBFu, 0x3Eu,
+                                         0x80u, 0xD3u, 0xBFu, 0x3Eu, 0x40u, 0xD3u,
+                                         0xBFu, 0x3Eu, 0x81u, 0xD3u, 0xBFu, 0x76u};
 
 /* The bytes the checksum covers, by size code (SMS-CARTRIDGES section 1.2). */
 static uint32_t checksum_range(uint32_t code)
@@ -184,6 +188,11 @@ static void programs(void)
     static const uint8_t ed_00[] = {0xEDu, 0x00u, 0xF3u, 0x76u};
     /* LD A,0; loop: OUT ($BE),A; INC A; JR loop. */
     static const uint8_t be_hammer[] = {0x3Eu, 0x00u, 0xD3u, 0xBEu, 0x3Cu, 0x18u, 0xFBu};
+    /* Enable display; alternate VRAM/CRAM/register control bytes while
+       writing data continuously. No interrupt or HALT can end the loop. */
+    static const uint8_t render_hammer[] = {
+        0xF3u, 0x3Eu, 4u,    0xD3u, 0xBFu, 0x3Eu, 0x80u, 0xD3u, 0xBFu, 0x3Eu, 0x40u, 0xD3u, 0xBFu,
+        0x3Eu, 0x81u, 0xD3u, 0xBFu, 0xD3u, 0xBFu, 0xD3u, 0xBEu, 0x3Cu, 0xC3u, 17u,   0u};
     /* Each Sega register in turn: $FFFC = 0, $FFFD = 1, $FFFE = 2, $FFFF = 3. */
     static const uint8_t fffc[] = {0x3Eu, 0x00u, 0x32u, 0xFCu, 0xFFu, 0x3Cu, 0x32u,
                                    0xFDu, 0xFFu, 0x3Cu, 0x32u, 0xFEu, 0xFFu, 0x3Cu,
@@ -194,12 +203,14 @@ static void programs(void)
         size_t code_n, n;
     } list[] = {
         {"di-halt.sms", di_halt, sizeof di_halt, 32u * KIB},
+        {"static-display.sms", static_display, sizeof static_display, 32u * KIB},
         {"di-halt.gg", di_halt, sizeof di_halt, 32u * KIB},
         {"jr-self.sms", jr_self, sizeof jr_self, 32u * KIB},
         {"in-a-00.sms", in_a_00, sizeof in_a_00, 32u * KIB},
         {"ld-8000.sms", ld_8000, sizeof ld_8000, 32u * KIB},
         {"ed-00.sms", ed_00, sizeof ed_00, 32u * KIB},
         {"be-hammer.sms", be_hammer, sizeof be_hammer, 32u * KIB},
+        {"render-hammer.sms", render_hammer, sizeof render_hammer, 32u * KIB},
         {"fffc-writes.sms", fffc, sizeof fffc, 64u * KIB},
     };
     for (size_t i = 0; i < sizeof list / sizeof list[0]; i++) {
@@ -237,5 +248,18 @@ int main(int argc, char **argv)
     headers();
     boards();
     programs();
+    memset(image, 0x3c, 32769u);
+    write_image("save-empty.bin", 0u);
+    write_image("save-one.bin", 1u);
+    write_image("save-short.bin", 32767u);
+    write_image("save-exact.bin", 32768u);
+    write_image("save-long.bin", 32769u);
+    for (uint32_t i = 1u; i < 4u; i++) {
+        image[0] = (uint8_t)i;
+        write_image(i == 1u   ? "save-none.bin"
+                    : i == 2u ? "save-unknown.bin"
+                              : "save-unsupported.bin",
+                    32768u);
+    }
     return failures != 0 ? 1 : 0;
 }

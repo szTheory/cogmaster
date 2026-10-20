@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "internal.h"
+#include "cartdb.h"
 
 #define CART_PAGE 16384u
 #define CART_COPIER_HEADER 512u
@@ -167,6 +168,23 @@ cogmaster_status cogmaster__cart_probe(const void *image, size_t n, cogmaster_ca
     size_t body = n - off;
     out->body_offset = (uint32_t)off;
     read_header(b, body, out);
+    const struct cogmaster__cart_fact *fact = cogmaster__cartdb_image(b, body);
+    if (fact != NULL) {
+        out->identified = 1u;
+        out->public_identity = fact->public_identity;
+        out->board = fact->board;
+        out->machine_guess = fact->machine;
+        if (fact->region != 0u)
+            out->region_guess = fact->region;
+        out->video_mode = fact->video;
+        out->persistence = fact->persistence;
+        out->persistent_size = fact->declared;
+        out->persistence_geometry = fact->geometry;
+        memcpy(out->sha1, fact->sha1, 41u);
+        for (size_t i = 0u; fact->title[i] != 0; i++)
+            out->title[i] = fact->title[i];
+        return out->board == 0u ? COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD : COGMASTER_STATUS_OK;
+    }
     if (codemasters_header(b, body)) {
         out->board = COGMASTER__BOARD_CODEMASTERS;
     } else if (body == CART_GG_DEVICE && out->machine_guess == COGMASTER_MACHINE_GG) {
@@ -191,13 +209,16 @@ cogmaster_status cogmaster__cart_copy(cogmaster *m, const uint8_t *image, size_t
     uint32_t ram_size = p->board == COGMASTER__BOARD_SEGA          ? CART_RAM_SEGA
                         : p->board == COGMASTER__BOARD_CODEMASTERS ? CART_RAM_CODEMASTERS
                                                                    : 0u;
+    if (p->persistence_geometry == COGMASTER_GEOMETRY_SUPPORTED &&
+        p->board == COGMASTER__BOARD_SEGA)
+        ram_size = p->persistent_size;
     uint8_t *rom = (uint8_t *)m->allocator.alloc(m->allocator.user, (size_t)size + ram_size);
     if (rom == NULL) {
         return COGMASTER_STATUS_ERR_NO_MEMORY;
     }
     memcpy(rom, image + off, body);
     memset(rom + body, 0xFF, size - body);
-    memset(rom + size, 0, ram_size);
+    memset(rom + size, p->persistence == COGMASTER_PERSISTENCE_BATTERY ? 0xFF : 0, ram_size);
     out->rom = rom;
     out->ram = ram_size != 0u ? rom + size : NULL;
     out->size = size;
@@ -205,6 +226,10 @@ cogmaster_status cogmaster__cart_copy(cogmaster *m, const uint8_t *image, size_t
     out->ram_size = ram_size;
     out->crc32 = cogmaster__crc32(0u, image + off, body);
     out->board = p->board;
+    out->persistence = p->persistence;
+    out->persistent_size = p->persistent_size;
+    out->persistence_geometry = p->persistence_geometry;
+    out->generation = 0u;
     return COGMASTER_STATUS_OK;
 }
 

@@ -33,7 +33,7 @@ cogmaster__rect cogmaster__crop(uint32_t machine);
 #define COGMASTER__PITCH_MAX 65536u
 
 /* The counters every instance keeps (ARCHITECTURE section 8). The test card
-   runs no CPU or VDP, so all of them stay zero until those exist. */
+   runs no CPU and therefore counts as a lag frame. */
 struct cogmaster__counters {
     uint32_t lag_frames;
     uint32_t frame_ints;
@@ -84,24 +84,36 @@ struct cogmaster__bus {
     uint32_t t;        /* tick in the line, 0 to 683 */
     uint16_t op_pc;    /* the running instruction's address, its first prefix included */
     uint8_t op;        /* the running instruction's first byte after any DD or FD */
+    uint8_t data;      /* last driven data-bus byte, SMS-SYSTEM C5 */
 };
 
-/* The VDP's timing half: registers, ports, status and the stores the CPU
-   writes. No renderer reads them yet. */
+/* VDP registers, ports, status and the stores shared with the renderer. */
 #define COGMASTER__VDP_REGS 11u
 #define COGMASTER__VRAM_SIZE 16384u
-#define COGMASTER__CRAM_SIZE 32u
+#define COGMASTER__CRAM_SIZE 64u
 
 struct cogmaster__vdp {
-    uint16_t addr;                    /* the 14-bit VRAM or CRAM address */
-    uint8_t reg[COGMASTER__VDP_REGS]; /* R0 to R10 */
-    uint8_t status;                   /* the flags: bit 7 frame interrupt pending */
-    uint8_t latch;                    /* 1 after the first control byte */
-    uint8_t first;                    /* the first control byte */
-    uint8_t code;                     /* the control code, 0 to 3 */
-    uint8_t buffer;                   /* the data port's read-ahead byte */
-    uint8_t pause;                    /* 1 while a Pause press waits for its NMI tick */
+    uint8_t height;                     /* 192/224/240, final-physical-line tick-600 latch */
+    uint16_t addr;                      /* the 14-bit VRAM or CRAM address */
+    uint16_t vline;                     /* independent 0..262 rolling NTSC-240 counter */
+    uint8_t reg[COGMASTER__VDP_REGS];   /* R0 to R10 */
+    uint8_t status;                     /* the flags: bit 7 frame interrupt pending */
+    uint8_t latch;                      /* 1 after the first control byte */
+    uint8_t first;                      /* the first control byte */
+    uint8_t code;                       /* the control code, 0 to 3 */
+    uint8_t buffer;                     /* the data port's read-ahead byte */
+    uint8_t pause;                      /* 1 while a Pause press waits for its NMI tick */
+    uint8_t line_counter, line_pending; /* R10 reload counter and independent IE1 source */
+    uint8_t hcounter, hheld;            /* captured TH count; live until first capture */
+    uint8_t hscroll, vscroll, display;  /* line / frame / line latches, docs/hardware/video.md */
+    /* Selected line slots; pattern bytes remain live until each dot emits. */
+    struct {
+        uint8_t x, tile, row;
+    } sprite[8];
+    uint8_t sprite_line, sprite_count, sprite_scanned;
+    uint8_t sprite_zoom, sprite_shift, sprite_overflow;
     uint8_t cram[COGMASTER__CRAM_SIZE];
+    uint8_t cram_latch;
     uint8_t vram[COGMASTER__VRAM_SIZE];
 };
 
@@ -125,6 +137,8 @@ struct cogmaster__cart {
     uint32_t ram_size; /* bytes in ram: 0, 8 KiB or 32 KiB, a power of two */
     uint32_t crc32;    /* of the image after any copier header, before padding */
     uint32_t board;    /* COGMASTER__BOARD_*, 0 for the test card */
+    uint32_t persistence, persistent_size, persistence_geometry;
+    uint64_t generation;
 };
 
 /* Boards, as the probe guesses them. 0 is no supported board. */
@@ -156,10 +170,11 @@ struct cogmaster {
     cogmaster_allocator allocator; /* the caller's, copied at create */
     uint64_t frame;                /* frames run since load */
     uint64_t ticks;                /* ticks run since load */
-    uint32_t machine;              /* resolved machine: SMS2 or GG; valid while loaded */
-    uint32_t region;               /* resolved region: EXPORT or JAPAN; valid while loaded */
-    uint32_t tv;                   /* resolved TV: NTSC or PAL; valid while loaded */
-    uint32_t loaded;               /* 1 after a successful load */
+    uint32_t machine;              /* resolved machine: SMS1, SMS2 or GG; valid while loaded */
+    uint32_t video_mode;
+    uint32_t region; /* resolved region: EXPORT or JAPAN; valid while loaded */
+    uint32_t tv;     /* resolved TV: NTSC or PAL; valid while loaded */
+    uint32_t loaded; /* 1 after a successful load */
     struct cogmaster__counters counters;
     uint32_t fault_present;        /* 1 once a fault is recorded */
     struct cogmaster__fault fault; /* valid while fault_present */
@@ -169,9 +184,41 @@ struct cogmaster {
     struct cogmaster__cart cart;
     struct cogmaster__mapper mapper;
     struct cogmaster__io io;
+    uint32_t render_line;
+    uint32_t render_x; /* next unrendered dot of render_line */
+    cogmaster_input pending_input, input;
+    uint8_t input_read;
     uint8_t ram[COGMASTER__RAM_SIZE];
     uint16_t field[COGMASTER__FIELD_MAX_H][COGMASTER__FIELD_W]; /* RGB444 per dot */
+    struct {
+        uint32_t height, backdrop, par_num, par_den;
+        cogmaster__rect crop;
+        uint16_t pixels[COGMASTER__FIELD_MAX_H][COGMASTER__FIELD_W];
+    } completed;
+    struct {
+        uint32_t height, y, backdrop;
+        uint8_t frozen;
+        uint16_t pixels[144][160];
+    } lcd;
 };
+
+static inline int cogmaster__native_gg(const cogmaster *m)
+{
+    return m->video_mode == COGMASTER_VIDEO_GG;
+}
+
+/* Shared revision facts: the 315-5124 masks VDP addresses and has no
+   pull-ups on an undriven bus (SMS-VDP section 1; SMS-SYSTEM C5). */
+struct cogmaster__profile {
+    uint8_t vdp_masks, bus_pullup;
+};
+static inline struct cogmaster__profile cogmaster__profile(const cogmaster *m)
+{
+    struct cogmaster__profile p;
+    p.vdp_masks = (uint8_t)(m->machine == COGMASTER_MACHINE_SMS1);
+    p.bus_pullup = p.vdp_masks ? 0u : 0xFFu;
+    return p;
+}
 
 /* The public layouts, pinned on every target. P is the pointer size; on
    64-bit targets a pointer after a leading size field starts at P, leaving 4
@@ -203,8 +250,7 @@ _Static_assert(offsetof(cogmaster_media, machine) == 3 * COGMASTER__P, "media.ma
 _Static_assert(offsetof(cogmaster_media, region) == 3 * COGMASTER__P + 4, "media.region");
 _Static_assert(offsetof(cogmaster_media, tv) == 3 * COGMASTER__P + 8, "media.tv");
 /* 3P + 12 bytes rounded up to a multiple of P: 40 on 64-bit, 24 on 32-bit. */
-_Static_assert(sizeof(cogmaster_media) == (4 * COGMASTER__P + 11) / COGMASTER__P * COGMASTER__P,
-               "media size");
+_Static_assert(sizeof(cogmaster_media) == (COGMASTER__P == 8 ? 48 : 28), "media size");
 
 _Static_assert(offsetof(cogmaster_info, size) == 0, "info.size");
 _Static_assert(offsetof(cogmaster_info, machine) == 4, "info.machine");
@@ -220,7 +266,7 @@ _Static_assert(offsetof(cogmaster_info, par_num) == 40, "info.par_num");
 _Static_assert(offsetof(cogmaster_info, par_den) == 44, "info.par_den");
 _Static_assert(offsetof(cogmaster_info, region) == 48, "info.region");
 _Static_assert(offsetof(cogmaster_info, tv) == 52, "info.tv");
-_Static_assert(sizeof(cogmaster_info) == 56, "info size");
+_Static_assert(sizeof(cogmaster_info) == 60, "info size");
 
 _Static_assert(offsetof(cogmaster_frame, size) == 0, "frame.size");
 _Static_assert(offsetof(cogmaster_frame, pixels) == COGMASTER__P, "frame.pixels");
@@ -238,7 +284,16 @@ _Static_assert(sizeof(cogmaster_frame) == 2 * COGMASTER__P + 32, "frame size");
 _Static_assert(offsetof(cogmaster_run_result, size) == 0, "run_result.size");
 _Static_assert(offsetof(cogmaster_run_result, stop) == 4, "run_result.stop");
 _Static_assert(offsetof(cogmaster_run_result, overshoot_ticks) == 8, "run_result.overshoot_ticks");
-_Static_assert(sizeof(cogmaster_run_result) == 12, "run_result size");
+_Static_assert(offsetof(cogmaster_run_result, lagged) == 12, "run_result.lagged");
+_Static_assert(sizeof(cogmaster_run_result) == 20, "run_result size");
+_Static_assert(sizeof(cogmaster_input) == 32, "input size");
+_Static_assert(offsetof(cogmaster_input, p1) == 4, "input.p1");
+_Static_assert(offsetof(cogmaster_input, p2) == 8, "input.p2");
+_Static_assert(offsetof(cogmaster_input, pause) == 12, "input.pause");
+_Static_assert(offsetof(cogmaster_input, reset) == 16, "input.reset");
+_Static_assert(offsetof(cogmaster_input, start) == 20, "input.start");
+_Static_assert(offsetof(cogmaster_input, port1) == 24, "input.port1");
+_Static_assert(offsetof(cogmaster_input, port2) == 28, "input.port2");
 
 _Static_assert(offsetof(cogmaster_fault, size) == 0, "fault.size");
 _Static_assert(offsetof(cogmaster_fault, present) == 4, "fault.present");
@@ -266,7 +321,7 @@ _Static_assert(offsetof(cogmaster_cart_info, rom_size_code) == 36, "cart_info.ro
 _Static_assert(offsetof(cogmaster_cart_info, machine_guess) == 40, "cart_info.machine_guess");
 _Static_assert(offsetof(cogmaster_cart_info, region_guess) == 44, "cart_info.region_guess");
 _Static_assert(offsetof(cogmaster_cart_info, board) == 48, "cart_info.board");
-_Static_assert(sizeof(cogmaster_cart_info) == 52, "cart_info size");
+_Static_assert(offsetof(cogmaster_cart_info, identified) == 52, "cart_info extension");
 
 /* The size of each struct as first released. A caller's size tag below it
    is refused; each is pinned to the layout above, so appending a field later
@@ -284,10 +339,10 @@ _Static_assert(COGMASTER__FIRST_SIZE_MEDIA == 4 * COGMASTER__P, "media first siz
 _Static_assert(COGMASTER__FIRST_SIZE_FRAME == sizeof(cogmaster_frame), "frame first size");
 _Static_assert(COGMASTER__FIRST_SIZE_INFO == offsetof(cogmaster_info, region), "info first size");
 _Static_assert(COGMASTER__FIRST_SIZE_VERSIONS == sizeof(cogmaster_versions), "versions first size");
-_Static_assert(COGMASTER__FIRST_SIZE_RUN_RESULT == sizeof(cogmaster_run_result),
+_Static_assert(COGMASTER__FIRST_SIZE_RUN_RESULT == offsetof(cogmaster_run_result, lagged),
                "run_result first size");
 _Static_assert(COGMASTER__FIRST_SIZE_FAULT == sizeof(cogmaster_fault), "fault first size");
-_Static_assert(COGMASTER__FIRST_SIZE_CART_INFO == sizeof(cogmaster_cart_info),
+_Static_assert(COGMASTER__FIRST_SIZE_CART_INFO == offsetof(cogmaster_cart_info, identified),
                "cart_info first size");
 
 /* Input structs: OK when the size tag at s is at least first and at most
@@ -350,6 +405,17 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t);
 /* A CPU access to a decoded VDP port at the beam position. */
 uint8_t cogmaster__vdp_read(cogmaster *m, uint32_t port);
 void cogmaster__vdp_write(cogmaster *m, uint32_t port, uint8_t v);
+void cogmaster__vdp_latch_h(cogmaster *m);
+void cogmaster__vdp_render_to(cogmaster *m, uint32_t end);
+void cogmaster__vdp_sprite_scan(cogmaster *m, uint32_t line);
+void cogmaster__vdp_render_until(cogmaster *m, uint32_t line, uint32_t x);
+#define COGMASTER__VDP_PRIORITY 32u
+uint32_t cogmaster__vdp_background(const cogmaster *m, uint32_t x, uint32_t y);
+uint32_t cogmaster__vdp_pattern_address(const cogmaster *m, uint32_t address);
+uint32_t cogmaster__vdp_sat_address(const cogmaster *m, uint32_t offset);
+uint32_t cogmaster__vdp_sprite_address(const cogmaster *m, uint32_t tile, uint32_t row);
+void cogmaster__vdp_finish_field(cogmaster *m);
+uint16_t cogmaster__vdp_backdrop(const cogmaster *m);
 
 /* cogmaster_probe without the size tag: fills all of out (size 0) and
    returns OK, ERR_ARGUMENT for a NULL image, ERR_UNSUPPORTED_SIZE outside
@@ -366,6 +432,8 @@ cogmaster_status cogmaster__cart_copy(cogmaster *m, const uint8_t *image, size_t
 
 /* Frees the instance's image, if any, and installs c (which may be empty). */
 void cogmaster__cart_install(cogmaster *m, const struct cogmaster__cart *c);
+uint32_t cogmaster__battery_length(const cogmaster *m);
+void cogmaster__battery_write(cogmaster *m, uint32_t offset, uint8_t value);
 
 /* The mapper. read and write take an address below $C000; write also takes
    the Sega registers at $FFFC-$FFFF, which the bus stores in work RAM too.

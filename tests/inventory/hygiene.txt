@@ -1,6 +1,16 @@
 # Every test the hygiene preset registers: name<TAB>labels.
 # Sorted; configure fails when this differs from what is registered.
 ci.classify	hygiene
+compat.csv	compat,hygiene
+compat.public_update	compat,hygiene
+compat.ratchet	compat,hygiene
+compat.trusted_judge	compat,hygiene
+docs.budgets	hygiene,policy
+docs.budgets.helper	hygiene,policy
+docs.budgets.helper_unclassified	hygiene,policy
+docs.budgets.ratio_below	hygiene,policy
+docs.budgets.ratio_equal	hygiene,policy
+docs.budgets.unclassified	hygiene,policy
 hygiene.analyzer	hygiene
 hygiene.format	hygiene
 hygiene.no_float	hygiene
@@ -8,13 +18,18 @@ hygiene.no_float.self_test	hygiene
 hygiene.timeout_comments	hygiene
 hygiene.timeout_comments.self_test	hygiene
 hygiene.tree	hygiene
+hygiene.tree.binary_manifest	hygiene
+hygiene.tree.binary_unlisted	hygiene
 hygiene.tree.self_test	hygiene
 policy.action_pins	hygiene,policy
 policy.action_pins.self_test	hygiene,policy
 policy.ci_required	hygiene,policy
 policy.ci_required.self_test	hygiene,policy
+policy.compat_doc_fresh	compat,hygiene,policy
+policy.compat_doc_fresh.self_test	compat,hygiene,policy
 policy.e2e_budget	hygiene,policy
 policy.e2e_budget.self_test	hygiene,policy
+policy.e2e_budget.shared_helper	hygiene,policy
 policy.pins	hygiene,policy
 policy.pins.self_test	hygiene,policy
 policy.publish_ref	hygiene,policy

@@ -1,5 +1,5 @@
 # Binary checks on the core library: its undefined symbols, its writable data
-# and its public names, each run by tests/cmake/abi.cmake on the built
+# and its public names, each run by the shared repository checker on the built
 # archive. The two fixtures are negative controls built with the core's own
 # flags, so each check fails on every lane where it runs.
 set(abi_scripts ${CMAKE_CURRENT_LIST_DIR}/../cmake)
@@ -25,7 +25,7 @@ endforeach()
 foreach(mode IN ITEMS undefined globals symbols)
   cogmaster_add_test(NAME abi.${mode}
     COMMAND ${CMAKE_COMMAND} -DMODE=${mode} -DLIB=$<TARGET_FILE:cogmaster> ${abi_args}
-      -DHEADER=${PROJECT_SOURCE_DIR}/include/cogmaster.h -P ${abi_scripts}/abi.cmake
+      -DHEADER=${PROJECT_SOURCE_DIR}/include/cogmaster.h -DCHECK=abi -P ${abi_scripts}/repository.cmake
     LABELS abi TIMEOUT 30)
 endforeach()
 
@@ -37,7 +37,7 @@ foreach(case IN ITEMS "undefined;libc;unexpected[^:]*symbol:.*abort"
   list(GET case 1 fixture)
   list(GET case 2 regex)
   set(abi_cmd ${CMAKE_COMMAND} -DMODE=${mode} -DLIB=$<TARGET_FILE:cogmaster-abi-${fixture}>
-    ${abi_args} -P ${abi_scripts}/abi.cmake)
+    ${abi_args} -DCHECK=abi -P ${abi_scripts}/repository.cmake)
   string(REPLACE ";" "$<SEMICOLON>" abi_cmd "${abi_cmd}")
   cogmaster_add_test(NAME abi.${mode}.self_test
     COMMAND ${CMAKE_COMMAND} "-DCMD=${abi_cmd}" -DCODE=1 "-DREGEX=${regex}"
@@ -51,7 +51,7 @@ endforeach()
 # expects that function named.
 cogmaster_add_test(NAME abi.api_version
   COMMAND ${CMAKE_COMMAND} -DHEADER=${PROJECT_SOURCE_DIR}/include/cogmaster.h
-    -DAPI_DIR=${PROJECT_SOURCE_DIR}/tests/api -P ${abi_scripts}/api_version.cmake
+    -DAPI_DIR=${PROJECT_SOURCE_DIR}/tests/api -DCHECK=api_version -P ${abi_scripts}/repository.cmake
   LABELS abi TIMEOUT 10)
 file(READ ${PROJECT_SOURCE_DIR}/include/cogmaster.h abi_header)
 string(REPLACE "void cogmaster_destroy(cogmaster *m);"
@@ -59,7 +59,7 @@ string(REPLACE "void cogmaster_destroy(cogmaster *m);"
   abi_header "${abi_header}")
 file(WRITE ${PROJECT_BINARY_DIR}/tests/abi/added_function.h "${abi_header}")
 set(abi_cmd ${CMAKE_COMMAND} -DHEADER=${PROJECT_BINARY_DIR}/tests/abi/added_function.h
-  -DAPI_DIR=${PROJECT_SOURCE_DIR}/tests/api -P ${abi_scripts}/api_version.cmake)
+  -DAPI_DIR=${PROJECT_SOURCE_DIR}/tests/api -DCHECK=api_version -P ${abi_scripts}/repository.cmake)
 string(REPLACE ";" "$<SEMICOLON>" abi_cmd "${abi_cmd}")
 cogmaster_add_test(NAME abi.api_version.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${abi_cmd}" -DCODE=1
@@ -86,11 +86,30 @@ cogmaster_add_test(NAME abi.api_v2 COMMAND cogmaster-test-api-v2
   LABELS abi portable TIMEOUT 10)
 
 # The public header compiles alone as C17 and as C++17 with warnings fatal.
+add_executable(cogmaster-test-api-v3 ${PROJECT_SOURCE_DIR}/tests/api/v3.c)
+target_link_libraries(cogmaster-test-api-v3 PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-api-v3)
+# Fault prevented: absolute input or the appended result breaking legacy ABI calls.
+cogmaster_add_test(NAME abi.api_v3 COMMAND cogmaster-test-api-v3
+  LABELS abi portable TIMEOUT 10)
+
+# Fault prevented: appending SMS1 or VDP diagnostics renumbering existing values.
+add_executable(cogmaster-test-api-v4 ${PROJECT_SOURCE_DIR}/tests/api/v4.c)
+target_link_libraries(cogmaster-test-api-v4 PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-api-v4)
+cogmaster_add_test(NAME abi.api_v4 COMMAND cogmaster-test-api-v4
+  LABELS abi portable TIMEOUT 10)
+
 # Fault prevented: a header that only the core's own build, with its own
 # flags and language, can compile. C++ is enabled here only; an embedding
 # project never meets it. The targets are built only by these tests, which
 # share the build tree and so take turns.
 enable_language(CXX)
+add_executable(cogmaster-test-api-v5 ${PROJECT_SOURCE_DIR}/tests/api/v5.c)
+target_link_libraries(cogmaster-test-api-v5 PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-api-v5)
+cogmaster_add_test(NAME abi.api_v5 COMMAND cogmaster-test-api-v5
+  LABELS abi portable TIMEOUT 10)
 add_library(cogmaster_header_c17 OBJECT EXCLUDE_FROM_ALL
   ${CMAKE_CURRENT_LIST_DIR}/../header/header.c)
 add_library(cogmaster_header_cxx17 OBJECT EXCLUDE_FROM_ALL
@@ -130,3 +149,20 @@ if(COGMASTER_NOFP)
       -P ${abi_scripts}/expect_fail.cmake
     LABELS abi TIMEOUT 30)
 endif()
+
+# Fault prevented: battery API tags, knowledge and status values changing silently.
+add_executable(cogmaster-test-api-v6 ${PROJECT_SOURCE_DIR}/tests/api/v6.c)
+target_link_libraries(cogmaster-test-api-v6 PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-api-v6)
+cogmaster_add_test(NAME abi.api_v6 COMMAND cogmaster-test-api-v6 LABELS abi portable TIMEOUT 10)
+
+# Fault prevented: raw import disappearing or its argument contract changing.
+add_executable(cogmaster-test-api-v7 ${PROJECT_SOURCE_DIR}/tests/api/v7.c)
+target_link_libraries(cogmaster-test-api-v7 PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-api-v7)
+cogmaster_add_test(NAME abi.api_v7 COMMAND cogmaster-test-api-v7 LABELS abi portable TIMEOUT 10)
+# Fault prevented: adding a display observation breaks earlier result layouts.
+add_executable(cogmaster-test-api-v8 ${PROJECT_SOURCE_DIR}/tests/api/v8.c)
+target_link_libraries(cogmaster-test-api-v8 PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-api-v8)
+cogmaster_add_test(NAME abi.api_v8 COMMAND cogmaster-test-api-v8 LABELS abi portable TIMEOUT 10)

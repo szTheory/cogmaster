@@ -153,3 +153,7 @@ claim; the asset policy handles that side by keeping game and firmware bytes out
 | PV.12 | T1 | Sega "SMS/GG Official Documentation" as hosted on smspower.org | accessed 2026-10-18 | official facts |
 | PV.13 | T1 | github.com/ekeeke/Genesis-Plus-GX `LICENSE.txt` | accessed 2026-10-18 | non-commercial terms |
 | PV.14 | T1 | GitHub API `license` field of drhelius/Gearsystem (GPL-3.0) | accessed 2026-10-18 | GPL status |
+
+## Cartridge metadata conversion
+
+The three CC0 hash inputs are pinned at full public commit `1d7a454ed79e97d35d2a9f127ac029ead94711d6` and per-file SHA-256 in `pins.txt`. Their individual CC0 headers were checked before conversion. Only generated facts enter `src/cartdb.inc`; the converter is own MIT code. The MAME hash metadata section in `THIRD-PARTY-NOTICES.md` retains CC0. Fixture metadata is owned MIT data, separate from the commercial records.

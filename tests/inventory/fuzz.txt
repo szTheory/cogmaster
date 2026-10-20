@@ -2,3 +2,4 @@
 # Sorted; configure fails when this differs from what is registered.
 fuzz.libfuzzer.loader	fuzz
 fuzz.libfuzzer.run	fuzz
+fuzz.libfuzzer.save	fuzz

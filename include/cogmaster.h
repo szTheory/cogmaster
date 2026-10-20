@@ -11,10 +11,10 @@
 extern "C" {
 #endif
 
-#define COGMASTER_API_VERSION 2
+#define COGMASTER_API_VERSION 8
 #define COGMASTER_ABI_VERSION 1
-#define COGMASTER_BEHAVIOUR_REVISION 1
-#define COGMASTER_STATE_FORMAT_VERSION 2
+#define COGMASTER_BEHAVIOUR_REVISION 10
+#define COGMASTER_STATE_FORMAT_VERSION 10
 
 typedef uint32_t cogmaster_status;
 #define COGMASTER_STATUS_OK 0u
@@ -26,10 +26,25 @@ typedef uint32_t cogmaster_status;
 #define COGMASTER_STATUS_ERR_PROFILE_REJECTED 6u
 #define COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE 7u
 #define COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD 8u
+#define COGMASTER_STATUS_ERR_SAVE_SIZE 9u
+
+#define COGMASTER_BATTERY_UNKNOWN 0u
+#define COGMASTER_BATTERY_NONE 1u
+#define COGMASTER_BATTERY_KNOWN 2u
+#define COGMASTER_BATTERY_UNSUPPORTED 3u
+
+typedef struct cogmaster_battery {
+    uint32_t size;
+    uint8_t *data;
+    size_t length;
+    uint32_t knowledge; /* COGMASTER_BATTERY_* */
+    uint64_t generation;
+} cogmaster_battery;
 
 #define COGMASTER_MACHINE_AUTO 0u
 #define COGMASTER_MACHINE_SMS2 1u
 #define COGMASTER_MACHINE_GG 2u
+#define COGMASTER_MACHINE_SMS1 3u
 
 #define COGMASTER_REGION_AUTO 0u
 #define COGMASTER_REGION_EXPORT 1u
@@ -38,6 +53,10 @@ typedef uint32_t cogmaster_status;
 #define COGMASTER_TV_AUTO 0u
 #define COGMASTER_TV_NTSC 1u
 #define COGMASTER_TV_PAL 2u
+
+#define COGMASTER_VIDEO_AUTO 0u
+#define COGMASTER_VIDEO_SMS 1u
+#define COGMASTER_VIDEO_GG 2u
 
 #define COGMASTER_STOP_FRAME 0u
 
@@ -57,6 +76,7 @@ typedef uint32_t cogmaster_status;
 #define COGMASTER_FAULT_KIND_ROM_WRITE 3u
 #define COGMASTER_FAULT_KIND_MAPPER_RANGE 4u
 #define COGMASTER_FAULT_KIND_ED_UNDEFINED 5u
+#define COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE 6u
 
 #define COGMASTER_FAULT_DEVICE_NONE 0u
 #define COGMASTER_FAULT_DEVICE_CPU 1u
@@ -64,6 +84,7 @@ typedef uint32_t cogmaster_status;
 #define COGMASTER_FAULT_DEVICE_RAM 3u
 #define COGMASTER_FAULT_DEVICE_MAPPER 4u
 #define COGMASTER_FAULT_DEVICE_CTRL 5u
+#define COGMASTER_FAULT_DEVICE_VDP 6u
 
 typedef struct cogmaster cogmaster;
 
@@ -91,6 +112,10 @@ typedef struct cogmaster_media {
     uint32_t machine; /* COGMASTER_MACHINE_* */
     uint32_t region;  /* COGMASTER_REGION_* */
     uint32_t tv;      /* COGMASTER_TV_* */
+#if UINTPTR_MAX > UINT32_MAX
+    uint32_t reserved;
+#endif
+    uint32_t video_mode; /* COGMASTER_VIDEO_* */
 } cogmaster_media;
 
 typedef struct cogmaster_info {
@@ -102,6 +127,7 @@ typedef struct cogmaster_info {
     uint32_t fps_num, fps_den;
     uint32_t par_num, par_den;
     uint32_t region, tv;
+    uint32_t video_mode;
 } cogmaster_info;
 
 typedef struct cogmaster_frame {
@@ -118,7 +144,18 @@ typedef struct cogmaster_run_result {
     uint32_t size;
     uint32_t stop; /* COGMASTER_STOP_* */
     uint32_t overshoot_ticks;
+    uint32_t lagged;
+    uint32_t display_enabled;
 } cogmaster_run_result;
+
+#define COGMASTER_DEVICE_PAD 0u
+#define COGMASTER_DEVICE_NONE 1u
+typedef struct cogmaster_input {
+    uint32_t size;
+    uint32_t p1, p2;
+    uint32_t pause, reset, start;
+    uint32_t port1, port2;
+} cogmaster_input;
 
 typedef struct cogmaster_fault {
     uint32_t size;
@@ -130,6 +167,16 @@ typedef struct cogmaster_fault {
     uint8_t device, kind; /* COGMASTER_FAULT_DEVICE_*, COGMASTER_FAULT_KIND_* */
 } cogmaster_fault;
 
+enum {
+    COGMASTER_PERSISTENCE_UNKNOWN = 0,
+    COGMASTER_PERSISTENCE_NONE = 1,
+    COGMASTER_PERSISTENCE_BATTERY = 2
+};
+enum {
+    COGMASTER_GEOMETRY_NONE = 0,
+    COGMASTER_GEOMETRY_SUPPORTED = 1,
+    COGMASTER_GEOMETRY_UNSUPPORTED = 2
+};
 typedef struct cogmaster_cart_info {
     uint32_t size;
     uint32_t image_size;
@@ -140,9 +187,14 @@ typedef struct cogmaster_cart_info {
     uint32_t machine_guess; /* COGMASTER_MACHINE_*, 0 when unknown */
     uint32_t region_guess;  /* COGMASTER_REGION_*, 0 when unknown */
     uint32_t board;         /* COGMASTER_BOARD_*, 0 when none is supported */
+    uint32_t identified, public_identity;
+    uint32_t persistence, persistent_size, persistence_geometry;
+    uint32_t video_mode;
+    char sha1[41], title[256];
 } cogmaster_cart_info;
 
 cogmaster_status cogmaster_get_versions(cogmaster_versions *out);
+cogmaster_status cogmaster_set_input(cogmaster *m, const cogmaster_input *in);
 cogmaster_status cogmaster_create(const cogmaster_config *cfg, cogmaster **out);
 void cogmaster_destroy(cogmaster *m); /* NULL-safe */
 cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media);
@@ -152,6 +204,8 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out);
 cogmaster_status cogmaster_reset(cogmaster *m, uint32_t kind); /* COGMASTER_RESET_* */
 cogmaster_status cogmaster_get_fault(const cogmaster *m, cogmaster_fault *out);
 cogmaster_status cogmaster_probe(const void *image, size_t n, cogmaster_cart_info *out);
+cogmaster_status cogmaster_get_battery(const cogmaster *m, cogmaster_battery *out);
+cogmaster_status cogmaster_import_battery(cogmaster *m, const void *data, size_t length);
 uint32_t cogmaster_peek(const cogmaster *m, uint32_t space, uint32_t addr); /* above 255: none */
 
 #ifdef __cplusplus

@@ -150,24 +150,13 @@ static void test_vcounter_pal(void)
     vcounter(COGMASTER_TV_PAL, ranges, 2u, LINES_PAL);
 }
 
-/* $7F is the upper 8 bits of the 9-bit pixel counter, which jumps from
-   pixel 295 to 466 at tick 592: $00-$93, then $E9-$FF (SMS-VDP section
-   4.3). */
+/* Selected active-origin anchors (video.md); the timing suite checks
+   every literal counter interval without duplicating the production formula. */
 static void test_hcounter(void)
 {
     cogmaster *m = load_sms();
-    for (uint32_t t = 0; t < LINE_TICKS; t++) {
-        put_beam(m, 10u, t);
-        uint32_t want = (t >= 592u ? t + 340u : t) >> 2;
-        uint8_t got = in(m, 0x7Fu);
-        if (got != want) {
-            fprintf(stderr, "t %lu: $%02X, expected $%02lX\n", (unsigned long)t, got,
-                    (unsigned long)want);
-            check_failures++;
-        }
-    }
-    const uint32_t ticks[] = {0u, 591u, 592u, 683u};
-    const uint8_t values[] = {0x00u, 0x93u, 0xE9u, 0xFFu};
+    const uint32_t ticks[] = {0u, 559u, 560u, 683u};
+    const uint8_t values[] = {0x08u, 0x93u, 0xE9u, 0x07u};
     for (size_t i = 0; i < 4u; i++) {
         put_beam(m, 10u, ticks[i]);
         CHECK_EQ_HEX(in(m, 0x7Fu), values[i]);
@@ -334,7 +323,7 @@ static void port_decode(uint32_t machine, uint32_t region, int mirrors)
         if (!mirrors) {
             vdp = p == 0x7Eu || p == 0x7Fu || p == 0xBEu || p == 0xBFu;
         }
-        /* Line 50, tick 400: V counter $32, H counter $64. */
+        /* Line 50, tick 400: V counter $32, H counter $6C. */
         put_beam(m, 50u, 400u);
         (void)in(m, 0xBFu);
         if (!vdp) {
@@ -352,7 +341,7 @@ static void port_decode(uint32_t machine, uint32_t region, int mirrors)
             continue;
         }
         if ((p & 0xC0u) == 0x40u) {
-            CHECK_EQ_HEX(in(m, (uint16_t)p), (p & 1u) ? 0x64 : 0x32);
+            CHECK_EQ_HEX(in(m, (uint16_t)p), (p & 1u) ? 0x6C : 0x32);
         } else if (p & 1u) {
             out(m, (uint16_t)p, 0x00u);
             CHECK_EQ_U64(v->latch, 1);
@@ -469,14 +458,72 @@ static void test_pause_nmi(void)
     cogmaster_destroy(m);
 }
 
+/* Planes 80,40,20,10 give indices 1,2,4,8,0,0,0,0. The SMS
+   palette expands each two-bit channel by five (SMS-VDP sections 2-3). */
+static void test_background(void)
+{
+    cogmaster *m = load_sms();
+    m->vdp.reg[5] = 0x7Fu;
+    m->vdp.vram[0x3F00] = 0xD0u;
+    m->vdp.reg[0] = 4u;
+    m->vdp.reg[1] = 0x40u;
+    m->vdp.reg[7] = 1u;
+    m->vdp.cram[1] = 3u;
+    m->vdp.cram[2] = 12u;
+    m->vdp.cram[4] = 48u;
+    m->vdp.cram[8] = 63u;
+    m->vdp.cram[17] = 0x15u;
+    for (uint32_t y = 0; y < 8u; y++) {
+        m->vdp.vram[y * 4u] = 0x80u;
+        m->vdp.vram[y * 4u + 1u] = 0x40u;
+        m->vdp.vram[y * 4u + 2u] = 0x20u;
+        m->vdp.vram[y * 4u + 3u] = 0x10u;
+    }
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    static const uint16_t row[] = {0x00Fu, 0x0F0u, 0xF00u, 0xFFFu, 0u, 0u, 0u, 0u};
+    for (uint32_t y = 0; y < 192u; y++) {
+        for (uint32_t x = 0; x < 256u; x++) {
+            if (m->field[y][x] != row[x & 7u]) {
+                CHECK_EQ_HEX(m->field[y][x], row[x & 7u]);
+                cogmaster_destroy(m);
+                return;
+            }
+        }
+    }
+    control(m, 0u, 0x81u);
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(m->field[0][0], 0x555u);
+    CHECK_EQ_HEX(m->field[191][255], 0x555u);
+    static uint16_t pixels[192][256];
+    cogmaster_frame frame = {0};
+    frame.size = sizeof frame;
+    frame.pixels = &pixels[0][0];
+    frame.pitch_bytes = 512u;
+    CHECK_EQ_U64(cogmaster_get_frame(m, &frame), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(frame.backdrop_rgb444, 0x555u);
+    /* Stamped writes cannot repaint completed lines of this field. */
+    put_beam(m, 0u, 512u);
+    control(m, 2u, 0x87u);
+    put_beam(m, 1u, 512u);
+    control(m, 3u, 0x87u);
+    CHECK_EQ_HEX(m->field[0][0], 0x555u);
+    CHECK_EQ_HEX(m->field[1][0], 0u);
+    cogmaster_destroy(m);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
 } cases[] = {
-    {"control_port", test_control_port},   {"data_port", test_data_port},
-    {"hcounter", test_hcounter},           {"pause_nmi", test_pause_nmi},
-    {"port_decode", test_port_decode},     {"status", test_status},
-    {"vcounter.ntsc", test_vcounter_ntsc}, {"vcounter.pal", test_vcounter_pal},
+    {"background", test_background},
+    {"control_port", test_control_port},
+    {"data_port", test_data_port},
+    {"hcounter", test_hcounter},
+    {"pause_nmi", test_pause_nmi},
+    {"port_decode", test_port_decode},
+    {"status", test_status},
+    {"vcounter.ntsc", test_vcounter_ntsc},
+    {"vcounter.pal", test_vcounter_pal},
 };
 
 int main(int argc, char **argv)

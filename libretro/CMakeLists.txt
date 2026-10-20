@@ -3,7 +3,11 @@
 # functions, which libretro.h marks with default visibility or dllexport, in
 # the export table.
 function(cogmaster_libretro_module name)
-  add_library(${name} MODULE libretro.c)
+  set(source libretro.c)
+  if(ARGC GREATER 1)
+    set(source ${ARGV1})
+  endif()
+  add_library(${name} MODULE ${source})
   target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(${name} PRIVATE cogmaster::cogmaster cogmaster-host)
   target_compile_definitions(${name} PRIVATE COGMASTER_LIBRETRO_VERSION="${PROJECT_VERSION}")
@@ -28,6 +32,7 @@ if(COGMASTER_BUILD_TESTS)
   target_compile_definitions(cogmaster_libretro_rgb565 PRIVATE COGMASTER_LIBRETRO_RGB565)
   cogmaster_libretro_module(cogmaster_libretro_gg)
   target_compile_definitions(cogmaster_libretro_gg PRIVATE COGMASTER_LIBRETRO_TEST_GG)
+  cogmaster_libretro_module(cogmaster_libretro_replay ${PROJECT_SOURCE_DIR}/tests/retroarch/checkpoint.c)
 endif()
 
 # Core information for RetroArch's info directory, with display_version

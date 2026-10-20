@@ -1,0 +1,260 @@
+/* Files here live only in the test's private build directory. */
+#include <stdlib.h>
+#include <string.h>
+#include <signal.h>
+#include "internal.h"
+#include "../../runner/path.h"
+#include "../../runner/save.h"
+#include "../../runner/stop.h"
+#include "../check.h"
+#ifdef _WIN32
+#include <direct.h>
+#else
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
+
+static uint8_t image[65536], raw[32769], bytes[32769];
+static void *allocate(void *u, size_t n)
+{
+    (void)u;
+    return malloc(n);
+}
+static void release(void *u, void *p, size_t n)
+{
+    (void)u;
+    (void)n;
+    free(p);
+}
+static cogmaster *machine(const char *rom)
+{
+    FILE *f = cogmaster__path_open(rom, "rb");
+    if (f == NULL)
+        exit(1);
+    size_t n = fread(image, 1u, sizeof image, f);
+    CHECK_EQ_U64(fclose(f), 0);
+    CHECK_EQ_U64(n, sizeof image);
+    cogmaster_config cfg = {0};
+    cfg.size = sizeof cfg;
+    cfg.allocator.alloc = allocate;
+    cfg.allocator.free = release;
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    if (m == NULL)
+        exit(1);
+    cogmaster_media media = {0};
+    media.size = sizeof media;
+    media.image = image;
+    media.image_size = n;
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    return m;
+}
+static void write_file(const char *path, size_t n)
+{
+    FILE *f = cogmaster__path_open(path, "wb");
+    CHECK(f != NULL);
+    if (f == NULL)
+        exit(1);
+    CHECK_EQ_U64(fwrite(raw, 1u, n, f), n);
+    CHECK_EQ_U64(fclose(f), 0);
+}
+static void check_file(const char *path, const uint8_t *expected, size_t n)
+{
+    FILE *f = cogmaster__path_open(path, "rb");
+    CHECK(f != NULL);
+    if (f == NULL)
+        return;
+    CHECK_EQ_U64(fread(bytes, 1u, sizeof bytes, f), n);
+    CHECK(memcmp(bytes, expected, n) == 0);
+    CHECK_EQ_U64(fclose(f), 0);
+}
+static cogmaster_battery battery(cogmaster *m)
+{
+    cogmaster_battery b = {0};
+    b.size = sizeof b;
+    CHECK_EQ_U64(cogmaster_get_battery(m, &b), COGMASTER_STATUS_OK);
+    return b;
+}
+static void imports(cogmaster *m, const char *dir, const char *path)
+{
+    static const size_t sizes[] = {0, 3, 32768, 32769};
+    for (size_t i = 0; i < sizeof raw; i++)
+        raw[i] = (uint8_t)(i * 17u);
+    for (size_t i = 0; i < sizeof sizes / sizeof sizes[0]; i++) {
+        write_file(path, sizes[i]);
+        cogmaster__save s = {0};
+        int status = cogmaster__save_load(&s, m, dir, "folder/round.trip.sms");
+        CHECK_EQ_U64(status, sizes[i] > 32768u ? 4 : 0);
+        cogmaster_battery b = battery(m);
+        if (status == 0) {
+            for (size_t j = 0; j < b.length; j++)
+                CHECK_EQ_HEX(b.data[j], j < sizes[i] ? raw[j] : 0xffu);
+        } else {
+            CHECK(memcmp(b.data, raw, b.length) == 0);
+        }
+        check_file(path, raw, sizes[i]);
+        cogmaster__save_dispose(&s);
+    }
+}
+static void replacement(cogmaster *m, const char *dir, const char *path)
+{
+    cogmaster__save s = {0};
+    CHECK_EQ_U64(cogmaster__save_load(&s, m, dir, "round.trip.sms"), 0);
+    cogmaster_battery b = battery(m);
+    for (size_t i = 0; i < b.length; i++)
+        CHECK_EQ_HEX(b.data[i], 0xffu);
+    CHECK_EQ_U64(cogmaster__save_flush(&s, m), 0);
+    FILE *f = cogmaster__path_open(path, "rb");
+    CHECK(f == NULL);
+    if (f != NULL)
+        (void)fclose(f);
+    cogmaster__bus_write(m, 0xfffcu, 8u);
+    cogmaster__bus_write(m, 0x8000u, 0x42u);
+    CHECK_EQ_U64(cogmaster__save_flush(&s, m), 0);
+    b = battery(m);
+    check_file(path, b.data, b.length);
+    CHECK_EQ_U64(s.acknowledged, b.generation);
+    cogmaster__bus_write(m, 0x8000u, 0x53u);
+    CHECK_EQ_U64(cogmaster__save_flush(&s, m), 0);
+    b = battery(m);
+    check_file(path, b.data, b.length);
+    /* A clean flush must not even replace an externally changed file. */
+    write_file(path, 3u);
+    CHECK_EQ_U64(cogmaster__save_flush(&s, m), 0);
+    check_file(path, raw, 3u);
+    cogmaster__save_dispose(&s);
+}
+static void excluded(cogmaster *m, const char *dir)
+{
+    /* Synthetic metadata uses the same core query as the real fixture.
+       Commercial ROM bytes are neither needed nor opened. */
+    cogmaster__save s = {0};
+    m->cart.persistence = COGMASTER_PERSISTENCE_UNKNOWN;
+    CHECK_EQ_U64(cogmaster__save_load(&s, m, dir, "unknown.sms"), 77);
+    CHECK(s.path == NULL);
+    m->cart.persistence = COGMASTER_PERSISTENCE_BATTERY;
+    m->cart.persistence_geometry = COGMASTER_GEOMETRY_UNSUPPORTED;
+    CHECK_EQ_U64(cogmaster__save_load(&s, m, dir, "unsupported.sms"), 77);
+    CHECK(s.path == NULL);
+    m->cart.persistence = COGMASTER_PERSISTENCE_NONE;
+    CHECK_EQ_U64(cogmaster__save_load(&s, m, dir, "none.sms"), 0);
+    CHECK_EQ_U64(cogmaster__save_flush(&s, m), 0);
+    CHECK(s.path == NULL);
+}
+static void failures(cogmaster *m, const char *dir, const char *path)
+{
+    static const char *const stages[] = {"",     "create", "write",  "flush",
+                                         "sync", "close",  "replace"};
+    for (int stage = COGMASTER_SAVE_CREATE; stage <= COGMASTER_SAVE_REPLACE; stage++) {
+        for (int existing = 0; existing <= 1; existing++) {
+#ifdef _WIN32
+            wchar_t *wide = cogmaster__path_wide(path);
+            CHECK(wide != NULL);
+            if (wide != NULL)
+                (void)DeleteFileW(wide);
+            free(wide);
+#else
+            (void)remove(path);
+#endif
+            memset(raw, 0x19, sizeof raw);
+            if (existing)
+                write_file(path, 3u);
+            cogmaster__save s = {0};
+            CHECK_EQ_U64(cogmaster__save_load(&s, m, dir, "round.trip.sms"), 0);
+            s.fault = stage;
+            uint64_t acknowledged = s.acknowledged;
+            CHECK_EQ_U64(cogmaster__save_flush(&s, m), 0);
+            cogmaster__bus_write(m, 0xfffcu, 8u);
+            cogmaster__bus_write(m, 0x8000u, 0x42u);
+            cogmaster_battery b = battery(m);
+            CHECK(b.generation != acknowledged);
+            CHECK_EQ_U64(cogmaster__save_flush(&s, m), 1);
+            CHECK_EQ_U64(s.acknowledged, acknowledged);
+            CHECK_EQ_U64(battery(m).generation, b.generation);
+            if (existing) {
+                check_file(path, raw, 3u);
+            } else {
+                FILE *f = cogmaster__path_open(path, "rb");
+                CHECK(f == NULL);
+                if (f != NULL)
+                    (void)fclose(f);
+            }
+            s.fault = 0;
+            CHECK_EQ_U64(cogmaster__save_flush(&s, m), 0);
+            CHECK_EQ_U64(s.acknowledged, b.generation);
+            check_file(path, b.data, b.length);
+            printf("%s %s: preservation and dirty retry checked\n", stages[stage],
+                   existing ? "overwrite" : "first-create");
+            cogmaster__save_dispose(&s);
+        }
+    }
+}
+static void clean_signal(cogmaster *m, const char *dir, const char *path, int sig)
+{
+    cogmaster__save s = {0};
+    CHECK_EQ_U64(cogmaster__save_load(&s, m, dir, "round.trip.sms"), 0);
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster__save_flush(&s, m), 0);
+    uint64_t acknowledged = s.acknowledged;
+    cogmaster__stop_install();
+    CHECK(!cogmaster__stop_requested());
+    CHECK_EQ_U64(raise(sig), 0);
+    CHECK(cogmaster__stop_requested());
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    /* The guest now loops without writes; a clean signal exit never replaces. */
+    s.fault = COGMASTER_SAVE_REPLACE;
+    CHECK_EQ_U64(cogmaster__save_flush(&s, m), 0);
+    CHECK_EQ_U64(s.acknowledged, acknowledged);
+    cogmaster_battery b = battery(m);
+    check_file(path, b.data, b.length);
+    cogmaster__save_dispose(&s);
+}
+static void native_replace_error(cogmaster *m, const char *dir)
+{
+    cogmaster__save s = {0};
+    CHECK_EQ_U64(cogmaster__save_load(&s, m, dir, "round.trip.sms"), 0);
+    cogmaster__bus_write(m, 0xfffcu, 8u);
+    cogmaster__bus_write(m, 0x8000u, 0x42u);
+#ifdef _WIN32
+    wchar_t *wide = cogmaster__path_wide(s.path);
+    if (wide == NULL)
+        exit(1);
+    CHECK_EQ_U64(_wmkdir(wide), 0);
+#else
+    CHECK_EQ_U64(mkdir(s.path, 0700), 0);
+#endif
+    CHECK_EQ_U64(cogmaster__save_flush(&s, m), 1);
+    CHECK_EQ_U64(s.acknowledged, 0);
+    /* A directory cannot be replaced by our regular file on either native API. */
+#ifdef _WIN32
+    CHECK_EQ_U64(_wrmdir(wide), 0);
+    free(wide);
+#else
+    CHECK_EQ_U64(rmdir(s.path), 0);
+#endif
+    cogmaster__save_dispose(&s);
+}
+int main(int argc, char **argv)
+{
+    if (argc != 5)
+        return 2;
+    cogmaster *m = machine(argv[2]);
+    if (strcmp(argv[1], "imports") == 0)
+        imports(m, argv[3], argv[4]);
+    else if (strcmp(argv[1], "replacement") == 0)
+        replacement(m, argv[3], argv[4]);
+    else if (strcmp(argv[1], "excluded") == 0)
+        excluded(m, argv[3]);
+    else if (strcmp(argv[1], "failures") == 0)
+        failures(m, argv[3], argv[4]);
+    else if (strcmp(argv[1], "clean_sigint") == 0)
+        clean_signal(m, argv[3], argv[4], SIGINT);
+    else if (strcmp(argv[1], "clean_sigterm") == 0)
+        clean_signal(m, argv[3], argv[4], SIGTERM);
+    else if (strcmp(argv[1], "native_error") == 0)
+        native_replace_error(m, argv[3]);
+    else
+        CHECK(0);
+    cogmaster_destroy(m);
+    CHECK_DONE();
+}

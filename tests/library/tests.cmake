@@ -1,0 +1,97 @@
+# Fault prevented: local-library coverage silently skips images absent from metadata.
+if(CMAKE_SCRIPT_MODE_FILE)
+  execute_process(COMMAND "${CMAKE_COMMAND}" --list-presets=workflow
+    WORKING_DIRECTORY "${ROOT}" RESULT_VARIABLE rc OUTPUT_VARIABLE text)
+  if(NOT rc STREQUAL "0" OR NOT text MATCHES "\"library\"")
+    message(FATAL_ERROR "local library workflow must be available")
+  endif()
+  file(REMOVE_RECURSE "${OUT}")
+  file(MAKE_DIRECTORY "${OUT}/images/nested.sms" "${OUT}/empty")
+  file(COPY_FILE "${FIXTURES}/boot_to_play.sms" "${OUT}/images/known 'quote'; name.sms")
+  string(REPEAT v 32768 halt)
+  file(WRITE "${OUT}/images/.unlisted.ROM" "${halt}")
+  string(REPEAT v 8192 small)
+  file(WRITE "${OUT}/images/unsupported.gg" "${small}")
+  file(WRITE "${OUT}/images/malformed.bin" "bad")
+  file(WRITE "${OUT}/images/unrelated.txt" "ignore")
+  file(COPY_FILE "${FIXTURES}/boot_to_play.sms" "${OUT}/images/nested.sms/hidden.sms")
+  execute_process(COMMAND "${CMAKE_COMMAND}" -E create_symlink "${OUT}/images/.unlisted.ROM" "${OUT}/images/link.sms"
+    RESULT_VARIABLE symlink_rc ERROR_QUIET)
+  function(library directory)
+    execute_process(COMMAND "${CMAKE_COMMAND}" -E env "COGMASTER_ROM_DIR=${directory}"
+      "COGMASTER_LIBRARY_RUN=${RUN}" "COGMASTER_LIBRARY_EMULATOR=${EMULATOR}" "COGMASTER_LIBRARY_OUT=${OUT}/results"
+      sh "${ROOT}/scripts/library.sh" run WORKING_DIRECTORY "${ROOT}"
+      RESULT_VARIABLE rc OUTPUT_VARIABLE text ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "0")
+      message(FATAL_ERROR "synthetic library operation failed: ${rc}")
+    endif()
+    set(text "${text}" PARENT_SCOPE)
+  endfunction()
+  library("${OUT}/images")
+  if(NOT text MATCHES "candidates=4 attempted=3 evaluated=1 coverage=1 predicates=3")
+    message(FATAL_ERROR "every candidate must run/classify once with accepted coverage separated: ${text}")
+  endif()
+  foreach(status IN ITEMS pass unknown unsupported malformed_io)
+    if(NOT text MATCHES "${status}=1")
+      message(FATAL_ERROR "missing distinct library status ${status}: ${text}")
+    endif()
+  endforeach()
+  file(READ "${OUT}/results/results.csv" rows)
+  if(NOT rows MATCHES "candidate,status,evaluated,attempted")
+    message(FATAL_ERROR "library result schema missing")
+  endif()
+  library("${OUT}/empty")
+  if(NOT text MATCHES "candidates=0 attempted=0 evaluated=0 coverage=0")
+    message(FATAL_ERROR "empty library must report zero evaluated coverage")
+  endif()
+  execute_process(COMMAND "${CMAKE_COMMAND}" -E env "COGMASTER_ROM_DIR=${OUT}/missing"
+    "${CMAKE_COMMAND}" --preset library -B "${OUT}/configure-missing" WORKING_DIRECTORY "${ROOT}"
+    RESULT_VARIABLE rc OUTPUT_VARIABLE text ERROR_VARIABLE err)
+  if(rc STREQUAL "0" OR NOT "${text}${err}" MATCHES "COGMASTER_ROM_DIR.*existing directory")
+    message(FATAL_ERROR "missing library directory must fail configure")
+  endif()
+  if(NOT CMAKE_CROSSCOMPILING)
+    execute_process(COMMAND "${CMAKE_COMMAND}" -E env "COGMASTER_ROM_DIR=${OUT}/empty"
+      "COGMASTER_LIBRARY_OUT=${OUT}/workflow-results" "${CMAKE_COMMAND}" --workflow --preset library
+      WORKING_DIRECTORY "${ROOT}" RESULT_VARIABLE rc OUTPUT_VARIABLE text ERROR_VARIABLE err)
+    file(READ "${OUT}/workflow-results/results.csv" results)
+    if(NOT rc STREQUAL "0" OR NOT results STREQUAL "candidate,status,evaluated,attempted\n")
+      message(FATAL_ERROR "local preset must configure/build/test an empty synthetic library: ${rc}")
+    endif()
+  endif()
+  set(RUN "${OUT}/missing-runner")
+  library("${OUT}/images")
+  if(NOT text MATCHES "infrastructure_error=4" OR NOT text MATCHES "evaluated=0 coverage=0")
+    message(FATAL_ERROR "missing runner must remain infrastructure failure with zero coverage")
+  endif()
+  # Exercise literal dotenv parsing in an isolated repository, never the owner's .env.local.
+  set(dotenv "${OUT}/dotenv")
+  file(MAKE_DIRECTORY "${dotenv}/empty 'quote'; directory")
+  file(WRITE "${dotenv}/.env.local" "COGMASTER_ROM_DIR=${dotenv}/empty 'quote'; directory\n")
+  file(WRITE "${dotenv}/CMakeLists.txt" [=[
+cmake_minimum_required(VERSION 3.25)
+project(dotenv NONE)
+if(NOT IS_DIRECTORY "$ENV{COGMASTER_ROM_DIR}")
+  message(FATAL_ERROR "literal dotenv path did not reach configure")
+endif()
+]=])
+  file(WRITE "${dotenv}/CMakePresets.json" [=[
+{"version":6,"configurePresets":[{"name":"library","generator":"Ninja","binaryDir":"${sourceDir}/build/library"}],"workflowPresets":[{"name":"library","steps":[{"type":"configure","name":"library"}]}]}
+]=])
+  execute_process(COMMAND git init -q WORKING_DIRECTORY "${dotenv}" COMMAND_ERROR_IS_FATAL ANY)
+  execute_process(COMMAND "${CMAKE_COMMAND}" -E env --unset=COGMASTER_ROM_DIR
+    sh "${ROOT}/scripts/library.sh" WORKING_DIRECTORY "${dotenv}"
+    RESULT_VARIABLE rc OUTPUT_VARIABLE text ERROR_VARIABLE err)
+  if(NOT rc STREQUAL "0")
+    message(FATAL_ERROR "local wrapper must read literal dotenv directory without executing it")
+  endif()
+  return()
+endif()
+if(COGMASTER_FIXTURES)
+  string(REPLACE ";" "$<SEMICOLON>" library_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
+  cogmaster_add_test(NAME library.synthetic
+    COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/library
+      -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures -DRUN=$<TARGET_FILE:cogmaster-run>
+      "-DEMULATOR=${library_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS library TIMEOUT 60)
+endif()

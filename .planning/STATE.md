@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v1.0
 milestone_name: SMS and Game Gear games play with sound in RetroArch
-current_phase: 3
+current_phase: 03
 current_phase_name: Games play in RetroArch
-status: planning
-stopped_at: "Phase 02 shipping in PR #6; awaiting CI, merge and release"
-last_updated: "2026-10-20T06:14:56.763Z"
+status: shipped
+stopped_at: Phase 03 shipped in PR #8; merge and release tracked at ship; runtime Codex; model GPT-6
+last_updated: "2026-10-20T23:34:42Z"
 last_activity: 2026-10-20
-last_activity_desc: Phase 02 complete, transitioned to Phase 3
-state_head: b8dad7a25db3a844c9b9a3eb31f7c2a61555feb0
+last_activity_desc: Phase 03 shipped in PR #8 with fresh local CI; runtime Codex; model GPT-6
+state_head: 5e7afdcbbda9dfad6b65a34410838a448573e313
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 29
-  completed_plans: 29
-  percent: 50
+  completed_phases: 3
+  total_plans: 47
+  completed_plans: 47
+  percent: 75
 ---
 
 # Project State
@@ -25,21 +25,25 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-20)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 02 — shipping in PR #6: https://github.com/szTheory/cogmaster/pull/6. Await CI, squash auto-merge and the automated release before `/gsd-discuss-phase 03`.
+**Current focus:** Phase 03 — Games play in RetroArch
 
 ## Current Position
 
-Phase: 3 — Games play in RetroArch
-Plan: Not started
-Status: Phase 02 shipping — PR #6; phase 3 waits for merge and release
-Last activity: 2026-10-20 — Phase 02 ship: PR #6 opened; `cmake --workflow --preset ci` exit 0 (183 + 4 tests); hosted CI pending
+Phase: 03 (Games play in RetroArch) — SHIPPED IN PR #8
+Plan: 18 of 18
+Status: Phase 03 shipped — PR #8; 88 UAT checks passed; phase 04 not started
+Last activity: 2026-10-20 — Shipped phase 03 as PR #8; fresh local CI exited 0 (342 tests and 4 package checks); runtime Codex; model GPT-6
 
-Progress: [█████░░░░░] 50%
+Next command: `$gsd-discuss-phase 04`, after PR #8 merges and its automated release is confirmed at ship, per AGENTS rules 9/10.
+
+Ship: https://github.com/szTheory/cogmaster/pull/8. `cmake --workflow --preset ci` exited 0 during ship. Hosted verification: https://github.com/szTheory/cogmaster/actions/runs/39514577638 (`gh run view 39514577638 --exit-status`, exit 0).
+
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 29
+- Total plans completed: 47
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -49,6 +53,7 @@ Progress: [█████░░░░░] 50%
 |-------|-------|-------|----------|
 | 01 | 12 | - | - |
 | 02 | 17 | - | - |
+| 03 | 18 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -88,6 +93,24 @@ Progress: [█████░░░░░] 50%
 | Phase 02 P15 | 7 min | 2 tasks | 13 files |
 | Phase 02 P16 | 23 min | 2 tasks | 15 files |
 | Phase 02 P17 | 14min | 2 tasks | 20 files |
+| Phase 03 P01 | 16min | 3 tasks | 42 files |
+| Phase 03 P02 | 18min | 2 tasks | 37 files |
+| Phase 03 P03 | 24min | 2 tasks | 29 files |
+| Phase 03 P04 | 16min | 2 tasks | 22 files |
+| Phase 03 P05 | 9min | 2 tasks | 15 files |
+| Phase 03 P06 | 17min | 2 tasks | 16 files |
+| Phase 03 P07 | 14min | 2 tasks | 24 files |
+| Phase 03 P08 | 9min | 2 tasks | 34 files |
+| Phase 03 P09 | 13min | 2 tasks | 19 files |
+| Phase 03 P10 | 10min | 2 tasks | 23 files |
+| Phase 03 P11 | 14min | 2 tasks | 36 files |
+| Phase 03 P12 | 12min | 2 tasks | 21 files |
+| Phase 03 P13 | 10min | 2 tasks | 16 files |
+| Phase 03 P14 | 5min | 2 tasks | 11 files |
+| Phase 03 P15 | 14min | 2 tasks | 30 files |
+| Phase 03 P16 | 7min | 2 tasks | 16 files |
+| Phase 03 P17 | 12min | 2 tasks | 24 files |
+| Phase 03 P18 | 31min | 2 tasks | 27 files |
 
 ## Accumulated Context
 
@@ -182,6 +205,43 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 02]: Writes while $3E disables the cartridge are ignored and recorded as unmapped_write (hardware docs silent; stated in src/bus.c)
 - [Phase 02]: The Z80 is split into z80.c, z80_cb.c, z80_ed.c and z80_x3.c, each under the 800-line cap
 - [Phase 02]: A save state refuses CPU combinations the core cannot reach and ties the beam to bus.at
+- [Phase 03]: Save emitted pixels and the monotonic renderer cursor so partially rendered fields restore exactly.
+- [Phase 03]: Validate the canonical absolute input body and exact record count before running; seal eight fixture samples only after sampling.
+- [Phase 03]: Repository checks count complete source-policy, core ABI, JUnit, inventory, assertion and hook helpers by responsibility; packaged-output integration and operational exclusions are individual.
+- [Phase 03]: Classify packaged-output integration, bootstrap, administration, publication and CI routing individually by actual responsibility.
+- [Phase 03]: Share synthetic budget boundary cases between CI and hygiene while retaining their exact inventories.
+- [Phase 03]: Keep GAME-01 and GAME-07 pending until complete phase-wide behavior is demonstrated.
+- [Phase 03]: Use released frontend replay and an uninstalled initial-checkpoint module with unchanged production input/video source.
+- [Phase 03]: Count the shared pixel oracle within the 300-line hosted budget and register its gate in CI and hygiene.
+- [Phase 03]: GAME-07 has exact-SHA hosted input/scroll screenshot proof; GAME-04 remains pending for its full pad/profile/lag criteria.
+- [Phase 03]: Use a saved monotonic dot cursor, tick-600 line hscroll/display latches and final-physical-line per-frame vscroll latch.
+- [Phase 03]: Append SMS1=3; share VDP masks and retained-bus facts; R6 gates address A12/A11 (tile bits 7/6).
+- [Phase 03]: Prepare bounded next-line SAT slots at tick 600; SMS1 width requires slot i+4; observe active-dot flags before clearing status.
+- [Phase 03]: Retain 607/608 IRQ edges and independent pending sources; keep rolling NTSC-240 counter phase separate from fixed host deadlines.
+- [Phase 03]: H origin uses qualified 32-tick inference; share effective TH mixing for rising capture and stable held reads.
+- [Phase 03]: Latch height at final-line tick 600; publish separate bounded completed pixels and metadata without moving fixed host deadlines.
+- [Phase 03]: GAME-02 mailbox criterion proven; GAME-01 hosted portable playing hashes passed in run 39494627790 (plan 03-09 summary); requirement disposition remains with phase verification.
+- [Phase 03]: Append explicit video mode beyond previous media tail padding; save the held native LCD independently of full-field rendering.
+- [Phase 03]: Preserve GG 6:5 native crop; resolve automatic host machine/region through the public cartridge probe and keep presentation independent.
+- [Phase 03]: Reuse serialized pending/current absolute input for Pause reconnect arming; missing frontend callbacks are disconnected sources.
+- [Phase 03]: Moldorian retains known battery identity and 24576-byte declaration with unsupported persistence geometry; no guessed battery span.
+- [Phase 03]: Owned battery fixture is a fixed MIT hash fact consumed by production lookup and checked after linking independently of core targets.
+- [Phase 03]: Card/cartridge aliases coalesce only when hardware facts agree; the shared SMS and GG SMS-mode image defaults to SMS.
+- [Phase 03]: Battery spans use API 6 and transactional raw import API 7; existing ABI layouts and numeric values remain unchanged.
+- [Phase 03]: Persistent extent accounting follows physical mapper translation; same-value mapped persistent writes increment generation, while import and resets preserve it.
+- [Phase 03]: Raw import refuses known-none as no-content, unknown or unsupported persistence as unsupported-board, and supported oversize as save-size before reading bytes.
+- [Phase 03]: Runner saves use same-directory POSIX rename or Windows MoveFileExW, acknowledging dirty generations only after checked write, flush, synchronization and close; Windows uses wide paths.
+- [Phase 03]: Libretro SAVE_RAM delegates to the classified battery query only during the loaded lifetime; frontend restoration owns raw bytes and all filesystem I/O.
+- [Phase 03]: Keep libretro_saves false and experimental status until separate hosted save-file and compatibility proof contracts are met.
+- [Phase 03]: Reuse the existing classified battery fixture identity; its CRC-checked mailbox already reports the previous and incremented counter.
+- [Phase 03]: Use bounded accepted predicates and a shared quoted CSV normalizer; keep expected values outside identity and healthy HALT outside boot-smoke rejection.
+- [Phase 03]: Copy the base compatibility judge and adjacent shared parser before candidate checkout; compare eligible fresh fixture results in both directions.
+- [Phase 03]: Compatibility exceptions name one unique old pass, require the actual new behaviour revision, and expire inclusively within 60 supplied-date days; GAME-06 remains pending through plan 03-17.
+- [Phase 03]: Match fixtures by admitted SHA-256; run metadata misses as bounded unknown observations and restrict public updates to seeded CC0 cases with unchanged expectations.
+- [Phase 03]: Keep playing performance report-only; reuse identical owned fixture, script and profile on comparable bases and report NO_BASE for older contracts.
+- [Phase 03]: Use exclusive same-directory open for portable save temporaries, retaining private native permissions and untouched collision files.
+- [Phase 03]: Stop execution with all eighteen plans complete, ready for code review before formal verification; phase 04 remains pending.
+- [Phase 03]: Preserve every native and portable assertion while correcting actual inventories and measured host timeout bounds.
 
 ### Pending Todos
 
@@ -189,12 +249,11 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 
 ### Blockers/Concerns
 
-- [Phase 3]: VDP timing constants (frame/line interrupt tick, vertical scroll latch, SMS1 zoom slot rule, open-bus byte) conflict between sources; settled by fixtures against released binaries, hardware in v4.0.
+- [Phase 3]: Research retains sourced 607/608 interrupt edges; H-counter coordinate is an explicit inference. Fixtures test the selected model; binary oracles only locate differences, hardware measurements remain v4.0.
 - [Phase 3]: devkitSMS crt0 linking exception to be quoted and judged at the first third-party fixture admission.
-- [Phase 3]: SMS Power! returned 503 during preparation; facts taken from archived captures are flagged in SMSPOWER-EXTRACTS and re-read at the research steps.
+- [Phase 3]: SMS Power! timing and GG port references were accessible during planning research; Moldorian's 24 KiB metadata is confirmed, physical bank decoding remains unresolved and must not be guessed.
 - [Phase 4]: OPLL seed choice and FM:PSG mix need research during planning.
-- [Phase 2]: Review-fix commits 775b29c..b8dad7a have not run in CI yet (local ci and vectors-full exit 0); confirm at ship.
-- [Phase 2]: Sanitizer lanes are evidenced only in CI; local clang-21 ASan hangs at start-up on macOS.
+- [Phase 2]: Full sanitizer lanes are evidenced in CI; local Homebrew clang-21 ASan hangs at startup on macOS. Plan 03-12's focused battery replay and timed save fuzzing passed locally with the installed Apple sanitizer runtime.
 - [Phase 3]: Deferred review info items IN-01..IN-06 (fault-record precision, unread bus.vdp_at, odd-size padding, probe UX, saved fault validation); see 02-REVIEW-DISPOSITION.md.
 
 ## Runtime Log
@@ -210,6 +269,14 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-10-19 | Plan phase 2 (gsd-plan-phase) | Claude Code | claude-opus-5-5 |
 | 2026-10-19 | Execute phase 2 (gsd-execute-phase) | Claude Code | claude-opus-5-5 |
 | 2026-10-20 | Ship phase 2 (gsd-ship) | Codex | GPT-6 |
+| 2026-10-20 | Plan phase 3 (gsd-plan-phase) | Codex | GPT-6 |
+| 2026-10-20 | Execute phase 3 through plan 03-18; ready for code review (gsd-execute-phase) | Codex | GPT-6 |
+
+| 2026-10-20 | Code review phase 3 (gsd-code-review); standard, 152 files, 1 blocker and 1 warning | Codex | GPT-6 |
+| 2026-10-20 | Code review fixes phase 3 (gsd-code-review 03 --fix); both findings fixed, round 1 | Codex | GPT-6 |
+| 2026-10-20 | Verify phase 3 (gsd-verify-work 03); 64 plan truths, 7 requirements and 88 UAT checks passed; hosted run 39514577638 | Codex | GPT-6 |
+
+| 2026-10-20 | Ship phase 3 (gsd-ship 03); PR #8, fresh local CI exit 0 | Codex | GPT-6 |
 
 ## Deferred Items
 
@@ -221,6 +288,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20
-Stopped at: Phase 02 shipping in PR #6; awaiting CI, merge and release
+Last session: 2026-10-20T23:34:42Z
+Stopped at: Phase 03 shipped in PR #8; phase 04 not started; runtime Codex; model GPT-6
 Resume file: None

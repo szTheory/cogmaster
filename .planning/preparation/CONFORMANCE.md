@@ -2,10 +2,18 @@
 title: "Conformance: vectors, fixtures, oracles, diagnostics and the compatibility ledger"
 summary: "Which SMS and Game Gear test material cogmaster may use under which licence and disposition, the self-authored WLA-DX fixtures that are the primary v1.0 evidence, how released emulators and real hardware act as locators, the RAM-mailbox protocol, the ledger and its ratchet, and what each CI tier runs and costs."
 read_when: "Admitting a test ROM, vector set or fixture; writing a fixture or diagnostic ROM; building the runner's mailbox or predicate code; adding a ledger row, an oracle job or a CI lane."
-updated: 2026-10-18
+updated: 2026-10-20
 ---
 
 # Conformance, oracles and the compatibility ledger
+
+Implemented phase-3 evidence includes native/SMS-mode GG and SMS1/SMS2 playing hashes, input variants,
+owned frontend screenshots, enabled-video state rejection, allocation and hostile-run bounds. Hashes are
+compared across six native platforms and be32; wasm32 reports equality separately. Performance now measures
+the scripted playing fixture but remains report-only. Formal code review precedes phase verification.
+H-counter sub-dot origin, tick-600 latches and GG LCD freeze remain qualified sourced models. Three
+unclassified probe assumptions remain flagged in the phase research/source coverage; binary agreement is
+not hardware measurement. Moldorian persistence geometry remains unsupported.
 
 ## Where to look
 | Question | Section |
@@ -151,7 +159,18 @@ A row with source `oracle` names the oracle and pin in `citation`; a row with so
 | GG window rows 24–167 (SP.072) | `boot_to_play.gg` ruler marks (photo) | gamegear phase |
 
 ## 5. Compatibility ledger and ratchet
-`tests/compat/ledger.csv`: one header line, comma-separated, no field may contain a comma, quote or newline (a schema test enforces it so `sh` and `cmake -P` parse it).
+`tests/compat/ledger.csv` uses nine logical quoted-CSV columns. Commas and doubled embedded quotes
+are legal in quoted fields; semicolons stay data. Embedded record newlines and empty records reject.
+The bounded shared parser and current contracts are implemented in `scripts/compat-common.sh` and
+documented in `docs/conformance.md`; generated public counts are in `docs/compatibility.md`.
+Local enumeration is independent of public matching: `scripts/library.sh` runs every supported regular
+candidate in one flat directory, including metadata misses. Symlinks, directories and other extensions
+are excluded. Only admitted fixture hashes get fixture expectations; unknown observations remain local.
+`library.synthetic` proves the real preset using owned bytes. Private `library.local` is absent from CI.
+`scripts/compat-update.sh` accepts only pre-seeded public CC0 cases with unchanged predicates/configuration
+and expectations, takes titles from the immutable public catalog and replaces local evidence with the
+current core revision. New golden values, private identities and fixture changes are discarded. See
+`docs/conformance.md` for the fixed bounds and explicit update command; no library directory is uploaded.
 
 | Column | Meaning |
 |---|---|
@@ -160,26 +179,31 @@ A row with source `oracle` names the oracle and pin in `citation`; a row with so
 | `machine` | `sms`, `gg`, `sg` |
 | `region` | `ntsc-u`, `ntsc-j`, `pal`, `any` |
 | `mapper` | `none`, `sega`, `codemasters`, `korean`, `zemina`, `janggun`, `eeprom`, … (CART 2.2 names) |
-| `predicate` | `boots@F` (weak: display on, ≥ 2 distinct frames, CPU not halted or jammed, no first fault), `frame@F=H`, `ram@F:$ADDR=VV`, `mailbox@F`, `audio@F=H` (transition hash); prefix `movie:<file>/` for scripted input |
+| `predicate` | `boots@F` (strict smoke: sampled display enabled, at least two distinct native crops, no first fault; HALT is healthy), `frame@F=H`, `ram@F:$ADDR=VV`, `mailbox@F`; fixed `cfg:` prefix carries video/devices/script/content SHA-256. Audio awaits phase 4. |
 | `status` | `pass`, `fail`, `unknown` (never evaluated; seed rows), `unsupported` (names the missing board or device; exit 77), `skipped` (deliberate, with a reason; never in CI tiers), `infrastructure_error` (harness or oracle broke; CI red, neither pass nor fail; XFER-049) |
 | `evidence` | 16-hex hash prefix, mailbox CRC, or run URL, plus the core commit (12 hex) |
 | `date` | ISO date of the last evaluation |
 
-Three example rows (the first is a fixture, the second a built ROM, the third a game whose SHA-1 is in the CC0 list; the hash values are placeholders until phase 3 pins them):
-```
-id,title,machine,region,mapper,predicate,status,evidence,date
-fixture/boot_to_play,boot_to_play.sms,sms,any,none,movie:press60/frame@300=0000000000000000,unknown,-,2026-10-18
-built/sn76489-testrom,SN76489 TestRom v1.00,sms,ntsc-u,none,audio@600=0000000000000000,unknown,-,2026-10-18
-<40-hex SHA-1 from hash/sms.xml>,<description from hash/sms.xml>,sms,ntsc-u,sega,boots@600,unknown,-,2026-10-18
-```
+The live ledger has accepted independent own-fixture expectations and unknown CC0 game seeds.
+No current output becomes its own golden value; no metadata membership establishes support.
 `tests/compat/allow.txt` lines read `YYYY-MM-DD <id> <predicate> <reason> behaviour-rev=<n> expires=YYYY-MM-DD`; `policy.allow_expiry` fails on an expired line.
 
-Tier is not a column: rows whose id is in `tests/roms/manifest.txt` or `tests/built/expected.txt` run in CI (PR for fixtures, nightly for built and fetched ROMs); every other row is local. `docs/compatibility.md` is generated from the CSV by a `cmake -P` script (counts by status × machine × mapper, then one row per title); `policy.compat_doc_fresh` regenerates and compares.
+Tier is not a column: admitted own-fixture rows run in CI after their `tests/built/expected.txt`
+digest is checked; unlisted or unevaluated games do not. The shared POSIX-sh parser generates
+`docs/compatibility.md` with predicate/fixture and status × machine × mapper counts;
+`policy.compat_doc_fresh` regenerates and compares it in CI and hygiene.
 
-- **Ratchet:** key = (`id`, `predicate`). Allowed transitions: `unknown` → anything, `fail` → `pass`, `pass` → `pass`. `pass` → anything else, or a changed hash on a passing `frame@`/`audio@` row, needs a dated line in `tests/compat/allow.txt` that names the behaviour-revision bump and expires within 60 days. CI fails when fresh results and the ledger disagree in either direction, so an improvement is committed in the same PR.
+- **Ratchet:** normalized identity includes ROM, resolved machine/region/TV/board/video, devices,
+  script identity/content and predicate/frame/address. Expected hashes/bytes are protected values,
+  excluded from the key. Allowed transitions: `unknown` → anything, `fail` → `pass`, `pass` → `pass`.
+  Deleted passing cases, substituted profiles/scripts or changed expected values need a dated line
+  in `tests/compat/allow.txt` naming the behaviour-revision bump and expiry within 60 days.
+  CI compares fresh results in both directions; protection is the following implementation slice.
 - **Protected baseline:** the ratchet job first checks out `github.event.pull_request.base.sha`, copies `tests/compat/ledger.csv` and `scripts/compat-ratchet.sh` to `$RUNNER_TEMP`, and only then checks out the PR; main's script judges main's ledger against the PR's results, so a PR cannot loosen its own judge [CF.14].
 - **Owner's dumps, locally:** `scripts/library.sh` loads git-ignored `.env.local` (`COGMASTER_ROM_DIR`, optional `COGMASTER_BIOS_DIR`), runs `cmake --workflow --preset library`; configure fails if the directory is missing (no self-skip). It hashes each file, looks the headerless SHA-1 up in the build-time table from the three CC0 lists, registers `library.<id>` only for matches, and writes `build/library/results.csv`; `scripts/compat-update.sh` merges it into the ledger. What leaves the machine: the public SHA-1, the CC0 title, the predicate result (a frame or RAM hash is a single fact, ASSET_POLICY §2), the date. What never leaves: file names, paths, any hash of a file absent from the lists (such files are counted, not named), frames, RAM dumps, saves (ASSET_POLICY §1). `ci*` presets never define `COGMASTER_ROM_DIR` or register library tests, so the exact inventory holds (ENGINEERING 3). Hygiene rejects `.env.local`, ROM paths and ROM bytes.
-- **Recommendation:** the nine-column CSV with a generated doc. **Strongest alternative:** nesturbator's sorted TSV [CF.15]. **Would change if:** a title keeps a comma (then TSV) or a dashboard consumer appears (emit JUnit too).
+- **Recommendation:** nine-column conventional quoted CSV and one shared bounded parser. **Strongest
+  alternative:** sorted TSV [CF.15]. **Would change if:** a consumer needs embedded record newlines;
+  quoted commas and semicolons are already covered by executable controls.
 
 ## 6. CI tiers and cost
 | Tier | Contents | Estimated added minutes | Basis |

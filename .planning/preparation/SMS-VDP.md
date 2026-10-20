@@ -66,7 +66,7 @@ updated: 2026-10-18
 | 2 | 3–1 | name table address bits 13–11; 224/240 modes use bits 3–2 and base $0700/$1700/$2700/$3700; SMS1: bit 0 ANDs address bit 10 (§3.1) |
 | 3, 4 | all | unused in mode 4 on SMS2/GG; SMS1 wants reg 3 = $FF and reg 4 bits 2–0 = 1 or addresses are masked |
 | 5 | 6–1 | SAT address bits 13–8; SMS1: bit 0 clear fetches X/tile from the low 128 bytes |
-| 6 | 2 | sprite pattern index bit 8 (tiles 256–511); SMS1: bits 1–0 mask tile index bits 8 and 6 |
+| 6 | 2 | sprite pattern index bit 8 (tiles 256–511); SMS1: bits 1–0 mask address A12/A11, tile index bits 7/6 (VDP.02 register diagram, rechecked 2026-10-20) |
 | 7 | 3–0 | backdrop/border colour, from the sprite palette (CRAM 16 + n) |
 | 8 | 7–0 | hscroll (bits 7–3 start column, 2–0 fine) |
 | 9 | 7–0 | vscroll (latched once per frame, §3.3) |
@@ -127,7 +127,7 @@ Pixel : Z80 = 3 : 2 in both regions, so one integer tick (mclk) carries CPU, VDP
 
 Treat the MAME hpos values as "next line, before active"; they agree with Charles to within a few mclk. In cogmaster terms: frame and line /INT at mclk ≈ 607 of the line, hscroll and display-enable latched at mclk ≈ 600, V counter increments at ≈ 604.
 
-**4.3 H counter.** 9-bit pixel counter, read as the upper 8 bits: $00–$93 for pixels 0–295, then $E9–$FF for pixels 296–341 (171 values) [VDP.01][VDP.23][VDP.06][VDP.07]. ares: `(h ≥ 592 ? h + 340 : h) >> 2` in mclk; MAME has no jump (`((hclock − 46) >> 1) & $FF`) [VDP.06][VDP.05]. The read value is latched when TH changes (Light Phaser); otherwise live [VDP.01]. FluBBa's IRQ tester saw HC = $06/$07 at the first instruction of the interrupt handler (≈ 20 mclk), i.e. /INT lands at the very end of the line [VDP.16].
+**4.3 H counter.** 9-bit pixel counter, read as the upper 8 bits: $00–$93 then $E9–$FF, 171 values [VDP.01][VDP.06][VDP.07]. Counter coordinates differ from active-display coordinates: the final May 2008 posts give GG LCD left at HC=$20, hence SMS active dot zero at HC=$08 after subtracting 48 dots [VDP.16]. The selected inference translates active-origin tick t to u=(t+32) mod 684, then u<592 ? u/4 : (u+340)/4. Thus active tick 560 jumps $93→$E9, 652 wraps $FF→$00, and frame/line IRQ ticks 607/608 read $F4/$F5. The 32-tick/sub-dot phase is an inference, not a new hardware measurement. Keep the IRQ edges fixed. Earlier unshifted formulas and ≈654 estimates used another origin. The core reads live until its first capture, then holds a low-to-high effective TH capture until another capture/reset (SMS-SYSTEM §4); exact peripheral phase remains unmeasured.
 
 **4.4 V counter** (reads at $7E) [VDP.01][VDP.03][VDP.05][VDP.07]
 
@@ -140,11 +140,11 @@ Treat the MAME hpos values as "next line, before active"; they agree with Charle
 | PAL 224 | 313 | $00–$FF, $00–$02, $CA–$FF | $00–$DF | 32 | 3 + 3 + 13 | 38 |
 | PAL 240 | 313 | $00–$FF, $00–$0A, $D2–$FF | $00–$EF | 24 | 3 + 3 + 13 | 30 |
 
-ares implements these as "subtract 6 above 218/234" (NTSC) and "subtract 57 above 242/258, 56 above 266" (PAL) [VDP.06]. Software can read the counter twice to dodge the mid-line change [VDP.03].
+The literal intervals imply subtract 6 above physical line 218/234 (NTSC 192/224), and subtract 57 above 242/258/266 (PAL 192/224/240), truncating to eight bits. The prior "56 above 266" shorthand contradicted the PAL-240 table: 267−57=$D2. Software can read twice to dodge the mid-line change [VDP.03]. For NTSC-240 the core saves a rolling 263-count phase independently of its fixed 262-line host deadline; entering the mode seeds that phase from the current beam. This separation/entry phase is a selected model, not evidence of measured dynamic-mode hardware behavior.
 
 **4.5 Line interrupt counter.** On every line of the active area and the first line after it (lines 0–192 in 192-line mode) the counter is tested and decremented: at 0 it reloads from reg 10 and sets the pending flag; on every other line (193–261) it is reloaded without a test. Reg 10 writes do not touch the counter until the next reload. The flag persists until the control port is read; IE1 gates /INT only [VDP.01][VDP.06][VDP.07]. MAME places the test at hpos 14 (DISPLAY_CB_HPOS, "fixes Road Rash title scrolling, due to line counter reload timing") and HINT at 26 [VDP.05]. Consequences: reg 10 = n gives an interrupt on line n, then every n + 1 lines; reg 10 = $FF (MiSTer's reset value) never fires inside a frame [VDP.07].
 
-**4.6 Frame interrupt.** Pending flag set at the end of the last active line (line 191 for 192; mclk ≈ 607), which is when the V counter has just become $C1 / $E1 / $F1; ares models it as "vcounter == vlines + 1" at line start [VDP.01][VDP.06][VDP.16]. IE0 gates /INT; the flag stays until the control port is read; /INT follows the flags combinationally (MiSTer adds a 7-clock delay) [VDP.07]. NMI (Pause) is a SYS concern: asserted at the /HSYNC rise of line 260 (PAL 311), the start of the last line [VDP.16].
+**4.6 Frame interrupt.** The selected active-origin model sets frame pending at tick 607 of physical line H (192/224/240), after the CPU-visible V step at 604, so the normal counter has just become $C1/$E1/$F1. Earlier prose calling this physical line 191 mixed coordinate conventions. The 607 measurement is strongest for 192 lines; extension to other heights is a selected model [VDP.16]. IE0 gates frame pending and IE1 gates the separate line pending; /INT follows either gated source combinationally, recomputed on IE writes and status clears. A stamped status read sees then clears both sources. Alternate emulator positions are diagnostics, not hardware verdicts [VDP.01][VDP.06][VDP.07]. NMI remains tick 611 of line 260 (PAL 311) [VDP.16].
 
 **4.7 Mid-line writes.** reg 7 (backdrop) and CRAM writes show from the next dot on real hardware (raster bars); reg 8 shows from the next line; reg 9 from the next frame (§3.3); reg 1 display enable from the next line (MAME) [VDP.05][VDP.07]. An accuracy model therefore needs dot-exact *latching positions* but only line-granular *rendering*, provided it renders up to the current dot before applying a CRAM, reg 7, reg 0 or VRAM write (§9).
 
@@ -154,7 +154,7 @@ ares implements these as "subtract 6 above 218/234" (NTSC) and "subtract 57 abov
 - `VDP_LINE_TICKS 684`, `VDP_PIXEL_TICKS 2`, `VDP_CPU_TICKS 3` [VDP.16][VDP.06]
 - `VDP_LINES_NTSC 262`, `VDP_LINES_PAL 313` [VDP.01]
 - `VDP_ACTIVE_END 512` (first blanking tick), `VDP_HSYNC_START 558`, `VDP_HSYNC_END 611` [VDP.16]
-- `VDP_INT_TICK 607` (frame and line /INT; line /INT at 608 is one Z80 clock later, keep one constant and order the line test after the frame test) [VDP.16]
+- `VDP_INT_TICK 607`, `VDP_LINE_INT_TICK 608` (separate selected frame/line edges, one master tick apart, not one Z80 clock) [VDP.16]
 - `VDP_LATCH_TICK 600` (reg 8, display enable, next-line sprite scan complete) (derived from MAME hpos 21–24 and MiSTer 487) [VDP.05][VDP.07]
 - `VDP_VCOUNT_TICK 604` (CPU-visible V counter increments) (derived from MiSTer 485 vs 487 and MAME 23) [VDP.07][VDP.05]
 - `VDP_HCOUNT_JUMP_PIXEL 296` ($93 → $E9) [VDP.06][VDP.07]
@@ -220,7 +220,7 @@ ares implements these as "subtract 6 above 218/234" (NTSC) and "subtract 57 abov
 **8.3 Divergences users notice.** Missing 8-sprite flicker or missing sprites (overflow rules), wrong left column (mask and fine-scroll garbage), status bars that scroll (lock bits, reg 8 latch position), raster effects off by a line (interrupt mclk position, line counter reload line), SMS1 zoom (games with sacrificial sprites), 224-line Codemasters titles cut off or rolling, GG colour fringing and the window position, PAL frame rate and aspect.
 
 ## 9. Accuracy model
-**Choice 9.A.** Recommendation: integer master tick = mclk (684 per line; Z80 = 3 ticks; pixel = 2). The VDP keeps `line` and `hpos` and renders per line into the field buffer with catch-up: before applying any write to CRAM, reg 0, 1, 7, VRAM, or the SAT during an active line, render dots up to the current hpos; at mclk 600 latch reg 8 and the display-enable bit for the next line and run the sprite scan for the next line; at mclk 607 raise the frame or line interrupt per §4.5–4.6; V counter reads use the §4.4 tables with the +1 after mclk 604. Collision and overflow are computed in the line renderer (line-accurate, §3.7). Strongest alternative: a per-dot state machine (MiSTer-style fetch phases). Would change if: VDPTEST's timing items or a title needs sub-line fetch effects (mid-line VRAM writes landing in a tile already fetched, SMS1 column-0 sprite garbage), or if the conformance phase finds a raster effect wrong by less than a line. The measurements that decide: VDPTEST pass list on cogmaster vs MAME/ares, Charles's 607/608 figures reproduced by a counter-reading harness ROM, Road Rash title scroll.
+**Choice 9.A.** Integer master tick = mclk (684 per line; Z80 = 3 ticks; pixel = 2). Render monotonically to the write dot, latch R8/display and next-line SAT at 600, step CPU-visible V at 604, raise frame pending at 607 and test/reload the line counter at 608. Status includes the current dot before clearing. H reads/captures use §4.3's translated coordinate. Tests prove this selected model with independent intervals and edge assertions; released binaries locate differences and future hardware measurements can refine it. Keep the fixed 262/313-line host deadline separate from counter phase and dynamic display changes. A per-dot fetch state machine remains deferred until a measured case requires it.
 
 ## 10. Open questions (settled by phase)
 - **vscroll per frame or per line** (§3.3): documents say per frame, ares and MiSTer apply per line. Phase: VDP timing; decide with VDPTEST and a harness ROM that writes reg 9 mid-frame; default to per frame.

@@ -3,7 +3,7 @@
 set(policy_scripts ${CMAKE_CURRENT_LIST_DIR}/../cmake)
 
 cogmaster_add_test(NAME policy.no_skip
-  COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -P ${policy_scripts}/no_skip.cmake
+  COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCHECK=no_skip -P ${policy_scripts}/repository.cmake
   LABELS policy TIMEOUT 10)
 
 # The self test scans a tree holding one forbidden line and expects that line
@@ -13,7 +13,7 @@ string(APPEND policy_rule RETURN_CODE)
 set(policy_fixture ${PROJECT_BINARY_DIR}/policy/no_skip_fixture)
 file(WRITE ${policy_fixture}/CMakeLists.txt
   "set_tests_properties(t PROPERTIES ${policy_rule} 77)\n")
-set(policy_cmd ${CMAKE_COMMAND} -DROOT=${policy_fixture} -P ${policy_scripts}/no_skip.cmake)
+set(policy_cmd ${CMAKE_COMMAND} -DROOT=${policy_fixture} -DCHECK=no_skip -P ${policy_scripts}/repository.cmake)
 string(REPLACE ";" "$<SEMICOLON>" policy_cmd "${policy_cmd}")
 cogmaster_add_test(NAME policy.no_skip.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${policy_cmd}" -DCODE=1
@@ -25,11 +25,11 @@ cogmaster_add_test(NAME policy.no_skip.self_test
 # version.txt; the self test is a fixture repository holding its version in
 # a second tracked file and expects that file named.
 cogmaster_add_test(NAME release.single_version_source
-  COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -P ${policy_scripts}/single_version.cmake
+  COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCHECK=single_version -P ${policy_scripts}/repository.cmake
   LABELS policy TIMEOUT 30)
 cogmaster_add_test(NAME release.single_version_source.next
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DNEXT=ON
-    -P ${policy_scripts}/single_version.cmake
+    -DCHECK=single_version -P ${policy_scripts}/repository.cmake
   LABELS policy TIMEOUT 30)
 
 find_package(Git REQUIRED)
@@ -41,7 +41,7 @@ execute_process(COMMAND ${GIT_EXECUTABLE} init -q WORKING_DIRECTORY ${policy_rep
   COMMAND_ERROR_IS_FATAL ANY)
 execute_process(COMMAND ${GIT_EXECUTABLE} add version.txt notes.md
   WORKING_DIRECTORY ${policy_repo} COMMAND_ERROR_IS_FATAL ANY)
-set(policy_cmd ${CMAKE_COMMAND} -DROOT=${policy_repo} -P ${policy_scripts}/single_version.cmake)
+set(policy_cmd ${CMAKE_COMMAND} -DROOT=${policy_repo} -DCHECK=single_version -P ${policy_scripts}/repository.cmake)
 string(REPLACE ";" "$<SEMICOLON>" policy_cmd "${policy_cmd}")
 cogmaster_add_test(NAME release.single_version_source.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${policy_cmd}" -DCODE=1
@@ -52,6 +52,9 @@ cogmaster_add_test(NAME docs.budgets
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -P ${policy_scripts}/budgets.cmake
   LABELS policy TIMEOUT 10)
 
+include(${CMAKE_CURRENT_LIST_DIR}/budget_cases.cmake)
+
+
 # Every public name in the header appears in the embedding guide, and the
 # guide names nothing the header, the version header or the build lacks. The
 # self test is a header declaring a call its guide omits beside a guide naming
@@ -60,13 +63,13 @@ cogmaster_add_test(NAME docs.api_names
   COMMAND ${CMAKE_COMMAND} -DHEADER=${PROJECT_SOURCE_DIR}/include/cogmaster.h
     -DDOC=${PROJECT_SOURCE_DIR}/docs/embedding.md
     "-DOTHER=${PROJECT_SOURCE_DIR}/cmake/version.h.in$<SEMICOLON>${PROJECT_SOURCE_DIR}/CMakeLists.txt"
-    -P ${policy_scripts}/api_names.cmake
+    -DCHECK=api_names -P ${policy_scripts}/repository.cmake
   LABELS policy TIMEOUT 10)
 set(policy_names ${PROJECT_BINARY_DIR}/policy/api_names_fixture)
 file(WRITE ${policy_names}/cogmaster.h "#define COGMASTER_KEPT 1\nint cogmaster_added(void);\n")
 file(WRITE ${policy_names}/embedding.md "Use `COGMASTER_KEPT` and `cogmaster_removed`.\n")
 set(policy_cmd ${CMAKE_COMMAND} -DHEADER=${policy_names}/cogmaster.h
-  -DDOC=${policy_names}/embedding.md -P ${policy_scripts}/api_names.cmake)
+  -DDOC=${policy_names}/embedding.md -DCHECK=api_names -P ${policy_scripts}/repository.cmake)
 string(REPLACE ";" "$<SEMICOLON>" policy_cmd "${policy_cmd}")
 cogmaster_add_test(NAME docs.api_names.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${policy_cmd}" -DCODE=1
@@ -77,5 +80,7 @@ cogmaster_add_test(NAME docs.api_names.self_test
 # Each derived file has a notice, each notice has a file, and the libretro
 # .info licence field agrees with both.
 cogmaster_add_test(NAME policy.notices
-  COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -P ${policy_scripts}/notices.cmake
+  COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCHECK=notices -P ${policy_scripts}/repository.cmake
   LABELS policy TIMEOUT 10)
+
+include(${CMAKE_CURRENT_LIST_DIR}/e2e_cases.cmake)

@@ -175,6 +175,13 @@ All 27 SMS and 37 GG `battery="yes"` entries use the Sega mapper's slot-2 window
 
 Neither libretro page states the byte count written; GPGX's and Gearsystem's `.srm` sizes for an 8 KB game are (unverified) and are measured in §8 from released binaries.
 
+**Implemented scope:** the classified library battery query and raw import expose supported 8/16/32 KiB
+lengths without changing physical mapper allocation. Moldorian retains its pinned 24 KiB declaration but
+unsupported geometry; no guessed 24 KiB mask or modulo decode is installed. Unknown persistence is refused
+when saving is requested, known volatile RAM stays outside SAVE_RAM, and EEPROM remains deferred. Raw short
+imports pad with $FF, oversize rejects transactionally, and runner `.srm` replacement is atomic on POSIX and
+Windows. Exact-size wrong-game raw files cannot be identified; continuation controls test their effect.
+
 **Recommendation:** `RETRO_MEMORY_SAVE_RAM` is exactly the on-cart RAM (8/16/24/32 KB, raw, no header); for an EEPROM title it is the 128-byte 93C46 image stored as 64 little-endian 16-bit words; a title with both never exists in the lists. The library exports a span plus a generation counter that increments on every write while $FFFC b3 (or the EEPROM window) is enabled; the host persists when the counter changes. The runner writes `<rom>.srm` in the same bytes. **Strongest alternative:** MAME-style 32 KB always. **Would change if:** GPGX's `.srm` for an 8 KB game turns out to be 32 KB and users ask to swap files; then pad on import, never on export.
 
 ## 5. ROM hacks and patches

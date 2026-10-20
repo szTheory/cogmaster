@@ -134,12 +134,23 @@ static void test_port3f_region(void)
     for (size_t k = 0; k < 2u; k++) {
         cogmaster *m = load(COGMASTER_MACHINE_SMS2, regions[k], COGMASTER_TV_NTSC);
         CHECK_EQ_HEX(m->io.io_ctrl, 0xFF);
+        m->bus.line = 20u;
+        m->bus.t = 0u;
+        m->bus.at = m->ticks;
         cogmaster__bus_out(m, 0x003Fu, 0xF5u);
         CHECK_EQ_HEX(cogmaster__bus_in(m, 0x00DDu) & 0xC0u, k == 0u ? 0xC0 : 0x00);
+        CHECK_EQ_U64(m->vdp.hheld, 0u);
         cogmaster__bus_out(m, 0x003Fu, 0x55u);
         CHECK_EQ_HEX(cogmaster__bus_in(m, 0x00DDu) & 0xC0u, 0x00);
+        m->bus.t = 96u;
+        cogmaster__bus_out(m, 0x003Fu, 0xF5u);
+        /* The Japanese output remains low despite the level-bit write. */
+        CHECK_EQ_U64(m->vdp.hheld, k == 0u ? 1u : 0u);
+        m->bus.t = 560u;
+        cogmaster__bus_out(m, 0x003Fu, 0x55u);
         cogmaster__bus_out(m, 0x003Fu, 0xFFu);
         CHECK_EQ_HEX(cogmaster__bus_in(m, 0x00DDu) & 0xC0u, 0xC0);
+        CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Fu), 0xE9u);
         CHECK_EQ_U64(fault_of(m).present, 0);
         cogmaster_destroy(m);
     }
@@ -189,6 +200,9 @@ static void test_gg_ports(void)
     CHECK_EQ_HEX(m->io.mem_ctrl, 0xA8);
     cogmaster__bus_out(m, 0x003Eu, 0xFFu);
     CHECK_EQ_HEX(m->io.mem_ctrl, 0xA8);
+    cogmaster__bus_out(m, 0x3Fu, 0x55u);
+    cogmaster__bus_out(m, 0x3Fu, 0xFFu);
+    CHECK_EQ_U64(m->vdp.hheld, 0u);
     CHECK_EQ_HEX(cogmaster__bus_read(m, STAMP_AT), STAMP);
     cogmaster_destroy(m);
 
@@ -201,6 +215,23 @@ static void test_gg_ports(void)
    open-bus read each time. */
 static void test_open_bus(void)
 {
+    cogmaster *sms1 = load(COGMASTER_MACHINE_SMS1, COGMASTER_REGION_EXPORT, COGMASTER_TV_NTSC);
+    CHECK_EQ_HEX(sms1->bus.data, 0xFFu);
+    cogmaster__bus_write(sms1, 0xC100u, 0x6Au);
+    CHECK_EQ_HEX(cogmaster__bus_in(sms1, 0x3Fu), 0x6Au);
+    (void)cogmaster__bus_fetch(sms1, 0u, 0u);
+    CHECK_EQ_HEX(cogmaster__bus_in(sms1, 0x3Fu), image[0]);
+    cogmaster__bus_write(sms1, 0xC100u, 0x55u);
+    (void)cogmaster__bus_read(sms1, 0xC100u);
+    CHECK_EQ_HEX(cogmaster__bus_in(sms1, 0x3Fu), 0x55u);
+    cogmaster__bus_out(sms1, 0x3Eu, 0xAFu);
+    CHECK_EQ_HEX(cogmaster__bus_in(sms1, 0xDCu), 0xAFu);
+    cogmaster__bus_out(sms1, 0x3Eu, 0xEBu);
+    uint32_t count = sms1->counters.open_bus_reads;
+    CHECK_EQ_HEX(cogmaster_peek(sms1, COGMASTER_SPACE_BUS, 0u), 0xEBu);
+    CHECK_EQ_U64(sms1->counters.open_bus_reads, count);
+    CHECK_EQ_HEX(cogmaster__bus_read(sms1, 0u), 0xEBu);
+    cogmaster_destroy(sms1);
     static const struct {
         uint32_t machine, region;
         uint16_t port;
@@ -262,17 +293,51 @@ static void test_decode_mirrors(void)
         for (size_t i = 0; i < 6u; i++) {
             CHECK_EQ_HEX(cogmaster__bus_in(m, others[i]), 0xFF);
         }
-        CHECK_EQ_U64(m->counters.open_bus_reads, 6);
+        CHECK_EQ_U64(m->counters.open_bus_reads, k == 0u ? 6u : 4u);
         cogmaster__bus_out(m, 0x0001u, 0xFFu);
         CHECK_EQ_HEX(m->io.io_ctrl, 0x55);
         cogmaster_destroy(m);
     }
 }
 
+static void test_absolute_input(void)
+{
+    cogmaster *m = export_sms();
+    cogmaster_input in = {0};
+    in.size = sizeof in;
+    in.p1 = 63u;
+    in.p2 = 63u;
+    in.reset = 1u;
+    CHECK_EQ_U64(cogmaster_set_input(m, &in), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDCu), 0xFFu);
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDCu), 0u);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDDu), 0xF0u);
+    in.p1 = 64u;
+    CHECK_EQ_U64(cogmaster_set_input(m, &in), COGMASTER_STATUS_ERR_ARGUMENT);
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDCu), 0u);
+    in.p1 = 63u;
+    in.port1 = COGMASTER_DEVICE_NONE;
+    in.port2 = COGMASTER_DEVICE_NONE;
+    in.reset = 0u;
+    CHECK_EQ_U64(cogmaster_set_input(m, &in), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDCu), 0xFFu);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDDu), 0xFFu);
+    cogmaster_destroy(m);
+}
+
+#include "input_cases.h"
+
 static const struct {
     const char *name;
     void (*run)(void);
 } cases[] = {
+    {"absolute_input", test_absolute_input},
+    {"pad_pins", test_pad_pins},
+    {"pause_history", test_pause_history},
+    {"lag_decode", test_lag_decode},
     {"decode_mirrors", test_decode_mirrors},
     {"gg_ports", test_gg_ports},
     {"open_bus", test_open_bus},

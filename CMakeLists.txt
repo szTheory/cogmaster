@@ -32,6 +32,8 @@ option(COGMASTER_BUILD_LIBRETRO "Build the libretro core" ${cogmaster_libretro_d
 # make warnings fatal through CMAKE_COMPILE_WARNING_AS_ERROR.
 function(cogmaster_warnings target)
   if(PROJECT_IS_TOP_LEVEL)
+    # Keep ISO C stdio on MSVC; its optional *_s alternatives are not portable.
+    target_compile_definitions(${target} PRIVATE $<$<C_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>)
     target_compile_options(${target} PRIVATE
       $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion -Wstrict-prototypes -Wmissing-prototypes -Wvla -Wundef -Wcast-qual -Wimplicit-fallthrough -Wmissing-variable-declarations>
       $<$<C_COMPILER_ID:GNU>:-Wduplicated-cond -Wlogical-op>
@@ -46,6 +48,9 @@ add_library(cogmaster STATIC
   src/boot.c
   src/bus.c
   src/cart.c
+  src/battery.c
+  src/cartdb.c
+  src/sha1.c
   src/crc32.c
   src/fault.c
   src/instance.c
@@ -55,6 +60,7 @@ add_library(cogmaster STATIC
   src/state.c
   src/testcard.c
   src/vdp.c
+  src/vdp_render.c
   src/z80.c
   src/z80_cb.c
   src/z80_ed.c
@@ -126,6 +132,8 @@ if(COGMASTER_BUILD_RUNNER)
   set(COGMASTER_RUNNER_SOURCES
     runner/main.c
     runner/args.c
+    runner/expect.c
+    runner/input.c
     runner/bench.c
     runner/clock.c
     runner/crc32.c
@@ -134,6 +142,7 @@ if(COGMASTER_BUILD_RUNNER)
     runner/png.c
     runner/probe.c
     runner/rss.c
+    runner/save.c
     runner/sha1.c
     runner/sha256.c
     runner/stop.c)
@@ -200,6 +209,10 @@ option(COGMASTER_LIBFUZZER "Build the libFuzzer targets; register only the fuzz 
 # from the fetched archive and registers only the full shards and the sample
 # equality check.
 option(COGMASTER_VECTORS_FULL "Convert the fetched z80 vectors; register only the full shards" OFF)
+option(COGMASTER_LIBRARY "Register only the private local library operation" OFF)
+if(COGMASTER_LIBRARY AND NOT IS_DIRECTORY "$ENV{COGMASTER_ROM_DIR}")
+  message(FATAL_ERROR "library: COGMASTER_ROM_DIR must name an existing directory")
+endif()
 # Fault prevented: a nightly run that reports green after converting nothing
 # because the fetched tree is missing.
 if(COGMASTER_VECTORS_FULL AND NOT EXISTS "${PROJECT_SOURCE_DIR}/build/pins/sst-z80/v1")
@@ -223,6 +236,8 @@ elseif(COGMASTER_LIBFUZZER)
   set(inventory fuzz)
 elseif(COGMASTER_VECTORS_FULL)
   set(inventory vectors-full)
+elseif(COGMASTER_LIBRARY)
+  set(inventory library)
 endif()
 set(COGMASTER_INVENTORY ${inventory} CACHE STRING "Test inventory file under tests/inventory")
 # Fault prevented: every wasm32 test failing on a missing runtime, with a

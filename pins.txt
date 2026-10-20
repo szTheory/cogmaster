@@ -1,4 +1,7 @@
 # Every pinned download, one row each: name version url sha256.
+mame-sms 1d7a454ed79e97d35d2a9f127ac029ead94711d6 https://raw.githubusercontent.com/mamedev/mame/1d7a454ed79e97d35d2a9f127ac029ead94711d6/hash/sms.xml f4f67425d9c85b8e118aa3825f866bfc51f09b2c57d7c503f366596efa6d275a
+mame-gamegear 1d7a454ed79e97d35d2a9f127ac029ead94711d6 https://raw.githubusercontent.com/mamedev/mame/1d7a454ed79e97d35d2a9f127ac029ead94711d6/hash/gamegear.xml 3d86324d0d0c4a0fd78409bdecaf565c42edd55aca646d9349fdcff0f371a7a1
+mame-sg1000 1d7a454ed79e97d35d2a9f127ac029ead94711d6 https://raw.githubusercontent.com/mamedev/mame/1d7a454ed79e97d35d2a9f127ac029ead94711d6/hash/sg1000.xml 3ed4fa62100b53c81a1bab4bb43d6e908b04580faaafac68158260b4e0dbd2ad
 # scripts/fetch-pin.sh NAME DEST downloads a row and verifies its SHA-256 before use.
 #
 # Bump policy: take an LTS patch release when it fixes a security advisory, and move

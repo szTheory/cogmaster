@@ -1,5 +1,82 @@
 # Conformance
 
+The local `library` workflow enumerates one directory in deterministic shell-glob order: regular `.sms`, `.gg`, `.bin`, and
+`.rom` files, case insensitive, including hidden names. It excludes symlinks, directories and other
+extensions, and never recurses. Filenames pass as inert environment data, including quotes and semicolons.
+Every candidate is probed once; supported metadata misses run 20 frames and remain `unknown`. Accepted
+ledger predicates run with their fixed configuration, capped at 600 frames each. Only exact admitted
+SHA-256 fixture bytes receive fixture expectations. Empty libraries explicitly report zero coverage;
+a missing directory fails configure. `unsupported`, `malformed_io` (invalid small image or read failure),
+and `infrastructure_error` remain separate from evaluated `pass`/`fail`. Evaluated-image coverage and
+predicate totals are separate from candidate and attempted-image counts. Current observations never become expectations.
+All probes, private names, hashes and diagnostics stay in ignored `build/library/results/`; the command
+prints aggregate counts only. These bounded observations establish no playable, completable or sound claim.
+
+To propose a public update, run `sh scripts/compat-update.sh build/library/results/public-facts.csv`.
+Stdout is a candidate ledger; review it before replacing `tests/compat/ledger.csv` and regenerating
+`docs/compatibility.md`. Only already seeded cases with a CC0 public identity and the exact accepted
+predicate, configuration and expectation can change. Titles come from `src/cartdb.inc`; filenames and
+local evidence are discarded. The update permits only the fixed predicate status, valid date and current
+core commit. Unknown IDs, new predicates or golden values, changed profiles, and fixture updates are
+discarded; extra columns and invalid dates reject. Owned fixtures stay managed by the reproducible CI
+fixture path. No screenshot, RAM/save dump, trace, path or newly observed hash is exported. A missing
+accepted expectation remains `unknown`, even if the image ran successfully. Metadata membership never
+guarantees support; `.info` stays experimental. The existing protected-base ratchet still judges a PR.
+
+The [compatibility ledger](compatibility.md) reports accepted predicates, never general support.
+`runner.expect.predicates` exercises independent frame/RAM values, mismatch/usage/refusal/I/O
+statuses, mailbox completion and interrupt-driven HALT smoke, with static-display and first-fault
+controls. `compat.fixtures` executes each evaluated own-fixture row only after checking its admitted
+build digest and resolved board; the initial four evaluations cover two fixtures. Its public result
+CSV stays under the build tree. CC0 game identities start unknown and metadata membership proves
+no behavior. Private-library execution is separate subsequent work.
+
+Passing compatibility cases are protected by `scripts/compat-ratchet.sh BASE HEAD ALLOW DATE BASE_REV HEAD_REV`.
+The adjacent shared parser normalizes ROM/profile/TV/board/video/devices/script path and SHA-256,
+frame and RAM address before comparison; expected bytes and hashes stay outside identity. Duplicate aliases
+reject. A missing pass, changed value, script digest, device or profile requires one dated exception naming
+the unique old passing predicate. Unchanged statuses, unknown transitions and fail-to-pass are allowed.
+Exceptions in `tests/compat/allow.txt` use `YYYY-MM-DD <id> <old-predicate> <reason words>
+behaviour-rev=<new revision> expires=YYYY-MM-DD` on one line. The revision must exceed the base and equal
+the head; the date cannot be future. Expiry is inclusive and at most 60 days after the supplied judge date.
+An ambiguous predicate matching multiple profiles rejects. Neither core code nor this judge reads a clock.
+
+`sh scripts/compat-common.sh normalize tests/compat/ledger.csv` emits canonical quoted CSV;
+`docs` emits this ledger page and `cases` emits validated CMake execution facts without title interpolation.
+The shared parser accepts conventional doubled quotes and commas inside quoted fields, preserving
+semicolons as data. It bounds files to 4 MiB, records to 4096 bytes, fields to 1024 bytes and rows to 4096;
+embedded record newlines, empty records and duplicate normalized cases reject. Header-only means
+zero evaluated coverage. Output is deterministic under row permutation. `policy.compat_doc_fresh`
+regenerates the public page; its corruption control and parser controls run in CI and hygiene.
+
+The nine columns are `id,title,machine,region,mapper,predicate,status,evidence,date`. Normalization
+resolves region `any` to `ntsc-u`, inserts default SMS/GG video and pad devices, and uses the empty
+SHA-256 for no script. A configuration prefix has the fixed grammar
+`cfg:video=sms;port1=pad;port2=pad;script=none;sha256=DIGEST/` before the runner predicate;
+video accepts `sms|gg`, devices accept `pad|none`, and script is a logical identifier plus its content
+SHA-256. Frame numbers are decimal; RAM addresses and expected bytes normalize to uppercase hex.
+Expected hashes/bytes remain separate from identity, which includes the resolved profile, board,
+devices, script identity/content, predicate kind, frame and address. A boot cap is at most 1,000,000
+frames; sound predicates are unavailable. The libretro core stays experimental through v2.0.
+
+Cartridge classification is covered by `cart.database` and `cart.generator`: known nonbattery, unknown,
+known battery and unsupported geometry are distinct from board allocation and ledger membership.
+`cart.fixture_identity` and `cart.fixture_hash` run the assembled battery fixture through production lookup,
+check its mailbox, reject a one-byte identity mutation, retain identity with a copier header, and rename it
+without changing classification. Assembly independently checks the fixed SHA-1 fact; the mismatch control
+`cart.fixture_wrong_hash` must fail with the identity diagnostic. Physical 24 KiB wiring remains explicitly
+unsupported as described in [Cartridge identity and RAM](hardware/cartridges.md).
+
+`runner.save.continuation.normal`, `.term` and `.int` launch separate runner processes with the classified
+`battery` image. Erased FF RAM becomes `A5 5A 01`; the mailbox's low byte is the previous counter and its
+high byte the incremented counter. The next production child must report `0201` and write `A5 5A 02`.
+Missing saves instead report `0100`; a same-size save with signature and counter 41 reports `2A29`.
+Every successful save is exactly 32 KiB with FF beyond the three counter bytes and no leaked temporary.
+An extra byte causes exit 4 with the target digest unchanged. Signal cases use the existing deterministic
+SIGTERM/SIGINT hook before frame 3, finish that frame, then continue in an uninstrumented production child;
+these exercise the portable C signal handlers, including WASI's synchronous `raise`, rather than requiring
+external asynchronous process signals on every platform.
+
 How the core is checked against public test data, assembled test programs and generated inputs. This page covers
 the Z80 vectors, the assembled fixtures and their mailbox, and fuzzing; testing in general is in
 [testing.md](testing.md).
@@ -288,6 +365,61 @@ rows with profile `gg`. The records:
 
 The H counter latch, the Pause NMI counter and the Pause movies need input and are not in this fixture yet.
 
+## Video geometry and timing fixture
+
+`vdp_lines` is assembled three times from the same owned source, as
+`vdp_lines_192.sms`, `vdp_lines_224.sms` and `vdp_lines_240.sms`. Only their
+SHA-256 digests are committed; all image bytes stay under the build directory.
+Each runs on NTSC and PAL, with eight numeric mailbox records judged against
+`tests/diag/expected.csv`: line IRQ count, frame IRQ count, entry H/V and two
+status reads plus V samples either side of the selected $3F/$40 boundary. The [video notes](hardware/video.md) derive the counts, handler
+range, rolling phase and feature coordinates.
+
+`fixtures.vdp_lines.pixels.*` checks every coordinate against an independent
+diagonal/solid-colour construction, including both sprite sizes, zoom, SAT
+order, flips, palette, priority, mask, scroll locks, IRQ scroll bands and the
+last active row. `fixtures.vdp_lines.mailbox.*` also pins each assembled image.
+Named wrong-value, missing-row and one-frame-hang controls must return their
+expected nonzero result. The lane hash file contains all fixture image
+digests plus actual playing-frame hashes for both TV standards; comparison
+across portable lanes detects host-dependent rendering. The separate
+`boot_to_play` retains the same pixel oracle. Its SMS mailbox values now hold independent pad-1 and
+pad-2 edge counters in the high and low bytes. Separate and overlapping pad schedules exercise no input,
+press, hold, release and repeated press; the shared visible counter, CRAM colour and scroll still drive
+the independently checked picture. Setup frames 1–3 and mailbox-sealing frame 12 are lagged; every other
+frame executes a decoded controller read. The runner reports their sum with `--input`.
+
+## Frontend play evidence
+
+The owned `boot_to_play.gg` is assembled from a thin GG-header wrapper
+over the SMS fixture. Its own diamond/bar glyphs cover the LCD window and
+its 64-byte palette supplies the independently widened SMS colour sequence
+as native RGB444. The fixture polls native Start once per VBlank; press
+edges change CRAM 15 and scroll, while held and released levels do not.
+The first eight polls record both counter/scroll and raw Start/region
+bytes, sealed with the mailbox CRC. Baseline and scripted rows are judged
+against `tests/diag/expected.csv`; every LCD coordinate and the runner hash
+are checked against the explicit diamond table and colour arithmetic.
+The same SMS source now polls button 1 on either pad, with separate p1/p2
+scripts proving the same first-boundary, held and repeated-edge sequence.
+The image digests are in `tests/built/expected.txt`; no built ROM is committed.
+
+`vdp.gg` tests exhaust all 4096 native colours and 64 SMS colours, shared
+even-byte latch reuse across address changes/wrap, raster immutability,
+192/224 crop identity, held LCD versus live full-field output, SOFT/POWER
+reset, matching-mode state restore and specific controller aliases. These
+are checks of the selected sourced model; LCD freeze behavior and remaining
+full-decode uncertainty still need hardware measurement for stronger claims.
+
+The hosted RetroArch job preserves the no-content card comparison and adds the owned SMS game with frontend
+replay input. Its baseline and press/hold/release/repeated-press screenshots must equal runner pixels and the
+independent coordinate oracle at counter/scroll 0 and 2. A one-pixel mutation must fail. The replay-only module
+adds existing internal state visitor forwarding for the frontend's initial checkpoint, while compiling the
+same input and video adapter source; it is excluded from installation and archives. The in-process host runs
+the richer sequence against both production and replay modules. Two-pad, region,
+reset and lag cases run through the public core/runner and in-process frontend tests;
+native GG Start and crop also have the hosted proof described below.
+
 ## Fuzzing
 
 The loader and a two-frame run are fuzzed from generated seeds. Every pull request replays the seeds and the
@@ -295,3 +427,9 @@ committed regressions (`ctest -L fuzz`); the nightly `fuzz` preset runs libFuzze
 undefined-behaviour sanitizers. A finding is triaged as a harness or core bug: fix it, then commit the minimised
 input under `tests/fuzz/regress/` with its `tests/roms/manifest.txt` row so every lane replays it.
 [testing.md](testing.md#fuzzing) has the commands and limits.
+
+Game Gear hosted proof uses the native 160×144 LCD crop with the default 6:5 pixel
+aspect. Baseline and Start-scripted screenshots must equal the runner crop and
+the independent glyph oracle at field origin (48,24). Full-field and square-pixel
+options are presentation only, with in-process completed-geometry and PAL pacing
+coverage. Frontend agreement checks integration; it is not a hardware measurement.
