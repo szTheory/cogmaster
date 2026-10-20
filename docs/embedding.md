@@ -293,6 +293,16 @@ wraps), toggling port `$3E`, and undocumented CPU instructions. An undriven read
 instance's open-bus counter instead. The test card runs no CPU, so it never records a fault. The call works before
 a load too, and then reports `present` 0.
 
+## Reading memory
+
+`cogmaster_peek(m, COGMASTER_SPACE_BUS, addr)` returns the byte the CPU would read at `addr` (`$0000`-`$FFFF`)
+right now: the cartridge through its mapper, work RAM and its mirror, and `$FF` where port `$3E` has taken the
+cartridge or work RAM off the bus. It has no side effect: it moves no clock, records no fault, counts no open-bus
+read and clears no status, so peeking every address leaves the saved state byte for byte the same. A peek with no
+answer returns a value above 255: a NULL instance, no successful `cogmaster_load` yet, a `space` other than
+`COGMASTER_SPACE_BUS` (0, the only space), or an `addr` above `$FFFF`. With the test card loaded the slots read
+`$FF`.
+
 ## Information
 
 `cogmaster_get_info` fills a `cogmaster_info` for the loaded machine, so a host need not hard-code it:
@@ -340,6 +350,7 @@ changes no state; a failed `cogmaster_load` keeps the content that was loaded be
 | `cogmaster_reset(m, kind)` | OK, ERR_ARGUMENT, ERR_NO_CONTENT |
 | `cogmaster_get_fault(m, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE |
 | `cogmaster_probe(image, n, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_UNSUPPORTED_SIZE, ERR_UNSUPPORTED_BOARD |
+| `cogmaster_peek(m, space, addr)` | a byte, 0 to 255, or a value above 255 (no status) |
 
 ## Version numbers
 
@@ -373,10 +384,10 @@ Every public name, for reference: the opaque instance `cogmaster`; the types `co
 `image_size`, `body_offset`, `header_at`, `checksum`, `checksum_ok`, `product_code`, `version`, `region_code`,
 `rom_size_code`, `machine_guess`, `region_guess`, `board`); the functions `cogmaster_get_versions`,
 `cogmaster_create`, `cogmaster_destroy`, `cogmaster_load`, `cogmaster_run_frame`, `cogmaster_get_frame`,
-`cogmaster_get_info`, `cogmaster_reset`, `cogmaster_get_fault` and `cogmaster_probe`; the constants `COGMASTER_MACHINE_AUTO`,
+`cogmaster_get_info`, `cogmaster_reset`, `cogmaster_get_fault`, `cogmaster_probe` and `cogmaster_peek`; the constants `COGMASTER_MACHINE_AUTO`,
 `COGMASTER_MACHINE_SMS2`, `COGMASTER_MACHINE_GG`, `COGMASTER_REGION_AUTO`, `COGMASTER_REGION_EXPORT`,
 `COGMASTER_REGION_JAPAN`, `COGMASTER_TV_AUTO`, `COGMASTER_TV_NTSC`, `COGMASTER_TV_PAL`, `COGMASTER_STOP_FRAME`, `COGMASTER_FRAME_FULL_FIELD`,
 `COGMASTER_RESET_SOFT`, `COGMASTER_RESET_POWER`, `COGMASTER_BOARD_ROM_ONLY`, `COGMASTER_BOARD_SEGA`,
-`COGMASTER_BOARD_CODEMASTERS`, the five `COGMASTER_FAULT_KIND_*` and six `COGMASTER_FAULT_DEVICE_*` values
+`COGMASTER_BOARD_CODEMASTERS`, `COGMASTER_SPACE_BUS`, the five `COGMASTER_FAULT_KIND_*` and six `COGMASTER_FAULT_DEVICE_*` values
 above, the nine `COGMASTER_STATUS_*` values above and the
 version macros above.

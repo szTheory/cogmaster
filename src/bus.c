@@ -98,29 +98,48 @@ uint32_t cogmaster__bus_run_frame(cogmaster *m)
 /* A read nobody drives: the slot area with the cartridge off (the SMS2 and
    the Game Gear have no card, expansion or BIOS to answer instead) or work
    RAM off. */
-static uint8_t mem_off(cogmaster *m, uint16_t addr)
+static int mem_undriven(const cogmaster *m, uint16_t addr)
 {
     uint8_t off = addr >= 0xC000u ? BUS_RAM_OFF : BUS_CART_OFF;
-    if ((m->io.mem_ctrl & off) == 0u) {
-        return addr >= 0xC000u ? m->ram[addr & (COGMASTER__RAM_SIZE - 1u)]
-                               : cogmaster__mapper_read(m, addr);
-    }
-    cogmaster__bus_fault(m, addr, addr >= 0xC000u ? COGMASTER__DEVICE_RAM : COGMASTER__DEVICE_CART,
-                         COGMASTER__FAULT_UNMAPPED_READ);
-    return cogmaster__io_open_bus(m);
+    return (m->io.mem_ctrl & off) != 0u;
 }
 
 /* Cartridge slots at $0000-$BFFF through the board's mapper, 8 KiB of work
-   RAM at $C000 mirrored up to $FFFF (SMS-SYSTEM section 3). */
-static uint8_t mem_read(cogmaster *m, uint16_t addr)
+   RAM at $C000 mirrored up to $FFFF (SMS-SYSTEM section 3). Changes
+   nothing, so peek shares it. */
+static uint8_t mem_driven(const cogmaster *m, uint16_t addr)
 {
-    if ((m->io.mem_ctrl & (BUS_CART_OFF | BUS_RAM_OFF)) != 0u) {
-        return mem_off(m, addr);
-    }
     if (addr >= 0xC000u) {
         return m->ram[addr & (COGMASTER__RAM_SIZE - 1u)];
     }
     return cogmaster__mapper_read(m, addr);
+}
+
+static uint8_t mem_read(cogmaster *m, uint16_t addr)
+{
+    if ((m->io.mem_ctrl & (BUS_CART_OFF | BUS_RAM_OFF)) != 0u && mem_undriven(m, addr)) {
+        cogmaster__bus_fault(m, addr,
+                             addr >= 0xC000u ? COGMASTER__DEVICE_RAM : COGMASTER__DEVICE_CART,
+                             COGMASTER__FAULT_UNMAPPED_READ);
+        return cogmaster__io_open_bus(m);
+    }
+    return mem_driven(m, addr);
+}
+
+/* What the CPU would read at addr, without the read: no beam sync, no
+   fault and no open-bus count. An undriven address reads $FF, the value
+   cogmaster__io_open_bus returns. */
+#define BUS_PEEK_NONE 0x100u
+
+uint32_t cogmaster_peek(const cogmaster *m, uint32_t space, uint32_t addr)
+{
+    if (m == NULL || !m->loaded || space != COGMASTER_SPACE_BUS || addr > 0xFFFFu) {
+        return BUS_PEEK_NONE;
+    }
+    if (mem_undriven(m, (uint16_t)addr)) {
+        return 0xFFu;
+    }
+    return mem_driven(m, (uint16_t)addr);
 }
 
 uint8_t cogmaster__bus_fetch(cogmaster *m, uint16_t addr, uint16_t refresh)

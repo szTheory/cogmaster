@@ -139,6 +139,14 @@ int main(void)
     CHECK_EQ_U64(f.kind, COGMASTER_FAULT_KIND_UNMAPPED_READ);
     CHECK_EQ_U64(f.device, COGMASTER_FAULT_DEVICE_CTRL);
 
+    /* Peek reads the bus as the CPU would: the program's bytes, and work
+       RAM's fast-boot $AB. Anything else is a value above 255. */
+    CHECK_EQ_U64(COGMASTER_SPACE_BUS, 0);
+    CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0x0002u), 0xDBu);
+    CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC000u), 0xABu);
+    CHECK(cogmaster_peek(m, COGMASTER_SPACE_BUS + 1u, 0x0002u) > 255u);
+    CHECK(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0x10000u) > 255u);
+
     cogmaster_destroy(m);
     CHECK_DONE();
 }

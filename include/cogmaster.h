@@ -50,6 +50,8 @@ typedef uint32_t cogmaster_status;
 #define COGMASTER_BOARD_SEGA 2u
 #define COGMASTER_BOARD_CODEMASTERS 3u
 
+#define COGMASTER_SPACE_BUS 0u
+
 #define COGMASTER_FAULT_KIND_UNMAPPED_READ 1u
 #define COGMASTER_FAULT_KIND_UNMAPPED_WRITE 2u
 #define COGMASTER_FAULT_KIND_ROM_WRITE 3u
@@ -150,6 +152,7 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out);
 cogmaster_status cogmaster_reset(cogmaster *m, uint32_t kind); /* COGMASTER_RESET_* */
 cogmaster_status cogmaster_get_fault(const cogmaster *m, cogmaster_fault *out);
 cogmaster_status cogmaster_probe(const void *image, size_t n, cogmaster_cart_info *out);
+uint32_t cogmaster_peek(const cogmaster *m, uint32_t space, uint32_t addr); /* above 255: none */
 
 #ifdef __cplusplus
 }
