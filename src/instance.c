@@ -128,8 +128,10 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     }
     /* No image (NULL, 0) is the built-in test card. */
     int has_image = media->image != NULL || media->image_size != 0u;
+    struct cogmaster__probe probe;
+    memset(&probe, 0, sizeof probe);
     if (has_image) {
-        st = cogmaster__cart_check(media->image, media->image_size);
+        st = cogmaster__cart_probe(media->image, media->image_size, &probe);
         if (st != COGMASTER_STATUS_OK) {
             return st;
         }
@@ -159,12 +161,19 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
         (machine == COGMASTER_MACHINE_GG || region == COGMASTER_REGION_JAPAN)) {
         return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
     }
+    /* An 8 KiB image on a Game Gear is the X-Terminator cheat device, which
+       needs a cartridge in its own slot (SMS-CARTRIDGES section 1.4). */
+    if (has_image && machine == COGMASTER_MACHINE_GG &&
+        media->image_size - probe.body_offset == 8192u) {
+        return COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD;
+    }
     /* Every check is done; only the copy can still fail, and it touches
        nothing of the instance until it has succeeded. */
     struct cogmaster__cart cart;
     memset(&cart, 0, sizeof cart);
     if (has_image) {
-        st = cogmaster__cart_copy(m, (const uint8_t *)media->image, media->image_size, &cart);
+        st = cogmaster__cart_copy(m, (const uint8_t *)media->image, media->image_size, &probe,
+                                  &cart);
         if (st != COGMASTER_STATUS_OK) {
             return st;
         }

@@ -50,6 +50,7 @@ add_library(cogmaster STATIC
   src/fault.c
   src/instance.c
   src/frame.c
+  src/mapper.c
   src/state.c
   src/testcard.c
   src/vdp.c

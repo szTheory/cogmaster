@@ -91,14 +91,14 @@ struct cogmaster__bus {
 #define COGMASTER__CRAM_SIZE 32u
 
 struct cogmaster__vdp {
-    uint16_t addr;                         /* the 14-bit VRAM or CRAM address */
-    uint8_t reg[COGMASTER__VDP_REGS];      /* R0 to R10 */
-    uint8_t status;                        /* the flags: bit 7 frame interrupt pending */
-    uint8_t latch;                         /* 1 after the first control byte */
-    uint8_t first;                         /* the first control byte */
-    uint8_t code;                          /* the control code, 0 to 3 */
-    uint8_t buffer;                        /* the data port's read-ahead byte */
-    uint8_t pause;                         /* 1 while a Pause press waits for its NMI tick */
+    uint16_t addr;                    /* the 14-bit VRAM or CRAM address */
+    uint8_t reg[COGMASTER__VDP_REGS]; /* R0 to R10 */
+    uint8_t status;                   /* the flags: bit 7 frame interrupt pending */
+    uint8_t latch;                    /* 1 after the first control byte */
+    uint8_t first;                    /* the first control byte */
+    uint8_t code;                     /* the control code, 0 to 3 */
+    uint8_t buffer;                   /* the data port's read-ahead byte */
+    uint8_t pause;                    /* 1 while a Pause press waits for its NMI tick */
     uint8_t cram[COGMASTER__CRAM_SIZE];
     uint8_t vram[COGMASTER__VRAM_SIZE];
 };
@@ -112,12 +112,32 @@ enum {
 };
 
 /* The cartridge image, in one allocator buffer padded with $FF to a 16 KiB
-   multiple. rom is NULL when the test card is loaded. Not saved state: it
-   is the media. */
+   multiple, with the board's cartridge RAM after it in the same buffer. rom
+   is NULL when the test card is loaded. Not saved state: it is the media.
+   The RAM is state and is saved with the mapper. */
 struct cogmaster__cart {
     uint8_t *rom;
-    uint32_t size;  /* bytes in rom */
-    uint32_t crc32; /* of the image after any copier header, before padding */
+    uint8_t *ram;      /* the cartridge RAM, or NULL when the board maps none */
+    uint32_t size;     /* bytes in rom, pages times 16 KiB */
+    uint32_t pages;    /* 16 KiB pages in rom */
+    uint32_t ram_size; /* bytes in ram: 0, 8 KiB or 32 KiB, a power of two */
+    uint32_t crc32;    /* of the image after any copier header, before padding */
+    uint32_t board;    /* COGMASTER__BOARD_*, 0 for the test card */
+};
+
+/* Boards, as the probe guesses them. 0 is no supported board. */
+enum {
+    COGMASTER__BOARD_NONE = 0,
+    COGMASTER__BOARD_ROM_ONLY = 1,
+    COGMASTER__BOARD_SEGA = 2,
+    COGMASTER__BOARD_CODEMASTERS = 3
+};
+
+/* The mapper's registers. The board is the cartridge's; these are what the
+   CPU writes. */
+struct cogmaster__mapper {
+    uint8_t ctrl;    /* Sega: $FFFC. Codemasters: $80 while RAM is at $A000. */
+    uint8_t bank[3]; /* the bank in each 16 KiB slot, each below the page count */
 };
 
 /* The Master System's work RAM, mirrored over $C000-$FFFF. */
@@ -138,6 +158,7 @@ struct cogmaster {
     struct cogmaster__bus bus;
     struct cogmaster__vdp vdp;
     struct cogmaster__cart cart;
+    struct cogmaster__mapper mapper;
     uint8_t ram[COGMASTER__RAM_SIZE];
     uint16_t field[COGMASTER__FIELD_MAX_H][COGMASTER__FIELD_W]; /* RGB444 per dot */
 };
@@ -293,18 +314,42 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t);
 uint8_t cogmaster__vdp_read(cogmaster *m, uint32_t port);
 void cogmaster__vdp_write(cogmaster *m, uint32_t port, uint8_t v);
 
-/* The load rules for an image of n bytes: OK, or the status a load returns
-   before it changes anything. */
-cogmaster_status cogmaster__cart_check(const void *image, size_t n);
+/* What the probe reads from an image: the copier header, the ROM header
+   and the board guess. */
+struct cogmaster__probe {
+    uint32_t image_size;  /* n, or UINT32_MAX when n does not fit */
+    uint32_t body_offset; /* 0, or 512 after a copier header */
+    uint32_t header_at;   /* 0 (none), $1FF0, $3FF0 or $7FF0 */
+    uint32_t checksum;    /* the header's checksum word */
+    uint32_t checksum_ok; /* 1 when it matches the sum the size code names */
+    uint32_t product_code, version, region_code, rom_size_code;
+    uint32_t machine_guess; /* COGMASTER_MACHINE_*, 0 when no header names one */
+    uint32_t region_guess;  /* COGMASTER_REGION_*, 0 when no header names one */
+    uint32_t board;         /* COGMASTER__BOARD_* */
+};
 
-/* Copies a checked image into a new allocator buffer described by out, which
+/* Probes an image of n bytes without an instance: OK, ERR_ARGUMENT for a
+   NULL image, ERR_UNSUPPORTED_SIZE outside the load bounds (image_size
+   filled, the rest zero), or ERR_UNSUPPORTED_BOARD with board 0 and every
+   other field filled. Reads only image[0, n). */
+cogmaster_status cogmaster__cart_probe(const void *image, size_t n, struct cogmaster__probe *out);
+
+/* Copies a probed image into a new allocator buffer described by out, which
    the caller installs with cogmaster__cart_install. ERR_NO_MEMORY changes
    nothing. */
 cogmaster_status cogmaster__cart_copy(cogmaster *m, const uint8_t *image, size_t n,
+                                      const struct cogmaster__probe *p,
                                       struct cogmaster__cart *out);
 
 /* Frees the instance's image, if any, and installs c (which may be empty). */
 void cogmaster__cart_install(cogmaster *m, const struct cogmaster__cart *c);
+
+/* The mapper. read and write take an address below $C000; write also takes
+   the Sega registers at $FFFC-$FFFF, which the bus stores in work RAM too.
+   reset sets the registers the board powers up with. */
+uint8_t cogmaster__mapper_read(const cogmaster *m, uint16_t addr);
+void cogmaster__mapper_write(cogmaster *m, uint16_t addr, uint8_t v);
+void cogmaster__mapper_reset(cogmaster *m);
 
 /* The fast-boot hand-off: the CPU and RAM as the BIOS leaves them. power
    also clears work RAM first. */

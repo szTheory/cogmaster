@@ -59,6 +59,7 @@ libretro.host.xrgb8888	libretro,portable
 libretro.info_claims	libretro
 libretro.info_claims.self_test	libretro
 libretro.vendored	libretro
+mapper.sega.banks	mapper,portable
 perf.gate.allowed	perf
 perf.gate.identical	perf
 perf.gate.missing	perf

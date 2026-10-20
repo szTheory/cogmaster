@@ -25,6 +25,7 @@ int main(void)
 {
     CHECK(COGMASTER_API_VERSION >= 2);
     CHECK_EQ_U64(COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE, 7);
+    CHECK_EQ_U64(COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD, 8);
 
     cogmaster_versions v;
     memset(&v, 0, sizeof v);

@@ -55,6 +55,7 @@ install.consumer	install
 install.consumer.cxx	install
 install.consumer.dll_crt	install
 install.stage	install
+mapper.sega.banks	mapper,portable
 perf.gate.allowed	perf
 perf.gate.identical	perf
 perf.gate.missing	perf

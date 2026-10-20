@@ -133,8 +133,9 @@ be 1,024 to 1,048,576 + 512 bytes; any other size returns `COGMASTER_STATUS_ERR_
 `image` with a non-zero size returns `COGMASTER_STATUS_ERR_ARGUMENT`. When the size is 512 bytes past a multiple
 of 16 KiB the first 512 bytes are a copier's header and are skipped. The library copies the rest into one buffer
 from your allocator, padded with `$FF` to a multiple of 16 KiB, so you may free your copy once `load` returns.
-This release maps every image as a cartridge without a mapper: the first 48 KiB at `$0000` and 8 KiB of work RAM
-at `$C000`. The CPU starts as the console's BIOS leaves it (fast boot; no BIOS code runs): stack pointer `$DFF0`,
+The library guesses the cartridge's board from the image (see [Probing an image](#probing-an-image)) and maps it
+at `$0000`-`$BFFF`, with 8 KiB of work RAM at `$C000`; an image on no supported board returns
+`COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD`. The CPU starts as the console's BIOS leaves it (fast boot; no BIOS code runs): stack pointer `$DFF0`,
 `$AB` at `$C000` on the Master System, program counter 0. `machine` selects the profile: `COGMASTER_MACHINE_AUTO` (the default, a Master
 System II), `COGMASTER_MACHINE_SMS2` or `COGMASTER_MACHINE_GG`. `region` selects the console's region:
 `COGMASTER_REGION_AUTO` (the default, export), `COGMASTER_REGION_EXPORT` or `COGMASTER_REGION_JAPAN`. `tv` selects
@@ -153,6 +154,34 @@ ends one frame length after this one should have: the frames never drift. If `ou
 The Master System's Pause button reaches the CPU as on the console: a press raises the CPU's non-maskable interrupt
 at the start of the frame's last line, tick 611 of line 260 on NTSC and of line 311 on PAL, wherever in the frame it
 was pressed. The Game Gear has no Pause button.
+
+## Probing an image
+
+`load` reads the image to choose the cartridge board, in this order:
+
+1. When the size is 512 bytes past a multiple of 16 KiB, the first 512 bytes are a copier's header and are skipped.
+2. The ROM header is looked for at `$7FF0`, then `$3FF0`, then `$1FF0`. Its region code names the machine and
+   region; its checksum is checked but a wrong one refuses nothing.
+3. A Codemasters header at `$7FE0` (page count, BCD date, checksum and its complement, `$7FEF` zero) gives the
+   Codemasters board.
+4. An 8 KiB image whose header names the Game Gear is refused, and so is any 8 KiB image loaded as a Game Gear.
+5. An image of at most 48 KiB has no mapper.
+6. Otherwise the first 32 KiB are scanned for `LD (nn),A` stores. When stores to another board's registers
+   (`$0002`-`$0004`, `$3FFE`, `$6000`, `$A000`) outnumber stores to the Sega registers (`$FFFC`-`$FFFF`), the
+   image is refused; else it has the Sega mapper.
+
+The boards:
+
+- **No mapper.** The image at `$0000`, padded with `$FF` up to `$BFFF`. Writes to it change nothing.
+- **Sega.** Writes to `$FFFD`, `$FFFE` and `$FFFF` select the 16 KiB bank in `$0000`, `$4000` and `$8000`; the
+  first 1 KiB stays on bank 0. Bit 3 of `$FFFC` maps 16 KiB of cartridge RAM at `$8000` (bit 2 picks which of
+  two banks); bits 1-0 add `$18`, `$10` or `$08` to later bank writes. Every register write also lands in work
+  RAM, so `$DFFC`-`$DFFF` read them back. Fast boot leaves the banks at 0, 1 and 2.
+- **Codemasters.** Writes to `$0000`, `$4000` and `$8000` select the bank in those slots; they start at 0, 1 and
+  0. Bit 7 of the `$4000` write maps 8 KiB of cartridge RAM at `$A000`-`$BFFF`.
+
+The image is padded with `$FF` to whole 16 KiB banks, and a bank number past the end selects the bank number
+modulo the bank count. Cartridge RAM starts zeroed at load, is kept by both resets and is part of the saved state.
 
 ## Frames
 
@@ -253,13 +282,14 @@ changes no state; a failed `cogmaster_load` keeps the content that was loaded be
 | `COGMASTER_STATUS_ERR_NO_CONTENT` | 5 | `cogmaster_run_frame`, `cogmaster_get_frame`, `cogmaster_get_info` or `cogmaster_reset` before a successful `cogmaster_load` |
 | `COGMASTER_STATUS_ERR_PROFILE_REJECTED` | 6 | `cogmaster_media.machine`, `region` or `tv` is not one of its `COGMASTER_MACHINE_*`, `COGMASTER_REGION_*` or `COGMASTER_TV_*` values, or the pair was never made: `COGMASTER_TV_PAL` with `COGMASTER_MACHINE_GG` or with `COGMASTER_REGION_JAPAN` |
 | `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE` | 7 | an image is below 1,024 or above 1,048,576 + 512 bytes; checked before every other load rule |
+| `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD` | 8 | the image is on a cartridge board the library does not emulate, or is an 8 KiB Game Gear image (the X-Terminator cheat device) |
 
 | Function | Can return |
 |---|---|
 | `cogmaster_get_versions(out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE |
 | `cogmaster_create(cfg, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_MEMORY |
 | `cogmaster_destroy(m)` | nothing; NULL is accepted |
-| `cogmaster_load(m, media)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_MEMORY, ERR_PROFILE_REJECTED, ERR_UNSUPPORTED_SIZE |
+| `cogmaster_load(m, media)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_MEMORY, ERR_PROFILE_REJECTED, ERR_UNSUPPORTED_SIZE, ERR_UNSUPPORTED_BOARD |
 | `cogmaster_run_frame(m, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT |
 | `cogmaster_get_frame(m, io)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT, ERR_BUFFER_TOO_SMALL |
 | `cogmaster_get_info(m, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT |
@@ -299,5 +329,5 @@ Every public name, for reference: the opaque instance `cogmaster`; the types `co
 `cogmaster_get_info`, `cogmaster_reset` and `cogmaster_get_fault`; the constants `COGMASTER_MACHINE_AUTO`,
 `COGMASTER_MACHINE_SMS2`, `COGMASTER_MACHINE_GG`, `COGMASTER_REGION_AUTO`, `COGMASTER_REGION_EXPORT`,
 `COGMASTER_REGION_JAPAN`, `COGMASTER_TV_AUTO`, `COGMASTER_TV_NTSC`, `COGMASTER_TV_PAL`, `COGMASTER_STOP_FRAME`, `COGMASTER_FRAME_FULL_FIELD`,
-`COGMASTER_RESET_SOFT` and `COGMASTER_RESET_POWER`, the eight `COGMASTER_STATUS_*` values above and the
+`COGMASTER_RESET_SOFT` and `COGMASTER_RESET_POWER`, the nine `COGMASTER_STATUS_*` values above and the
 version macros above.

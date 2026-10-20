@@ -88,15 +88,14 @@ uint32_t cogmaster__bus_run_frame(cogmaster *m)
     return (uint32_t)(m->ticks - deadline);
 }
 
-/* The no-mapper layout: ROM at $0000-$BFFF, 8 KiB of work RAM at $C000
-   mirrored up to $FFFF (SMS-SYSTEM section 3). ROM past the image reads $FF;
-   ROM writes go nowhere. */
+/* Cartridge slots at $0000-$BFFF through the board's mapper, 8 KiB of work
+   RAM at $C000 mirrored up to $FFFF (SMS-SYSTEM section 3). */
 static uint8_t mem_read(const cogmaster *m, uint16_t addr)
 {
     if (addr >= 0xC000u) {
         return m->ram[addr & (COGMASTER__RAM_SIZE - 1u)];
     }
-    return addr < m->cart.size ? m->cart.rom[addr] : 0xFFu;
+    return cogmaster__mapper_read(m, addr);
 }
 
 uint8_t cogmaster__bus_fetch(cogmaster *m, uint16_t addr, uint16_t refresh)
@@ -112,12 +111,18 @@ uint8_t cogmaster__bus_read(cogmaster *m, uint16_t addr)
     return mem_read(m, addr);
 }
 
+/* A write to the Sega registers at $FFFC-$FFFF also lands in work RAM, the
+   only place the CPU can read them back (SMS-CARTRIDGES section 2.1). */
 void cogmaster__bus_write(cogmaster *m, uint16_t addr, uint8_t v)
 {
     cogmaster__bus_sync(m);
     if (addr >= 0xC000u) {
         m->ram[addr & (COGMASTER__RAM_SIZE - 1u)] = v;
+        if (addr < 0xFFFCu) {
+            return;
+        }
     }
+    cogmaster__mapper_write(m, addr, v);
 }
 
 /* The VDP's port for an I/O address, or -1. The export Master System
@@ -133,11 +138,16 @@ static int vdp_port(const cogmaster *m, uint16_t port)
         }
     }
     switch (p & 0xC1u) {
-    case 0x40u: return COGMASTER__VDP_VCOUNT;
-    case 0x41u: return COGMASTER__VDP_HCOUNT;
-    case 0x80u: return COGMASTER__VDP_DATA;
-    case 0x81u: return COGMASTER__VDP_CONTROL;
-    default: return -1;
+    case 0x40u:
+        return COGMASTER__VDP_VCOUNT;
+    case 0x41u:
+        return COGMASTER__VDP_HCOUNT;
+    case 0x80u:
+        return COGMASTER__VDP_DATA;
+    case 0x81u:
+        return COGMASTER__VDP_CONTROL;
+    default:
+        return -1;
     }
 }
 
