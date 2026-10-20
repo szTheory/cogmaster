@@ -602,6 +602,7 @@ static void exec(cogmaster *m, uint8_t op, uint8_t q_prev)
     case 0xEA: jp(m, cc(z, 5)); break;
     case 0xEB: ex_de_hl(z); break;
     case 0xEC: call(m, cc(z, 5)); break;
+    case 0xED: cogmaster__z80_ed(m); break;
     case 0xEE: cogmaster__z80_alu(z, 5, imm8(m)); break;
     case 0xEF: rst(m, 0x28); break;
     case 0xF0: ret_cc(m, 6); break;
@@ -619,7 +620,7 @@ static void exec(cogmaster *m, uint8_t op, uint8_t q_prev)
     case 0xFC: call(m, cc(z, 7)); break;
     case 0xFE: cogmaster__z80_alu(z, 7, imm8(m)); break;
     case 0xFF: rst(m, 0x38); break;
-    default: break; /* the ED page; DD and FD never reach here */
+    default: break; /* DD and FD never reach here */
     }
 }
 

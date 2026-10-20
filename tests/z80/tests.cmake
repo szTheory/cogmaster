@@ -24,7 +24,7 @@ endif()
 # an object library with the core's own compile options.
 get_target_property(z80_options cogmaster COMPILE_OPTIONS)
 add_library(cogmaster-z80-sst OBJECT ${PROJECT_SOURCE_DIR}/src/z80.c
-  ${PROJECT_SOURCE_DIR}/src/z80_cb.c)
+  ${PROJECT_SOURCE_DIR}/src/z80_cb.c ${PROJECT_SOURCE_DIR}/src/z80_ed.c)
 target_include_directories(cogmaster-z80-sst PRIVATE
   ${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR}/generated ${PROJECT_SOURCE_DIR}/src)
 target_compile_options(cogmaster-z80-sst PRIVATE ${z80_options})
@@ -124,7 +124,7 @@ cogmaster_add_test(NAME vectors.base
   COMMAND cogmaster-test-sst --sample ${z80_sample} --group base
     --allow ${PROJECT_SOURCE_DIR}/tests/vectors/z80/allow.txt --expect-count 25200
   LABELS portable vectors TIMEOUT 60)
-foreach(shard IN ITEMS "cb;25600" "dd;25200" "fd;25200" "ddcb;25600" "fdcb;25600")
+foreach(shard IN ITEMS "cb;25600" "dd;25200" "fd;25200" "ddcb;25600" "ed;8000" "fdcb;25600")
   list(GET shard 0 group)
   list(GET shard 1 count)
   cogmaster_add_test(NAME vectors.${group}

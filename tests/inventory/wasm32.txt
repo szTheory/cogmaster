@@ -85,6 +85,7 @@ vectors.base	portable,vectors
 vectors.cb	portable,vectors
 vectors.dd	portable,vectors
 vectors.ddcb	portable,vectors
+vectors.ed	portable,vectors
 vectors.fd	portable,vectors
 vectors.fdcb	portable,vectors
 vectors.self_test	portable,vectors
