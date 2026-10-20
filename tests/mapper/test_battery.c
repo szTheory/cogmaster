@@ -4,6 +4,7 @@
 #include "../check.h"
 
 static uint8_t image[65536], saved[400000], after[400000];
+static uint8_t raw[32769];
 static void *allocate(void *u, size_t n)
 {
     (void)u;
@@ -170,11 +171,101 @@ static void fixture(cogmaster *m, const char *path)
     CHECK_EQ_U64(battery(m).generation, 3u);
 }
 
+static cogmaster_status import_save(cogmaster *m, const void *data, size_t n)
+{
+#if COGMASTER_API_VERSION >= 7
+    return cogmaster_import_battery(m, data, n);
+#else
+    (void)m;
+    (void)data;
+    (void)n;
+    return COGMASTER_STATUS_ERR_ARGUMENT;
+#endif
+}
+static void rejected(cogmaster *m, const void *data, size_t n, cogmaster_status expected)
+{
+    size_t state_n = cogmaster__state_size(m);
+    CHECK(state_n <= sizeof saved);
+    if (state_n > sizeof saved)
+        return;
+    CHECK_EQ_U64(cogmaster__state_save(m, saved, sizeof saved), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(import_save(m, data, n), expected);
+    CHECK_EQ_U64(cogmaster__state_save(m, after, sizeof after), COGMASTER_STATUS_OK);
+    CHECK(memcmp(saved, after, state_n) == 0);
+}
+static void imports(cogmaster *m)
+{
+    static const uint32_t sizes[] = {8192u, 16384u, 32768u};
+    memset(raw, 0x3c, sizeof raw);
+    for (uint32_t i = 0; i < 3u; i++) {
+        uint32_t n = sizes[i];
+        classified(m, COGMASTER_BOARD_SEGA, COGMASTER_PERSISTENCE_BATTERY, n,
+                   COGMASTER_GEOMETRY_SUPPORTED);
+        cogmaster__bus_write(m, 0xfffcu, 8u);
+        cogmaster__bus_write(m, 0x8000u, 0x12u);
+        cogmaster_battery b = battery(m);
+        size_t lengths[] = {0u, 1u, n - 1u, n};
+        for (uint32_t j = 0; j < 4u; j++) {
+            size_t length = lengths[j];
+            memset(b.data, 0, n);
+            cogmaster_status st = import_save(m, length == 0u ? NULL : raw, length);
+            CHECK_EQ_U64(st, COGMASTER_STATUS_OK);
+            if (st != COGMASTER_STATUS_OK)
+                continue;
+            for (uint32_t k = 0; k < n; k++)
+                CHECK_EQ_HEX(b.data[k], k < length ? 0x3cu : 0xffu);
+            CHECK_EQ_U64(battery(m).generation, 1u);
+            size_t state_n = cogmaster__state_size(m);
+            CHECK_EQ_U64(cogmaster__state_save(m, saved, sizeof saved), COGMASTER_STATUS_OK);
+            CHECK_EQ_U64(import_save(m, length == 0u ? NULL : raw, length), COGMASTER_STATUS_OK);
+            CHECK_EQ_U64(cogmaster__state_save(m, after, sizeof after), COGMASTER_STATUS_OK);
+            CHECK(memcmp(saved, after, state_n) == 0);
+        }
+        rejected(m, raw, n + 1u, COGMASTER_STATUS_ERR_SAVE_SIZE);
+        rejected(m, raw, SIZE_MAX, COGMASTER_STATUS_ERR_SAVE_SIZE);
+        rejected(m, NULL, 1u, COGMASTER_STATUS_ERR_ARGUMENT);
+        /* A frontend may import from the already exposed span, including an overlap. */
+        CHECK_EQ_U64(import_save(m, b.data + 1u, n - 1u), COGMASTER_STATUS_OK);
+        CHECK_EQ_HEX(b.data[n - 1u], 0xffu);
+    }
+    for (uint32_t knowledge = 0; knowledge < 3u; knowledge++) {
+        classified(m, COGMASTER_BOARD_SEGA, knowledge, knowledge == 2u ? 24576u : 0u,
+                   knowledge == 2u ? COGMASTER_GEOMETRY_UNSUPPORTED : COGMASTER_GEOMETRY_NONE);
+        rejected(m, raw, 0u, knowledge == 1u ? COGMASTER_STATUS_ERR_NO_CONTENT
+                                           : COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD);
+        rejected(m, raw, SIZE_MAX, knowledge == 1u ? COGMASTER_STATUS_ERR_NO_CONTENT
+                                                 : COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD);
+    }
+}
+static void continuation(cogmaster *m, const char *path)
+{
+    fixture(m, path);
+    memset(raw, 0xff, sizeof raw);
+    raw[0] = 0xa5u;
+    raw[1] = 0x5au;
+    for (uint32_t previous = 7u; previous <= 19u; previous += 12u) {
+        raw[2] = (uint8_t)previous;
+        uint64_t generation = battery(m).generation;
+        CHECK_EQ_U64(import_save(m, raw, 32768u), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(import_save(m, raw, 32768u), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(battery(m).generation, generation);
+        CHECK_EQ_U64(cogmaster_reset(m, COGMASTER_RESET_SOFT), COGMASTER_STATUS_OK);
+        for (uint32_t frame = 0; frame < 8u; frame++)
+            CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xc112u), previous);
+        CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xc113u), previous + 1u);
+    }
+}
+
 int main(int argc, char **argv)
 {
     cogmaster *m = machine();
-    if (argc == 3)
+    if (argc == 3 && strcmp(argv[1], "continuation") == 0)
+        continuation(m, argv[2]);
+    else if (argc == 3)
         fixture(m, argv[2]);
+    else if (argc == 2 && strcmp(argv[1], "import") == 0)
+        imports(m);
     else if (argc == 2 && strcmp(argv[1], "spans") == 0)
         spans(m);
     else if (argc == 2 && strcmp(argv[1], "excluded") == 0)

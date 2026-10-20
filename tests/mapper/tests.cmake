@@ -26,9 +26,9 @@ target_include_directories(cogmaster-test-battery PRIVATE ${PROJECT_SOURCE_DIR}/
 target_link_libraries(cogmaster-test-battery PRIVATE cogmaster::cogmaster)
 set_target_properties(cogmaster-test-battery PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
 cogmaster_warnings(cogmaster-test-battery)
-foreach(case IN ITEMS spans generation excluded fixture)
+foreach(case IN ITEMS spans generation excluded fixture import continuation)
   set(args ${case})
-  if(case STREQUAL "fixture")
+  if(case STREQUAL "fixture" OR case STREQUAL "continuation")
     list(APPEND args ${PROJECT_BINARY_DIR}/fixtures/battery.sms)
   endif()
   cogmaster_add_test(NAME battery.${case} COMMAND cogmaster-test-battery ${args}
