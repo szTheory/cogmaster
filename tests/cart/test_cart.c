@@ -278,7 +278,7 @@ static void test_pure(void)
     CHECK(st == COGMASTER_STATUS_ERR_ARGUMENT || st == COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE);
     CHECK_EQ_U64(cogmaster_probe(NULL, 4096u, &info), COGMASTER_STATUS_ERR_ARGUMENT);
     CHECK_EQ_U64(cogmaster_probe(image, 4096u, NULL), COGMASTER_STATUS_ERR_ARGUMENT);
-    info.size = 55u;
+    info.size = 51u;
     CHECK_EQ_U64(cogmaster_probe(image, 4096u, &info), COGMASTER_STATUS_ERR_STRUCT_SIZE);
     CHECK_EQ_U64(info.board, 0);
     /* A larger size tag keeps the bytes past ours. */

@@ -128,9 +128,9 @@ struct cogmaster__cart {
 /* Boards, as the probe guesses them. 0 is no supported board. */
 enum {
     COGMASTER__BOARD_NONE = 0,
-    COGMASTER__BOARD_ROM_ONLY = 1,
-    COGMASTER__BOARD_SEGA = 2,
-    COGMASTER__BOARD_CODEMASTERS = 3
+    COGMASTER__BOARD_ROM_ONLY = COGMASTER_BOARD_ROM_ONLY,
+    COGMASTER__BOARD_SEGA = COGMASTER_BOARD_SEGA,
+    COGMASTER__BOARD_CODEMASTERS = COGMASTER_BOARD_CODEMASTERS
 };
 
 /* The mapper's registers. The board is the cartridge's; these are what the
@@ -243,6 +243,21 @@ _Static_assert(offsetof(cogmaster_fault, device) == 30, "fault.device");
 _Static_assert(offsetof(cogmaster_fault, kind) == 31, "fault.kind");
 _Static_assert(sizeof(cogmaster_fault) == 32, "fault size");
 
+_Static_assert(offsetof(cogmaster_cart_info, size) == 0, "cart_info.size");
+_Static_assert(offsetof(cogmaster_cart_info, image_size) == 4, "cart_info.image_size");
+_Static_assert(offsetof(cogmaster_cart_info, body_offset) == 8, "cart_info.body_offset");
+_Static_assert(offsetof(cogmaster_cart_info, header_at) == 12, "cart_info.header_at");
+_Static_assert(offsetof(cogmaster_cart_info, checksum) == 16, "cart_info.checksum");
+_Static_assert(offsetof(cogmaster_cart_info, checksum_ok) == 20, "cart_info.checksum_ok");
+_Static_assert(offsetof(cogmaster_cart_info, product_code) == 24, "cart_info.product_code");
+_Static_assert(offsetof(cogmaster_cart_info, version) == 28, "cart_info.version");
+_Static_assert(offsetof(cogmaster_cart_info, region_code) == 32, "cart_info.region_code");
+_Static_assert(offsetof(cogmaster_cart_info, rom_size_code) == 36, "cart_info.rom_size_code");
+_Static_assert(offsetof(cogmaster_cart_info, machine_guess) == 40, "cart_info.machine_guess");
+_Static_assert(offsetof(cogmaster_cart_info, region_guess) == 44, "cart_info.region_guess");
+_Static_assert(offsetof(cogmaster_cart_info, board) == 48, "cart_info.board");
+_Static_assert(sizeof(cogmaster_cart_info) == 52, "cart_info size");
+
 /* The size of each struct as first released. A caller's size tag below it
    is refused; each is pinned to the layout above, so appending a field later
    cannot move it. */
@@ -253,6 +268,7 @@ _Static_assert(sizeof(cogmaster_fault) == 32, "fault size");
 #define COGMASTER__FIRST_SIZE_VERSIONS 32u
 #define COGMASTER__FIRST_SIZE_RUN_RESULT 12u
 #define COGMASTER__FIRST_SIZE_FAULT 32u
+#define COGMASTER__FIRST_SIZE_CART_INFO 52u
 _Static_assert(COGMASTER__FIRST_SIZE_CONFIG == sizeof(cogmaster_config), "config first size");
 _Static_assert(COGMASTER__FIRST_SIZE_MEDIA == 4 * COGMASTER__P, "media first size");
 _Static_assert(COGMASTER__FIRST_SIZE_FRAME == sizeof(cogmaster_frame), "frame first size");
@@ -261,6 +277,8 @@ _Static_assert(COGMASTER__FIRST_SIZE_VERSIONS == sizeof(cogmaster_versions), "ve
 _Static_assert(COGMASTER__FIRST_SIZE_RUN_RESULT == sizeof(cogmaster_run_result),
                "run_result first size");
 _Static_assert(COGMASTER__FIRST_SIZE_FAULT == sizeof(cogmaster_fault), "fault first size");
+_Static_assert(COGMASTER__FIRST_SIZE_CART_INFO == sizeof(cogmaster_cart_info),
+               "cart_info first size");
 
 /* Input structs: OK when the size tag at s is at least first and at most
    4096, and every byte past ours is zero; ERR_STRUCT_SIZE otherwise. */
@@ -314,32 +332,18 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t);
 uint8_t cogmaster__vdp_read(cogmaster *m, uint32_t port);
 void cogmaster__vdp_write(cogmaster *m, uint32_t port, uint8_t v);
 
-/* What the probe reads from an image: the copier header, the ROM header
-   and the board guess. */
-struct cogmaster__probe {
-    uint32_t image_size;  /* n, or UINT32_MAX when n does not fit */
-    uint32_t body_offset; /* 0, or 512 after a copier header */
-    uint32_t header_at;   /* 0 (none), $1FF0, $3FF0 or $7FF0 */
-    uint32_t checksum;    /* the header's checksum word */
-    uint32_t checksum_ok; /* 1 when it matches the sum the size code names */
-    uint32_t product_code, version, region_code, rom_size_code;
-    uint32_t machine_guess; /* COGMASTER_MACHINE_*, 0 when no header names one */
-    uint32_t region_guess;  /* COGMASTER_REGION_*, 0 when no header names one */
-    uint32_t board;         /* COGMASTER__BOARD_* */
-};
-
-/* Probes an image of n bytes without an instance: OK, ERR_ARGUMENT for a
-   NULL image, ERR_UNSUPPORTED_SIZE outside the load bounds (image_size
-   filled, the rest zero), or ERR_UNSUPPORTED_BOARD with board 0 and every
-   other field filled. Reads only image[0, n). */
-cogmaster_status cogmaster__cart_probe(const void *image, size_t n, struct cogmaster__probe *out);
+/* cogmaster_probe without the size tag: fills all of out (size 0) and
+   returns OK, ERR_ARGUMENT for a NULL image, ERR_UNSUPPORTED_SIZE outside
+   the load bounds (image_size filled, the rest zero), or
+   ERR_UNSUPPORTED_BOARD with board 0 and every other field filled. Reads
+   only image[0, n). */
+cogmaster_status cogmaster__cart_probe(const void *image, size_t n, cogmaster_cart_info *out);
 
 /* Copies a probed image into a new allocator buffer described by out, which
    the caller installs with cogmaster__cart_install. ERR_NO_MEMORY changes
    nothing. */
 cogmaster_status cogmaster__cart_copy(cogmaster *m, const uint8_t *image, size_t n,
-                                      const struct cogmaster__probe *p,
-                                      struct cogmaster__cart *out);
+                                      const cogmaster_cart_info *p, struct cogmaster__cart *out);
 
 /* Frees the instance's image, if any, and installs c (which may be empty). */
 void cogmaster__cart_install(cogmaster *m, const struct cogmaster__cart *c);

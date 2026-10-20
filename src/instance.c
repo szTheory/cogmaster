@@ -128,7 +128,7 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     }
     /* No image (NULL, 0) is the built-in test card. */
     int has_image = media->image != NULL || media->image_size != 0u;
-    struct cogmaster__probe probe;
+    cogmaster_cart_info probe;
     memset(&probe, 0, sizeof probe);
     if (has_image) {
         st = cogmaster__cart_probe(media->image, media->image_size, &probe);

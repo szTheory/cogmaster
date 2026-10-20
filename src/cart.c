@@ -71,7 +71,7 @@ static uint32_t header_sum(const uint8_t *b, size_t body, uint32_t at, uint32_t 
 
 /* The first ROM header at $7FF0, $3FF0 or $1FF0 that lies inside the body,
    decoded into p (SMS-CARTRIDGES section 1.1). */
-static void read_header(const uint8_t *b, size_t body, struct cogmaster__probe *p)
+static void read_header(const uint8_t *b, size_t body, cogmaster_cart_info *p)
 {
     for (uint32_t i = 0; i < 3u; i++) {
         uint32_t at = header_places[i];
@@ -152,7 +152,7 @@ static int other_board(const uint8_t *b, size_t body)
     return other > sega;
 }
 
-cogmaster_status cogmaster__cart_probe(const void *image, size_t n, struct cogmaster__probe *out)
+cogmaster_status cogmaster__cart_probe(const void *image, size_t n, cogmaster_cart_info *out)
 {
     memset(out, 0, sizeof *out);
     if (image == NULL) {
@@ -183,7 +183,7 @@ cogmaster_status cogmaster__cart_probe(const void *image, size_t n, struct cogma
 }
 
 cogmaster_status cogmaster__cart_copy(cogmaster *m, const uint8_t *image, size_t n,
-                                      const struct cogmaster__probe *p, struct cogmaster__cart *out)
+                                      const cogmaster_cart_info *p, struct cogmaster__cart *out)
 {
     size_t off = p->body_offset;
     size_t body = n - off;
@@ -218,8 +218,19 @@ void cogmaster__cart_install(cogmaster *m, const struct cogmaster__cart *c)
 
 cogmaster_status cogmaster_probe(const void *image, size_t n, cogmaster_cart_info *out)
 {
-    (void)image;
-    (void)n;
-    (void)out;
-    return COGMASTER_STATUS_ERR_ARGUMENT;
+    if (out == NULL) {
+        return COGMASTER_STATUS_ERR_ARGUMENT;
+    }
+    cogmaster_status st = cogmaster__check_out_size(out, COGMASTER__FIRST_SIZE_CART_INFO);
+    if (st != COGMASTER_STATUS_OK) {
+        return st;
+    }
+    if (image == NULL) {
+        return COGMASTER_STATUS_ERR_ARGUMENT;
+    }
+    cogmaster_cart_info info;
+    st = cogmaster__cart_probe(image, n, &info);
+    info.size = out->size;
+    cogmaster__write_out(out, &info, (uint32_t)sizeof info);
+    return st;
 }

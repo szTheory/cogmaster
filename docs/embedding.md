@@ -65,7 +65,8 @@ program built against one header run with a library built from another.
   extra bytes are zero reads them, so without this cap a garbage size tag would make the library read an
   unbounded distance past your object.
 
-**Output structs** (`cogmaster_info`, `cogmaster_versions`, `cogmaster_run_result`, `cogmaster_fault`):
+**Output structs** (`cogmaster_info`, `cogmaster_versions`, `cogmaster_run_result`, `cogmaster_fault`,
+`cogmaster_cart_info`):
 
 - A size below the struct's first released size returns `COGMASTER_STATUS_ERR_STRUCT_SIZE` and leaves the struct
   as it was.
@@ -83,6 +84,7 @@ First released sizes, where P is the pointer size (4 or 8):
 | `cogmaster_versions` | 32 |
 | `cogmaster_run_result` | 12 |
 | `cogmaster_fault` | 32 |
+| `cogmaster_cart_info` | 52 |
 
 Fields are fixed-width integers and pointers; enumerations travel as `uint32_t` and zero is the default of every
 input field. Statuses, constants and fields are only ever appended.
@@ -157,7 +159,25 @@ was pressed. The Game Gear has no Pause button.
 
 ## Probing an image
 
-`load` reads the image to choose the cartridge board, in this order:
+`cogmaster_probe(image, n, out)` reads an image the way `load` does, without an instance: it fills a
+`cogmaster_cart_info` and returns the status `load` would give for the image alone. It reads only the `n` bytes
+at `image`, never changes them, and gives the same answer for the same bytes. It returns
+`COGMASTER_STATUS_ERR_ARGUMENT` for a NULL `image` or `out`, `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE` outside the
+load bounds (with only `image_size` filled), and `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD` with `board` 0 and
+every other field filled when no supported board fits.
+
+| Field | Meaning |
+|---|---|
+| `image_size` | `n` |
+| `body_offset` | 512 after a copier header, else 0 |
+| `header_at` | where the ROM header was found: `0x7FF0`, `0x3FF0`, `0x1FF0`, or 0 for none |
+| `checksum`, `checksum_ok` | the header's checksum, and 1 when it matches the sum over the range its size code names |
+| `product_code`, `version` | the product number (decimal) and the version nibble |
+| `region_code`, `rom_size_code` | the header's region and size nibbles |
+| `machine_guess`, `region_guess` | the machine and region the region code names (`COGMASTER_MACHINE_*`, `COGMASTER_REGION_*`), or 0 |
+| `board` | `COGMASTER_BOARD_ROM_ONLY` (1), `COGMASTER_BOARD_SEGA` (2) or `COGMASTER_BOARD_CODEMASTERS` (3); 0 for none |
+
+Every header field is 0 when no header was found. The board is chosen in this order:
 
 1. When the size is 512 bytes past a multiple of 16 KiB, the first 512 bytes are a copier's header and are skipped.
 2. The ROM header is looked for at `$7FF0`, then `$3FF0`, then `$1FF0`. Its region code names the machine and
@@ -275,7 +295,7 @@ changes no state; a failed `cogmaster_load` keeps the content that was loaded be
 | Status | Value | Returned when |
 |---|---|---|
 | `COGMASTER_STATUS_OK` | 0 | the call did what it says |
-| `COGMASTER_STATUS_ERR_ARGUMENT` | 1 | a required pointer is NULL; the allocator lacks `alloc` or `free`; `image` is NULL while `image_size` is not 0; `flags` has an unknown bit; `pitch_bytes` is above 65536; the reset `kind` is unknown |
+| `COGMASTER_STATUS_ERR_ARGUMENT` | 1 | a required pointer is NULL (`cogmaster_probe`'s `image` included); the allocator lacks `alloc` or `free`; `image` is NULL while `image_size` is not 0; `flags` has an unknown bit; `pitch_bytes` is above 65536; the reset `kind` is unknown |
 | `COGMASTER_STATUS_ERR_STRUCT_SIZE` | 2 | a size tag breaks the rules in [Structs and sizes](#structs-and-sizes) |
 | `COGMASTER_STATUS_ERR_NO_MEMORY` | 3 | `alloc` returned NULL in `cogmaster_create` (`*out` is left as it was) or in `cogmaster_load` |
 | `COGMASTER_STATUS_ERR_BUFFER_TOO_SMALL` | 4 | `pitch_bytes` is below `w × 2` for the rectangle requested |
@@ -295,6 +315,7 @@ changes no state; a failed `cogmaster_load` keeps the content that was loaded be
 | `cogmaster_get_info(m, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT |
 | `cogmaster_reset(m, kind)` | OK, ERR_ARGUMENT, ERR_NO_CONTENT |
 | `cogmaster_get_fault(m, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE |
+| `cogmaster_probe(image, n, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_UNSUPPORTED_SIZE, ERR_UNSUPPORTED_BOARD |
 
 ## Version numbers
 
@@ -324,10 +345,13 @@ Every public name, for reference: the opaque instance `cogmaster`; the types `co
 `tv`), `cogmaster_frame`
 (`size`, `pixels`, `pitch_bytes`, `flags`, `x`, `y`, `w`, `h`, `field_h`, `backdrop_rgb444`) and
 `cogmaster_run_result` (`size`, `stop`, `overshoot_ticks`) and `cogmaster_fault` (`size`, `present`, `frame`,
-`line`, `dot`, `pc`, `addr`, `opcode`, `width`, `device`, `kind`); the functions `cogmaster_get_versions`,
+`line`, `dot`, `pc`, `addr`, `opcode`, `width`, `device`, `kind`) and `cogmaster_cart_info` (`size`,
+`image_size`, `body_offset`, `header_at`, `checksum`, `checksum_ok`, `product_code`, `version`, `region_code`,
+`rom_size_code`, `machine_guess`, `region_guess`, `board`); the functions `cogmaster_get_versions`,
 `cogmaster_create`, `cogmaster_destroy`, `cogmaster_load`, `cogmaster_run_frame`, `cogmaster_get_frame`,
-`cogmaster_get_info`, `cogmaster_reset` and `cogmaster_get_fault`; the constants `COGMASTER_MACHINE_AUTO`,
+`cogmaster_get_info`, `cogmaster_reset`, `cogmaster_get_fault` and `cogmaster_probe`; the constants `COGMASTER_MACHINE_AUTO`,
 `COGMASTER_MACHINE_SMS2`, `COGMASTER_MACHINE_GG`, `COGMASTER_REGION_AUTO`, `COGMASTER_REGION_EXPORT`,
 `COGMASTER_REGION_JAPAN`, `COGMASTER_TV_AUTO`, `COGMASTER_TV_NTSC`, `COGMASTER_TV_PAL`, `COGMASTER_STOP_FRAME`, `COGMASTER_FRAME_FULL_FIELD`,
-`COGMASTER_RESET_SOFT` and `COGMASTER_RESET_POWER`, the nine `COGMASTER_STATUS_*` values above and the
+`COGMASTER_RESET_SOFT`, `COGMASTER_RESET_POWER`, `COGMASTER_BOARD_ROM_ONLY`, `COGMASTER_BOARD_SEGA` and
+`COGMASTER_BOARD_CODEMASTERS`, the nine `COGMASTER_STATUS_*` values above and the
 version macros above.
