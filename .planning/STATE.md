@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 03
 current_phase_name: Games play in RetroArch
 status: executing
-stopped_at: Completed 03-02-PLAN.md; runtime Codex; model GPT-6
-last_updated: "2026-10-20T18:44:05.421Z"
+stopped_at: Completed 03-03-PLAN.md; runtime Codex; model GPT-6
+last_updated: "2026-10-20T19:12:30.992Z"
 last_activity: 2026-10-20
-last_activity_desc: Completed plan 03-02; runtime Codex; model GPT-6
-state_head: e9ee28ab30b18a6137c945692e6f714a509657e0
+last_activity_desc: Completed plan 03-03; runtime Codex; model GPT-6
+state_head: 1b7109ad773d1865fc2f4eb82e99fe8456a19995
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 47
-  completed_plans: 31
+  completed_plans: 32
   percent: 50
 ---
 
@@ -30,16 +30,16 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 03 (Games play in RetroArch) — EXECUTING
-Plan: 3 of 18
+Plan: 4 of 18
 Status: Ready to execute
-Last activity: 2026-10-20 — Completed plan 03-02; runtime Codex; model GPT-6
+Last activity: 2026-10-20 — Completed plan 03-03; runtime Codex; model GPT-6
 
 Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 31
+- Total plans completed: 32
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -49,6 +49,7 @@ Progress: [█████░░░░░] 50%
 |-------|-------|-------|----------|
 | 01 | 12 | - | - |
 | 02 | 17 | - | - |
+| 03 | 3 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -90,6 +91,7 @@ Progress: [█████░░░░░] 50%
 | Phase 02 P17 | 14min | 2 tasks | 20 files |
 | Phase 03 P01 | 16min | 3 tasks | 42 files |
 | Phase 03 P02 | 18min | 2 tasks | 37 files |
+| Phase 03 P03 | 24min | 2 tasks | 29 files |
 
 ## Accumulated Context
 
@@ -190,6 +192,9 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 03]: Classify packaged-output integration, bootstrap, administration, publication and CI routing individually by actual responsibility.
 - [Phase 03]: Share synthetic budget boundary cases between CI and hygiene while retaining their exact inventories.
 - [Phase 03]: Keep GAME-01 and GAME-07 pending until complete phase-wide behavior is demonstrated.
+- [Phase 03]: Use released frontend replay and an uninstalled initial-checkpoint module with unchanged production input/video source.
+- [Phase 03]: Count the shared pixel oracle within the 300-line hosted budget and register its gate in CI and hygiene.
+- [Phase 03]: GAME-07 has exact-SHA hosted input/scroll screenshot proof; GAME-04 remains pending for its full pad/profile/lag criteria.
 
 ### Pending Todos
 
@@ -218,7 +223,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-10-19 | Execute phase 2 (gsd-execute-phase) | Claude Code | claude-opus-5-5 |
 | 2026-10-20 | Ship phase 2 (gsd-ship) | Codex | GPT-6 |
 | 2026-10-20 | Plan phase 3 (gsd-plan-phase) | Codex | GPT-6 |
-| 2026-10-20 | Execute phase 3 through plan 03-02 (gsd-execute-phase) | Codex | GPT-6 |
+| 2026-10-20 | Execute phase 3 through plan 03-03 (gsd-execute-phase) | Codex | GPT-6 |
 
 ## Deferred Items
 
@@ -230,6 +235,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T18:43:43.297Z
-Stopped at: Completed 03-02-PLAN.md; runtime Codex; model GPT-6
+Last session: 2026-10-20T19:12:30.891Z
+Stopped at: Completed 03-03-PLAN.md; runtime Codex; model GPT-6
 Resume file: None

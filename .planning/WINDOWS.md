@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 1
+open_count: 0
 waived_count: 0
-fixed_count: 0
-total_count: 1
-last_updated: 2026-10-20T18:20:01.551Z
+fixed_count: 4
+total_count: 4
+last_updated: 2026-10-20T19:11:53.265Z
 ---
 
 # Broken Windows Ledger
@@ -15,7 +15,10 @@ last_updated: 2026-10-20T18:20:01.551Z
 
 | id | phase | kind | file | line | description | status | reason | recorded_at | resolved_at |
 |----|-------|------|------|------|-------------|--------|--------|-------------|-------------|
-| 1 | 03 | unrun-verify | cmake/toolchains/wasm32-wasi.cmake |  | Optional wasm32 workflow could not configure locally because the Linux WASI compiler toolchain is unavailable; CI portable registrations are present. | open |  | 2026-10-20T18:20:01.551Z |  |
+| 1 | 03 | unrun-verify | cmake/toolchains/wasm32-wasi.cmake |  | Optional wasm32 workflow could not configure locally because the Linux WASI compiler toolchain is unavailable; CI portable registrations are present. | fixed |  | 2026-10-20T18:20:01.551Z | 2026-10-20T19:10:22.500Z |
+| 2 | 03 | deviation | tests/retroarch/checkpoint.c |  | Released frontend replay needs an initial checkpoint; a test-only module forwards the existing state visitor while input and video remain production source. | fixed |  | 2026-10-20T19:10:22.575Z | 2026-10-20T19:11:53.125Z |
+| 3 | 03 | deviation | tests/policy/e2e_cases.cmake |  | Register hosted helper accounting in CI as well as hygiene, including the shared independent oracle. | fixed |  | 2026-10-20T19:10:22.654Z | 2026-10-20T19:11:53.195Z |
+| 4 | 03 | deviation | tests/hygiene/tests.cmake |  | Exact-SHA hosted integration exposed earlier inventory, binary text scanning, MSVC, emulator quoting, newline fixture and WASI scratch-stack issues; targeted corrections now pass all lanes. | fixed |  | 2026-10-20T19:10:22.742Z | 2026-10-20T19:11:53.265Z |
 
 ````json
 [
@@ -26,10 +29,49 @@ last_updated: 2026-10-20T18:20:01.551Z
     "file": "cmake/toolchains/wasm32-wasi.cmake",
     "line": null,
     "description": "Optional wasm32 workflow could not configure locally because the Linux WASI compiler toolchain is unavailable; CI portable registrations are present.",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-10-20T18:20:01.551Z",
-    "resolved_at": null,
+    "resolved_at": "2026-10-20T19:10:22.500Z",
+    "milestone": "v1.0"
+  },
+  {
+    "id": 2,
+    "kind": "deviation",
+    "phase": "03",
+    "file": "tests/retroarch/checkpoint.c",
+    "line": null,
+    "description": "Released frontend replay needs an initial checkpoint; a test-only module forwards the existing state visitor while input and video remain production source.",
+    "status": "fixed",
+    "reason": "",
+    "recorded_at": "2026-10-20T19:10:22.575Z",
+    "resolved_at": "2026-10-20T19:11:53.125Z",
+    "milestone": "v1.0"
+  },
+  {
+    "id": 3,
+    "kind": "deviation",
+    "phase": "03",
+    "file": "tests/policy/e2e_cases.cmake",
+    "line": null,
+    "description": "Register hosted helper accounting in CI as well as hygiene, including the shared independent oracle.",
+    "status": "fixed",
+    "reason": "",
+    "recorded_at": "2026-10-20T19:10:22.654Z",
+    "resolved_at": "2026-10-20T19:11:53.195Z",
+    "milestone": "v1.0"
+  },
+  {
+    "id": 4,
+    "kind": "deviation",
+    "phase": "03",
+    "file": "tests/hygiene/tests.cmake",
+    "line": null,
+    "description": "Exact-SHA hosted integration exposed earlier inventory, binary text scanning, MSVC, emulator quoting, newline fixture and WASI scratch-stack issues; targeted corrections now pass all lanes.",
+    "status": "fixed",
+    "reason": "",
+    "recorded_at": "2026-10-20T19:10:22.742Z",
+    "resolved_at": "2026-10-20T19:11:53.265Z",
     "milestone": "v1.0"
   }
 ]

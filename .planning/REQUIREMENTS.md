@@ -38,7 +38,7 @@ arm64; "every platform" means all six plus the big-endian lane. Expected values 
 - [ ] **GAME-04**: Two pads, Pause and region/TV profiles work end to end: the `boot_to_play` fixtures prove that a button press changes a visible counter, a scroll register and the frame hash, and that a frame with no port read is counted as a lag frame.
 - [ ] **GAME-05**: Battery RAM is exported as a raw span with a generation counter; `cogmaster-run --save-dir` writes atomically on exit and on SIGTERM; the `battery` fixture continues from its saved value in a fresh process, with missing-save and wrong-save controls that differ.
 - [ ] **GAME-06**: `tests/compat/ledger.csv` and the generated `docs/compatibility.md` exist with the fixture rows and the ratchet check; the local `library` preset (never registered in `ci`) runs every image in `COGMASTER_ROM_DIR` against the ledger and writes only locally, shown by a test that points it at a fixture in a temporary directory; the libretro `.info` carries `is_experimental` until v2.0.
-- [ ] **GAME-07**: One integrated session in RetroArch (hosted job, ≤ 300 lines of e2e code in total) boots `boot_to_play.sms`, an input changes play, the picture scrolls, and the screenshot matches the runner's frame.
+- [x] **GAME-07**: One integrated session in RetroArch (hosted job, ≤ 300 lines of e2e code in total) boots `boot_to_play.sms`, an input changes play, the picture scrolls, and the screenshot matches the runner's frame.
 
 ### Sound
 
@@ -115,7 +115,7 @@ Later milestones. Each has a seed in `.planning/seeds/` that says when it comes 
 | GAME-04 | Phase 3 | Pending |
 | GAME-05 | Phase 3 | Pending |
 | GAME-06 | Phase 3 | Pending |
-| GAME-07 | Phase 3 | Pending |
+| GAME-07 | Phase 3 | Complete |
 | SND-01 | Phase 4 | Pending |
 | SND-02 | Phase 4 | Pending |
 | SND-03 | Phase 4 | Pending |
