@@ -81,6 +81,10 @@ if(CMAKE_SCRIPT_MODE_FILE)
         message(FATAL_ERROR "playing matrix missing ${row}")
       endif()
     endforeach()
+    file(MAKE_DIRECTORY "${OUT}/card-only")
+    execute_process(COMMAND ${CMAKE_COMMAND} -DMODE=write -DRUN=${RUN}
+      "-DEMULATOR=${EMULATOR}" -DOUT=${OUT}/card-only -DFIXTURES= -P ${HASHES}
+      COMMAND_ERROR_IS_FATAL ANY)
   elseif(CASE STREQUAL "save_unit")
     file(MAKE_DIRECTORY "${OUT}")
     file(REMOVE "${OUT}/round.trip.srm")
