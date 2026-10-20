@@ -3,6 +3,15 @@ add_executable(cogmaster-test-cartdb ${CMAKE_CURRENT_LIST_DIR}/test_cartdb.c)
 target_link_libraries(cogmaster-test-cartdb PRIVATE cogmaster::cogmaster)
 cogmaster_warnings(cogmaster-test-cartdb)
 cogmaster_add_test(NAME cart.database COMMAND cogmaster-test-cartdb LABELS cart portable TIMEOUT 10)
+target_include_directories(cogmaster-test-cartdb PRIVATE ${PROJECT_SOURCE_DIR}/src)
+add_executable(cogmaster-cartdb ${PROJECT_SOURCE_DIR}/tools/cartdb.c)
+cogmaster_warnings(cogmaster-cartdb)
+string(REPLACE ";" "$<SEMICOLON>" cartdb_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
+# Fault prevented: guessed whole-image identities, conflicting facts and metadata parser drift.
+cogmaster_add_test(NAME cart.generator COMMAND ${CMAKE_COMMAND}
+  -DGEN=$<TARGET_FILE:cogmaster-cartdb> -DOUT=${PROJECT_BINARY_DIR}/tests/cartdb
+  "-DEMULATOR=${cartdb_emulator}" -P ${CMAKE_CURRENT_LIST_DIR}/generator.cmake
+  LABELS cart portable TIMEOUT 10)
 add_executable(cogmaster-test-cart ${CMAKE_CURRENT_LIST_DIR}/test_cart.c)
 target_link_libraries(cogmaster-test-cart PRIVATE cogmaster::cogmaster)
 set_target_properties(cogmaster-test-cart PROPERTIES

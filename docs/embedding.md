@@ -212,7 +212,16 @@ was pressed. The Game Gear has no Pause button.
 ## Probing an image
 
 `cogmaster_probe(image, n, out)` reads an image the way `load` does, without an instance: it fills a
-`cogmaster_cart_info` and returns the status `load` would give for the image alone. It reads only the `n` bytes
+`cogmaster_cart_info` and returns the status `load` would give for the image alone. Appended fields distinguish
+`COGMASTER_PERSISTENCE_UNKNOWN`, `COGMASTER_PERSISTENCE_NONE` and `COGMASTER_PERSISTENCE_BATTERY`.
+`persistent_size` is the declared extent, independent of mapper decoding. `persistence_geometry` is
+`COGMASTER_GEOMETRY_NONE`, `COGMASTER_GEOMETRY_SUPPORTED` or `COGMASTER_GEOMETRY_UNSUPPORTED`.
+Unknown/unsupported geometry provides no persistent span. `identified` means a whole-body SHA-1 match;
+`public_identity` distinguishes public CC0 identities from owned fixture facts. `sha1` and `title` are
+zero-terminated identity strings, empty on a miss. `video_mode` carries a verified GG SMS-mode fact.
+Old 52-byte output tags leave the appended fields untouched. AUTO machine/region use table/header facts
+before defaults; explicit choices win. These facts are independent of compatibility-ledger membership.
+The probe reads only the `n` bytes
 at `image`, never changes them, and gives the same answer for the same bytes. It returns
 `COGMASTER_STATUS_ERR_ARGUMENT` for a NULL `image` or `out`, `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE` outside the
 load bounds (with only `image_size` filled), and `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD` with `board` 0 and
@@ -440,7 +449,8 @@ Every public name, for reference: the opaque instance `cogmaster`; the types `co
 `cogmaster_run_result` (`size`, `stop`, `overshoot_ticks`) and `cogmaster_fault` (`size`, `present`, `frame`,
 `line`, `dot`, `pc`, `addr`, `opcode`, `width`, `device`, `kind`) and `cogmaster_cart_info` (`size`,
 `image_size`, `body_offset`, `header_at`, `checksum`, `checksum_ok`, `product_code`, `version`, `region_code`,
-`rom_size_code`, `machine_guess`, `region_guess`, `board`); the functions `cogmaster_get_versions`,
+`rom_size_code`, `machine_guess`, `region_guess`, `board`, `identified`, `public_identity`, `persistence`,
+`persistent_size`, `persistence_geometry`, `video_mode`, `sha1`, `title`); the functions `cogmaster_get_versions`,
 `cogmaster_create`, `cogmaster_destroy`, `cogmaster_load`, `cogmaster_run_frame`, `cogmaster_get_frame`,
 `cogmaster_get_info`, `cogmaster_reset`, `cogmaster_get_fault`, `cogmaster_probe` and `cogmaster_peek`; the constants `COGMASTER_MACHINE_AUTO`,
 `COGMASTER_MACHINE_SMS2`, `COGMASTER_MACHINE_GG`, `COGMASTER_REGION_AUTO`, `COGMASTER_REGION_EXPORT`,

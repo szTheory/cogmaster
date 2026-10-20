@@ -23,6 +23,21 @@ int main(void)
     CHECK_EQ_U64(COGMASTER_VIDEO_AUTO, 0u);
     CHECK_EQ_U64(COGMASTER_VIDEO_SMS, 1u);
     CHECK_EQ_U64(COGMASTER_VIDEO_GG, 2u);
+    CHECK_EQ_U64(COGMASTER_PERSISTENCE_UNKNOWN, 0u);
+    CHECK_EQ_U64(COGMASTER_PERSISTENCE_NONE, 1u);
+    CHECK_EQ_U64(COGMASTER_PERSISTENCE_BATTERY, 2u);
+    CHECK_EQ_U64(COGMASTER_GEOMETRY_NONE, 0u);
+    CHECK_EQ_U64(COGMASTER_GEOMETRY_SUPPORTED, 1u);
+    CHECK_EQ_U64(COGMASTER_GEOMETRY_UNSUPPORTED, 2u);
+    cogmaster_cart_info cart = {0};
+    cart.size = sizeof cart;
+    CHECK_EQ_U64(cart.identified, 0u);
+    CHECK_EQ_U64(cart.public_identity, 0u);
+    CHECK_EQ_U64(cart.persistence, 0u);
+    CHECK_EQ_U64(cart.persistent_size, 0u);
+    CHECK_EQ_U64(cart.persistence_geometry, 0u);
+    CHECK_EQ_U64(cart.video_mode, 0u);
+    CHECK(cart.sha1[0] == 0 && cart.title[0] == 0);
 #if COGMASTER_API_VERSION >= 3
     CHECK_EQ_U64(COGMASTER_DEVICE_PAD, 0u);
     CHECK_EQ_U64(COGMASTER_DEVICE_NONE, 1u);

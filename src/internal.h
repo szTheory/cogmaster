@@ -137,6 +137,7 @@ struct cogmaster__cart {
     uint32_t ram_size; /* bytes in ram: 0, 8 KiB or 32 KiB, a power of two */
     uint32_t crc32;    /* of the image after any copier header, before padding */
     uint32_t board;    /* COGMASTER__BOARD_*, 0 for the test card */
+    uint32_t persistence, persistent_size, persistence_geometry;
 };
 
 /* Boards, as the probe guesses them. 0 is no supported board. */
@@ -319,7 +320,7 @@ _Static_assert(offsetof(cogmaster_cart_info, rom_size_code) == 36, "cart_info.ro
 _Static_assert(offsetof(cogmaster_cart_info, machine_guess) == 40, "cart_info.machine_guess");
 _Static_assert(offsetof(cogmaster_cart_info, region_guess) == 44, "cart_info.region_guess");
 _Static_assert(offsetof(cogmaster_cart_info, board) == 48, "cart_info.board");
-_Static_assert(sizeof(cogmaster_cart_info) == 52, "cart_info size");
+_Static_assert(offsetof(cogmaster_cart_info, identified) == 52, "cart_info extension");
 
 /* The size of each struct as first released. A caller's size tag below it
    is refused; each is pinned to the layout above, so appending a field later
@@ -340,7 +341,7 @@ _Static_assert(COGMASTER__FIRST_SIZE_VERSIONS == sizeof(cogmaster_versions), "ve
 _Static_assert(COGMASTER__FIRST_SIZE_RUN_RESULT == offsetof(cogmaster_run_result, lagged),
                "run_result first size");
 _Static_assert(COGMASTER__FIRST_SIZE_FAULT == sizeof(cogmaster_fault), "fault first size");
-_Static_assert(COGMASTER__FIRST_SIZE_CART_INFO == sizeof(cogmaster_cart_info),
+_Static_assert(COGMASTER__FIRST_SIZE_CART_INFO == offsetof(cogmaster_cart_info, identified),
                "cart_info first size");
 
 /* Input structs: OK when the size tag at s is at least first and at most

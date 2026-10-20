@@ -148,6 +148,18 @@ apply it.
 
 ## Pinned downloads
 
+Cartridge metadata comes only from the three per-file CC0 MAME hash lists at
+`1d7a454ed79e97d35d2a9f127ac029ead94711d6`. Fetch the `mame-sms`, `mame-gamegear` and `mame-sg1000`
+rows with `scripts/fetch-pin.sh`, then run `cogmaster-cartdb sms.xml gamegear.xml sg1000.xml` and replace
+the generated commercial portion of `src/cartdb.inc`. The bounded C17 converter never expands DTDs or
+external entities. It emits sorted whole-image SHA-1 facts only for a single full-size, offset-zero ROM;
+compound/incomplete records are counted on stderr and excluded. The pinned conversion has 1,669 candidates,
+21 excluded records and 1,656 unique facts. Identical hardware facts with card/cart title aliases coalesce;
+the title sorts deterministically. The image distributed for both SMS and GG SMS mode defaults to SMS.
+Conflicting board, size, persistence or video facts fail conversion. Unknown devices remain unsupported.
+This table identifies content; membership makes no gameplay claim. Generator tests use authored XML,
+not commercial bytes. Owned fixture facts remain separate from the CC0 records.
+
 When adding a repository check or a shared parser/judge helper, add its responsibility to
 `tests/policy/repository-checks.txt`. Keep check implementations in CMake script mode or POSIX sh and count
 shared helpers in full. Exclusions explain actual build, runtime or release operations individually; moving

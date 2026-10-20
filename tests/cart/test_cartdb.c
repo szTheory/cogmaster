@@ -2,15 +2,50 @@
 #include <string.h>
 #include "cogmaster.h"
 #include "../check.h"
+#include "cartdb.h"
 
 static uint8_t image[32768];
-static void *allocate(void *u, size_t n) { (void)u; return malloc(n); }
-static void release(void *u, void *p, size_t n) { (void)u; (void)n; free(p); }
+static void *allocate(void *u, size_t n)
+{
+    (void)u;
+    return malloc(n);
+}
+static void release(void *u, void *p, size_t n)
+{
+    (void)u;
+    (void)n;
+    free(p);
+}
 int main(void)
 {
-    static const uint8_t magic[8] = {0x54,0x4d,0x52,0x20,0x53,0x45,0x47,0x41};
+    const struct cogmaster__cart_fact *f =
+        cogmaster__cartdb_find("0dad260b5357b2f61d1452bb73d8321ca53d7262");
+    CHECK(f != NULL);
+    if (f) {
+        CHECK_EQ_U64(f->persistence, COGMASTER_PERSISTENCE_BATTERY);
+        CHECK_EQ_U64(f->declared, 24576u);
+        CHECK_EQ_U64(f->geometry, COGMASTER_GEOMETRY_UNSUPPORTED);
+    }
+    CHECK(cogmaster__cartdb_find("0000000000000000000000000000000000000000") == NULL);
+    f = cogmaster__cartdb_find("c3305d745792a931ea92da6e6457c43d7cc45cf2");
+    CHECK(f != NULL);
+    if (f) {
+        CHECK_EQ_U64(f->machine, COGMASTER_MACHINE_GG);
+        CHECK_EQ_U64(f->video, COGMASTER_VIDEO_SMS);
+        CHECK_EQ_U64(f->persistence, COGMASTER_PERSISTENCE_NONE);
+        CHECK_EQ_U64(f->public_identity, 1u);
+    }
+    static const uint8_t magic[8] = {0x54, 0x4d, 0x52, 0x20, 0x53, 0x45, 0x47, 0x41};
     memcpy(image + 0x7ff0, magic, 8);
     image[0x7fff] = 0x6c;
+    cogmaster_cart_info probe = {0};
+    probe.size = sizeof probe;
+    CHECK_EQ_U64(cogmaster_probe(image, sizeof image, &probe), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(probe.persistence, COGMASTER_PERSISTENCE_UNKNOWN);
+    probe.size = 52u;
+    probe.identified = 0xabcdefu;
+    CHECK_EQ_U64(cogmaster_probe(image, sizeof image, &probe), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(probe.identified, 0xabcdefu);
     cogmaster_config cfg = {0};
     cfg.size = sizeof cfg;
     cfg.allocator.alloc = allocate;

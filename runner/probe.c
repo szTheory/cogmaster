@@ -163,6 +163,12 @@ int cogmaster__probe_print(const char *path, const uint8_t *image, size_t n)
     printf("machine_guess=%s\n", machine == COGMASTER_MACHINE_GG ? "gg" : "sms");
     printf("region_guess=%s\n", info.region_guess == COGMASTER_REGION_JAPAN ? "ntsc-j" : "ntsc-u");
     printf("mapper_guess=%s\n", mappers[info.board <= 3u ? info.board : 0u]);
+    printf("identified=%lu\npublic_identity=%lu\npersistence=%lu\npersistent_size=%lu\n"
+           "persistence_geometry=%lu\nvideo_mode=%lu\nidentity_sha1=%s\ntitle=%s\n",
+           (unsigned long)info.identified, (unsigned long)info.public_identity,
+           (unsigned long)info.persistence, (unsigned long)info.persistent_size,
+           (unsigned long)info.persistence_geometry, (unsigned long)info.video_mode, info.sha1,
+           info.title);
     print_digests(image, n, "");
     if (copier) {
         print_digests(image + COPIER_HEADER, n - COPIER_HEADER, "_headerless");

@@ -152,6 +152,16 @@ typedef struct cogmaster_fault {
     uint8_t device, kind; /* COGMASTER_FAULT_DEVICE_*, COGMASTER_FAULT_KIND_* */
 } cogmaster_fault;
 
+enum {
+    COGMASTER_PERSISTENCE_UNKNOWN = 0,
+    COGMASTER_PERSISTENCE_NONE = 1,
+    COGMASTER_PERSISTENCE_BATTERY = 2
+};
+enum {
+    COGMASTER_GEOMETRY_NONE = 0,
+    COGMASTER_GEOMETRY_SUPPORTED = 1,
+    COGMASTER_GEOMETRY_UNSUPPORTED = 2
+};
 typedef struct cogmaster_cart_info {
     uint32_t size;
     uint32_t image_size;
@@ -162,6 +172,10 @@ typedef struct cogmaster_cart_info {
     uint32_t machine_guess; /* COGMASTER_MACHINE_*, 0 when unknown */
     uint32_t region_guess;  /* COGMASTER_REGION_*, 0 when unknown */
     uint32_t board;         /* COGMASTER_BOARD_*, 0 when none is supported */
+    uint32_t identified, public_identity;
+    uint32_t persistence, persistent_size, persistence_geometry;
+    uint32_t video_mode;
+    char sha1[41], title[256];
 } cogmaster_cart_info;
 
 cogmaster_status cogmaster_get_versions(cogmaster_versions *out);

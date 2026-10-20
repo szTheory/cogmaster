@@ -139,6 +139,8 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     uint32_t machine;
     switch (media->machine) {
     case COGMASTER_MACHINE_AUTO:
+        machine = probe.machine_guess != 0u ? probe.machine_guess : COGMASTER_MACHINE_SMS2;
+        break;
     case COGMASTER_MACHINE_SMS2:
         machine = COGMASTER_MACHINE_SMS2;
         break;
@@ -157,7 +159,9 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     if (region > COGMASTER_REGION_JAPAN || tv > COGMASTER_TV_PAL) {
         return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
     }
-    region = region == COGMASTER_REGION_AUTO ? COGMASTER_REGION_EXPORT : region;
+    region = region == COGMASTER_REGION_AUTO
+                 ? (probe.region_guess != 0u ? probe.region_guess : COGMASTER_REGION_EXPORT)
+                 : region;
     tv = tv == COGMASTER_TV_AUTO ? COGMASTER_TV_NTSC : tv;
     uint32_t video = 0u;
     /* Previous media ended at 40/24 bytes, including its tail padding. */
@@ -167,7 +171,9 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
         (video == COGMASTER_VIDEO_GG && machine != COGMASTER_MACHINE_GG))
         return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
     if (video == COGMASTER_VIDEO_AUTO)
-        video = machine == COGMASTER_MACHINE_GG ? COGMASTER_VIDEO_GG : COGMASTER_VIDEO_SMS;
+        video = machine == COGMASTER_MACHINE_GG
+                    ? (probe.video_mode != 0u ? probe.video_mode : COGMASTER_VIDEO_GG)
+                    : COGMASTER_VIDEO_SMS;
     /* No Game Gear and no Japanese console was made for PAL (SMS-SYSTEM C6). */
     if (tv == COGMASTER_TV_PAL &&
         (machine == COGMASTER_MACHINE_GG || region == COGMASTER_REGION_JAPAN)) {

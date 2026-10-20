@@ -48,6 +48,8 @@ add_library(cogmaster STATIC
   src/boot.c
   src/bus.c
   src/cart.c
+  src/cartdb.c
+  src/sha1.c
   src/crc32.c
   src/fault.c
   src/instance.c

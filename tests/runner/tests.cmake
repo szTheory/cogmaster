@@ -42,12 +42,14 @@ if(CMAKE_SCRIPT_MODE_FILE)
       "header_magic=[01]\nchecksum=${num}\nchecksum_ok=([01]|none)\nproduct_code=${num}\n"
       "version=${num}\nregion_code=${num}\nrom_size_code=${num}\nmachine_guess=(sms|gg)\n"
       "region_guess=(ntsc-u|ntsc-j|pal)\nmapper_guess=(none|sega|codemasters|unsupported)\n"
+      "identified=[01]\npublic_identity=[01]\npersistence=[012]\npersistent_size=[0-9]+\n"
+      "persistence_geometry=[012]\nvideo_mode=[012]\nidentity_sha1=(${h40}|)\ntitle=[^\n]*\n"
       "sha1=${h40}\nsha256=${h64}\ncrc32=${h8}\nmd5=${h32}\n"
       "sha1_headerless=(${h40}|none)\nsha256_headerless=(${h64}|none)\n"
       "crc32_headerless=(${h8}|none)\nmd5_headerless=(${h32}|none)\n$")
     string(CONCAT form ${form})
     if(NOT out MATCHES "${form}")
-      message(FATAL_ERROR "--probe output is not the documented 21 keys in order:\n${out}")
+      message(FATAL_ERROR "--probe output keys or values differ from the documented form:\n${out}")
     endif()
   endfunction()
 
