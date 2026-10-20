@@ -1,0 +1,48 @@
+# API version check, run as
+#   cmake -DHEADER=<cogmaster.h> -DAPI_DIR=<tests/api> -P api_version.cmake
+# Fault prevented: something added to the public header without a version
+# bump or a test. tests/api/v<COGMASTER_API_VERSION>.c must exist, and every
+# function, type, constant and struct field the header names must appear in
+# some tests/api/vK.c with K <= COGMASTER_API_VERSION.
+cmake_minimum_required(VERSION 3.25)
+file(READ "${HEADER}" text)
+if(NOT text MATCHES "#define COGMASTER_API_VERSION ([0-9]+)")
+  message(FATAL_ERROR "api_version: ${HEADER} defines no COGMASTER_API_VERSION")
+endif()
+set(version ${CMAKE_MATCH_1})
+if(NOT EXISTS "${API_DIR}/v${version}.c")
+  message(FATAL_ERROR "api_version: ${API_DIR}/v${version}.c is missing for API version ${version}")
+endif()
+set(tests "")
+foreach(k RANGE 1 ${version})
+  if(EXISTS "${API_DIR}/v${k}.c")
+    file(READ "${API_DIR}/v${k}.c" body)
+    string(APPEND tests " ${body} ")
+  endif()
+endforeach()
+
+# Names: every cogmaster/COGMASTER_ identifier but the include guard, plus each
+# declarator inside a struct body once comments and parameter lists are gone.
+string(REGEX REPLACE "/\\*([^*]|\\*+[^*/])*\\*+/" " " text "${text}")
+string(REPLACE ";" "," text "${text}") # a ; would split CMake lists
+string(REGEX MATCHALL "[Cc][Oo][Gg][Mm][Aa][Ss][Tt][Ee][Rr][A-Za-z0-9_]*" names "${text}")
+list(REMOVE_ITEM names COGMASTER_H)
+string(REGEX MATCHALL "struct [a-z_]+ {[^}]*}" bodies "${text}")
+foreach(body IN LISTS bodies)
+  string(REGEX REPLACE "([A-Za-z0-9_)])\\([^()]*\\)" "\\1" body "${body}")
+  string(REGEX MATCHALL "[A-Za-z_][A-Za-z0-9_]*\\)*," fields "${body}")
+  string(REGEX REPLACE "[),]" "" fields "${fields}")
+  list(APPEND names ${fields})
+endforeach()
+list(REMOVE_DUPLICATES names)
+set(untested "")
+foreach(name IN LISTS names)
+  if(NOT tests MATCHES "[^A-Za-z0-9_]${name}[^A-Za-z0-9_]")
+    list(APPEND untested ${name})
+  endif()
+endforeach()
+if(untested)
+  message(FATAL_ERROR "api_version: in no tests/api/vK.c with K <= ${version}: ${untested}")
+endif()
+list(LENGTH names count)
+message(STATUS "api_version: ${count} header names covered at API version ${version}")

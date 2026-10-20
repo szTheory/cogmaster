@@ -128,6 +128,10 @@ Vendored files are never edited. The CTest `libretro.vendored` checks each SHA-2
 lives in `THIRD-PARTY-NOTICES.md`. The table is filled in v1.0 phase 1 with `libretro/libretro.h` (MIT, RetroArch
 team) at the pin HOSTS-AND-INTEGRATION 1 records.
 
+| File | Upstream | Upstream path | Commit | Licence | SHA-256 |
+|---|---|---|---|---|---|
+| `libretro/libretro.h` | https://github.com/libretro/RetroArch (tag v1.22.2) | `libretro-common/include/libretro.h` | `69a4f0ea1e8aaf442ae4858f2e7f2b31a1776576` | MIT | `bd3398d29c3763d18617087020ff56b5450a48a63123403a4b674f8e79947acb` |
+
 ## 9. What this file does not do
 It keeps the project's own licence clean. It is not legal advice, and it is no defence against a rights holder's
 claim; the asset policy handles that side by keeping game and firmware bytes out of the repository entirely.

@@ -5,6 +5,10 @@
 # capitalised subject, or pipeline work typed feat, fix or perf), and a skip
 # token in the title or body, which would start no CI run on main.
 set -u
+# Bytes, not characters: a subject starting with a non-ASCII letter is not
+# lower case.
+LC_ALL=C
+export LC_ALL
 title=${1-}
 body=$(cat) # all of it first, so the writer never meets a closed pipe
 status=0

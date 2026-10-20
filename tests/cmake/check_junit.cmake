@@ -1,0 +1,58 @@
+# JUnit completeness check, run after a test step as
+#   cmake -DJUNIT=<junit.xml> -DINVENTORY=<inventory.txt>
+#         [-DLABELS=<regex>] [-DEXCLUDE=<regex>] -P check_junit.cmake
+# Fault prevented: a test that silently did not run. A green ctest exit does
+# not prove each test ran; this requires every inventory name whose labels
+# match LABELS and not EXCLUDE exactly once in the JUnit file, run, with no
+# failure, error or skipped element, and at least one test in all.
+foreach(var JUNIT INVENTORY)
+  if(NOT EXISTS "${${var}}")
+    message(FATAL_ERROR "check_junit: -D${var}=<file> is required")
+  endif()
+endforeach()
+
+# One list element per testcase, after neutralising list syntax.
+file(READ "${JUNIT}" xml)
+string(REPLACE ";" "," xml "${xml}")
+string(REPLACE "[" "(" xml "${xml}")
+string(REPLACE "]" ")" xml "${xml}")
+string(REPLACE "<testcase " ";" cases "${xml}")
+list(POP_FRONT cases)
+set(ran "")
+set(bad "")
+foreach(case IN LISTS cases)
+  string(REGEX MATCH "^name=\"([^\"]*)\"" unused "${case}")
+  set(name "${CMAKE_MATCH_1}")
+  list(APPEND ran "${name}")
+  if(NOT case MATCHES "^[^>]*status=\"run\"" OR case MATCHES "<(failure|error|skipped)")
+    string(APPEND bad "\n  ${name}: failed, errored or did not run")
+  endif()
+endforeach()
+
+file(STRINGS "${INVENTORY}" lines REGEX "^[^#].*\t")
+set(selected 0)
+foreach(line IN LISTS lines)
+  string(REGEX MATCH "^([^\t]+)\t(.*)$" unused "${line}")
+  set(name "${CMAKE_MATCH_1}")
+  set(labels "${CMAKE_MATCH_2}")
+  if((NOT "${LABELS}" STREQUAL "" AND NOT labels MATCHES "${LABELS}")
+      OR (NOT "${EXCLUDE}" STREQUAL "" AND labels MATCHES "${EXCLUDE}"))
+    continue()
+  endif()
+  math(EXPR selected "${selected} + 1")
+  set(others ${ran})
+  list(REMOVE_ITEM others "${name}")
+  list(LENGTH ran all)
+  list(LENGTH others rest)
+  math(EXPR times "${all} - ${rest}")
+  if(NOT times EQUAL 1)
+    string(APPEND bad "\n  ${name}: in the JUnit file ${times} times, expected once")
+  endif()
+endforeach()
+if(selected EQUAL 0 OR NOT ran)
+  string(APPEND bad "\n  no test ran (${selected} selected from the inventory)")
+endif()
+if(bad)
+  message(FATAL_ERROR "check_junit: ${JUNIT}:${bad}")
+endif()
+message(STATUS "check_junit: ${selected} tests ran once each")
