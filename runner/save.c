@@ -165,9 +165,16 @@ static FILE *save_temporary(const char *path, char **temporary)
         break;
     }
 #else
-    (void)snprintf(tmp, n + 48u, "%s.tmp-XXXXXX", path);
-    int fd = mkstemp(tmp);
-    if (fd >= 0) {
+    /* POSIX open(O_CREAT|O_EXCL) also works in WASI, whose libc omits
+       mkstemp. Mode 0600 retains private native save-file permissions. */
+    for (uint32_t i = 0u; i < 1024u; i++) {
+        (void)snprintf(tmp, n + 48u, "%s.tmp-%lu", path, (unsigned long)i);
+        int fd = open(tmp, O_WRONLY | O_CREAT | O_EXCL, 0600);
+        if (fd < 0) {
+            if (errno == EEXIST)
+                continue;
+            break;
+        }
         FILE *f = fdopen(fd, "wb");
         if (f != NULL) {
             *temporary = tmp;
@@ -175,6 +182,7 @@ static FILE *save_temporary(const char *path, char **temporary)
         }
         (void)close(fd);
         (void)unlink(tmp);
+        break;
     }
 #endif
     free(tmp);

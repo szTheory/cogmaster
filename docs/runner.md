@@ -252,6 +252,11 @@ started, as under `nohup`, stays ignored.
 
 ## Battery files
 
+Native POSIX and WASI create temporary files exclusively with `open`, then replace
+within the same directory with `rename`; native POSIX also synchronizes the file.
+Windows uses wide paths and `MoveFileExW`. WASI filesystem rights and durable
+storage remain properties of the host's preopened directory.
+
 `--save-dir DIR` reads `<ROM stem>.srm` before emulation and saves changed battery data on exit.
 Only the last extension is removed: `round.trip.sms` uses `round.trip.srm`. Missing files start fresh
 with FF bytes; empty and short files pad with FF. An oversized file exits 4 before running and stays
