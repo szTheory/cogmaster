@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 03
 current_phase_name: Games play in RetroArch
-status: executing
-stopped_at: Completed 03-17-PLAN.md; runtime Codex; model GPT-6
-last_updated: "2026-10-20T22:29:17.056Z"
+status: ready_for_code_review
+stopped_at: Completed 03-18-PLAN.md; ready for code review; runtime Codex; model GPT-6
+last_updated: "2026-10-20T23:04:41.252Z"
 last_activity: 2026-10-20
-last_activity_desc: Completed plan 03-17; runtime Codex; model GPT-6
-state_head: 2153d87b3e83e5ca16bb0fcab208af4db30550b2
+last_activity_desc: Completed plan 03-18; ready for code review; runtime Codex; model GPT-6
+state_head: dd40d2f54987a149917a4f281f9d6edab9280fe5
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 47
-  completed_plans: 46
+  completed_plans: 47
   percent: 50
 ---
 
@@ -29,17 +29,19 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 
 ## Current Position
 
-Phase: 03 (Games play in RetroArch) — EXECUTING
+Phase: 03 (Games play in RetroArch) — EXECUTION COMPLETE; REVIEW PENDING
 Plan: 18 of 18
-Status: Ready to execute
-Last activity: 2026-10-20 — Completed plan 03-17; runtime Codex; model GPT-6
+Status: Ready for code review before formal verification; phase 03 remains pending
+Last activity: 2026-10-20 — Completed plan 03-18; runtime Codex; model GPT-6
+
+Next command: `$gsd-code-review 03`. Do not advance phase 04 before the separate review and verification steps.
 
 Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 42
+- Total plans completed: 47
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -49,7 +51,7 @@ Progress: [█████░░░░░] 50%
 |-------|-------|-------|----------|
 | 01 | 12 | - | - |
 | 02 | 17 | - | - |
-| 03 | 13 | - | - |
+| 03 | 18 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -106,6 +108,7 @@ Progress: [█████░░░░░] 50%
 | Phase 03 P15 | 14min | 2 tasks | 30 files |
 | Phase 03 P16 | 7min | 2 tasks | 16 files |
 | Phase 03 P17 | 12min | 2 tasks | 24 files |
+| Phase 03 P18 | 31min | 2 tasks | 27 files |
 
 ## Accumulated Context
 
@@ -233,6 +236,10 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 03]: Copy the base compatibility judge and adjacent shared parser before candidate checkout; compare eligible fresh fixture results in both directions.
 - [Phase 03]: Compatibility exceptions name one unique old pass, require the actual new behaviour revision, and expire inclusively within 60 supplied-date days; GAME-06 remains pending through plan 03-17.
 - [Phase 03]: Match fixtures by admitted SHA-256; run metadata misses as bounded unknown observations and restrict public updates to seeded CC0 cases with unchanged expectations.
+- [Phase 03]: Keep playing performance report-only; reuse identical owned fixture, script and profile on comparable bases and report NO_BASE for older contracts.
+- [Phase 03]: Use exclusive same-directory open for portable save temporaries, retaining private native permissions and untouched collision files.
+- [Phase 03]: Stop execution with all eighteen plans complete, ready for code review before formal verification; phase 04 remains pending.
+- [Phase 03]: Preserve every native and portable assertion while correcting actual inventories and measured host timeout bounds.
 
 ### Pending Todos
 
@@ -261,7 +268,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-10-19 | Execute phase 2 (gsd-execute-phase) | Claude Code | claude-opus-5-5 |
 | 2026-10-20 | Ship phase 2 (gsd-ship) | Codex | GPT-6 |
 | 2026-10-20 | Plan phase 3 (gsd-plan-phase) | Codex | GPT-6 |
-| 2026-10-20 | Execute phase 3 through plan 03-16 (gsd-execute-phase) | Codex | GPT-6 |
+| 2026-10-20 | Execute phase 3 through plan 03-18; ready for code review (gsd-execute-phase) | Codex | GPT-6 |
 
 ## Deferred Items
 
@@ -273,6 +280,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T22:29:16.907Z
-Stopped at: Completed 03-17-PLAN.md; runtime Codex; model GPT-6
+Last session: 2026-10-20T23:04:04.634Z
+Stopped at: Completed 03-18-PLAN.md; ready for code review; runtime Codex; model GPT-6
 Resume file: None

@@ -32,7 +32,7 @@ arm64; "every platform" means all six plus the big-endian lane. Expected values 
 
 ### Games play in RetroArch
 
-- [ ] **GAME-01**: VDP mode 4 renders name table, 8×8 and 8×16 sprites, zoom, priority, flips, the left-column mask, scroll locks and the 192/224/240-line modes; frame hashes of the `boot_to_play` and `vdp_lines` fixtures are identical on every platform.
+- [x] **GAME-01**: VDP mode 4 renders name table, 8×8 and 8×16 sprites, zoom, priority, flips, the left-column mask, scroll locks and the 192/224/240-line modes; frame hashes of the `boot_to_play` and `vdp_lines` fixtures are identical on every platform.
 - [x] **GAME-02**: Frame and line interrupts, the H and V counters (NTSC and PAL tables) and the status flags follow SMS-VDP 4 at dot-exact ticks; the `vdp_lines` fixture's mailbox values match `expected.csv` and a test shows a status read that clears the flags.
 - [x] **GAME-03**: The `gg` profile renders the 160×144 window with 12-bit CRAM, GG ports, Start and the SMS-compat mode; `boot_to_play.gg` plays with the same oracle as the SMS fixture, and the hosted job's GG screenshot matches the runner's crop.
 - [x] **GAME-04**: Two pads, Pause and region/TV profiles work end to end: the `boot_to_play` fixtures prove that a button press changes a visible counter, a scroll register and the frame hash, and that a frame with no port read is counted as a lag frame.
@@ -109,7 +109,7 @@ Later milestones. Each has a seed in `.planning/seeds/` that says when it comes 
 | CPU-03 | Phase 2 | Complete |
 | CPU-04 | Phase 2 | Complete |
 | CPU-05 | Phase 2 | Complete |
-| GAME-01 | Phase 3 | Pending |
+| GAME-01 | Phase 3 | Complete |
 | GAME-02 | Phase 3 | Complete |
 | GAME-03 | Phase 3 | Complete |
 | GAME-04 | Phase 3 | Complete |
