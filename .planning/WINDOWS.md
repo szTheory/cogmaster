@@ -2,9 +2,9 @@
 schema_version: 1
 open_count: 0
 waived_count: 0
-fixed_count: 4
-total_count: 4
-last_updated: 2026-10-20T19:11:53.265Z
+fixed_count: 5
+total_count: 5
+last_updated: 2026-10-20T22:28:03.831Z
 ---
 
 # Broken Windows Ledger
@@ -19,6 +19,7 @@ last_updated: 2026-10-20T19:11:53.265Z
 | 2 | 03 | deviation | tests/retroarch/checkpoint.c |  | Released frontend replay needs an initial checkpoint; a test-only module forwards the existing state visitor while input and video remain production source. | fixed |  | 2026-10-20T19:10:22.575Z | 2026-10-20T19:11:53.125Z |
 | 3 | 03 | deviation | tests/policy/e2e_cases.cmake |  | Register hosted helper accounting in CI as well as hygiene, including the shared independent oracle. | fixed |  | 2026-10-20T19:10:22.654Z | 2026-10-20T19:11:53.195Z |
 | 4 | 03 | deviation | tests/hygiene/tests.cmake |  | Exact-SHA hosted integration exposed earlier inventory, binary text scanning, MSVC, emulator quoting, newline fixture and WASI scratch-stack issues; targeted corrections now pass all lanes. | fixed |  | 2026-10-20T19:10:22.742Z | 2026-10-20T19:11:53.265Z |
+| 5 | 03 | deviation | tests/cmake/budgets.cmake |  | Budget blocker resolved through standard aggregate counting, direct checked output and removal of unused COST configuration; complete parser and update code remain counted. | fixed |  | 2026-10-20T22:27:00.522Z | 2026-10-20T22:28:03.831Z |
 
 ````json
 [
@@ -72,6 +73,19 @@ last_updated: 2026-10-20T19:11:53.265Z
     "reason": "",
     "recorded_at": "2026-10-20T19:10:22.742Z",
     "resolved_at": "2026-10-20T19:11:53.265Z",
+    "milestone": "v1.0"
+  },
+  {
+    "id": 5,
+    "kind": "deviation",
+    "phase": "03",
+    "file": "tests/cmake/budgets.cmake",
+    "line": null,
+    "description": "Budget blocker resolved through standard aggregate counting, direct checked output and removal of unused COST configuration; complete parser and update code remain counted.",
+    "status": "fixed",
+    "reason": "",
+    "recorded_at": "2026-10-20T22:27:00.522Z",
+    "resolved_at": "2026-10-20T22:28:03.831Z",
     "milestone": "v1.0"
   }
 ]
