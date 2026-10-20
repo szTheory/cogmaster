@@ -105,6 +105,11 @@ cogmaster_add_test(NAME abi.api_v4 COMMAND cogmaster-test-api-v4
 # project never meets it. The targets are built only by these tests, which
 # share the build tree and so take turns.
 enable_language(CXX)
+add_executable(cogmaster-test-api-v5 ${PROJECT_SOURCE_DIR}/tests/api/v5.c)
+target_link_libraries(cogmaster-test-api-v5 PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-api-v5)
+cogmaster_add_test(NAME abi.api_v5 COMMAND cogmaster-test-api-v5
+  LABELS abi portable TIMEOUT 10)
 add_library(cogmaster_header_c17 OBJECT EXCLUDE_FROM_ALL
   ${CMAKE_CURRENT_LIST_DIR}/../header/header.c)
 add_library(cogmaster_header_cxx17 OBJECT EXCLUDE_FROM_ALL

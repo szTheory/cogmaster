@@ -3,14 +3,17 @@
 #include <string.h>
 #include "internal.h"
 
-static uint16_t vdp_colour(uint8_t c)
+static uint16_t vdp_colour(const cogmaster *m, uint32_t index)
 {
+    if (cogmaster__native_gg(m))
+        return (uint16_t)(m->vdp.cram[index * 2u] | ((uint16_t)m->vdp.cram[index * 2u + 1u] << 8));
+    uint8_t c = m->vdp.cram[index];
     return (uint16_t)(((c & 3u) * 5u) | (((c >> 2) & 3u) * 5u << 4) | (((c >> 4) & 3u) * 5u << 8));
 }
 
 uint16_t cogmaster__vdp_backdrop(const cogmaster *m)
 {
-    return vdp_colour(m->vdp.cram[16u + (m->vdp.reg[7] & 15u)]);
+    return vdp_colour(m, 16u + (m->vdp.reg[7] & 15u));
 }
 
 /* SMS1 AND gates apply R3 to A13..A6 for planes 0/1, R4 to
@@ -195,7 +198,7 @@ void cogmaster__vdp_render_until(cogmaster *m, uint32_t line, uint32_t x)
         if (m->render_x == 0u && m->vdp.display && vdp_supported(m) && m->vdp.sprite_overflow) {
             m->vdp.status |= 0x40u;
         }
-        m->field[m->render_line][m->render_x] = vdp_colour(m->vdp.cram[colour & 31u]);
+        m->field[m->render_line][m->render_x] = vdp_colour(m, colour & 31u);
         at++;
         if (++m->render_x == COGMASTER__FIELD_W) {
             m->render_x = 0u;
@@ -213,14 +216,28 @@ void cogmaster__vdp_finish_field(cogmaster *m)
 {
     cogmaster__vdp_render_to(m, m->vdp.height);
     m->completed.height = m->vdp.height;
-    m->completed.crop = cogmaster__crop(m->machine);
-    if (m->machine != COGMASTER_MACHINE_GG) {
+    m->completed.crop =
+        cogmaster__crop(cogmaster__native_gg(m) ? COGMASTER_MACHINE_GG : COGMASTER_MACHINE_SMS2);
+    if (!cogmaster__native_gg(m)) {
         m->completed.crop.h = m->vdp.height;
     } else if (m->vdp.height == 224u) {
         m->completed.crop.y = 40u;
     }
     m->completed.backdrop = cogmaster__vdp_backdrop(m);
     memcpy(m->completed.pixels, m->field, sizeof m->field);
+    /* Selected LCD model: 240 lines freezes the last native picture until
+       POWER reset; the diagnostic full field continues (SMS-VDP 6.3). */
+    if (cogmaster__native_gg(m)) {
+        if (m->vdp.height == 240u)
+            m->lcd.frozen = 1u;
+        if (!m->lcd.frozen) {
+            m->lcd.height = m->vdp.height;
+            m->lcd.y = m->completed.crop.y;
+            m->lcd.backdrop = m->completed.backdrop;
+            for (uint32_t y = 0u; y < 144u; y++)
+                memcpy(m->lcd.pixels[y], &m->field[m->lcd.y + y][48], sizeof m->lcd.pixels[y]);
+        }
+    }
     m->render_line = 0u;
     m->render_x = 0u;
     m->vdp.sprite_line = m->vdp.height;

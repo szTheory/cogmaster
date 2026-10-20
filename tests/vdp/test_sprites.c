@@ -198,6 +198,8 @@ static void priority(void)
 static void gg_slots(void)
 {
     cogmaster *m = make(COGMASTER_MACHINE_GG);
+    memset(m->vdp.cram, 0, sizeof m->vdp.cram);
+    m->vdp.cram[34] = 15u;
     solid(m, 2u, 1u);
     for (uint32_t i = 0u; i < 8u; i++)
         sprite(m, i, 24u, 0u, 0u);

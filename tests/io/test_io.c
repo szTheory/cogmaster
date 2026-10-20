@@ -293,7 +293,7 @@ static void test_decode_mirrors(void)
         for (size_t i = 0; i < 6u; i++) {
             CHECK_EQ_HEX(cogmaster__bus_in(m, others[i]), 0xFF);
         }
-        CHECK_EQ_U64(m->counters.open_bus_reads, 6);
+        CHECK_EQ_U64(m->counters.open_bus_reads, k == 0u ? 6u : 4u);
         cogmaster__bus_out(m, 0x0001u, 0xFFu);
         CHECK_EQ_HEX(m->io.io_ctrl, 0x55);
         cogmaster_destroy(m);

@@ -90,7 +90,7 @@ struct cogmaster__bus {
 /* VDP registers, ports, status and the stores shared with the renderer. */
 #define COGMASTER__VDP_REGS 11u
 #define COGMASTER__VRAM_SIZE 16384u
-#define COGMASTER__CRAM_SIZE 32u
+#define COGMASTER__CRAM_SIZE 64u
 
 struct cogmaster__vdp {
     uint8_t height;                     /* 192/224/240, final-physical-line tick-600 latch */
@@ -113,6 +113,7 @@ struct cogmaster__vdp {
     uint8_t sprite_line, sprite_count, sprite_scanned;
     uint8_t sprite_zoom, sprite_shift, sprite_overflow;
     uint8_t cram[COGMASTER__CRAM_SIZE];
+    uint8_t cram_latch;
     uint8_t vram[COGMASTER__VRAM_SIZE];
 };
 
@@ -168,9 +169,10 @@ struct cogmaster {
     uint64_t frame;                /* frames run since load */
     uint64_t ticks;                /* ticks run since load */
     uint32_t machine;              /* resolved machine: SMS1, SMS2 or GG; valid while loaded */
-    uint32_t region;               /* resolved region: EXPORT or JAPAN; valid while loaded */
-    uint32_t tv;                   /* resolved TV: NTSC or PAL; valid while loaded */
-    uint32_t loaded;               /* 1 after a successful load */
+    uint32_t video_mode;
+    uint32_t region; /* resolved region: EXPORT or JAPAN; valid while loaded */
+    uint32_t tv;     /* resolved TV: NTSC or PAL; valid while loaded */
+    uint32_t loaded; /* 1 after a successful load */
     struct cogmaster__counters counters;
     uint32_t fault_present;        /* 1 once a fault is recorded */
     struct cogmaster__fault fault; /* valid while fault_present */
@@ -191,7 +193,17 @@ struct cogmaster {
         cogmaster__rect crop;
         uint16_t pixels[COGMASTER__FIELD_MAX_H][COGMASTER__FIELD_W];
     } completed;
+    struct {
+        uint32_t height, y, backdrop;
+        uint8_t frozen;
+        uint16_t pixels[144][160];
+    } lcd;
 };
+
+static inline int cogmaster__native_gg(const cogmaster *m)
+{
+    return m->video_mode == COGMASTER_VIDEO_GG;
+}
 
 /* Shared revision facts: the 315-5124 masks VDP addresses and has no
    pull-ups on an undriven bus (SMS-VDP section 1; SMS-SYSTEM C5). */
@@ -236,8 +248,7 @@ _Static_assert(offsetof(cogmaster_media, machine) == 3 * COGMASTER__P, "media.ma
 _Static_assert(offsetof(cogmaster_media, region) == 3 * COGMASTER__P + 4, "media.region");
 _Static_assert(offsetof(cogmaster_media, tv) == 3 * COGMASTER__P + 8, "media.tv");
 /* 3P + 12 bytes rounded up to a multiple of P: 40 on 64-bit, 24 on 32-bit. */
-_Static_assert(sizeof(cogmaster_media) == (4 * COGMASTER__P + 11) / COGMASTER__P * COGMASTER__P,
-               "media size");
+_Static_assert(sizeof(cogmaster_media) == (COGMASTER__P == 8 ? 48 : 28), "media size");
 
 _Static_assert(offsetof(cogmaster_info, size) == 0, "info.size");
 _Static_assert(offsetof(cogmaster_info, machine) == 4, "info.machine");
@@ -253,7 +264,7 @@ _Static_assert(offsetof(cogmaster_info, par_num) == 40, "info.par_num");
 _Static_assert(offsetof(cogmaster_info, par_den) == 44, "info.par_den");
 _Static_assert(offsetof(cogmaster_info, region) == 48, "info.region");
 _Static_assert(offsetof(cogmaster_info, tv) == 52, "info.tv");
-_Static_assert(sizeof(cogmaster_info) == 56, "info size");
+_Static_assert(sizeof(cogmaster_info) == 60, "info size");
 
 _Static_assert(offsetof(cogmaster_frame, size) == 0, "frame.size");
 _Static_assert(offsetof(cogmaster_frame, pixels) == COGMASTER__P, "frame.pixels");

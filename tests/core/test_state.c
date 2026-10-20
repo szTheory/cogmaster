@@ -12,7 +12,7 @@
 #include "../check.h"
 
 #define BUF 393216u        /* includes the emitted RGB444 field and cartridge RAM */
-#define MAX_FIELDS 200000u /* memory bytes plus emitted pixels and bounded scalar state */
+#define MAX_FIELDS 240000u /* memory bytes plus emitted pixels and bounded scalar state */
 #define IMAGE_SIZE 1024u
 #define TICKS_PER_FRAME 179208u
 #define POISON 0xA5u
@@ -228,7 +228,8 @@ static void sweep(cogmaster *src, cogmaster *target)
             ram++;
         }
         /* One interior and both edge pixels exercise the shared RGB444 bound. */
-        if ((strcmp(fd->name, "field_pixel") == 0 || strcmp(fd->name, "completed_pixel") == 0) &&
+        if ((strcmp(fd->name, "field_pixel") == 0 || strcmp(fd->name, "completed_pixel") == 0 ||
+             strcmp(fd->name, "lcd_pixel") == 0) &&
             fd->offset != fields[n - 1u].offset &&
             (i == 0u || strcmp(fields[i - 1u].name, fd->name) == 0)) {
             continue;

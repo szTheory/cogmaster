@@ -1,5 +1,28 @@
 # Video
 
+Native Game Gear CRAM has 64 bytes. Even writes update a shared low-byte
+latch without changing colour; odd writes commit that latch and the low
+nibble of the new byte at the odd address's entry. Address changes and wrap
+do not discard the latch. SMS video mode uses immediate 32-byte six-bit
+colours. Both paths feed the same background/sprite RGB444 renderer.
+Sources: preparation SMS-VDP section 6.2 and
+[GG VDP](https://www.smspower.org/Development/GGVDP).
+
+The native LCD window is 160×144 at (48,24), or (48,40) in 224-line mode.
+The selected 240-line model freezes the last valid LCD pixels and descriptor
+until POWER reset, including across SOFT reset and later height changes.
+Full-field diagnostic output continues independently. This is a
+confidence-qualified hardware model, not a measured freeze edge. Explicit
+SMS video exposes the full SMS field and PAR; physical LCD mixing/scaling
+belongs to host presentation. Sources: preparation SMS-VDP section 6.3,
+[GG LCD](https://www.smspower.org/Development/GGLCD).
+
+The handheld's C0/C1 aliases answer the same controller pins as DC/DD.
+Other full-decode gaps remain undriven. Native Start reads active low at
+00; explicit SMS mode instead routes Start edges to the Pause NMI.
+Sources: phase research “GG decode, pins and presentation” and SMS-SYSTEM
+section 4. Local pad two, reset and TH remain absent on the handheld.
+
 Content uses one production Mode 4 renderer. In the 192-line
 path, the name table selects four-plane 8×8 tiles; its palette and flip bits
 are decoded before SMS two-bit channels expand to RGB444 by multiplication

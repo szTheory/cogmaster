@@ -148,12 +148,28 @@ media.size = (uint32_t)sizeof media;
 media.machine = COGMASTER_MACHINE_AUTO;   /* or COGMASTER_MACHINE_SMS2, COGMASTER_MACHINE_GG */
 media.region = COGMASTER_REGION_AUTO;     /* or COGMASTER_REGION_EXPORT, COGMASTER_REGION_JAPAN */
 media.tv = COGMASTER_TV_AUTO;             /* or COGMASTER_TV_NTSC, COGMASTER_TV_PAL */
+media.video_mode = COGMASTER_VIDEO_AUTO;  /* or COGMASTER_VIDEO_SMS, COGMASTER_VIDEO_GG */
 media.image = rom;                        /* the image bytes, or NULL for the test card */
 media.image_size = rom_size;              /* 0 with a NULL image */
 cogmaster_load(m, &media);
 
 cogmaster_run_frame(m, NULL);             /* one frame; the result struct is optional */
 ```
+
+`video_mode` defaults to native GG on a Game Gear and SMS on either Master System.
+Explicit GG video requires a Game Gear. Explicit SMS video on a Game Gear retains
+the handheld machine and port decode, uses immediate SMS colours, and exposes the
+full SMS field with NTSC PAR 8:7. Physical LCD resampling belongs to the host.
+`cogmaster_info.video_mode` reports the resolved value. Media tags from before
+this extension (40 bytes on 64-bit, 24 on 32-bit) read video mode as AUTO,
+including the old tail padding. Zero the reserved media word on 64-bit systems.
+
+Native GG crops (48,24,160,144) at 192 lines and (48,40,160,144) at 224 lines.
+The selected 240-line LCD model holds the last native image and its descriptor
+until POWER reset; SOFT reset retains the freeze. FULL_FIELD continues to expose
+the current field independently. Both the held image and palette latch are state.
+GG controller reads decode C0/C1 and DC/DD; native Start is active low at port 00.
+In explicit SMS video mode Start instead raises the edge-detected Pause NMI.
 
 `cogmaster_media.image` with `image_size` 0 and a NULL `image` loads the built-in test card. Any other image must
 be 1,024 to 1,048,576 + 512 bytes; any other size returns `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE`, and a NULL

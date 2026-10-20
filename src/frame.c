@@ -39,7 +39,14 @@ cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out)
     uint32_t overshoot = 0u;
     /* Absolute host levels latch once at the frame boundary; only a Pause
        rising edge queues the console NMI (SMS-CARTRIDGES section 3). */
-    if (m->pending_input.pause && !m->input.pause) {
+    uint32_t pause =
+        m->pending_input.pause |
+        (m->machine == COGMASTER_MACHINE_GG && !cogmaster__native_gg(m) ? m->pending_input.start
+                                                                        : 0u);
+    uint32_t old_pause =
+        m->input.pause |
+        (m->machine == COGMASTER_MACHINE_GG && !cogmaster__native_gg(m) ? m->input.start : 0u);
+    if (pause && !old_pause) {
         m->vdp.pause = 1u;
     }
     m->input = m->pending_input;
@@ -54,6 +61,10 @@ cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out)
             }
         }
         memcpy(m->completed.pixels, m->field, sizeof m->field);
+        if (cogmaster__native_gg(m) && !m->lcd.frozen) {
+            for (uint32_t y = 0u; y < 144u; y++)
+                memcpy(m->lcd.pixels[y], &m->field[24u + y][48], sizeof m->lcd.pixels[y]);
+        }
         /* The card is exactly one frame: the beam ends where it began. */
         m->frame++;
         uint32_t ticks = cogmaster__frame_ticks(m);
@@ -100,20 +111,25 @@ cogmaster_status cogmaster_get_frame(const cogmaster *m, cogmaster_frame *io)
         r.h = m->completed.height;
     } else {
         r = m->completed.crop;
+        if (cogmaster__native_gg(m))
+            r.y = m->lcd.y;
     }
     if (io->pitch_bytes < r.w * 2u) {
         return COGMASTER_STATUS_ERR_BUFFER_TOO_SMALL;
     }
     uint8_t *dst = (uint8_t *)io->pixels;
     for (uint32_t row = 0; row < r.h; row++) {
-        memcpy(dst + (size_t)row * io->pitch_bytes, &m->completed.pixels[r.y + row][r.x],
-               (size_t)r.w * 2u);
+        const uint16_t *src = cogmaster__native_gg(m) && !(io->flags & COGMASTER_FRAME_FULL_FIELD)
+                                  ? m->lcd.pixels[row]
+                                  : &m->completed.pixels[r.y + row][r.x];
+        memcpy(dst + (size_t)row * io->pitch_bytes, src, (size_t)r.w * 2u);
     }
     io->x = r.x;
     io->y = r.y;
     io->w = r.w;
     io->h = r.h;
-    io->field_h = m->completed.height;
-    io->backdrop_rgb444 = m->completed.backdrop;
+    int lcd = cogmaster__native_gg(m) && !(io->flags & COGMASTER_FRAME_FULL_FIELD);
+    io->field_h = lcd ? m->lcd.height : m->completed.height;
+    io->backdrop_rgb444 = lcd ? m->lcd.backdrop : m->completed.backdrop;
     return COGMASTER_STATUS_OK;
 }

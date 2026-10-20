@@ -136,7 +136,7 @@ static uint8_t chip_in(cogmaster *m, uint32_t p)
     if ((m->io.mem_ctrl & IO_CHIP_OFF) != 0u) {
         return cogmaster__io_open_bus(m);
     }
-    if (full_decode(m) && p != 0xDCu && p != 0xDDu) {
+    if (full_decode(m) && p != 0xDCu && p != 0xDDu && !(is_gg(m) && (p == 0xC0u || p == 0xC1u))) {
         return cogmaster__io_open_bus(m);
     }
     m->input_read = 1u;
@@ -150,12 +150,12 @@ uint8_t cogmaster__io_in(cogmaster *m, uint16_t port)
         return chip_in(m, p);
     }
     if (is_gg(m) && p <= 6u) {
-        if (p == 0u) {
+        if (p == 0u && cogmaster__native_gg(m)) {
             m->input_read = 1u;
             return (uint8_t)((m->input.start ? 0u : GG_START_UP) |
                              (m->region == COGMASTER_REGION_JAPAN ? 0u : GG_EXPORT));
         }
-        return m->io.gg[p - 1u];
+        return p == 0u ? cogmaster__io_open_bus(m) : m->io.gg[p - 1u];
     }
     if (p < 0x40u) {
         /* $3E and $3F are write-only; nothing drives a read there. */

@@ -64,6 +64,12 @@ void cogmaster__vdp_reset(cogmaster *m, int power)
 {
     struct cogmaster__vdp *v = &m->vdp;
     v->height = 192u;
+    v->cram_latch = 0u;
+    if (power) {
+        memset(&m->lcd, 0, sizeof m->lcd);
+        m->lcd.height = 192u;
+        m->lcd.y = 24u;
+    }
     v->addr = 0u;
     v->vline = 193u; /* bus origin line 192, after the 604 V step */
     memset(v->reg, 0, sizeof v->reg);
@@ -92,13 +98,10 @@ void cogmaster__vdp_reset(cogmaster *m, int power)
     v->sprite_overflow = 0u;
     memset(&m->completed, 0, sizeof m->completed);
     m->completed.height = 192u;
-    m->completed.crop = cogmaster__crop(m->machine);
-    m->completed.par_num = m->machine == COGMASTER_MACHINE_GG ? 6u
-                           : m->tv == COGMASTER_TV_PAL        ? 2950000u
-                                                              : 8u;
-    m->completed.par_den = m->machine == COGMASTER_MACHINE_GG ? 5u
-                           : m->tv == COGMASTER_TV_PAL        ? 2128137u
-                                                              : 7u;
+    m->completed.crop =
+        cogmaster__crop(cogmaster__native_gg(m) ? COGMASTER_MACHINE_GG : COGMASTER_MACHINE_SMS2);
+    m->completed.par_num = cogmaster__native_gg(m) ? 6u : m->tv == COGMASTER_TV_PAL ? 2950000u : 8u;
+    m->completed.par_den = cogmaster__native_gg(m) ? 5u : m->tv == COGMASTER_TV_PAL ? 2128137u : 7u;
     m->render_line = 0u;
     m->render_x = 0u;
     if (power) {
@@ -142,7 +145,7 @@ static int vdp_rolling(const cogmaster *m)
    own mode Start is a port bit (SMS-SYSTEM section 7), so it has none. */
 static uint32_t vdp_nmi_line(const cogmaster *m)
 {
-    if (m->machine == COGMASTER_MACHINE_GG) {
+    if (cogmaster__native_gg(m)) {
         return UINT32_MAX;
     }
     return cogmaster__frame_lines(m) - 2u;
@@ -328,7 +331,18 @@ static void vdp_data_write(cogmaster *m, uint8_t b)
     struct cogmaster__vdp *v = &m->vdp;
     v->latch = 0u;
     if (v->code == VDP_CODE_CRAM_WRITE) {
-        v->cram[v->addr & (COGMASTER__CRAM_SIZE - 1u)] = b;
+        /* Native GG commits both bytes only on an odd address; an even
+           write changes the shared latch (SMS-VDP section 6.2). */
+        if (cogmaster__native_gg(m)) {
+            if ((v->addr & 1u) != 0u) {
+                v->cram[(v->addr & 62u)] = v->cram_latch;
+                v->cram[(v->addr & 63u)] = b & 15u;
+            } else {
+                v->cram_latch = b;
+            }
+        } else {
+            v->cram[v->addr & 31u] = b;
+        }
     } else {
         v->vram[v->addr] = b;
     }

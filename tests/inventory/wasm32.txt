@@ -6,6 +6,7 @@ abi.api_v1	abi,portable
 abi.api_v2	abi,portable
 abi.api_v3	abi,portable
 abi.api_v4	abi,portable
+abi.api_v5	abi,portable
 abi.api_version	abi
 abi.api_version.self_test	abi
 abi.globals	abi
@@ -200,7 +201,14 @@ vdp.geometry.heights	portable,vdp
 vdp.geometry.hostile	portable,vdp
 vdp.geometry.state	portable,vdp
 vdp.geometry.transitions	portable,vdp
+vdp.gg.colours	portable,vdp
+vdp.gg.coordinates	portable,vdp
+vdp.gg.freeze	portable,vdp
+vdp.gg.intervals	portable,vdp
 vdp.gg.palette	portable,vdp
+vdp.gg.ports	portable,vdp
+vdp.gg.profiles	portable,vdp
+vdp.gg.state	portable,vdp
 vdp.hcounter	portable,vdp
 vdp.pause_nmi	portable,vdp
 vdp.port_decode	portable,vdp

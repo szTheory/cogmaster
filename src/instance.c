@@ -159,6 +159,15 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     }
     region = region == COGMASTER_REGION_AUTO ? COGMASTER_REGION_EXPORT : region;
     tv = tv == COGMASTER_TV_AUTO ? COGMASTER_TV_NTSC : tv;
+    uint32_t video = 0u;
+    /* Previous media ended at 40/24 bytes, including its tail padding. */
+    if (media->size > (sizeof(void *) == 8u ? 40u : 24u))
+        video = media_field(media, offsetof(cogmaster_media, video_mode));
+    if (video > COGMASTER_VIDEO_GG ||
+        (video == COGMASTER_VIDEO_GG && machine != COGMASTER_MACHINE_GG))
+        return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
+    if (video == COGMASTER_VIDEO_AUTO)
+        video = machine == COGMASTER_MACHINE_GG ? COGMASTER_VIDEO_GG : COGMASTER_VIDEO_SMS;
     /* No Game Gear and no Japanese console was made for PAL (SMS-SYSTEM C6). */
     if (tv == COGMASTER_TV_PAL &&
         (machine == COGMASTER_MACHINE_GG || region == COGMASTER_REGION_JAPAN)) {
@@ -183,6 +192,7 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     }
     cogmaster__cart_install(m, &cart);
     m->machine = machine;
+    m->video_mode = video;
     m->region = region;
     m->tv = tv;
     m->loaded = 1u;
@@ -215,8 +225,9 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out)
     memset(&info, 0, sizeof info);
     info.size = out->size;
     info.machine = m->machine;
+    info.video_mode = m->video_mode;
     info.field_w = COGMASTER__FIELD_W;
-    info.field_h = m->completed.height;
+    info.field_h = cogmaster__native_gg(m) ? m->lcd.height : m->completed.height;
     info.max_w = COGMASTER__FIELD_W;
     info.max_h = COGMASTER__FIELD_MAX_H;
     info.region = m->region;

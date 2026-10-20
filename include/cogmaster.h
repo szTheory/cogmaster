@@ -11,10 +11,10 @@
 extern "C" {
 #endif
 
-#define COGMASTER_API_VERSION 4
+#define COGMASTER_API_VERSION 5
 #define COGMASTER_ABI_VERSION 1
-#define COGMASTER_BEHAVIOUR_REVISION 7
-#define COGMASTER_STATE_FORMAT_VERSION 8
+#define COGMASTER_BEHAVIOUR_REVISION 8
+#define COGMASTER_STATE_FORMAT_VERSION 9
 
 typedef uint32_t cogmaster_status;
 #define COGMASTER_STATUS_OK 0u
@@ -39,6 +39,10 @@ typedef uint32_t cogmaster_status;
 #define COGMASTER_TV_AUTO 0u
 #define COGMASTER_TV_NTSC 1u
 #define COGMASTER_TV_PAL 2u
+
+#define COGMASTER_VIDEO_AUTO 0u
+#define COGMASTER_VIDEO_SMS 1u
+#define COGMASTER_VIDEO_GG 2u
 
 #define COGMASTER_STOP_FRAME 0u
 
@@ -94,6 +98,10 @@ typedef struct cogmaster_media {
     uint32_t machine; /* COGMASTER_MACHINE_* */
     uint32_t region;  /* COGMASTER_REGION_* */
     uint32_t tv;      /* COGMASTER_TV_* */
+#if UINTPTR_MAX > UINT32_MAX
+    uint32_t reserved;
+#endif
+    uint32_t video_mode; /* COGMASTER_VIDEO_* */
 } cogmaster_media;
 
 typedef struct cogmaster_info {
@@ -105,6 +113,7 @@ typedef struct cogmaster_info {
     uint32_t fps_num, fps_den;
     uint32_t par_num, par_den;
     uint32_t region, tv;
+    uint32_t video_mode;
 } cogmaster_info;
 
 typedef struct cogmaster_frame {
