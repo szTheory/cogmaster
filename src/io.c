@@ -77,13 +77,25 @@ void cogmaster__io_reset(cogmaster *m)
     }
 }
 
+/* An output TR replaces the pad level, with the Japanese region echo low
+   (SMS-CARTRIDGES-AND-PERIPHERALS section 3.1). GG has no external TR. */
+static uint8_t tr_pin(const cogmaster *m, uint8_t v, uint8_t pin, uint8_t dir, uint8_t level)
+{
+    if (!is_gg(m) && (m->io.io_ctrl & dir) == 0u) {
+        v = (uint8_t)(v & ~pin);
+        if (m->region != COGMASTER_REGION_JAPAN && (m->io.io_ctrl & level) != 0u)
+            v |= pin;
+    }
+    return v;
+}
+
 /* $DC: port A up, down, left, right, TL, TR, then port B up and down, 0 =
-   pressed. No input reaches the core yet, so every button is up. */
+   pressed. Independent direction bits pass through, including SOCD. */
 static uint8_t port_dc(const cogmaster *m)
 {
     uint32_t p1 = m->input.port1 == COGMASTER_DEVICE_NONE ? 0u : m->input.p1;
     uint32_t p2 = m->input.port2 == COGMASTER_DEVICE_NONE || is_gg(m) ? 0u : m->input.p2;
-    return (uint8_t)~(p1 | ((p2 & 3u) << 6));
+    return tr_pin(m, (uint8_t)~(p1 | ((p2 & 3u) << 6)), 0x20u, 1u, 0x10u);
 }
 
 /* Effective TH pins, shared by readback and the rising-edge H latch.
@@ -124,7 +136,12 @@ static void io_control(cogmaster *m, uint8_t ctrl)
 static uint8_t port_dd(const cogmaster *m)
 {
     uint32_t p2 = m->input.port2 == COGMASTER_DEVICE_NONE || is_gg(m) ? 0u : m->input.p2;
-    uint8_t v = (uint8_t)~((p2 >> 2) | (is_gg(m) ? 0u : m->input.reset << 4));
+    /* Only export SMS1 has the physical switch (SMS-SYSTEM section 7). */
+    uint32_t reset = m->machine == COGMASTER_MACHINE_SMS1 && m->region == COGMASTER_REGION_EXPORT &&
+                             m->input.port1 != COGMASTER_DEVICE_NONE
+                         ? m->input.reset
+                         : 0u;
+    uint8_t v = tr_pin(m, (uint8_t)~((p2 >> 2) | (reset << 4)), 8u, 4u, 0x40u);
     return (uint8_t)((v & 0x3Fu) | th_pins(m, m->io.io_ctrl));
 }
 
@@ -152,7 +169,9 @@ uint8_t cogmaster__io_in(cogmaster *m, uint16_t port)
     if (is_gg(m) && p <= 6u) {
         if (p == 0u && cogmaster__native_gg(m)) {
             m->input_read = 1u;
-            return (uint8_t)((m->input.start ? 0u : GG_START_UP) |
+            return (uint8_t)((m->input.port1 != COGMASTER_DEVICE_NONE && m->input.start
+                                  ? 0u
+                                  : GG_START_UP) |
                              (m->region == COGMASTER_REGION_JAPAN ? 0u : GG_EXPORT));
         }
         return p == 0u ? cogmaster__io_open_bus(m) : m->io.gg[p - 1u];

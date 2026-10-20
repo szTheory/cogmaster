@@ -25,6 +25,9 @@ if(CMAKE_SCRIPT_MODE_FILE)
       if(PAD2)
         set(oracle_arg pad2)
       endif()
+      if(BOTH)
+        set(oracle_arg both)
+      endif()
     endif()
     execute_process(COMMAND ${EMULATOR} ${ORACLE} ${IMAGE} ${oracle_arg} RESULT_VARIABLE rc
       OUTPUT_VARIABLE want ERROR_VARIABLE err)
@@ -183,6 +186,27 @@ foreach(frame RANGE 1 14)
   string(APPEND play_pad2 "p1=00 p2=${pad} pause=0 reset=0 start=0\n")
 endforeach()
 file(WRITE ${PROJECT_BINARY_DIR}/tests/play-pad2.input "${play_pad2}")
+set(play_both "")
+foreach(frame RANGE 1 14)
+  set(p1 00)
+  set(p2 00)
+  if(frame EQUAL 5 OR frame EQUAL 6 OR frame EQUAL 8)
+    set(p1 10)
+  endif()
+  if(frame EQUAL 6 OR frame EQUAL 7 OR frame EQUAL 10)
+    set(p2 10)
+  endif()
+  string(APPEND play_both "p1=${p1} p2=${p2} pause=0 reset=0 start=0\n")
+endforeach()
+file(WRITE ${PROJECT_BINARY_DIR}/tests/play-both.input "${play_both}")
+cogmaster_add_test(NAME fixtures.boot_to_play.both_pads
+  COMMAND ${CMAKE_COMMAND} -DCASE=play -DNAME=boot_to_play -DBOTH=1
+    -DINPUT=${PROJECT_BINARY_DIR}/tests/play-both.input
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/boot_to_play.sms
+    -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+    -DORACLE=$<TARGET_FILE:cogmaster-test-play> -DRUN=$<TARGET_FILE:cogmaster-run>
+    "-DEMULATOR=${fixtures_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 10)
 set(gg_body "")
 foreach(frame RANGE 1 14)
   set(start 0)

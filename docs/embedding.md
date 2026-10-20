@@ -11,7 +11,10 @@ This release loads a cartridge image and draws its Mode 4 background. With no im
 contain six independent bits (Up, Down, Left, Right, button 1, button 2). Console levels are binary.
 `COGMASTER_DEVICE_PAD` is zero, the default; `COGMASTER_DEVICE_NONE` is one and releases that port's pins.
 The native Game Gear has one local pad. Input latches before the next frame runs; identical submissions
-remain held levels. Pause queues an NMI only on a rising edge. Reset and native GG Start drive levels.
+remain held levels. Pause queues an NMI only on a rising edge. A disconnected port releases its pins;
+reconnecting with Pause held requires release before another press can queue an NMI. Reset drives a
+level only on export SMS1; native GG Start drives its active-low level on `$00`. Opposing directions
+pass through independently. TR output directions override pad levels, with Japanese output echo low.
 The first input struct size is 32 bytes. Oversized zero tails follow the general size-tag rule.
 
 The appended `cogmaster_run_result.lagged` is one when no decoded controller read occurred in that frame.

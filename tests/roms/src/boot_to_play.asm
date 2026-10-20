@@ -13,6 +13,12 @@ main:
     ld ($C200),a
     ld ($C201),a
     ld ($C202),a
+.IFNDEF FIXTURE_GG
+    ld ($C205),a
+    ld ($C206),a
+    ld ($C207),a
+    ld ($C208),a
+.ENDIF
     ld a,5
     call mb_init
     xor a
@@ -91,11 +97,30 @@ forever:
     cpl
     and $10
     ld b,a
+    ld a,($C205)
+    xor b
+    and b
+    ld hl,$C207
+    jr z,p1_held
+    inc (hl)
+p1_held:
+    ld a,b
+    ld ($C205),a
     in a,($DD)
     cpl
     and 4
     rlca
     rlca
+    ld c,a
+    ld a,($C206)
+    xor c
+    and c
+    ld hl,$C208
+    jr z,p2_held
+    inc (hl)
+p2_held:
+    ld a,c
+    ld ($C206),a
     or b
     ld b,a
 .ENDIF
@@ -148,6 +173,13 @@ no_edge:
     ld a,($C200)
     ld h,a
     ld l,a
+.IFNDEF FIXTURE_GG
+    ; Report independent pad counters; scroll remains the shared display.
+    ld a,($C207)
+    ld h,a
+    ld a,($C208)
+    ld l,a
+.ENDIF
     pop af
     call mb_record
 .IFDEF FIXTURE_GG
@@ -164,7 +196,11 @@ no_edge:
     call mb_done
 sampled:
     call wait_frame
+.IFDEF FIXTURE_GG
     jr forever
+.ELSE
+    jp forever
+.ENDIF
 wait_frame:
     in a,($BF)
     or a

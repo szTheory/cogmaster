@@ -24,6 +24,8 @@ int main(int argc, char **argv)
         return 2;
     }
     int scripted = argc == 3;
+    int both = scripted && strcmp(argv[2], "both") == 0;
+    int pad2 = scripted && strcmp(argv[2], "pad2") == 0;
     static uint8_t image[32768];
     FILE *f = fopen(argv[1], "rb");
     if (f == NULL) {
@@ -52,15 +54,17 @@ int main(int argc, char **argv)
         if (scripted && (i == 4u || i == 5u || i == 7u)) {
             if (gg)
                 in.start = 1u;
-            else if (strcmp(argv[2], "pad2") == 0)
+            else if (pad2)
                 in.p2 = 16u;
             else
                 in.p1 = 16u;
         }
+        if (both && (i == 5u || i == 6u || i == 9u))
+            in.p2 = 16u;
         CHECK_EQ_U64(cogmaster_set_input(m, &in), COGMASTER_STATUS_OK);
         CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
         if (i >= 3u) {
-            uint32_t count = scripted ? (i >= 7u ? 2u : (i >= 4u ? 1u : 0u)) : 0u;
+            uint32_t count = scripted ? (i >= (both ? 9u : 7u) ? 2u : (i >= 4u ? 1u : 0u)) : 0u;
             CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC200u), count);
         }
     }
@@ -78,8 +82,13 @@ int main(int argc, char **argv)
     for (uint32_t i = 0u; i < 8u; i++) {
         uint32_t value = scripted ? counts[i] : 0u;
         CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC110u + (gg ? 8u : 4u) * i), i + 1u);
-        CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC112u + (gg ? 8u : 4u) * i), value);
-        CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC113u + (gg ? 8u : 4u) * i), value);
+        static const uint8_t counts2[8] = {0u, 0u, 1u, 1u, 1u, 1u, 2u, 2u};
+        CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC112u + (gg ? 8u : 4u) * i),
+                     gg || pad2 ? value
+                     : both     ? counts2[i]
+                                : 0u);
+        CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC113u + (gg ? 8u : 4u) * i),
+                     !gg && pad2 ? 0u : value);
         if (gg) {
             CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC114u + 8u * i), i + 17u);
             CHECK_EQ_HEX(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC116u + 8u * i),

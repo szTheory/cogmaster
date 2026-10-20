@@ -312,7 +312,7 @@ static void test_absolute_input(void)
     CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDCu), 0xFFu);
     CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
     CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDCu), 0u);
-    CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDDu), 0xE0u);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDDu), 0xF0u);
     in.p1 = 64u;
     CHECK_EQ_U64(cogmaster_set_input(m, &in), COGMASTER_STATUS_ERR_ARGUMENT);
     CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);

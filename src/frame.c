@@ -46,7 +46,11 @@ cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out)
     uint32_t old_pause =
         m->input.pause |
         (m->machine == COGMASTER_MACHINE_GG && !cogmaster__native_gg(m) ? m->input.start : 0u);
-    if (pause && !old_pause) {
+    /* A disconnected source releases pins. A held reconnect is remembered
+       without queuing an edge, so release is required before a new press.
+       The two saved absolute records carry all arming history. */
+    if (pause && !old_pause && m->pending_input.port1 != COGMASTER_DEVICE_NONE &&
+        m->input.port1 != COGMASTER_DEVICE_NONE) {
         m->vdp.pause = 1u;
     }
     m->input = m->pending_input;

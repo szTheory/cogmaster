@@ -10,9 +10,10 @@ static void input_frame(cogmaster *m, const cogmaster_input *in)
 static void test_pad_pins(void)
 {
     const uint32_t machines[] = {COGMASTER_MACHINE_SMS1, COGMASTER_MACHINE_SMS2,
-                                  COGMASTER_MACHINE_GG};
+                                 COGMASTER_MACHINE_GG};
     for (uint32_t model = 0u; model < 3u; model++) {
-        for (uint32_t region = COGMASTER_REGION_EXPORT; region <= COGMASTER_REGION_JAPAN; region++) {
+        for (uint32_t region = COGMASTER_REGION_EXPORT; region <= COGMASTER_REGION_JAPAN;
+             region++) {
             cogmaster *m = load(machines[model], region, COGMASTER_TV_NTSC);
             cogmaster_input in = {0};
             in.size = sizeof in;
@@ -21,7 +22,8 @@ static void test_pad_pins(void)
                     in.p1 = pad == 0u ? 1u << bit : 0u;
                     in.p2 = pad == 1u ? 1u << bit : 0u;
                     input_frame(m, &in);
-                    uint32_t dc = pad == 0u ? 1u << bit : (model != 2u && bit < 2u ? 1u << (bit + 6u) : 0u);
+                    uint32_t dc =
+                        pad == 0u ? 1u << bit : (model != 2u && bit < 2u ? 1u << (bit + 6u) : 0u);
                     uint32_t dd = pad == 1u && model != 2u && bit >= 2u ? 1u << (bit - 2u) : 0u;
                     CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDCu), 255u ^ dc);
                     CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDDu), 255u ^ dd);
@@ -32,15 +34,17 @@ static void test_pad_pins(void)
             in.reset = 1u;
             input_frame(m, &in);
             CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDCu), model == 2u ? 0xC0u : 0u);
-            CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDDu), model == 2u ? 0xFFu :
-                           (model == 0u && region == COGMASTER_REGION_EXPORT ? 0xE0u : 0xF0u));
+            CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDDu),
+                         model == 2u
+                             ? 0xFFu
+                             : (model == 0u && region == COGMASTER_REGION_EXPORT ? 0xE0u : 0xF0u));
             if (model != 2u) {
                 /* Both TR pins output high override pressed button 2. */
                 cogmaster__bus_out(m, 0x3Fu, 0xFAu);
                 CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDCu) & 0x20u,
-                               region == COGMASTER_REGION_EXPORT ? 0x20u : 0u);
+                             region == COGMASTER_REGION_EXPORT ? 0x20u : 0u);
                 CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDDu) & 8u,
-                               region == COGMASTER_REGION_EXPORT ? 8u : 0u);
+                             region == COGMASTER_REGION_EXPORT ? 8u : 0u);
                 in.p1 = in.p2 = 0u;
                 input_frame(m, &in);
                 cogmaster__bus_out(m, 0x3Fu, 0xAAu);
@@ -94,6 +98,28 @@ static void test_pause_history(void)
     CHECK_EQ_U64(cogmaster__state_load(b, state, n), COGMASTER_STATUS_OK);
     input_frame(b, &in);
     CHECK_EQ_U64(b->ram[0x100], 2u);
+    /* Corrupt each serialized input/lag field, reseal, and prove refusal
+       does not partially apply any state, including pending input. */
+    size_t count = cogmaster__state_record(b, NULL, 0u);
+    struct cogmaster__state_field *fields = malloc(count * sizeof *fields);
+    CHECK(fields != NULL);
+    if (fields != NULL) {
+        cogmaster__state_record(b, fields, count);
+        static uint8_t snapshot[sizeof(struct cogmaster)];
+        memcpy(snapshot, b, sizeof *b);
+        for (size_t k = 0u; k < count; k++) {
+            if (strncmp(fields[k].name, "input_", 6u) == 0) {
+                size_t off = fields[k].offset;
+                uint8_t old = state[off];
+                state[off] = 255u;
+                cogmaster__state_seal(state, n);
+                CHECK_EQ_U64(cogmaster__state_load(b, state, n), COGMASTER_STATUS_ERR_ARGUMENT);
+                CHECK(memcmp(snapshot, b, sizeof *b) == 0);
+                state[off] = old;
+            }
+        }
+        free(fields);
+    }
     /* An invalid absolute input leaves pending input and history untouched. */
     in.p2 = 64u;
     CHECK_EQ_U64(cogmaster_set_input(b, &in), COGMASTER_STATUS_ERR_ARGUMENT);
@@ -106,13 +132,18 @@ static void test_pause_history(void)
 static void test_lag_decode(void)
 {
     for (uint32_t profile = 0u; profile < 4u; profile++) {
-        cogmaster *m = profile == 0u ? export_sms() : profile == 1u ? japan_sms() : gg(COGMASTER_REGION_EXPORT);
-        if (profile == 3u) m->video_mode = COGMASTER_VIDEO_SMS;
+        cogmaster *m = profile == 0u   ? export_sms()
+                       : profile == 1u ? japan_sms()
+                                       : gg(COGMASTER_REGION_EXPORT);
+        if (profile == 3u)
+            m->video_mode = COGMASTER_VIDEO_SMS;
         for (uint32_t p = 0u; p < 256u; p++) {
             m->input_read = 0u;
             (void)cogmaster__bus_in(m, (uint16_t)(0x1200u | p));
-            int decoded = profile == 0u ? p >= 0xC0u : p == 0xDCu || p == 0xDDu ||
-                (profile >= 2u && (p == 0xC0u || p == 0xC1u)) || (profile == 2u && p == 0u);
+            int decoded = profile == 0u ? p >= 0xC0u
+                                        : p == 0xDCu || p == 0xDDu ||
+                                              (profile >= 2u && (p == 0xC0u || p == 0xC1u)) ||
+                                              (profile == 2u && p == 0u);
             CHECK_EQ_U64(m->input_read, decoded ? 1u : 0u);
         }
         m->input_read = 0u;
@@ -127,6 +158,12 @@ static void test_lag_decode(void)
         r.size = sizeof r;
         CHECK_EQ_U64(cogmaster_run_frame(m, &r), COGMASTER_STATUS_OK);
         CHECK_EQ_U64(r.lagged, 1u);
+        /* A guest IN loop, rather than host polling, clears the flag. */
+        static const uint8_t poll[] = {0xDBu, 0xDCu, 0xC3u, 0u, 0u};
+        memcpy(m->cart.rom, poll, sizeof poll);
+        CHECK_EQ_U64(cogmaster_reset(m, COGMASTER_RESET_POWER), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(cogmaster_run_frame(m, &r), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(r.lagged, 0u);
         cogmaster_destroy(m);
     }
 }
