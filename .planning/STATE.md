@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 02
 current_phase_name: The CPU matches the public vectors
 status: executing
-stopped_at: Completed 02-15-PLAN.md
-last_updated: "2026-10-20T05:17:15.469Z"
+stopped_at: Completed 02-16-PLAN.md
+last_updated: "2026-10-20T05:43:04.622Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 02 execution started
-state_head: 65c266de1d76e42ca66f5f8be0909d08496ade43
+state_head: a3d32d969c6ef8ce4e7be1af94702be86132fc0f
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 29
-  completed_plans: 27
+  completed_plans: 28
   percent: 25
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 02 (The CPU matches the public vectors) — EXECUTING
-Plan: 16 of 17
+Plan: 17 of 17
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 02 execution started
 
@@ -85,6 +85,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P13 | 50min | 3 tasks | 27 files |
 | Phase 02 P14 | 25min | 2 tasks | 11 files |
 | Phase 02 P15 | 7 min | 2 tasks | 13 files |
+| Phase 02 P16 | 23 min | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -171,6 +172,8 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 02]: A Codemasters slot-0 bank loop runs from a position-independent copy in work RAM at $C200
 - [Phase 02]: ports tv_loop rows span the documented approximate count to the frame-length count plus one loop: NTSC 1,923-1,928, PAL 2,287-2,303
 - [Phase 02]: A Game Gear fixture image is the SMS source assembled with FIXTURE_GG (region code 6), judged against the same rom's rows under profile gg
+- [Phase 02]: Fuzz loader entry loads on the probe's machine and region guess and aborts when probe and load disagree on accepting an image
+- [Phase 02]: libFuzzer nightly job stays continue-on-error until ten green runs; crash inputs uploaded as fuzz-artifacts
 
 ### Pending Todos
 
@@ -206,6 +209,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T05:17:15.403Z
-Stopped at: Completed 02-15-PLAN.md
+Last session: 2026-10-20T05:43:04.561Z
+Stopped at: Completed 02-16-PLAN.md
 Resume file: None
