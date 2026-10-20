@@ -47,7 +47,7 @@ static const uint8_t state_magic[8] = {0x8Au, 0x43u, 0x47u, 0x4Du, 0x0Du, 0x0Au,
 _Static_assert(sizeof(struct cogmaster__counters) == 40u, "counters changed: update counters_io");
 _Static_assert(sizeof(struct cogmaster__z80) == 38u, "z80 changed: update z80_io");
 _Static_assert(sizeof(struct cogmaster__bus) == 40u, "bus changed: update bus_io");
-_Static_assert(sizeof(struct cogmaster__vdp) == 16438u, "vdp changed: update vdp_io");
+_Static_assert(sizeof(struct cogmaster__vdp) == 16468u, "vdp changed: update vdp_io");
 _Static_assert(sizeof(struct cogmaster__mapper) == 4u, "mapper changed: update mapper_io");
 _Static_assert(sizeof(struct cogmaster__io) == 8u, "io changed: update io_io");
 
@@ -226,6 +226,19 @@ static void vdp_io(struct cogmaster__sio *io, struct cogmaster__vdp *v, uint8_t 
     cogmaster__sio_u8(io, "vdp_hscroll", &v->hscroll, 0u, UINT8_MAX);
     cogmaster__sio_u8(io, "vdp_vscroll", &v->vscroll, 0u, UINT8_MAX);
     cogmaster__sio_u8(io, "vdp_display", &v->display, 0u, 1u);
+    cogmaster__sio_u8(io, "sprite_line", &v->sprite_line, 0u, COGMASTER__FIELD_H);
+    uint8_t count = cogmaster__sio_u8(io, "sprite_count", &v->sprite_count, 0u, 8u);
+    uint8_t scanned = cogmaster__sio_u8(io, "sprite_scanned", &v->sprite_scanned, 0u, 64u);
+    cogmaster__sio_check(io, count <= scanned);
+    cogmaster__sio_u8(io, "sprite_zoom", &v->sprite_zoom, 0u, 1u);
+    cogmaster__sio_u8(io, "sprite_shift", &v->sprite_shift, 0u, 1u);
+    uint8_t overflow = cogmaster__sio_u8(io, "sprite_overflow", &v->sprite_overflow, 0u, 1u);
+    cogmaster__sio_check(io, !overflow || (count == 8u && scanned >= 9u));
+    for (uint32_t i = 0u; i < 8u; i++) {
+        cogmaster__sio_u8(io, "sprite_x", &v->sprite[i].x, 0u, UINT8_MAX);
+        cogmaster__sio_u8(io, "sprite_tile", &v->sprite[i].tile, 0u, UINT8_MAX);
+        cogmaster__sio_u8(io, "sprite_row", &v->sprite[i].row, 0u, 7u);
+    }
     for (uint32_t i = 0; i < COGMASTER__CRAM_SIZE; i++) {
         cogmaster__sio_u8(io, "vdp_cram", &v->cram[i], 0u, UINT8_MAX);
     }

@@ -19,7 +19,7 @@ target_link_libraries(cogmaster-test-sprites PRIVATE cogmaster::cogmaster)
 set_target_properties(cogmaster-test-sprites PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
 cogmaster_warnings(cogmaster-test-sprites)
-foreach(case IN ITEMS shapes wrap_clip zoom sms1_zoom priority gg_slots intervals)
+foreach(case IN ITEMS shapes wrap_clip zoom sms1_zoom priority gg_slots intervals bounds_state)
   cogmaster_add_test(NAME vdp.sprites.${case} COMMAND cogmaster-test-sprites ${case}
     LABELS portable vdp TIMEOUT 10)
 endforeach()

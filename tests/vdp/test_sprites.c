@@ -72,6 +72,7 @@ static const uint16_t *frame(cogmaster *m)
     f.size = sizeof f;
     f.pixels = &pixels[0][0];
     f.pitch_bytes = 512u;
+    f.flags = COGMASTER_FRAME_FULL_FIELD;
     CHECK_EQ_U64(cogmaster_get_frame(m, &f), COGMASTER_STATUS_OK);
     return &pixels[0][0];
 }
@@ -230,6 +231,44 @@ static void intervals(void)
     CHECK_EQ_HEX(m->field[0][100], 0u);
     cogmaster_destroy(m);
 }
+static void bounds_state(void)
+{
+    cogmaster *m = make(COGMASTER_MACHINE_SMS2);
+    solid(m, 2u, 1u);
+    for (uint32_t i = 0u; i < 64u; i++)
+        sprite(m, i, i < 56u ? 100u : 0xFFu, (uint8_t)(i - 56u), 2u);
+    run(m);
+    /* Last eight entries match line zero: the full 64-entry scan is bounded. */
+    m->ticks += (262u - m->bus.line) * 684u - m->bus.t + 8u;
+    cogmaster__bus_sync(m);
+    cogmaster__vdp_write(m, COGMASTER__VDP_CONTROL, 0u);
+    CHECK_EQ_U64(m->vdp.sprite_count, 8u);
+    CHECK_EQ_U64(m->vdp.sprite_scanned, 64u);
+    CHECK_EQ_U64(m->render_x, 4u);
+    size_t n = cogmaster__state_size(m);
+    uint8_t *bytes = malloc(n);
+    CHECK(bytes != NULL);
+    if (bytes != NULL) {
+        CHECK_EQ_U64(cogmaster__state_save(m, bytes, n), COGMASTER_STATUS_OK);
+        /* Cached X/tile/row survive both a later SAT write and restoration. */
+        m->vdp.vram[0x3FF0] = 200u;
+        cogmaster__vdp_render_to(m, 1u);
+        CHECK_EQ_HEX(m->field[0][8], 0x00Fu);
+        CHECK_EQ_U64(cogmaster__state_load(m, bytes, n), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(m->render_x, 4u);
+        cogmaster__vdp_render_to(m, 1u);
+        CHECK_EQ_HEX(m->field[0][8], 0x00Fu);
+        CHECK_EQ_HEX(m->field[0][15], 0u);
+        free(bytes);
+    }
+    /* A thousand writes at a fixed stamp cannot rescan the table. */
+    for (uint32_t i = 0u; i < 1000u; i++)
+        cogmaster__vdp_write(m, COGMASTER__VDP_DATA, 0u);
+    CHECK_EQ_U64(m->vdp.sprite_scanned, 64u);
+    CHECK_EQ_U64(m->render_line, 1u);
+    CHECK_EQ_U64(m->render_x, 0u);
+    cogmaster_destroy(m);
+}
 int main(int argc, char **argv)
 {
     if (argc != 2)
@@ -248,6 +287,8 @@ int main(int argc, char **argv)
         gg_slots();
     else if (strcmp(argv[1], "intervals") == 0)
         intervals();
+    else if (strcmp(argv[1], "bounds_state") == 0)
+        bounds_state();
     else
         return 2;
     CHECK_DONE();

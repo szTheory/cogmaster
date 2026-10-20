@@ -474,6 +474,8 @@ static void test_pause_nmi(void)
 static void test_background(void)
 {
     cogmaster *m = load_sms();
+    m->vdp.reg[5] = 0x7Fu;
+    m->vdp.vram[0x3F00] = 0xD0u;
     m->vdp.reg[0] = 4u;
     m->vdp.reg[1] = 0x40u;
     m->vdp.reg[7] = 1u;

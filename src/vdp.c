@@ -80,6 +80,13 @@ void cogmaster__vdp_reset(cogmaster *m, int power)
     v->hscroll = 0u;
     v->vscroll = 0u;
     v->display = 0u;
+    memset(v->sprite, 0, sizeof v->sprite);
+    v->sprite_line = COGMASTER__FIELD_H;
+    v->sprite_count = 0u;
+    v->sprite_scanned = 0u;
+    v->sprite_zoom = 0u;
+    v->sprite_shift = 0u;
+    v->sprite_overflow = 0u;
     m->render_line = 0u;
     m->render_x = 0u;
     if (power) {
@@ -136,6 +143,10 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t)
         m->vdp.display = (uint8_t)((m->vdp.reg[1] >> 6) & 1u);
         if (line + 1u == cogmaster__frame_lines(m)) {
             m->vdp.vscroll = m->vdp.reg[9];
+        }
+        uint32_t next = line + 1u == cogmaster__frame_lines(m) ? 0u : line + 1u;
+        if (next < COGMASTER__FIELD_H) {
+            cogmaster__vdp_sprite_scan(m, next);
         }
     }
     if (line == VDP_INT_LINE && t == VDP_INT_TICK) {

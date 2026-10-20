@@ -1,6 +1,6 @@
 # Video
 
-Content uses one production Mode 4 background renderer. In the 192-line
+Content uses one production Mode 4 renderer. In the 192-line
 path, the name table selects four-plane 8×8 tiles; its palette and flip bits
 are decoded before SMS two-bit channels expand to RGB444 by multiplication
 by five. Display-off pixels use CRAM entry 16 plus R7's low nibble.
@@ -41,6 +41,21 @@ Legacy TMS modes and invalid text modes render deterministic backdrop and
 record `COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE` on the VDP, while the
 CPU still returns at the fixed frame deadline. SMS1 only supports Mode 4
 combinations 1000, 1010 and 1100; its extended-height combinations are invalid.
+
+Sprites share the same cursor. At tick 600 the SAT is scanned for the next
+active line: at most 64 entries and eight retained Y matches. The selected
+X, tile and source row are saved; pattern bytes and palette remain live for
+unemitted dots. A direct renderer entry prepares a line once if needed.
+Y denotes the line before the top, $F0–$FF wraps above line zero, and $D0
+terminates the 192-line SAT. 8×16 ignores tile bit zero and selects the
+following tile for its bottom half. R0 bit 3 shifts X left by eight; right
+edges clip without wrapping. R1 zoom doubles vertical pixels and SMS2/GG
+horizontal pixels. SMS1 doubles slot i horizontally only if slot i+4 exists:
+two/four/six/eight matches give VV/VVVV/FFVVVV/FFFFVVVV. Opaque lower SAT
+slots win; nonzero priority background covers them. Masked left dots and
+display-off dots show backdrop. Normally hidden GG sprites still use slots.
+Sources: preparation SMS-VDP sections 3.4–3.8 and ARCHITECTURE section 13;
+[SMS Power sprites](https://www.smspower.org/Development/Sprites).
 
 The owned `boot_to_play` fixture writes a diamond in plane 0 and $55, $33,
 $0F in planes 1–3, with palette entry n containing n. Its independent oracle

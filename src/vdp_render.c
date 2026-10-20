@@ -91,6 +91,71 @@ uint32_t cogmaster__vdp_background(const cogmaster *m, uint32_t x, uint32_t y)
            ((attr & 0x1000u) != 0u && index != 0u ? COGMASTER__VDP_PRIORITY : 0u);
 }
 
+/* Y+1, negative F0..FF, D0 termination, eight retained slots and the
+   ninth Y match: SMS-VDP section 3, docs/hardware/video.md. */
+void cogmaster__vdp_sprite_scan(cogmaster *m, uint32_t line)
+{
+    struct cogmaster__vdp *v = &m->vdp;
+    v->sprite_line = (uint8_t)line;
+    v->sprite_count = 0u;
+    v->sprite_scanned = 0u;
+    v->sprite_overflow = 0u;
+    v->sprite_zoom = v->reg[1] & 1u;
+    v->sprite_shift = (uint8_t)((v->reg[0] >> 3) & 1u);
+    uint32_t height = (v->reg[1] & 2u) != 0u ? 16u : 8u;
+    for (uint32_t i = 0u; i < 64u; i++) {
+        uint8_t y = v->vram[cogmaster__vdp_sat_address(m, i)];
+        v->sprite_scanned++;
+        if (y == 0xD0u) {
+            break;
+        }
+        int32_t top = y >= 0xF0u ? (int32_t)y - 255 : (int32_t)y + 1;
+        int32_t delta = (int32_t)line - top;
+        if (delta < 0 || (uint32_t)delta >= (height << v->sprite_zoom)) {
+            continue;
+        }
+        if (v->sprite_count == 8u) {
+            v->sprite_overflow = 1u;
+            break;
+        }
+        uint32_t slot = v->sprite_count++;
+        uint32_t row = (uint32_t)delta >> v->sprite_zoom;
+        uint32_t tile = v->vram[cogmaster__vdp_sat_address(m, 129u + 2u * i)];
+        if (height == 16u) {
+            tile = (tile & 254u) + (row >> 3);
+        }
+        v->sprite[slot].x = v->vram[cogmaster__vdp_sat_address(m, 128u + 2u * i)];
+        v->sprite[slot].tile = (uint8_t)tile;
+        v->sprite[slot].row = (uint8_t)(row & 7u);
+    }
+}
+
+/* Earlier opaque SAT slots win. SMS1 horizontal doubling requires a
+   populated slot i+4; vertical doubling applies to all selected slots
+   (SMS-VDP 3.A, ARCHITECTURE section 13). */
+static uint32_t vdp_sprite_pixel(cogmaster *m, uint32_t x)
+{
+    const struct cogmaster__vdp *v = &m->vdp;
+    for (uint32_t i = 0u; i < v->sprite_count; i++) {
+        int32_t left = (int32_t)v->sprite[i].x - (v->sprite_shift ? 8 : 0);
+        uint32_t dx = (uint32_t)((int32_t)x - left);
+        uint32_t wide =
+            v->sprite_zoom && (!cogmaster__profile(m).vdp_masks || i + 4u < v->sprite_count);
+        if (dx >= (8u << wide)) {
+            continue;
+        }
+        uint32_t row = cogmaster__vdp_sprite_address(m, v->sprite[i].tile, v->sprite[i].row);
+        uint32_t colour = 0u;
+        for (uint32_t plane = 0u; plane < 4u; plane++) {
+            colour |= ((uint32_t)(v->vram[row + plane] >> (7u - (dx >> wide))) & 1u) << plane;
+        }
+        if (colour != 0u) {
+            return 16u + colour;
+        }
+    }
+    return 0u;
+}
+
 /* Exclusive raster coordinate: stamped mutations cannot repaint earlier dots. */
 void cogmaster__vdp_render_until(cogmaster *m, uint32_t line, uint32_t x)
 {
@@ -104,7 +169,17 @@ void cogmaster__vdp_render_until(cogmaster *m, uint32_t line, uint32_t x)
                              COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE);
     }
     while (at < end) {
+        if (m->vdp.sprite_line != m->render_line) {
+            cogmaster__vdp_sprite_scan(m, m->render_line);
+        }
         uint32_t colour = cogmaster__vdp_background(m, m->render_x, m->render_line);
+        if (m->vdp.display && vdp_supported(m) &&
+            !((m->vdp.reg[0] & 0x20u) != 0u && m->render_x < 8u)) {
+            uint32_t sprite = vdp_sprite_pixel(m, m->render_x);
+            if (sprite != 0u && (colour & COGMASTER__VDP_PRIORITY) == 0u) {
+                colour = sprite;
+            }
+        }
         m->field[m->render_line][m->render_x] = vdp_colour(m->vdp.cram[colour & 31u]);
         at++;
         if (++m->render_x == COGMASTER__FIELD_W) {
@@ -124,4 +199,5 @@ void cogmaster__vdp_finish_field(cogmaster *m)
     cogmaster__vdp_render_to(m, COGMASTER__FIELD_H);
     m->render_line = 0u;
     m->render_x = 0u;
+    m->vdp.sprite_line = COGMASTER__FIELD_H;
 }

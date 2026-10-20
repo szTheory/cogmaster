@@ -39,6 +39,7 @@ static cogmaster *make_profile(uint32_t machine)
     m->vdp.cram[2] = 12u;
     m->vdp.reg[3] = 0xFFu;
     m->vdp.reg[4] = 7u;
+    m->vdp.reg[5] = 0x7Fu;
     return m;
 }
 static cogmaster *make(void)
@@ -62,6 +63,8 @@ static void solid(cogmaster *m, uint32_t tile, uint32_t colour)
 }
 static void run(cogmaster *m)
 {
+    /* Background-only cases terminate the SAT, separate from tile zero. */
+    m->vdp.vram[0x3F00] = 0xD0u;
     CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
 }
 static void reg(cogmaster *m, uint8_t r, uint8_t value)

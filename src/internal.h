@@ -102,6 +102,12 @@ struct cogmaster__vdp {
     uint8_t buffer;                    /* the data port's read-ahead byte */
     uint8_t pause;                     /* 1 while a Pause press waits for its NMI tick */
     uint8_t hscroll, vscroll, display; /* line / frame / line latches, docs/hardware/video.md */
+    /* Selected line slots; pattern bytes remain live until each dot emits. */
+    struct {
+        uint8_t x, tile, row;
+    } sprite[8];
+    uint8_t sprite_line, sprite_count, sprite_scanned;
+    uint8_t sprite_zoom, sprite_shift, sprite_overflow;
     uint8_t cram[COGMASTER__CRAM_SIZE];
     uint8_t vram[COGMASTER__VRAM_SIZE];
 };
@@ -378,6 +384,7 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t);
 uint8_t cogmaster__vdp_read(cogmaster *m, uint32_t port);
 void cogmaster__vdp_write(cogmaster *m, uint32_t port, uint8_t v);
 void cogmaster__vdp_render_to(cogmaster *m, uint32_t end);
+void cogmaster__vdp_sprite_scan(cogmaster *m, uint32_t line);
 void cogmaster__vdp_render_until(cogmaster *m, uint32_t line, uint32_t x);
 #define COGMASTER__VDP_PRIORITY 32u
 uint32_t cogmaster__vdp_background(const cogmaster *m, uint32_t x, uint32_t y);

@@ -45,6 +45,17 @@ palette:
     out ($BE),a
     inc a
     djnz palette
+    ; Terminate a dedicated SAT before enabling the background display.
+    xor a
+    out ($BF),a
+    ld a,$7F
+    out ($BF),a
+    ld a,$D0
+    out ($BE),a
+    ld a,$7F
+    out ($BF),a
+    ld a,$85
+    out ($BF),a
     ld a,4
     out ($BF),a
     ld a,$80

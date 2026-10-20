@@ -182,6 +182,7 @@ vdp.data_port	portable,vdp
 vdp.hcounter	portable,vdp
 vdp.pause_nmi	portable,vdp
 vdp.port_decode	portable,vdp
+vdp.sprites.bounds_state	portable,vdp
 vdp.sprites.gg_slots	portable,vdp
 vdp.sprites.intervals	portable,vdp
 vdp.sprites.priority	portable,vdp
