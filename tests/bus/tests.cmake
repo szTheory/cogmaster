@@ -41,6 +41,15 @@ cogmaster_add_test(NAME fault.ed_undefined COMMAND cogmaster-test-bus fault.ed_u
 cogmaster_add_test(NAME fault.unmapped_read COMMAND cogmaster-test-bus fault.unmapped_read
   LABELS bus portable TIMEOUT 10)
 
+# Fault prevented: a write that lands nowhere, a write to ROM or a mapper
+# value past the image passing unrecorded, or a probe shipped software makes
+# taking the first-fault record, so the record no longer names the real
+# fault.
+foreach(case IN ITEMS unmapped_write rom_write mapper_range not_faults)
+  cogmaster_add_test(NAME fault.${case} COMMAND cogmaster-test-bus fault.${case}
+    LABELS bus portable TIMEOUT 10)
+endforeach()
+
 # The VDP's timing half: counters, ports, status and the Pause NMI tick.
 add_executable(cogmaster-test-vdp ${CMAKE_CURRENT_LIST_DIR}/test_vdp.c)
 target_include_directories(cogmaster-test-vdp PRIVATE ${PROJECT_SOURCE_DIR}/src)

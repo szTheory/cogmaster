@@ -30,9 +30,14 @@ static void test_free(void *user, void *ptr, size_t size)
     free(ptr);
 }
 
-/* A new Master System instance on a tv set running prog, padded with $00 to
-   1 KiB, the smallest image accepted. */
-static cogmaster *load_tv(const uint8_t *prog, size_t n, uint32_t tv)
+#define PAGE 16384u
+#define BIG_MAX (512u * 1024u)
+
+static uint8_t big[BIG_MAX];
+
+/* A new instance of the profile running the first n bytes of img. */
+static cogmaster *load_image(const uint8_t *img, size_t n, uint32_t machine, uint32_t region,
+                             uint32_t tv)
 {
     cogmaster_config cfg;
     memset(&cfg, 0, sizeof cfg);
@@ -44,16 +49,47 @@ static cogmaster *load_tv(const uint8_t *prog, size_t n, uint32_t tv)
     if (m == NULL) {
         exit(1);
     }
-    memset(image, 0, sizeof image);
-    memcpy(image, prog, n);
     cogmaster_media media;
     memset(&media, 0, sizeof media);
     media.size = (uint32_t)sizeof media;
-    media.image = image;
-    media.image_size = sizeof image;
-    media.machine = COGMASTER_MACHINE_SMS2;
+    media.image = img;
+    media.image_size = n;
+    media.machine = machine;
+    media.region = region;
     media.tv = tv;
     CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    return m;
+}
+
+/* A new instance of the profile running prog, padded with $00 to 1 KiB,
+   the smallest image accepted. */
+static cogmaster *load_on(const uint8_t *prog, size_t n, uint32_t machine, uint32_t region)
+{
+    memset(image, 0, sizeof image);
+    memcpy(image, prog, n);
+    return load_image(image, sizeof image, machine, region, COGMASTER_TV_AUTO);
+}
+
+/* A new Master System instance on a tv set running prog, padded with $00 to
+   1 KiB. */
+static cogmaster *load_tv(const uint8_t *prog, size_t n, uint32_t tv)
+{
+    memset(image, 0, sizeof image);
+    memcpy(image, prog, n);
+    return load_image(image, sizeof image, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO, tv);
+}
+
+/* A Master System instance running prog from an n-byte image of $FF with
+   the ROM header magic at $7FF0, so the Sega board is guessed. */
+static cogmaster *load_sega(const uint8_t *prog, size_t n_prog, size_t n)
+{
+    static const uint8_t magic[8] = {0x54u, 0x4Du, 0x52u, 0x20u, 0x53u, 0x45u, 0x47u, 0x41u};
+    memset(big, 0xFF, n);
+    memcpy(big, prog, n_prog);
+    memcpy(big + 0x7FF0u, magic, sizeof magic);
+    cogmaster *m = load_image(big, n, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO,
+                              COGMASTER_TV_AUTO);
+    CHECK_EQ_U64(m->cart.board, COGMASTER__BOARD_SEGA);
     return m;
 }
 
@@ -261,6 +297,142 @@ static void test_fault_unmapped_read(void)
     cogmaster_destroy(m);
 }
 
+/* Runs one frame of m and checks the fault record against the expected
+   kind, device, address, instruction address and opcode; destroys m. */
+static void expect_fault(cogmaster *m, uint8_t kind, uint8_t device, uint16_t addr, uint16_t pc,
+                         uint8_t op)
+{
+    (void)run(m);
+    cogmaster_fault f = fault_of(m);
+    CHECK_EQ_U64(f.present, 1);
+    CHECK_EQ_U64(f.kind, kind);
+    CHECK_EQ_U64(f.device, device);
+    CHECK_EQ_HEX(f.addr, addr);
+    CHECK_EQ_HEX(f.pc, pc);
+    CHECK_EQ_HEX(f.opcode, op);
+    CHECK_EQ_U64(f.width, 8);
+    cogmaster_destroy(m);
+}
+
+/* Runs one frame of m and requires no fault; destroys m. */
+static void expect_none(const char *what, cogmaster *m)
+{
+    (void)run(m);
+    if (fault_of(m).present != 0u) {
+        cogmaster_fault f = fault_of(m);
+        fprintf(stderr, "%s: fault kind %u device %u addr $%04X pc $%04X\n", what,
+                (unsigned)f.kind, (unsigned)f.device, (unsigned)f.addr, (unsigned)f.pc);
+        check_failures++;
+    }
+    cogmaster_destroy(m);
+}
+
+/* On the full-decode consoles a write to a port nothing latches records
+   unmapped_write (2) with device none (0): OUT ($3E),A on the Game Gear,
+   which has no $3E in its own mode, and OUT ($00),A on the Japanese
+   console. On the export console $00 latches as $3E.
+     $0000  LD A,$AB; OUT (n),A; HALT */
+static void test_fault_unmapped_write(void)
+{
+    static const uint8_t to_3e[] = {0x3Eu, 0xABu, 0xD3u, 0x3Eu, 0x76u};
+    static const uint8_t to_00[] = {0x3Eu, 0xABu, 0xD3u, 0x00u, 0x76u};
+    expect_fault(load_on(to_3e, sizeof to_3e, COGMASTER_MACHINE_GG, COGMASTER_REGION_AUTO), 2u, 0u,
+                 0xAB3Eu, 0x0002u, 0xD3u);
+    expect_fault(load_on(to_00, sizeof to_00, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_JAPAN), 2u,
+                 0u, 0xAB00u, 0x0002u, 0xD3u);
+    expect_none("export OUT ($00)",
+                load_on(to_00, sizeof to_00, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT));
+}
+
+/* A write to $0000-$BFFF that is neither a mapper register nor cartridge
+   RAM records rom_write (3) on the cartridge (2): LD ($2000),A on a Sega
+   image after LD ($FFFF),A, which records nothing, and LD ($2000),A on an
+   image with no mapper. Cartridge RAM mapped by $FFFC b3 takes writes.
+     $0000  LD A,$12; LD ($FFFF),A; LD ($2000),A; HALT
+     $0000  LD A,$08; LD ($FFFC),A; LD ($8000),A; HALT */
+static void test_fault_rom_write(void)
+{
+    static const uint8_t sega[] = {0x3Eu, 0x12u, 0x32u, 0xFFu, 0xFFu,
+                                   0x32u, 0x00u, 0x20u, 0x76u};
+    expect_fault(load_sega(sega, sizeof sega, 128u * 1024u), 3u, 2u, 0x2000u, 0x0005u, 0x32u);
+    expect_fault(load_on(sega + 5, sizeof sega - 5u, COGMASTER_MACHINE_SMS2,
+                         COGMASTER_REGION_AUTO),
+                 3u, 2u, 0x2000u, 0x0000u, 0x32u);
+    static const uint8_t ram[] = {0x3Eu, 0x08u, 0x32u, 0xFCu, 0xFFu,
+                                  0x32u, 0x00u, 0x80u, 0x76u};
+    expect_none("cartridge RAM", load_sega(ram, sizeof ram, 128u * 1024u));
+}
+
+/* mapper_range (4) on the mapper (4): a bank at or past the page count of
+   a 384 KiB (24-page) image, and a $FFFC write setting b7, b4 or b1-0. On
+   a 512 KiB image a bank past the end wraps, as on hardware, and $FFFC b3
+   and b2 are cartridge RAM controls: neither is a fault.
+     $0000  LD A,v; LD (addr),A; HALT */
+static void test_fault_mapper_range(void)
+{
+    uint8_t prog[] = {0x3Eu, 0x1Eu, 0x32u, 0xFFu, 0xFFu, 0x76u};
+    expect_fault(load_sega(prog, sizeof prog, 384u * 1024u), 4u, 4u, 0xFFFFu, 0x0002u, 0x32u);
+    prog[1] = 0x17u;
+    expect_none("bank 23 of 24", load_sega(prog, sizeof prog, 384u * 1024u));
+    prog[1] = 0x23u;
+    expect_none("bank 35 of 32", load_sega(prog, sizeof prog, BIG_MAX));
+    prog[3] = 0xFCu;
+    static const uint8_t bad[] = {0x80u, 0x10u, 0x01u, 0x02u, 0x03u};
+    for (size_t i = 0; i < sizeof bad; i++) {
+        prog[1] = bad[i];
+        expect_fault(load_sega(prog, sizeof prog, BIG_MAX), 4u, 4u, 0xFFFCu, 0x0002u, 0x32u);
+    }
+    prog[1] = 0x0Cu;
+    expect_none("$FFFC = $0C", load_sega(prog, sizeof prog, BIG_MAX));
+}
+
+/* What shipped software does is never a fault: one image per case runs a
+   frame and leaves no record. */
+static void test_fault_not_faults(void)
+{
+    /* $3E b2 set, then $C0-$FF read; LD A,$AB; OUT ($3E),A. */
+    static const uint8_t chip_off[] = {0x3Eu, 0xAFu, 0xD3u, 0x3Eu, 0xDBu, 0xDCu, 0xDBu,
+                                       0xC1u, 0x3Eu, 0xABu, 0xD3u, 0x3Eu, 0x76u};
+    expect_none("$C0-$FF with the I/O chip off",
+                load_on(chip_off, sizeof chip_off, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO));
+    /* $F0-$F2, $DE/$DF and the I/O chip's ports read and written. */
+    static const uint8_t chip[] = {0xDBu, 0xF0u, 0xDBu, 0xF1u, 0xDBu, 0xF2u, 0xD3u, 0xF0u,
+                                   0xD3u, 0xF1u, 0xD3u, 0xF2u, 0xDBu, 0xDEu, 0xDBu, 0xDFu,
+                                   0xD3u, 0xDEu, 0xD3u, 0xDFu, 0xD3u, 0xDCu, 0xD3u, 0xDDu,
+                                   0xD3u, 0xC0u, 0xD3u, 0xFFu, 0x76u};
+    static const struct {
+        uint32_t machine, region;
+    } profiles[] = {{COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT},
+                    {COGMASTER_MACHINE_SMS2, COGMASTER_REGION_JAPAN},
+                    {COGMASTER_MACHINE_GG, COGMASTER_REGION_EXPORT}};
+    for (size_t k = 0; k < 3u; k++) {
+        expect_none("$F0-$F2, $DE/$DF and I/O chip writes",
+                    load_on(chip, sizeof chip, profiles[k].machine, profiles[k].region));
+    }
+    /* The Game Gear's link ports $01-$05, read and written. */
+    static const uint8_t link[] = {0xDBu, 0x01u, 0xD3u, 0x01u, 0xDBu, 0x02u, 0xD3u, 0x02u,
+                                   0xDBu, 0x03u, 0xD3u, 0x03u, 0xDBu, 0x04u, 0xD3u, 0x04u,
+                                   0xDBu, 0x05u, 0xD3u, 0x05u, 0x76u};
+    expect_none("Game Gear link ports",
+                load_on(link, sizeof link, COGMASTER_MACHINE_GG, COGMASTER_REGION_AUTO));
+    /* A bank past the end of a power-of-two image wraps. */
+    static const uint8_t wrap[] = {0x3Eu, 0x23u, 0x32u, 0xFFu, 0xFFu, 0x32u, 0xFEu, 0xFFu, 0x76u};
+    expect_none("bank wrap", load_sega(wrap, sizeof wrap, BIG_MAX));
+    /* $3E toggled: work RAM and the I/O chip off and on again. */
+    static const uint8_t toggle[] = {0x3Eu, 0xBFu, 0xD3u, 0x3Eu, 0x3Eu, 0xABu, 0xD3u, 0x3Eu,
+                                     0x3Eu, 0xBFu, 0xD3u, 0x3Eu, 0x3Eu, 0xABu, 0xD3u, 0x3Eu,
+                                     0x76u};
+    expect_none("$3E toggling",
+                load_on(toggle, sizeof toggle, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO));
+    /* LD IX,$C000; LD A,IXH; LD IYL,5; DD NOP; FD DD NOP; SLL B;
+       RLC (IX+0),B; HALT. */
+    static const uint8_t undoc[] = {0xDDu, 0x21u, 0x00u, 0xC0u, 0xDDu, 0x7Cu, 0xFDu,
+                                    0x2Eu, 0x05u, 0xDDu, 0x00u, 0xFDu, 0xDDu, 0x00u,
+                                    0xCBu, 0x30u, 0xDDu, 0xCBu, 0x00u, 0x00u, 0x76u};
+    expect_none("undocumented forms",
+                load_on(undoc, sizeof undoc, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO));
+}
+
 /* Every access is stamped at its data T-state: T3 of a memory cycle, T4 of
    an I/O cycle (the automatic wait state included). For each instruction,
    the VDP access tick is the start tick plus 3 x the zero-based index of
@@ -342,7 +514,11 @@ static const struct {
     void (*run)(void);
 } cases[] = {
     {"fault.ed_undefined", test_fault_ed_undefined},
+    {"fault.mapper_range", test_fault_mapper_range},
+    {"fault.not_faults", test_fault_not_faults},
+    {"fault.rom_write", test_fault_rom_write},
     {"fault.unmapped_read", test_fault_unmapped_read},
+    {"fault.unmapped_write", test_fault_unmapped_write},
     {"frame_origin", test_frame_origin},
     {"halt_bound.di", test_halt_bound_di},
     {"halt_bound.di_pal", test_halt_bound_di_pal},

@@ -55,7 +55,11 @@ docs.api_names.self_test	policy
 docs.budgets	policy
 embed.subdirectory	install
 fault.ed_undefined	bus,portable
+fault.mapper_range	bus,portable
+fault.not_faults	bus,portable
+fault.rom_write	bus,portable
 fault.unmapped_read	bus,portable
+fault.unmapped_write	bus,portable
 host.palette	host,portable
 install.consumer	install
 install.consumer.cxx	install
