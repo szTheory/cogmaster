@@ -16,7 +16,7 @@ static void release(void *u, void *p, size_t n)
     (void)n;
     free(p);
 }
-static cogmaster *make(void)
+static cogmaster *make_profile(uint32_t machine, uint32_t tv)
 {
     cogmaster_config cfg = {0};
     cfg.size = sizeof cfg;
@@ -29,9 +29,14 @@ static cogmaster *make(void)
     media.size = sizeof media;
     media.image = image;
     media.image_size = sizeof image;
-    media.machine = COGMASTER_MACHINE_SMS2;
+    media.machine = machine;
+    media.tv = tv;
     CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
     return m;
+}
+static cogmaster *make(void)
+{
+    return make_profile(COGMASTER_MACHINE_SMS2, COGMASTER_TV_NTSC);
 }
 static void reg(cogmaster *m, uint8_t r, uint8_t v)
 {
@@ -201,6 +206,78 @@ static void irq_state(void)
     free(bytes);
     cogmaster_destroy(m);
 }
+static void vtable(uint32_t tv, uint32_t height, const uint8_t ranges[][2], size_t count)
+{
+    uint8_t table[313];
+    uint32_t n = 0u;
+    for (size_t i = 0u; i < count; i++) {
+        for (uint32_t v = ranges[i][0]; v <= ranges[i][1]; v++)
+            table[n++] = (uint8_t)v;
+    }
+    CHECK_EQ_U64(n, tv == COGMASTER_TV_PAL ? 313u : height == 240u ? 263u : 262u);
+    cogmaster *m = make_profile(COGMASTER_MACHINE_SMS2, tv);
+    beam(m, 0u, 603u);
+    reg(m, 0u, 6u);
+    reg(m, 1u, height == 224u ? 0x10u : height == 240u ? 8u : 0u);
+    for (uint32_t line = 0u; line < n; line++) {
+        beam(m, line % (tv == COGMASTER_TV_PAL ? 313u : 262u), 603u);
+        CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Eu), table[line]);
+        pass(m, 1u);
+        CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Eu), table[(line + 1u) % n]);
+        pass(m, 1u);
+        CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Eu), table[(line + 1u) % n]);
+    }
+    cogmaster_destroy(m);
+}
+static void hcounter(void)
+{
+    cogmaster *m = make();
+    /* Literal active-origin intervals: all 171 count values, four ticks each. */
+    static const struct {
+        uint32_t first, last;
+        uint8_t low, high;
+    } intervals[] = {
+        {0u, 559u, 0x08u, 0x93u}, {560u, 651u, 0xE9u, 0xFFu}, {652u, 683u, 0x00u, 0x07u}};
+    for (size_t i = 0u; i < 3u; i++) {
+        uint32_t t = intervals[i].first;
+        for (uint32_t value = intervals[i].low; value <= intervals[i].high; value++) {
+            for (uint32_t phase = 0u; phase < 4u; phase++, t++) {
+                beam(m, 20u, t);
+                CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Fu), value);
+            }
+        }
+        CHECK_EQ_U64(t, intervals[i].last + 1u);
+    }
+    static const uint32_t ticks[] = {0u, 96u, 559u, 560u, 606u, 607u, 608u, 651u, 652u, 683u};
+    static const uint8_t values[] = {8u, 0x20u, 0x93u, 0xE9u, 0xF4u, 0xF4u, 0xF5u, 0xFFu, 0u, 7u};
+    for (size_t i = 0u; i < sizeof values; i++) {
+        beam(m, 10u, ticks[i]);
+        CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Fu), values[i]);
+    }
+    cogmaster_destroy(m);
+}
+static void th_capture(void)
+{
+    cogmaster *m = make();
+    beam(m, 20u, 0u);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Fu), 8u);
+    cogmaster__bus_out(m, 0x3Fu, 0xDDu); /* A TH falls. */
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDDu) & 0xC0u, 0x80u);
+    beam(m, 20u, 96u);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Fu), 0x20u);
+    cogmaster__bus_out(m, 0x3Fu, 0xFDu); /* A TH rises: capture $20. */
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDDu) & 0xC0u, 0xC0u);
+    beam(m, 20u, 560u);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Fu), 0x20u);
+    cogmaster__bus_out(m, 0x3Fu, 0xFDu); /* unchanged level cannot recapture */
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Fu), 0x20u);
+    cogmaster__bus_out(m, 0x3Fu, 0x77u); /* B falls */
+    cogmaster__bus_out(m, 0x3Fu, 0xFFu); /* input pull-up rises */
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Fu), 0xE9u);
+    beam(m, 21u, 0u);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Fu), 0xE9u);
+    cogmaster_destroy(m);
+}
 int main(int argc, char **argv)
 {
     if (argc != 2)
@@ -215,7 +292,29 @@ int main(int argc, char **argv)
         irq_cpu();
     else if (strcmp(argv[1], "irq_state") == 0)
         irq_state();
-    else
+    else if (strcmp(argv[1], "hcounter") == 0)
+        hcounter();
+    else if (strcmp(argv[1], "th_capture") == 0)
+        th_capture();
+    else if (strcmp(argv[1], "v_ntsc_192") == 0) {
+        static const uint8_t ranges[][2] = {{0u, 0xDAu}, {0xD5u, 0xFFu}};
+        vtable(COGMASTER_TV_NTSC, 192u, ranges, 2u);
+    } else if (strcmp(argv[1], "v_ntsc_224") == 0) {
+        static const uint8_t ranges[][2] = {{0u, 0xEAu}, {0xE5u, 0xFFu}};
+        vtable(COGMASTER_TV_NTSC, 224u, ranges, 2u);
+    } else if (strcmp(argv[1], "v_ntsc_240") == 0) {
+        static const uint8_t ranges[][2] = {{0u, 0xFFu}, {0u, 6u}};
+        vtable(COGMASTER_TV_NTSC, 240u, ranges, 2u);
+    } else if (strcmp(argv[1], "v_pal_192") == 0) {
+        static const uint8_t ranges[][2] = {{0u, 0xF2u}, {0xBAu, 0xFFu}};
+        vtable(COGMASTER_TV_PAL, 192u, ranges, 2u);
+    } else if (strcmp(argv[1], "v_pal_224") == 0) {
+        static const uint8_t ranges[][2] = {{0u, 0xFFu}, {0u, 2u}, {0xCAu, 0xFFu}};
+        vtable(COGMASTER_TV_PAL, 224u, ranges, 3u);
+    } else if (strcmp(argv[1], "v_pal_240") == 0) {
+        static const uint8_t ranges[][2] = {{0u, 0xFFu}, {0u, 10u}, {0xD2u, 0xFFu}};
+        vtable(COGMASTER_TV_PAL, 240u, ranges, 3u);
+    } else
         return 2;
     CHECK_DONE();
 }
