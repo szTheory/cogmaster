@@ -47,7 +47,7 @@ static const uint8_t state_magic[8] = {0x8Au, 0x43u, 0x47u, 0x4Du, 0x0Du, 0x0Au,
 _Static_assert(sizeof(struct cogmaster__counters) == 40u, "counters changed: update counters_io");
 _Static_assert(sizeof(struct cogmaster__z80) == 38u, "z80 changed: update z80_io");
 _Static_assert(sizeof(struct cogmaster__bus) == 40u, "bus changed: update bus_io");
-_Static_assert(sizeof(struct cogmaster__vdp) == 16474u, "vdp changed: update vdp_io");
+_Static_assert(sizeof(struct cogmaster__vdp) == 16476u, "vdp changed: update vdp_io");
 _Static_assert(sizeof(struct cogmaster__mapper) == 4u, "mapper changed: update mapper_io");
 _Static_assert(sizeof(struct cogmaster__io) == 8u, "io changed: update io_io");
 
@@ -209,8 +209,10 @@ static void bus_io(struct cogmaster__sio *io, cogmaster *m, struct state_time ti
 #define STATE_VDP_ADDR_MAX 0x3FFFu
 #define STATE_VDP_CODE_MAX 3u
 
-static void vdp_io(struct cogmaster__sio *io, struct cogmaster__vdp *v, uint8_t int_line)
+static uint8_t vdp_io(struct cogmaster__sio *io, struct cogmaster__vdp *v, uint8_t int_line)
 {
+    uint8_t height = cogmaster__sio_u8(io, "vdp_height", &v->height, 192u, 240u);
+    cogmaster__sio_check(io, height == 192u || height == 224u || height == 240u);
     uint8_t r0 = 0u, r1 = 0u;
     for (uint32_t i = 0; i < COGMASTER__VDP_REGS; i++) {
         uint8_t r = cogmaster__sio_u8(io, "vdp_reg", &v->reg[i], 0u, UINT8_MAX);
@@ -233,7 +235,7 @@ static void vdp_io(struct cogmaster__sio *io, struct cogmaster__vdp *v, uint8_t 
     cogmaster__sio_u8(io, "vdp_hscroll", &v->hscroll, 0u, UINT8_MAX);
     cogmaster__sio_u8(io, "vdp_vscroll", &v->vscroll, 0u, UINT8_MAX);
     cogmaster__sio_u8(io, "vdp_display", &v->display, 0u, 1u);
-    cogmaster__sio_u8(io, "sprite_line", &v->sprite_line, 0u, COGMASTER__FIELD_H);
+    cogmaster__sio_u8(io, "sprite_line", &v->sprite_line, 0u, COGMASTER__FIELD_MAX_H);
     uint8_t count = cogmaster__sio_u8(io, "sprite_count", &v->sprite_count, 0u, 8u);
     uint8_t scanned = cogmaster__sio_u8(io, "sprite_scanned", &v->sprite_scanned, 0u, 64u);
     cogmaster__sio_check(io, count <= scanned);
@@ -255,6 +257,7 @@ static void vdp_io(struct cogmaster__sio *io, struct cogmaster__vdp *v, uint8_t 
     cogmaster__sio_check(io, (status & ~STATE_VDP_FLAGS) == 0u);
     cogmaster__sio_check(io, int_line ==
                                  (((status >> 7) & (r1 >> 5) & 1u) | (pending & (r0 >> 4) & 1u)));
+    return height;
 }
 
 static void ram_io(struct cogmaster__sio *io, cogmaster *m)
@@ -307,7 +310,8 @@ static void state_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
     fault_io(io, m);
     uint8_t int_line = z80_io(io, &m->z80);
     bus_io(io, m, time);
-    vdp_io(io, &m->vdp, int_line);
+    uint8_t height = vdp_io(io, &m->vdp, int_line);
+    cogmaster__sio_check(io, m->machine != COGMASTER_MACHINE_SMS1 || height == 192u);
     ram_io(io, m);
     mapper_io(io, m);
     io_io(io, m);
@@ -323,12 +327,29 @@ static void state_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
         cogmaster__sio_u32(io, "input_port2", &p->port2, 0u, 1u);
     }
     cogmaster__sio_u8(io, "input_read", &m->input_read, 0u, 1u);
-    uint32_t line = cogmaster__sio_u32(io, "render_line", &m->render_line, 0u, COGMASTER__FIELD_H);
+    uint32_t line =
+        cogmaster__sio_u32(io, "render_line", &m->render_line, 0u, COGMASTER__FIELD_MAX_H);
     uint32_t dot = cogmaster__sio_u32(io, "render_x", &m->render_x, 0u, COGMASTER__FIELD_W - 1u);
-    cogmaster__sio_check(io, line < COGMASTER__FIELD_H || dot == 0u);
-    for (uint32_t y = 0u; y < COGMASTER__FIELD_MAX_H; y++) {
-        for (uint32_t x = 0u; x < COGMASTER__FIELD_W; x++) {
-            cogmaster__sio_u16(io, "field_pixel", &m->field[y][x], 0u, 0xFFFu);
+    cogmaster__sio_check(io, line <= height && (line < height || dot == 0u));
+    uint32_t completed =
+        cogmaster__sio_u32(io, "completed_height", &m->completed.height, 192u, 240u);
+    cogmaster__sio_check(io, completed == 192u || completed == 224u || completed == 240u);
+    cogmaster__sio_check(io, m->machine != COGMASTER_MACHINE_SMS1 || completed == 192u);
+    cogmaster__sio_u32(io, "completed_backdrop", &m->completed.backdrop, 0u, 0xFFFu);
+    if (io->mode == COGMASTER__SIO_APPLY) {
+        m->completed.crop = cogmaster__crop(m->machine);
+        if (m->machine != COGMASTER_MACHINE_GG)
+            m->completed.crop.h = completed;
+        else if (completed == 224u)
+            m->completed.crop.y = 40u;
+    }
+    for (uint32_t buffer = 0u; buffer < 2u; buffer++) {
+        for (uint32_t y = 0u; y < COGMASTER__FIELD_MAX_H; y++) {
+            for (uint32_t x = 0u; x < COGMASTER__FIELD_W; x++) {
+                uint16_t *pixel = buffer == 0u ? &m->field[y][x] : &m->completed.pixels[y][x];
+                cogmaster__sio_u16(io, buffer == 0u ? "field_pixel" : "completed_pixel", pixel, 0u,
+                                   0xFFFu);
+            }
         }
     }
 }

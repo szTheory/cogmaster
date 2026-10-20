@@ -25,9 +25,9 @@ GG Start, and Select drives SMS Reset. Pad/none and button descriptors are sent
 to the frontend. Missing callbacks and none devices submit released levels.
 The experimental flag remains enabled while the background tracer is expanded.
 API version 4 appends SMS1 and unsupported-video fault constants; all earlier
-values and struct layouts are retained. Behaviour revision 6 adds independent line
+values and struct layouts are retained. Behaviour revision 7 adds completed-field geometry and extended rendering to independent line
 IRQs, six mode/TV V-counter sequences, the translated H coordinate and TH capture
-to the sprite/background semantics. State format 7 also saves the line counter
+to the sprite/background semantics. State format 8 also saves completed pixels/height/backdrop alongside the line counter
 and pending source, rolling NTSC-240 phase and held H value alongside the sprite
 slots, dot cursor, scroll/display latches and last driven bus byte, so older state
 bytes are refused. The API and ABI layouts are unchanged.
@@ -247,7 +247,7 @@ io.pitch_bytes = 256 * 2;                 /* bytes from one row to the next */
 cogmaster_get_frame(m, &io);              /* io.x, io.y, io.w, io.h: what was copied */
 ```
 
-By default `cogmaster_get_frame` copies the machine's crop: the whole 256 × 192 field on the Master System, the
+By default `cogmaster_get_frame` copies the machine's crop: the whole completed 256 × H field on the Master System (H = 192, 224 or 240), the
 160 × 144 window at (48, 24) on the Game Gear. With `flags` set to `COGMASTER_FRAME_FULL_FIELD` it copies the
 whole 256-dot field instead; outside the Game Gear window the test card is magenta (`0x0F0F`). Any other flag bit
 returns `COGMASTER_STATUS_ERR_ARGUMENT`. The library fills `x`, `y`, `w` and `h` with the rectangle copied, in
@@ -425,3 +425,10 @@ Every public name, for reference: the opaque instance `cogmaster`; the types `co
 `COGMASTER_BOARD_CODEMASTERS`, `COGMASTER_SPACE_BUS`, the five `COGMASTER_FAULT_KIND_*` and six `COGMASTER_FAULT_DEVICE_*` values
 above, the nine `COGMASTER_STATUS_*` values above and the
 version macros above.
+
+Video queries describe the same completed image, with initial black 192-line
+geometry before the first completion. Height writes latch at final-line tick
+600 for the next field; writes at the tick miss that latch. The completed
+image remains stable while a following raster is in progress. SMS PAL pixel
+aspect is 2950000:2128137; NTSC is 8:7. See [video](hardware/video.md) for
+the selected latch model, extended name tables and fixed host deadlines.

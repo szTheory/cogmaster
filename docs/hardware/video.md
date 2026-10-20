@@ -4,9 +4,9 @@ Content uses one production Mode 4 renderer. In the 192-line
 path, the name table selects four-plane 8×8 tiles; its palette and flip bits
 are decoded before SMS two-bit channels expand to RGB444 by multiplication
 by five. Display-off pixels use CRAM entry 16 plus R7's low nibble.
-The fixed field remains bounded by 256×240 pixels.
+Each working and completed field remains bounded by 256×240 pixels.
 
-The 32×28 name map wraps vertical coordinates at 224 pixels, horizontal
+The 32×28 name map in 192-line mode wraps vertical coordinates at 224 pixels, horizontal
 coordinates at 256. R8 shifts right: the first R8 modulo 8 dots show backdrop.
 R0 bit 6 fixes the top 16 lines horizontally; bit 7 fixes source columns
 24–31 vertically. Bit 5 masks the first eight display dots. Name bits 8–0
@@ -107,7 +107,7 @@ boundaries. On entry into that mode, the selected model seeds phase from
 the current physical line (plus one at/after 604). This entry phase is an
 explicit inference. Other modes use the physical 262/313-line beam; PAL
 keeps its 214092-tick deadline. Extended counter timing does not imply the
-extended renderer or GG LCD behavior has been implemented yet.
+native GG LCD behavior has been implemented yet.
 
 The selected H coordinate translates active-origin ticks by 32 modulo 684,
 then reads $00–$93 followed by $E9–$FF, four ticks per value. In active
@@ -144,3 +144,23 @@ report `counter | scroll << 8` in successive mailbox records, sealed once
 after the eighth measurement. Live counter and previous button levels occupy
 $C200 and $C201. In the scripted check, frame 5 presses, 6 holds, 7 releases,
 8 presses again; counts are 1, 1, 1, 2 at those first boundaries.
+
+Height is sampled at tick 600 of the final physical line, after outgoing
+active intervals have completed; a write stamped exactly at that tick misses
+the latch. This is a selected coherent field-boundary model, not a measured
+chip latch. Rendering, IRQ height and counter tables use that latch. Supported
+Mode 4 combinations are 1000/1010/1100 (192), 1011 (224), 1110 (240),
+and 1111 (192) on SMS2; SMS1 retains its documented three 192-line modes.
+Extended modes use the 32×32 map, wrapping at 256, with R2 bits 3–2
+selecting $0700/$1700/$2700/$3700. $D0 only terminates sprites at 192 lines.
+Sources: preparation SMS-VDP sections 2.5, 3.1, 3.4 and 5.2.
+
+At the height-specific frame event the core publishes a pixel snapshot and
+its height, crop and backdrop together. Both frame and info queries use that
+completed descriptor, even while the following field is partially rendered.
+The initial/reset descriptor is a black 192-line field. Fixed NTSC/PAL host
+deadlines remain 179208/214092 ticks; extended geometry may first appear
+one host call later. SMS PAR is 8:7 NTSC and 2950000:2128137 PAL; GG
+remains 6:5. The two fixed buffers are instance-owned and saved with the
+height latch and completed metadata; restoration validates heights before
+applying. Pixel conversion and caller pitch remain outside emulation.

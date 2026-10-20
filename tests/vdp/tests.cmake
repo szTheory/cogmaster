@@ -6,8 +6,10 @@ target_link_libraries(cogmaster-test-geometry PRIVATE cogmaster::cogmaster)
 set_target_properties(cogmaster-test-geometry PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
 cogmaster_warnings(cogmaster-test-geometry)
-cogmaster_add_test(NAME vdp.geometry.heights COMMAND cogmaster-test-geometry heights
-  LABELS portable vdp TIMEOUT 10)
+foreach(case IN ITEMS heights coordinates transitions buffers state hostile)
+  cogmaster_add_test(NAME vdp.geometry.${case} COMMAND cogmaster-test-geometry ${case}
+    LABELS portable vdp TIMEOUT 10)
+endforeach()
 
 add_executable(cogmaster-test-background ${CMAKE_CURRENT_LIST_DIR}/test_background.c)
 target_include_directories(cogmaster-test-background PRIVATE ${PROJECT_SOURCE_DIR}/src)

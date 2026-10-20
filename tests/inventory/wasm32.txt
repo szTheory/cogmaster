@@ -179,7 +179,12 @@ vdp.background.tiles	portable,vdp
 vdp.background.unsupported	portable,vdp
 vdp.control_port	portable,vdp
 vdp.data_port	portable,vdp
+vdp.geometry.buffers	portable,vdp
+vdp.geometry.coordinates	portable,vdp
 vdp.geometry.heights	portable,vdp
+vdp.geometry.hostile	portable,vdp
+vdp.geometry.state	portable,vdp
+vdp.geometry.transitions	portable,vdp
 vdp.hcounter	portable,vdp
 vdp.pause_nmi	portable,vdp
 vdp.port_decode	portable,vdp

@@ -93,6 +93,7 @@ struct cogmaster__bus {
 #define COGMASTER__CRAM_SIZE 32u
 
 struct cogmaster__vdp {
+    uint8_t height;                     /* 192/224/240, final-physical-line tick-600 latch */
     uint16_t addr;                      /* the 14-bit VRAM or CRAM address */
     uint16_t vline;                     /* independent 0..262 rolling NTSC-240 counter */
     uint8_t reg[COGMASTER__VDP_REGS];   /* R0 to R10 */
@@ -185,6 +186,11 @@ struct cogmaster {
     uint8_t input_read;
     uint8_t ram[COGMASTER__RAM_SIZE];
     uint16_t field[COGMASTER__FIELD_MAX_H][COGMASTER__FIELD_W]; /* RGB444 per dot */
+    struct {
+        uint32_t height, backdrop, par_num, par_den;
+        cogmaster__rect crop;
+        uint16_t pixels[COGMASTER__FIELD_MAX_H][COGMASTER__FIELD_W];
+    } completed;
 };
 
 /* Shared revision facts: the 315-5124 masks VDP addresses and has no

@@ -233,6 +233,8 @@ static void vtable(uint32_t tv, uint32_t height, const uint8_t ranges[][2], size
     beam(m, 0u, 603u);
     reg(m, 0u, 6u);
     reg(m, 1u, height == 224u ? 0x10u : height == 240u ? 8u : 0u);
+    cogmaster__vdp_event(m, cogmaster__frame_lines(m) - 1u, 600u);
+    m->vdp.vline = 0u;
     for (uint32_t line = 0u; line < n; line++) {
         beam(m, line % (tv == COGMASTER_TV_PAL ? 313u : 262u), 603u);
         CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Eu), table[line]);
@@ -301,6 +303,7 @@ static void mode_edges(void)
             reg(m, 0u, 0x16u);
             reg(m, 1u, (uint8_t)(0x20u | (i == 1u ? 0x10u : i == 2u ? 8u : 0u)));
             reg(m, 10u, 0u);
+            cogmaster__vdp_event(m, cogmaster__frame_lines(m) - 1u, 600u);
             beam(m, tv == COGMASTER_TV_PAL ? 312u : 261u, 607u);
             pass(m, 1u);
             beam(m, heights[i], 606u);

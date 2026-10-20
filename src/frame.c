@@ -53,6 +53,7 @@ cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out)
                 m->field[y][x] = cogmaster__testcard_pixel(x, y, m->machine);
             }
         }
+        memcpy(m->completed.pixels, m->field, sizeof m->field);
         /* The card is exactly one frame: the beam ends where it began. */
         m->frame++;
         uint32_t ticks = cogmaster__frame_ticks(m);
@@ -96,22 +97,23 @@ cogmaster_status cogmaster_get_frame(const cogmaster *m, cogmaster_frame *io)
         r.x = 0u;
         r.y = 0u;
         r.w = COGMASTER__FIELD_W;
-        r.h = COGMASTER__FIELD_H;
+        r.h = m->completed.height;
     } else {
-        r = cogmaster__crop(m->machine);
+        r = m->completed.crop;
     }
     if (io->pitch_bytes < r.w * 2u) {
         return COGMASTER_STATUS_ERR_BUFFER_TOO_SMALL;
     }
     uint8_t *dst = (uint8_t *)io->pixels;
     for (uint32_t row = 0; row < r.h; row++) {
-        memcpy(dst + (size_t)row * io->pitch_bytes, &m->field[r.y + row][r.x], (size_t)r.w * 2u);
+        memcpy(dst + (size_t)row * io->pitch_bytes, &m->completed.pixels[r.y + row][r.x],
+               (size_t)r.w * 2u);
     }
     io->x = r.x;
     io->y = r.y;
     io->w = r.w;
     io->h = r.h;
-    io->field_h = COGMASTER__FIELD_H;
-    io->backdrop_rgb444 = m->cart.rom != NULL ? cogmaster__vdp_backdrop(m) : 0u;
+    io->field_h = m->completed.height;
+    io->backdrop_rgb444 = m->completed.backdrop;
     return COGMASTER_STATUS_OK;
 }

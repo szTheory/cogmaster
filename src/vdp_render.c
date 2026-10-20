@@ -1,5 +1,6 @@
 /* Mode 4 tiles and monotonic raster intervals. Hardware rules and the
    selected latch model are sourced in docs/hardware/video.md. */
+#include <string.h>
 #include "internal.h"
 
 static uint16_t vdp_colour(uint8_t c)
@@ -68,8 +69,11 @@ uint32_t cogmaster__vdp_background(const cogmaster *m, uint32_t x, uint32_t y)
         return 16u + (v->reg[7] & 15u);
     }
     uint32_t sx = (x + 256u - scroll) & 255u;
-    uint32_t sy = (y + (((v->reg[0] & 0x80u) != 0u && sx >= 192u) ? 0u : v->vscroll)) % 224u;
-    uint32_t name = ((uint32_t)(v->reg[2] & 14u) << 10) + (sy / 8u * 32u + sx / 8u) * 2u;
+    uint32_t sy = (y + (((v->reg[0] & 0x80u) != 0u && sx >= 192u) ? 0u : v->vscroll)) %
+                  (v->height == 192u ? 224u : 256u);
+    uint32_t base = v->height == 192u ? (uint32_t)(v->reg[2] & 14u) << 10
+                                      : ((uint32_t)(v->reg[2] & 12u) << 10) | 0x700u;
+    uint32_t name = base + (sy / 8u * 32u + sx / 8u) * 2u;
     if (cogmaster__profile(m).vdp_masks && (v->reg[2] & 1u) == 0u) {
         name &= ~0x400u;
     }
@@ -106,7 +110,7 @@ void cogmaster__vdp_sprite_scan(cogmaster *m, uint32_t line)
     for (uint32_t i = 0u; i < 64u; i++) {
         uint8_t y = v->vram[cogmaster__vdp_sat_address(m, i)];
         v->sprite_scanned++;
-        if (y == 0xD0u) {
+        if (y == 0xD0u && v->height == 192u) {
             break;
         }
         int32_t top = y >= 0xF0u ? (int32_t)y - 255 : (int32_t)y + 1;
@@ -166,10 +170,9 @@ static uint32_t vdp_sprite_pixel(cogmaster *m, uint32_t x)
 /* Exclusive raster coordinate: stamped mutations cannot repaint earlier dots. */
 void cogmaster__vdp_render_until(cogmaster *m, uint32_t line, uint32_t x)
 {
-    uint32_t end =
-        line >= COGMASTER__FIELD_H
-            ? COGMASTER__FIELD_H * COGMASTER__FIELD_W
-            : line * COGMASTER__FIELD_W + (x > COGMASTER__FIELD_W ? COGMASTER__FIELD_W : x);
+    uint32_t end = line >= m->vdp.height ? m->vdp.height * COGMASTER__FIELD_W
+                                         : line * COGMASTER__FIELD_W +
+                                               (x > COGMASTER__FIELD_W ? COGMASTER__FIELD_W : x);
     uint32_t at = m->render_line * COGMASTER__FIELD_W + m->render_x;
     if (at < end && m->vdp.display && !vdp_supported(m)) {
         cogmaster__bus_fault(m, 0u, COGMASTER_FAULT_DEVICE_VDP,
@@ -208,8 +211,17 @@ void cogmaster__vdp_render_to(cogmaster *m, uint32_t end)
 
 void cogmaster__vdp_finish_field(cogmaster *m)
 {
-    cogmaster__vdp_render_to(m, COGMASTER__FIELD_H);
+    cogmaster__vdp_render_to(m, m->vdp.height);
+    m->completed.height = m->vdp.height;
+    m->completed.crop = cogmaster__crop(m->machine);
+    if (m->machine != COGMASTER_MACHINE_GG) {
+        m->completed.crop.h = m->vdp.height;
+    } else if (m->vdp.height == 224u) {
+        m->completed.crop.y = 40u;
+    }
+    m->completed.backdrop = cogmaster__vdp_backdrop(m);
+    memcpy(m->completed.pixels, m->field, sizeof m->field);
     m->render_line = 0u;
     m->render_x = 0u;
-    m->vdp.sprite_line = COGMASTER__FIELD_H;
+    m->vdp.sprite_line = m->vdp.height;
 }

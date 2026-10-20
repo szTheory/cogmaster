@@ -216,7 +216,7 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out)
     info.size = out->size;
     info.machine = m->machine;
     info.field_w = COGMASTER__FIELD_W;
-    info.field_h = COGMASTER__FIELD_H;
+    info.field_h = m->completed.height;
     info.max_w = COGMASTER__FIELD_W;
     info.max_h = COGMASTER__FIELD_MAX_H;
     info.region = m->region;
@@ -230,18 +230,11 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out)
         info.fps_num = 1640625u;
         info.fps_den = 27379u;
     }
-    cogmaster__rect crop = cogmaster__crop(m->machine);
+    cogmaster__rect crop = m->completed.crop;
     info.crop_w = crop.w;
     info.crop_h = crop.h;
-    /* Pixel aspect, reported and never applied: 8:7 for the NTSC SMS, 6:5
-       for the Game Gear (ARCHITECTURE section 5). */
-    if (m->machine == COGMASTER_MACHINE_GG) {
-        info.par_num = 6u;
-        info.par_den = 5u;
-    } else {
-        info.par_num = 8u;
-        info.par_den = 7u;
-    }
+    info.par_num = m->completed.par_num;
+    info.par_den = m->completed.par_den;
     cogmaster__write_out(out, &info, (uint32_t)sizeof info);
     return COGMASTER_STATUS_OK;
 }

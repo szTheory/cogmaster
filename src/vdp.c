@@ -63,6 +63,7 @@
 void cogmaster__vdp_reset(cogmaster *m, int power)
 {
     struct cogmaster__vdp *v = &m->vdp;
+    v->height = 192u;
     v->addr = 0u;
     v->vline = 193u; /* bus origin line 192, after the 604 V step */
     memset(v->reg, 0, sizeof v->reg);
@@ -89,6 +90,15 @@ void cogmaster__vdp_reset(cogmaster *m, int power)
     v->sprite_zoom = 0u;
     v->sprite_shift = 0u;
     v->sprite_overflow = 0u;
+    memset(&m->completed, 0, sizeof m->completed);
+    m->completed.height = 192u;
+    m->completed.crop = cogmaster__crop(m->machine);
+    m->completed.par_num = m->machine == COGMASTER_MACHINE_GG ? 6u
+                           : m->tv == COGMASTER_TV_PAL        ? 2950000u
+                                                              : 8u;
+    m->completed.par_den = m->machine == COGMASTER_MACHINE_GG ? 5u
+                           : m->tv == COGMASTER_TV_PAL        ? 2128137u
+                                                              : 7u;
     m->render_line = 0u;
     m->render_x = 0u;
     if (power) {
@@ -109,7 +119,7 @@ static void vdp_irq(cogmaster *m)
 
 /* Mode 4 extended heights on SMS2/GG; SMS1 invalid text combinations
    retain the 192-line timing fallback (SMS-VDP section 2.5). */
-static uint32_t vdp_height(const cogmaster *m)
+static uint32_t vdp_pending_height(const cogmaster *m)
 {
     const uint8_t *r = m->vdp.reg;
     if (!cogmaster__profile(m).vdp_masks && (r[0] & 6u) == 6u) {
@@ -125,7 +135,7 @@ static uint32_t vdp_height(const cogmaster *m)
 
 static int vdp_rolling(const cogmaster *m)
 {
-    return m->tv == COGMASTER_TV_NTSC && vdp_height(m) == 240u;
+    return m->tv == COGMASTER_TV_NTSC && m->vdp.height == 240u;
 }
 
 /* The line /NMI is asserted on. The Game Gear has no Pause button: in its
@@ -140,7 +150,7 @@ static uint32_t vdp_nmi_line(const cogmaster *m)
 
 uint32_t cogmaster__vdp_next_event(const cogmaster *m, uint32_t line, uint32_t t)
 {
-    if (line < COGMASTER__FIELD_H && t < 512u) {
+    if (line < m->vdp.height && t < 512u) {
         return 512u;
     }
     if (t < VDP_LATCH_TICK) {
@@ -149,7 +159,7 @@ uint32_t cogmaster__vdp_next_event(const cogmaster *m, uint32_t line, uint32_t t
     if (vdp_rolling(m) && t < VDP_VCOUNT_TICK) {
         return VDP_VCOUNT_TICK;
     }
-    if (line == vdp_height(m) && t < VDP_INT_TICK) {
+    if (line == m->vdp.height && t < VDP_INT_TICK) {
         return VDP_INT_TICK;
     }
     if (t < VDP_LINE_INT_TICK) {
@@ -169,7 +179,7 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t)
     if (t == VDP_VCOUNT_TICK && vdp_rolling(m)) {
         m->vdp.vline = m->vdp.vline == 262u ? 0u : (uint16_t)(m->vdp.vline + 1u);
     }
-    if (line < COGMASTER__FIELD_H && t == 512u) {
+    if (line < m->vdp.height && t == 512u) {
         cogmaster__vdp_render_to(m, line + 1u);
     }
     /* Selected tick-600 next-line latch; R9 latches before line zero
@@ -179,13 +189,21 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t)
         m->vdp.display = (uint8_t)((m->vdp.reg[1] >> 6) & 1u);
         if (line + 1u == cogmaster__frame_lines(m)) {
             m->vdp.vscroll = m->vdp.reg[9];
+            int rolling = vdp_rolling(m);
+            m->vdp.height = (uint8_t)vdp_pending_height(m);
+            if (!rolling && vdp_rolling(m)) {
+                m->vdp.vline = (uint16_t)line;
+            }
+            m->render_line = 0u;
+            m->render_x = 0u;
+            m->vdp.sprite_line = m->vdp.height;
         }
         uint32_t next = line + 1u == cogmaster__frame_lines(m) ? 0u : line + 1u;
-        if (next < COGMASTER__FIELD_H) {
+        if (next < m->vdp.height) {
             cogmaster__vdp_sprite_scan(m, next);
         }
     }
-    if (line == vdp_height(m) && t == VDP_INT_TICK) {
+    if (line == m->vdp.height && t == VDP_INT_TICK) {
         cogmaster__vdp_finish_field(m);
         m->vdp.status = (uint8_t)(m->vdp.status | VDP_STATUS_FRAME);
         vdp_irq(m);
@@ -195,8 +213,8 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t)
        R10 writes only affect the next reload. */
     if (t == VDP_LINE_INT_TICK) {
         struct cogmaster__vdp *v = &m->vdp;
-        if (line > vdp_height(m) || v->line_counter == 0u) {
-            if (line <= vdp_height(m)) {
+        if (line > m->vdp.height || v->line_counter == 0u) {
+            if (line <= m->vdp.height) {
                 v->line_pending = 1u;
             }
             v->line_counter = v->reg[10];
@@ -215,7 +233,7 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t)
    supplies the initial 00 wrap in the extended PAL modes. */
 static uint8_t vdp_vcount(const cogmaster *m)
 {
-    uint32_t height = vdp_height(m);
+    uint32_t height = m->vdp.height;
     if (vdp_rolling(m)) {
         return (uint8_t)m->vdp.vline;
     }
@@ -249,7 +267,7 @@ static uint8_t vdp_status_read(cogmaster *m)
     /* Events at this tick precede the read: include its current active dot,
        then clear. The monotonic cursor prevents reasserting that same dot
        on a second read (SMS-VDP section 3; selected model in video.md). */
-    if (m->bus.line < COGMASTER__FIELD_H) {
+    if (m->bus.line < m->vdp.height) {
         cogmaster__vdp_render_until(m, m->bus.line, m->bus.t / 2u + 1u);
     }
     struct cogmaster__vdp *v = &m->vdp;
@@ -284,14 +302,7 @@ static void vdp_control_write(cogmaster *m, uint8_t b)
     } else if (v->code == VDP_CODE_REGISTER) {
         uint32_t r = b & 0x0Fu;
         if (r < COGMASTER__VDP_REGS) {
-            int rolling = vdp_rolling(m);
             v->reg[r] = v->first;
-            /* On entry seed the rolling counter from the current visible
-               beam, then advance independently at 604. Mode-change phase
-               is a selected model, not a chip measurement (video.md). */
-            if (!rolling && vdp_rolling(m)) {
-                v->vline = (uint16_t)(m->bus.line + (m->bus.t >= VDP_VCOUNT_TICK ? 1u : 0u));
-            }
             vdp_irq(m);
         }
     }
@@ -343,7 +354,7 @@ void cogmaster__vdp_write(cogmaster *m, uint32_t port, uint8_t v)
 {
     /* Catch up to this dot before mutating a source (video.md). R8/R9
        and display writes affect their latches, not earlier intervals. */
-    if (m->bus.line < COGMASTER__FIELD_H) {
+    if (m->bus.line < m->vdp.height) {
         cogmaster__vdp_render_until(m, m->bus.line, m->bus.t / 2u);
     }
     if (port == COGMASTER__VDP_CONTROL) {
