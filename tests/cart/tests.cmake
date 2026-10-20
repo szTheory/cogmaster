@@ -3,6 +3,8 @@ add_executable(cogmaster-test-cartdb ${CMAKE_CURRENT_LIST_DIR}/test_cartdb.c)
 target_link_libraries(cogmaster-test-cartdb PRIVATE cogmaster::cogmaster)
 cogmaster_warnings(cogmaster-test-cartdb)
 cogmaster_add_test(NAME cart.database COMMAND cogmaster-test-cartdb LABELS cart portable TIMEOUT 10)
+cogmaster_add_test(NAME cart.fixture_identity COMMAND cogmaster-test-cartdb
+  ${PROJECT_BINARY_DIR}/fixtures/battery.sms LABELS cart portable TIMEOUT 10)
 target_include_directories(cogmaster-test-cartdb PRIVATE ${PROJECT_SOURCE_DIR}/src)
 add_executable(cogmaster-cartdb ${PROJECT_SOURCE_DIR}/tools/cartdb.c)
 cogmaster_warnings(cogmaster-cartdb)

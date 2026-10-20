@@ -16,8 +16,26 @@ static void release(void *u, void *p, size_t n)
     (void)n;
     free(p);
 }
-int main(void)
+int main(int argc, char **argv)
 {
+    if (argc == 2) {
+        static uint8_t fixture[65536 + 512];
+        FILE *file = fopen(argv[1], "rb");
+        CHECK(file != NULL);
+        if (file == NULL)
+            CHECK_DONE();
+        size_t n = fread(fixture, 1, sizeof fixture, file);
+        fclose(file);
+        cogmaster_cart_info p = {0};
+        p.size = sizeof p;
+        CHECK_EQ_U64(cogmaster_probe(fixture, n, &p), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(p.identified, 1u);
+        CHECK_EQ_U64(p.public_identity, 0u);
+        CHECK_EQ_U64(p.persistence, COGMASTER_PERSISTENCE_BATTERY);
+        CHECK_EQ_U64(p.persistent_size, 32768u);
+        CHECK_EQ_U64(p.persistence_geometry, COGMASTER_GEOMETRY_SUPPORTED);
+        CHECK_DONE();
+    }
     const struct cogmaster__cart_fact *f =
         cogmaster__cartdb_find("0dad260b5357b2f61d1452bb73d8321ca53d7262");
     CHECK(f != NULL);
