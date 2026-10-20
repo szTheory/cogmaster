@@ -1,5 +1,6 @@
 # Hygiene tests, registered only by the hygiene preset (COGMASTER_HYGIENE).
 set(hygiene_scripts ${CMAKE_CURRENT_LIST_DIR}/../cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/../policy/budget_cases.cmake)
 
 # Fault prevented: a personal path or address, an unlisted binary, a game
 # image or GPL text in any file git would track, ignored build output aside.
@@ -385,8 +386,9 @@ cogmaster_add_test(NAME policy.e2e_budget
   LABELS hygiene policy TIMEOUT 30)
 set(hygiene_e2e ${CMAKE_BINARY_DIR}/hygiene/e2e_budget_fixture)
 file(REMOVE_RECURSE ${hygiene_e2e})
-string(REPEAT "line\n" 301 hygiene_lines)
+string(REPEAT "line\n" 150 hygiene_lines)
 file(WRITE ${hygiene_e2e}/sample.cmake "${hygiene_lines}")
+file(WRITE ${hygiene_e2e}/helpers/parser.cmake "${hygiene_lines}last")
 set(hygiene_cmd ${CMAKE_COMMAND} -DDIR=${hygiene_e2e} -DCHECK=e2e_budget -P ${hygiene_scripts}/repository.cmake)
 string(REPLACE ";" "$<SEMICOLON>" hygiene_cmd "${hygiene_cmd}")
 cogmaster_add_test(NAME policy.e2e_budget.self_test

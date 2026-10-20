@@ -1,6 +1,12 @@
 # Every test the hygiene preset registers: name<TAB>labels.
 # Sorted; configure fails when this differs from what is registered.
 ci.classify	hygiene
+docs.budgets	hygiene,policy
+docs.budgets.helper	hygiene,policy
+docs.budgets.helper_unclassified	hygiene,policy
+docs.budgets.ratio_below	hygiene,policy
+docs.budgets.ratio_equal	hygiene,policy
+docs.budgets.unclassified	hygiene,policy
 hygiene.analyzer	hygiene
 hygiene.format	hygiene
 hygiene.no_float	hygiene

@@ -45,7 +45,7 @@ foreach(row IN LISTS classifications)
 endforeach()
 file(GLOB_RECURSE implementations LIST_DIRECTORIES false RELATIVE "${ROOT}"
   "${ROOT}/tests/cmake/*" "${ROOT}/scripts/*" "${ROOT}/cmake/*" "${ROOT}/.githooks/*"
-  "${ROOT}/tests/compatibility/*.cmake" "${ROOT}/tests/compatibility/*.sh")
+  "${ROOT}/tests/compat/*.cmake" "${ROOT}/tests/compat/*.sh" "${ROOT}/tests/compat/*.awk" "${ROOT}/tests/compat/*.py" "${ROOT}/tests/compat/*.c" "${ROOT}/tests/compat/*.h")
 foreach(path IN LISTS implementations)
   if(NOT path IN_LIST classified)
     message(FATAL_ERROR "repository: unclassified applicable code ${path}")

@@ -14,7 +14,12 @@ action_pins|timeouts)
   export CHECK_MODE=$1
   scan "$DIR" '*.yml' '*.yaml' ;;
 pins)
-  awk 'NF && $1 !~ /^#/ { n++; if(NF!=4) { print "line " NR ": " NF " fields, not 4"; bad=1; next } if(names[$1]++) {print "line " NR ": " $1 " is listed twice"; bad=1} if($3 !~ /^https:\/\//) {print $1 ": the URL is not https://"; bad=1} if($4 !~ /^[0-9a-f]+$/ || length($4)!=64) {print $1 ": the digest is not 64 lower-case hex digits"; bad=1} } END { if(!n) print "no pins"; exit(bad || !n) }' "$PINS" ;;
+  awk 'NF && $1 !~ /^#/ {
+    n++; if(NF!=4) { print "line " NR ": " NF " fields, not 4"; bad=1; next }
+    if(names[$1]++) {print "line " NR ": " $1 " is listed twice"; bad=1}
+    if($3 !~ /^https:\/\//) {print $1 ": the URL is not https://"; bad=1}
+    if($4 !~ /^[0-9a-f]+$/ || length($4)!=64) {print $1 ": the digest is not 64 lower-case hex digits"; bad=1}
+  } END { if(!n) print "no pins"; exit(bad || !n) }' "$PINS" ;;
 no_skip|no_float)
   export CHECK_MODE=$1
   program='BEGIN { mode=ENVIRON["CHECK_MODE"]; skip="SKIP_"; disabled="DIS" "ABLED" }
@@ -33,9 +38,21 @@ api_names)
   awk 'function names(s,a, n) { while(match(s,/(cogmaster_[a-z0-9_]+|COGMASTER_[A-Z0-9_]+)/)) { n=substr(s,RSTART,RLENGTH); if(n!="COGMASTER_H") a[n]=1; s=substr(s,RSTART+RLENGTH) } }
   BEGIN { while((getline s < ENVIRON["HEADER"])>0) names(s,declared); split(ENVIRON["OTHER"],files,"\n"); for(f in files) while((getline s < files[f])>0) names(s,cited) }
   { names($0,written) }
-  END { for(n in declared) if(n !~ /_$/ && !(n in written)) { print n " is declared in the header but the guide never names it"; bad=1 } for(n in written) {known=(n in declared || n in cited); if(n ~ /_$/) for(d in declared) if(index(d,n)==1) known=1; if(!known) {print n " is named in the guide but the header does not declare it"; bad=1} } exit bad }' "$DOC" ;;
+  END {
+    for(n in declared) if(n !~ /_$/ && !(n in written)) {print n " is declared in the header but the guide never names it"; bad=1}
+    for(n in written) {
+      known=(n in declared || n in cited); if(n ~ /_$/) for(d in declared) if(index(d,n)==1) known=1;
+      if(!known) {print n " is named in the guide but the header does not declare it"; bad=1}
+    } exit bad
+  }' "$DOC" ;;
 api_version)
-  awk 'BEGIN { while((getline s < ENVIRON["HEADER"])>0) h=h s "\n"; v=h; sub(/^.*#define COGMASTER_API_VERSION /,"",v); sub(/[^0-9].*$/,"",v); if(v !~ /^[0-9]+$/) { print "defines no COGMASTER_API_VERSION"; exit 1 } path=ENVIRON["API_DIR"] "/v" v ".c"; if((getline s < path)<0) {print path " is missing for API version " v; exit 1} close(path); for(k=1;k<=v;k++) {path=ENVIRON["API_DIR"] "/v" k ".c"; while((getline s < path)>0) tests=tests " " s " "; close(path)}
+  awk 'BEGIN {
+  while((getline s < ENVIRON["HEADER"])>0) h=h s "\n";
+  v=h; sub(/^.*#define COGMASTER_API_VERSION /,"",v); sub(/[^0-9].*$/,"",v);
+  if(v !~ /^[0-9]+$/) {print "defines no COGMASTER_API_VERSION"; exit 1}
+  path=ENVIRON["API_DIR"] "/v" v ".c";
+  if((getline s < path)<0) {print path " is missing for API version " v; exit 1} close(path);
+  for(k=1;k<=v;k++) {path=ENVIRON["API_DIR"] "/v" k ".c"; while((getline s < path)>0) tests=tests " " s " "; close(path)}
   gsub(/\/\*([^*]|\*+[^*\/])*\*+\//," ",h); s=h; while(match(s,/[Cc][Oo][Gg][Mm][Aa][Ss][Tt][Ee][Rr][A-Za-z0-9_]*/)) {names[substr(s,RSTART,RLENGTH)]=1; s=substr(s,RSTART+RLENGTH)} delete names["COGMASTER_H"];
   while(match(h,/struct [a-z_]+ {[^}]*}/)) {s=substr(h,RSTART,RLENGTH); h=substr(h,RSTART+RLENGTH); gsub(/[A-Za-z0-9_)]\([^()]*\)/,"",s); while(match(s,/[A-Za-z_][A-Za-z0-9_]*\)*;/)) {n=substr(s,RSTART,RLENGTH); gsub(/[);]/,"",n); names[n]=1; s=substr(s,RSTART+RLENGTH)} }
   for(n in names) if(tests !~ "[^A-Za-z0-9_]" n "[^A-Za-z0-9_]") { print "in no tests/api/vK.c with K <= " v ": " n; bad=1 } exit bad }' ;;
@@ -47,7 +64,8 @@ single_version)
   printf '%s\n' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || fail 'single_version: expected MAJOR.MINOR.PATCH'
   if [ "$NEXT" = ON ]; then VERSION=$(printf '%s\n' "$VERSION" | awk -F. '{printf "%d.%d.0|%d.%d.%d",$1,$2+1,$1,$2,$3+1}'); fi
   export VERSION
-  git -C "$ROOT" ls-files | while IFS= read -r file; do [ ! -f "$ROOT/$file" ] || printf '%s\0' "$file"; done |
+  listing=$(git -C "$ROOT" -c core.quotePath=false ls-files) || fail 'single_version: cannot list repository'
+  printf '%s\n' "$listing" | while IFS= read -r file; do [ ! -f "$ROOT/$file" ] || printf '%s\0' "$file"; done |
     (cd "$ROOT" && xargs -0 awk 'BEGIN {v=ENVIRON["VERSION"]; gsub(/\./,"\\.",v)}
     FILENAME !~ /^(version\.txt|\.release-please-manifest\.json|release-please-config\.json|CHANGELOG\.md|\.planning\/.*)$/ && $0 ~ "(^|[^0-9.])(" v ")([^0-9.]|$)" {
       match($0,"(^|[^0-9.])(" v ")([^0-9.]|$)"); s=substr($0,RSTART,RLENGTH);
@@ -85,7 +103,8 @@ abi)
     exit bad
   }' ;;
 notices)
-  git -C "$ROOT" ls-files -z -- '*.c' '*.h' | (cd "$ROOT" && xargs -0 awk '
+  listing=$(git -C "$ROOT" -c core.quotePath=false ls-files -- '*.c' '*.h') || fail 'notices: cannot list repository'
+  printf '%s\n' "$listing" | while IFS= read -r file; do printf '%s\0' "$file"; done | (cd "$ROOT" && xargs -0 awk '
   BEGIN {
     while((getline s < "THIRD-PARTY-NOTICES.md")>0) {
       if(s ~ /^\*\*Applies to:\*\*/) while(match(s,/`[^`]+`/)) {p=substr(s,RSTART+1,RLENGTH-2); named[p]=1; if((getline line < p)<0) {print p " does not exist"; bad=1} close(p); s=substr(s,RSTART+RLENGTH)}
@@ -103,10 +122,18 @@ notices)
 check_junit)
   awk 'BEGIN {while((getline s < ENVIRON["INVENTORY"])>0) if(s !~ /^#/ && index(s,"\t")) {split(s,a,"\t"); if((ENVIRON["LABELS"]=="" || a[2] ~ ENVIRON["LABELS"]) && (ENVIRON["EXCLUDE"]=="" || a[2] !~ ENVIRON["EXCLUDE"])) expected[a[1]]=1} }
   {xml=xml $0 "\n"}
-  END {n=split(xml,cases,"<testcase "); for(i=2;i<=n;i++) {s=cases[i]; name=s; sub(/^name="/,"",name); sub(/".*$/,"",name); ran[name]++; if(s !~ /^[^>]*status="run"/ || s ~ /<(failure|error|skipped)/) {print name ": failed, errored or did not run"; bad=1}} for(name in expected) {selected++; if(ran[name]!=1) {print name ": in the JUnit file " ran[name]+0 " times, expected once"; bad=1}} if(!selected || n<2) {print "no test ran"; bad=1} exit bad}' "$JUNIT" ;;
+  END {
+    n=split(xml,cases,"<testcase "); for(i=2;i<=n;i++) {
+      s=cases[i]; name=s; sub(/^name="/,"",name); sub(/".*$/,"",name); ran[name]++;
+      if(s !~ /^[^>]*status="run"/ || s ~ /<(failure|error|skipped)/) {print name ": failed, errored or did not run"; bad=1}
+    }
+    for(name in expected) {selected++; if(ran[name]!=1) {print name ": in the JUnit file " ran[name]+0 " times, expected once"; bad=1}}
+    if(!selected || n<2) {print "no test ran"; bad=1} exit bad
+  }' "$JUNIT" ;;
 e2e_budget)
   [ -d "$DIR" ] || fail 'e2e_budget: DIR must name a directory'
-  find "$DIR" -type f -exec awk 'END {print NR}' {} \; | awk '{n+=$1} END {print "e2e_budget: " n+0 " lines under tests/retroarch, at most 300"; exit(n>300)}' ;;
+  counts=$(find "$DIR" -type f -exec awk 'END {print NR}' {} +) || fail 'e2e_budget: unreadable helper'
+  printf '%s\n' "$counts" | awk '{n+=$1} END {print "e2e_budget: " n+0 " lines under tests/retroarch, at most 300"; exit(n>300)}' ;;
 exit_table)
   awk 'BEGIN {while((getline s < ENVIRON["DOC"])>0) {doc[s]=1; if(s ~ /^  [0-9]+  [a-z]+ /) documented++}}
   /^exit status:$/ {table=1; next}

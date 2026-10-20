@@ -148,6 +148,15 @@ apply it.
 
 ## Pinned downloads
 
+When adding a repository check or a shared parser/judge helper, add its responsibility to
+`tests/policy/repository-checks.txt`. Keep check implementations in CMake script mode or POSIX sh and count
+shared helpers in full. Exclusions explain actual build, runtime or release operations individually; moving
+a check to another directory does not change its responsibility. The recurring `docs.budgets` check rejects
+unclassified implementations and a numerator at or above one tenth of `src` C/H physical lines. Run
+`cmake --workflow --preset ci` and `cmake --workflow --preset hygiene` after changing the inventory or helpers.
+Keep the existing fault diagnostics and negative controls when consolidating checks. Hosted RetroArch code,
+including any helper, stays under `tests/retroarch` so its independent 300-line check sees the whole driver.
+
 `pins.txt` lists every pinned download as `name version url sha256`, and `scripts/fetch-pin.sh` checks the
 SHA-256 before use. Take a long-term-support patch release when it fixes a security advisory, and move to the
 next long-term-support line before the current one's end of life. Each bump is one `ci:` pull request whose

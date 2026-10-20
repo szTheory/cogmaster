@@ -56,6 +56,9 @@ core.testcard.static	core,portable
 docs.api_names	policy
 docs.api_names.self_test	policy
 docs.budgets	policy
+docs.budgets.helper	policy
+docs.budgets.helper_unclassified	policy
+docs.budgets.ratio_below	policy
 docs.budgets.ratio_equal	policy
 docs.budgets.unclassified	policy
 embed.subdirectory	install

@@ -156,7 +156,31 @@ matches the expected message; a crash or a missing file does not count as the ex
 | `policy.publish_set.self_test` | 17 of the 18 release zips; `publish.sh prepare` must name the missing one. |
 | `policy.ci_required.self_test` | A copy of `ci.yml` whose roll-up ignores `heavy`, so a skipped build would pass. |
 | `policy.action_pins.self_test` | An action referenced by a tag. |
-| `policy.e2e_budget.self_test` | A 301-line file under the RetroArch test budget. |
+| `policy.e2e_budget.self_test` | Two files totaling 301 lines under the RetroArch test budget. |
+| `docs.budgets.ratio_equal` | One physical check line against ten core lines, including unterminated final lines. |
+| `docs.budgets.unclassified` | A checker omitted from the responsibility inventory. |
+| `docs.budgets.helper` | An additional counted compatibility helper exceeds an otherwise passing ratio. |
+| `docs.budgets.helper_unclassified` | An unclassified compatibility parser helper beside a classified checker. |
+
+`docs.budgets.ratio_below` supplies the passing boundary: one check line against eleven core lines. Both `ci`
+and `hygiene` execute these cases and `docs.budgets`; the equality and omission cases require the intended
+nonzero status and diagnostic. The hosted-size negative control totals two files, including a nested helper
+whose last line has no newline, to prove the complete helper tree counts.
+
+`tests/policy/repository-checks.txt` classifies every implementation under `tests/cmake`, `scripts`, `cmake`
+and `.githooks` by responsibility. The `check` rows include the complete shared CMake/POSIX scanner, core ABI,
+JUnit, inventory, negative-control and hook helpers. Every physical line counts, including comments, blanks
+and an unterminated last line. Their sum multiplied by ten must be strictly less than the physical C/H lines
+under `src`; neither rounding nor an exemption for an older checker applies. Unclassified code fails first,
+so new compatibility parser and judge scripts cannot silently escape the numerator.
+
+Build/bootstrap operations, remote administration and release publication, fixture execution, packaged-output
+integration tests and the CI job router have individual reasons for exclusion in that file. The archive/floor
+tests still execute their positive and negative cases in `ci-release`; their responsibility is installed
+deliverable contents and loader compatibility. Registration and fixture construction are test cases rather
+than checker implementations. Core ABI policy and every shared assertion helper remain counted in full.
+`repository.cmake` dispatches the source policy checks to one POSIX scanner; established test names identify
+their faults. `policy.e2e_budget` independently counts every file under `tests/retroarch`, at most 300 lines.
 
 The `perf.gate.*` tests feed the instructions-per-frame comparison its edge cases: identical, exactly +1.00 %,
 +1.01 %, an allowed exception, unstable bases, no base and a missing measurement. `policy.publish_ref` and

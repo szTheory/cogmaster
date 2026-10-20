@@ -28,3 +28,4 @@ behavior|tests/cmake/hashes.cmake|Runs executable fixture behavior and emits mac
 behavior|tests/cmake/mailbox.cmake|Runs fixture and compares emulated RAM output
 behavior|tests/cmake/perf_compare.cmake|Compares measured executable performance observations
 behavior|tests/cmake/install_line.cmake|Executes the published installation command against packaged binaries
+behavior|tests/policy/budget_cases.cmake|Constructs synthetic checked trees and registers boundary and helper fixtures without implementing checker policy
