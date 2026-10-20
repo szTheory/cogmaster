@@ -13,3 +13,10 @@ abi.nofp_fixture	abi
 abi.symbols	abi
 abi.undefined	abi
 abi.undefined.self_test	abi
+vdp.sprites.gg_slots	portable,vdp
+vdp.sprites.intervals	portable,vdp
+vdp.sprites.priority	portable,vdp
+vdp.sprites.shapes	portable,vdp
+vdp.sprites.sms1_zoom	portable,vdp
+vdp.sprites.wrap_clip	portable,vdp
+vdp.sprites.zoom	portable,vdp
