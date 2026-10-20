@@ -1,4 +1,8 @@
 # cogmaster_probe through the public header alone, over synthetic images.
+add_executable(cogmaster-test-cartdb ${CMAKE_CURRENT_LIST_DIR}/test_cartdb.c)
+target_link_libraries(cogmaster-test-cartdb PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-cartdb)
+cogmaster_add_test(NAME cart.database COMMAND cogmaster-test-cartdb LABELS cart portable TIMEOUT 10)
 add_executable(cogmaster-test-cart ${CMAKE_CURRENT_LIST_DIR}/test_cart.c)
 target_link_libraries(cogmaster-test-cart PRIVATE cogmaster::cogmaster)
 set_target_properties(cogmaster-test-cart PROPERTIES

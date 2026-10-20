@@ -21,6 +21,7 @@ bus.halt_bound.ei_masked	bus,portable
 bus.halt_bound.ie_positive	bus,portable
 bus.hostile_vdp_loop	bus,portable
 bus.stamps	bus,portable
+cart.database	cart,portable
 cart.probe.branches	cart,portable
 cart.probe.pure	cart,portable
 cart.probe.sizes	cart,portable
