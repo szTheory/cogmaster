@@ -30,6 +30,7 @@
 #include "libretro.h"
 #include "palette.h"
 #include "sha256.h"
+#include "../fixtures/play.h"
 
 #define MAX_W 256u
 #define MAX_H 240u
@@ -178,6 +179,8 @@ static unsigned sample_nonzero;
 static unsigned batch_calls;
 static size_t batch_frames;
 static unsigned batch_nonzero;
+static unsigned content_frame, poll_calls;
+static int content_mode;
 
 static bool RETRO_CALLCONV env(unsigned cmd, void *data)
 {
@@ -236,14 +239,16 @@ static size_t RETRO_CALLCONV batch(const int16_t *data, size_t frames)
 
 static void RETRO_CALLCONV on_poll(void)
 {
+    poll_calls++;
 }
 
 static int16_t RETRO_CALLCONV input(unsigned port, unsigned device, unsigned index, unsigned id)
 {
-    (void)port;
-    (void)device;
-    (void)index;
-    (void)id;
+    if (content_mode && port == 0u && device == RETRO_DEVICE_JOYPAD && index == 0u &&
+        id == RETRO_DEVICE_ID_JOYPAD_B) {
+        CHECK_EQ_U64(poll_calls, content_frame);
+        return content_frame == 5u || content_frame == 6u || content_frame == 8u ? 1 : 0;
+    }
     return 0;
 }
 
@@ -352,6 +357,51 @@ static unsigned parse(const char *s)
     return (unsigned)strtoul(s, NULL, 10);
 }
 
+/* The same production module, owned ROM, script and independent pixels as
+   the runner. All scripted levels belong to this frontend. */
+static int content_test(const char *path, const char *digest)
+{
+    uint8_t image[32768];
+    FILE *f = fopen(path, "rb");
+    if (f == NULL) { return 1; }
+    size_t n = fread(image, 1u, sizeof image, f);
+    CHECK_EQ_U64(n, sizeof image);
+    CHECK_EQ_U64(fclose(f), 0u);
+    want_w = 256u; want_h = 192u;
+    content_mode = 1;
+    p_set_environment(env);
+    p_init();
+    set_callbacks();
+    struct retro_game_info game = {0};
+    game.data = image; game.size = n;
+    bool loaded = p_load_game(&game);
+    CHECK(loaded);
+    if (!loaded) { p_deinit(); return 1; }
+    for (content_frame = 1u; content_frame <= 14u; content_frame++) {
+        unsigned before = video_calls;
+        (void)run_one();
+        CHECK_EQ_U64(video_calls, before + 1u);
+        CHECK_EQ_U64(poll_calls, content_frame);
+        if (content_frame >= 4u) {
+            uint32_t scroll = content_frame >= 8u ? 2u : (content_frame >= 5u ? 1u : 0u);
+            for (uint32_t y = 0u; y < 192u; y++) {
+                for (uint32_t x = 0u; x < 256u; x++) {
+                    uint16_t got;
+                    if (!to_rgb444(y * 256u + x, &got) || got != play_pixel(x, y, scroll)) {
+                        CHECK_EQ_HEX(got, play_pixel(x, y, scroll));
+                        p_deinit(); return 1;
+                    }
+                }
+            }
+        }
+    }
+    char hex[65]; hash_frame(hex);
+    check_string("content runner digest", hex, digest);
+    CHECK_EQ_U64(video_bad, 0u);
+    p_unload_game(); p_deinit();
+    return check_failures != 0 ? 1 : 0;
+}
+
 int main(int argc, char **argv)
 {
     static unsigned char first[MAX_W * MAX_H * 4u];
@@ -365,6 +415,13 @@ int main(int argc, char **argv)
     unsigned run, aspect_w, aspect_h, bad_counts = 0;
     size_t total = 0;
 
+    if (argc == 5 && strcmp(argv[2], "content") == 0) {
+        if (!module_open(argv[1])) { return 1; }
+        resolve_all();
+        if (missing != NULL) { module_close(); return 1; }
+        int rc = content_test(argv[3], argv[4]);
+        module_close(); return rc;
+    }
     if (argc != 8 || (strcmp(argv[2], "xrgb8888") != 0 && strcmp(argv[2], "rgb565") != 0) ||
         strlen(argv[3]) != 64u) {
         fprintf(stderr, "usage: cogmaster-test-libretro-host <module> xrgb8888|rgb565 <sha256> "

@@ -21,6 +21,19 @@ if(TARGET cogmaster_libretro)
   set_target_properties(cogmaster-test-libretro-host PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
   cogmaster_warnings(cogmaster-test-libretro-host)
+  if(COGMASTER_FIXTURES)
+    # Fault prevented: the installed adapter refusing content or polling after a frame starts.
+    cogmaster_add_test(NAME libretro.host.content
+      COMMAND ${CMAKE_COMMAND} -DCASE=play -DNAME=boot_to_play
+        -DINPUT=${PROJECT_BINARY_DIR}/tests/play.input
+        -DIMAGE=${PROJECT_BINARY_DIR}/fixtures/boot_to_play.sms
+        -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+        -DORACLE=$<TARGET_FILE:cogmaster-test-play> -DRUN=$<TARGET_FILE:cogmaster-run>
+        -DHOST=$<TARGET_FILE:cogmaster-test-libretro-host> -DMODULE=$<TARGET_FILE:cogmaster_libretro>
+        "-DEMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}"
+        -P ${PROJECT_SOURCE_DIR}/tests/fixtures/tests.cmake
+      LABELS libretro portable TIMEOUT 60)
+  endif()
   # Fault prevented: the core RetroArch loads shows a frame, rate, geometry
   # or audio length other than the library's, or needs content to start.
   # The arguments are the pinned hash, the crop and the display aspect.

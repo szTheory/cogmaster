@@ -37,6 +37,13 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(NOT rc STREQUAL "0" OR NOT out MATCHES "${want}")
       message(FATAL_ERROR "native frame mismatch: exit ${rc}, ${out} ${err}")
     endif()
+    if(HOST)
+      execute_process(COMMAND ${EMULATOR} ${HOST} ${MODULE} content ${IMAGE} ${want}
+        RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+      if(NOT rc STREQUAL "0")
+        message(FATAL_ERROR "content host exit ${rc}: ${out} ${err}")
+      endif()
+    endif()
   elseif(CASE STREQUAL "image")
     # The runner's probe finds the header checksum good.
     execute_process(COMMAND ${EMULATOR} ${RUN} --probe ${IMAGE} RESULT_VARIABLE rc

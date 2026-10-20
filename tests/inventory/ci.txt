@@ -90,6 +90,7 @@ io.open_bus	io,portable
 io.port3e	io,portable
 io.port3f_region	io,portable
 io.port_dc_dd	io,portable
+libretro.host.content	libretro,portable
 libretro.host.gg	libretro,portable
 libretro.host.rgb565	libretro,portable
 libretro.host.xrgb8888	libretro,portable
