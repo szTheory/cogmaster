@@ -328,11 +328,16 @@ static void test_absolute_input(void)
     cogmaster_destroy(m);
 }
 
+#include "input_cases.h"
+
 static const struct {
     const char *name;
     void (*run)(void);
 } cases[] = {
     {"absolute_input", test_absolute_input},
+    {"pad_pins", test_pad_pins},
+    {"pause_history", test_pause_history},
+    {"lag_decode", test_lag_decode},
     {"decode_mirrors", test_decode_mirrors},
     {"gg_ports", test_gg_ports},
     {"open_bus", test_open_bus},
