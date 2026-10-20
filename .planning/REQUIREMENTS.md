@@ -27,7 +27,7 @@ arm64; "every platform" means all six plus the big-endian lane. Expected values 
 - [ ] **CPU-01**: `ctest -L vectors` runs the committed sample of the SingleStepTests `z80` set (the first 100 tests of each of the 1,604 files at `ebe1875d48f3`) and every test matches on final state (including MEMPTR, Q, R, IFF1/2, IM) and on every bus cycle; a nightly lane runs the full set.
 - [x] **CPU-02**: The bus is driven by the Z80 on the VDP-clock tick lattice (3 ticks per T-state, 684 per line); a test shows every bus access stamped at its data T-state and `run_frame` returning within one frame plus at most 69 ticks for a HALT/DI loop and for a hostile write loop.
 - [x] **CPU-03**: The Sega mapper (`$FFFC`–`$FFFF`, slot 0 first 1 KB fixed, on-cart RAM, bank shift), the no-mapper 32/48 KB layout and the Codemasters mapper pass register-level tests and the `mapper_sega` and `mapper_codemasters` fixtures built in CI with pinned WLA-DX v10.7; images are padded to 16 KB multiples and banks wrap.
-- [ ] **CPU-04**: Ports `$3E`, `$3F`, `$7E`, `$7F`, `$BE`, `$BF`, `$DC`, `$DD` and GG `$00`–`$06` decode per machine profile, region and TV detection paths return the profile's values, and the Pause NMI fires at the start of the last line; the `ports` fixture reports the values through the RAM mailbox.
+- [x] **CPU-04**: Ports `$3E`, `$3F`, `$7E`, `$7F`, `$BE`, `$BF`, `$DC`, `$DD` and GG `$00`–`$06` decode per machine profile, region and TV detection paths return the profile's values, and the Pause NMI fires at the start of the last line; the `ports` fixture reports the values through the RAM mailbox.
 - [ ] **CPU-05**: `cogmaster-run --probe` prints header fields, region, size, mapper guess, SHA-1, SHA-256, CRC-32 and the RetroAchievements MD5; `cogmaster-run --trace first-fault` prints the first fault (PC, opcode, address, width, device, frame, line, dot) for a ROM that touches an unmapped device; the loader fuzz target runs in a nightly lane and a bounded `fuzz.run` regression replays its seeds per PR.
 
 ### Games play in RetroArch
@@ -107,7 +107,7 @@ Later milestones. Each has a seed in `.planning/seeds/` that says when it comes 
 | CPU-01 | Phase 2 | Pending |
 | CPU-02 | Phase 2 | Complete |
 | CPU-03 | Phase 2 | Complete |
-| CPU-04 | Phase 2 | Pending |
+| CPU-04 | Phase 2 | Complete |
 | CPU-05 | Phase 2 | Pending |
 | GAME-01 | Phase 3 | Pending |
 | GAME-02 | Phase 3 | Pending |

@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 02
 current_phase_name: The CPU matches the public vectors
 status: executing
-stopped_at: Completed 02-14-PLAN.md
-last_updated: "2026-10-20T05:07:39.637Z"
+stopped_at: Completed 02-15-PLAN.md
+last_updated: "2026-10-20T05:17:15.469Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 02 execution started
-state_head: bfb38f74b159d8c1fee20a2566bbff9f61c373d2
+state_head: 65c266de1d76e42ca66f5f8be0909d08496ade43
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 29
-  completed_plans: 26
+  completed_plans: 27
   percent: 25
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 02 (The CPU matches the public vectors) — EXECUTING
-Plan: 15 of 17
+Plan: 16 of 17
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 02 execution started
 
@@ -84,6 +84,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P12 | 36min | 2 tasks | 19 files |
 | Phase 02 P13 | 50min | 3 tasks | 27 files |
 | Phase 02 P14 | 25min | 2 tasks | 11 files |
+| Phase 02 P15 | 7 min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -168,6 +169,8 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 02]: Fixtures finish no earlier than their second frame (wait for the VDP frame flag) so a one-frame run is a hang
 - [Phase 02]: mapper_codemasters has no TMR SEGA header; its mailbox test passes --machine sms through an optional MACHINE variable
 - [Phase 02]: A Codemasters slot-0 bank loop runs from a position-independent copy in work RAM at $C200
+- [Phase 02]: ports tv_loop rows span the documented approximate count to the frame-length count plus one loop: NTSC 1,923-1,928, PAL 2,287-2,303
+- [Phase 02]: A Game Gear fixture image is the SMS source assembled with FIXTURE_GG (region code 6), judged against the same rom's rows under profile gg
 
 ### Pending Todos
 
@@ -203,6 +206,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T05:07:39.577Z
-Stopped at: Completed 02-14-PLAN.md
+Last session: 2026-10-20T05:17:15.403Z
+Stopped at: Completed 02-15-PLAN.md
 Resume file: None
