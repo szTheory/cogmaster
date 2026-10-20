@@ -1,8 +1,7 @@
 #!/bin/sh
 # Shared scans and set comparisons; every failure names the original prevented fault.
 set -eu
-LC_ALL=C
-export LC_ALL
+export LC_ALL=C
 fail() { echo "$*" >&2; exit 1; }
 scan() { find "$1" -type f \( -name "$2" -o -name "${3-$2}" \) -exec awk "$program" {} +; }
 case $1 in

@@ -33,3 +33,4 @@ behavior|tests/policy/e2e_cases.cmake|Constructs hosted helper boundary fixtures
 behavior|tests/compat/tests.cmake|Executes quoted parser and runner predicate integrations and compares their observable outputs and generated documentation
 check|scripts/compat-common.sh|Shared bounded quoted ledger normalization and deterministic public documentation generation
 behavior|tests/compat/ratchet.cmake|Constructs independent ledger mutations and asserts observable protected-judge decisions
+check|scripts/compat-ratchet.sh|Trusted compatibility judge entry point with adjacent parser dependency

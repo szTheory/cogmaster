@@ -1,0 +1,2 @@
+# YYYY-MM-DD <id> <old-predicate> <reason words> behaviour-rev=<new revision> expires=YYYY-MM-DD
+# Names one unique passing base case; inclusive expiry, at most 60 days from the supplied judge date.

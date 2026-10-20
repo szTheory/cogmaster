@@ -6,7 +6,17 @@ statuses, mailbox completion and interrupt-driven HALT smoke, with static-displa
 controls. `compat.fixtures` executes each evaluated own-fixture row only after checking its admitted
 build digest and resolved board; the initial four evaluations cover two fixtures. Its public result
 CSV stays under the build tree. CC0 game identities start unknown and metadata membership proves
-no behavior. Private-library execution and passing-case protection are separate subsequent work.
+no behavior. Private-library execution is separate subsequent work.
+
+Passing compatibility cases are protected by `scripts/compat-ratchet.sh BASE HEAD ALLOW DATE BASE_REV HEAD_REV`.
+The adjacent shared parser normalizes ROM/profile/TV/board/video/devices/script path and SHA-256,
+frame and RAM address before comparison; expected bytes and hashes stay outside identity. Duplicate aliases
+reject. A missing pass, changed value, script digest, device or profile requires one dated exception naming
+the unique old passing predicate. Unchanged statuses, unknown transitions and fail-to-pass are allowed.
+Exceptions in `tests/compat/allow.txt` use `YYYY-MM-DD <id> <old-predicate> <reason words>
+behaviour-rev=<new revision> expires=YYYY-MM-DD` on one line. The revision must exceed the base and equal
+the head; the date cannot be future. Expiry is inclusive and at most 60 days after the supplied judge date.
+An ambiguous predicate matching multiple profiles rejects. Neither core code nor this judge reads a clock.
 
 `sh scripts/compat-common.sh normalize tests/compat/ledger.csv` emits canonical quoted CSV;
 `docs` emits this ledger page and `cases` emits validated CMake execution facts without title interpolation.

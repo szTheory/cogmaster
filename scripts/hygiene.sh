@@ -2,8 +2,7 @@
 # Faults prevented: private data, unlisted images/binaries, GPL code, unsafe GSD settings and commit identities.
 # Kept POSIX so both the commit hook and hosted dash execute the same scanner.
 set -eu
-LC_ALL=C
-export LC_ALL
+export LC_ALL=C
 git() { command git -c core.quotePath=false "$@"; }
 cd "$(git rev-parse --show-toplevel)"
 SELF=scripts/hygiene.sh
