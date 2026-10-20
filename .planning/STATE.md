@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 02
 current_phase_name: The CPU matches the public vectors
 status: executing
-stopped_at: Completed 02-12-PLAN.md
-last_updated: "2026-10-20T04:42:21.852Z"
+stopped_at: Completed 02-13-PLAN.md
+last_updated: "2026-10-20T04:59:09.028Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 02 execution started
-state_head: 9c8ecb0822cecd50e328c62f7f81b3db0214fb6d
+state_head: 9a7b4bb9ffebd9f5142001cc097c11c1e05b1806
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 29
-  completed_plans: 24
+  completed_plans: 25
   percent: 25
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 02 (The CPU matches the public vectors) — EXECUTING
-Plan: 13 of 17
+Plan: 14 of 17
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 02 execution started
 
@@ -82,6 +82,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P10 | 40min | 3 tasks | 21 files |
 | Phase 02 P11 | 9min | 3 tasks | 20 files |
 | Phase 02 P12 | 36min | 2 tasks | 19 files |
+| Phase 02 P13 | 50min | 3 tasks | 27 files |
 
 ## Accumulated Context
 
@@ -161,6 +162,9 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 02]: COGMASTER_FIXTURES is declared in CMakeLists.txt so bench's OFF is a used variable
 - [Phase 02]: hashes.cmake globs FIXTURES/*.sms sorted, so new fixtures join hashes.txt without edits
 - [Phase 02]: MSVC x64 __ImageBase allowed in abi.undefined: linker-defined jump-table base
+- [Phase 02]: cogmaster_peek returns a value above 255 (256) for no answer; undriven addresses peek $FF without counting or faulting
+- [Phase 02]: Mailbox judge order: magic, then status (hang), then CRC; CSV test column is '<id hex>:<name>'
+- [Phase 02]: Fixtures finish no earlier than their second frame (wait for the VDP frame flag) so a one-frame run is a hang
 
 ### Pending Todos
 
@@ -196,6 +200,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T04:42:21.794Z
-Stopped at: Completed 02-12-PLAN.md
+Last session: 2026-10-20T04:59:08.971Z
+Stopped at: Completed 02-13-PLAN.md
 Resume file: None
