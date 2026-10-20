@@ -150,6 +150,10 @@ ends one frame length after this one should have: the frames never drift. If `ou
 `cogmaster_run_result`, is not NULL it receives `stop`, always `COGMASTER_STOP_FRAME` in this release, and
 `overshoot_ticks`, the ticks run past the frame's end (always 0 for the test card).
 
+The Master System's Pause button reaches the CPU as on the console: a press raises the CPU's non-maskable interrupt
+at the start of the frame's last line, tick 611 of line 260 on NTSC and of line 311 on PAL, wherever in the frame it
+was pressed. The Game Gear has no Pause button.
+
 ## Frames
 
 The library keeps a field 256 dots wide; the test card and the 192-line mode use 192 of its lines. Each dot is

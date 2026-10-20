@@ -1,5 +1,6 @@
-/* The VDP's timing half: the beam events it raises, the control port, the
-   status byte and /INT. There is no renderer yet; the mode bits in R0 and
+/* The VDP's timing half: the beam events it raises (the frame interrupt
+   and the Pause NMI), the V and H counters, the control and data ports with
+   VRAM, CRAM and R0-R10, the status byte and /INT. There is no renderer yet; the mode bits in R0 and
    R1 are stored and the mode is treated as 192 lines.
 
    Time is in ticks, one per VDP clock; t is the tick in a 684-tick line,
@@ -10,6 +11,31 @@
 #include "internal.h"
 
 #define VDP_LINE_TICKS 684u
+
+/* The CPU sees the V counter step to the next line's value at tick 604
+   (SMS-VDP sections 4.2 and 4.9; SMS-SYSTEM section 2 measures "at or
+   after 599"). */
+#define VDP_VCOUNT_TICK 604u
+
+/* The 192-line V counter reads lines 0-218 as $00-$DA and the rest from $D5
+   on NTSC, lines 0-242 as $00-$F2 and the rest from $BA on PAL, so both
+   end at $FF (SMS-VDP section 4.4). */
+#define VDP_VCOUNT_JUMP_NTSC 0xDAu
+#define VDP_VCOUNT_BACK_NTSC 6u
+#define VDP_VCOUNT_JUMP_PAL 0xF2u
+#define VDP_VCOUNT_BACK_PAL 57u
+
+/* The H counter reads the upper 8 bits of the 9-bit pixel counter, which
+   jumps from pixel 295 to 466 at tick 592: $00-$93, then $E9-$FF (SMS-VDP
+   section 4.3, the formula of ares). */
+#define VDP_HCOUNT_JUMP 592u
+#define VDP_HCOUNT_SKIP 340u
+
+/* Pause: the console latches a press and the VDP asserts /NMI as /HSYNC
+   rises at tick 611 of the next-to-last line, which starts the frame's
+   last line (Charles MacDonald's logic analyser: "the /HSYNC edge 611 mclk
+   into line 260"; SMS-SYSTEM sections 2 and 7). */
+#define VDP_NMI_TICK 611u
 
 /* The frame interrupt: the pending flag rises at tick 607 of line 192, the
    first line after the 192-line active display, 4 ticks before /HSYNC rises
@@ -35,6 +61,7 @@
    section 2.2). */
 #define VDP_CODE_VRAM_READ 0u
 #define VDP_CODE_REGISTER 2u
+#define VDP_CODE_CRAM_WRITE 3u
 
 void cogmaster__vdp_reset(cogmaster *m, int power)
 {
@@ -65,11 +92,23 @@ static void vdp_irq(cogmaster *m)
                                 (v->reg[1] & VDP_R1_IE0) != 0u);
 }
 
+/* The line /NMI is asserted on. The Game Gear has no Pause button: in its
+   own mode Start is a port bit (SMS-SYSTEM section 7), so it has none. */
+static uint32_t vdp_nmi_line(const cogmaster *m)
+{
+    if (m->machine == COGMASTER_MACHINE_GG) {
+        return UINT32_MAX;
+    }
+    return cogmaster__frame_lines(m) - 2u;
+}
+
 uint32_t cogmaster__vdp_next_event(const cogmaster *m, uint32_t line, uint32_t t)
 {
-    (void)m;
     if (line == VDP_INT_LINE && t < VDP_INT_TICK) {
         return VDP_INT_TICK;
+    }
+    if (line == vdp_nmi_line(m) && t < VDP_NMI_TICK) {
+        return VDP_NMI_TICK;
     }
     return VDP_LINE_TICKS;
 }
@@ -79,7 +118,30 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t)
     if (line == VDP_INT_LINE && t == VDP_INT_TICK) {
         m->vdp.status = (uint8_t)(m->vdp.status | VDP_STATUS_FRAME);
         vdp_irq(m);
+    } else if (line == vdp_nmi_line(m) && t == VDP_NMI_TICK && m->vdp.pause) {
+        m->vdp.pause = 0u;
+        m->z80.nmi_pending = 1u;
     }
+}
+
+/* The V counter at the beam: the line's value until tick 604, then the next
+   line's. The mode is treated as 192 lines. */
+static uint8_t vdp_vcount(const cogmaster *m)
+{
+    uint32_t line = m->bus.line;
+    if (m->bus.t >= VDP_VCOUNT_TICK) {
+        line = line + 1u == cogmaster__frame_lines(m) ? 0u : line + 1u;
+    }
+    if (m->tv == COGMASTER_TV_PAL) {
+        return (uint8_t)(line > VDP_VCOUNT_JUMP_PAL ? line - VDP_VCOUNT_BACK_PAL : line);
+    }
+    return (uint8_t)(line > VDP_VCOUNT_JUMP_NTSC ? line - VDP_VCOUNT_BACK_NTSC : line);
+}
+
+static uint8_t vdp_hcount(const cogmaster *m)
+{
+    uint32_t t = m->bus.t;
+    return (uint8_t)((t >= VDP_HCOUNT_JUMP ? t + VDP_HCOUNT_SKIP : t) >> 2);
 }
 
 /* A status read returns the flags with the low bits set, then clears the
@@ -123,17 +185,49 @@ static void vdp_control_write(cogmaster *m, uint8_t b)
     }
 }
 
+/* Every data-port access clears the control latch and steps the address.
+   A read returns the read-ahead byte and refills it from VRAM at the
+   address the last access stepped to, so reads stream VRAM one byte
+   behind the address; a write stores the byte in CRAM under code 3, in VRAM under the
+   other codes, and in the read-ahead byte (SMS-VDP sections 2.2 and 2.3). */
+static uint8_t vdp_data_read(cogmaster *m)
+{
+    struct cogmaster__vdp *v = &m->vdp;
+    uint8_t b = v->buffer;
+    v->latch = 0u;
+    v->buffer = v->vram[v->addr];
+    v->addr = (uint16_t)((v->addr + 1u) & VDP_ADDR_MASK);
+    return b;
+}
+
+static void vdp_data_write(cogmaster *m, uint8_t b)
+{
+    struct cogmaster__vdp *v = &m->vdp;
+    v->latch = 0u;
+    if (v->code == VDP_CODE_CRAM_WRITE) {
+        v->cram[v->addr & (COGMASTER__CRAM_SIZE - 1u)] = b;
+    } else {
+        v->vram[v->addr] = b;
+    }
+    v->buffer = b;
+    v->addr = (uint16_t)((v->addr + 1u) & VDP_ADDR_MASK);
+}
+
 uint8_t cogmaster__vdp_read(cogmaster *m, uint32_t port)
 {
-    if (port == COGMASTER__VDP_CONTROL) {
-        return vdp_status_read(m);
+    switch (port) {
+    case COGMASTER__VDP_VCOUNT: return vdp_vcount(m);
+    case COGMASTER__VDP_HCOUNT: return vdp_hcount(m);
+    case COGMASTER__VDP_DATA: return vdp_data_read(m);
+    default: return vdp_status_read(m);
     }
-    return 0xFFu;
 }
 
 void cogmaster__vdp_write(cogmaster *m, uint32_t port, uint8_t v)
 {
     if (port == COGMASTER__VDP_CONTROL) {
         vdp_control_write(m, v);
+    } else if (port == COGMASTER__VDP_DATA) {
+        vdp_data_write(m, v);
     }
 }

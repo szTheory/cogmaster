@@ -257,7 +257,7 @@ static void test_data_port(void)
     CHECK_EQ_HEX(in(m, 0xBEu), 0x11);
     CHECK_EQ_HEX(in(m, 0xBEu), 0x22);
     CHECK_EQ_HEX(in(m, 0xBEu), 0x33);
-    CHECK_EQ_HEX(v->addr, 0x0001);
+    CHECK_EQ_HEX(v->addr, 0x0002);
     /* Code 3 writes CRAM, 32 bytes, and leaves VRAM alone. */
     uint8_t vram0 = v->vram[0x001F];
     control(m, 0x1Fu, 0xC0u);
@@ -266,13 +266,14 @@ static void test_data_port(void)
     CHECK_EQ_HEX(v->cram[31], 0x3F);
     CHECK_EQ_HEX(v->cram[0], 0x2A);
     CHECK_EQ_HEX(v->vram[0x001F], vram0);
-    /* Codes 0 and 2 write VRAM too. */
+    /* Codes 0 and 2 write VRAM too: code 0 has already stepped past its
+       read-ahead byte, and code 2 leaves its two bytes as the address. */
     control(m, 0x40u, 0x00u);
     out(m, 0xBEu, 0x5Du);
-    CHECK_EQ_HEX(v->vram[0x0040], 0x5D);
+    CHECK_EQ_HEX(v->vram[0x0041], 0x5D);
     control(m, 0x00u, 0x8Au);
     out(m, 0xBEu, 0x6Eu);
-    CHECK_EQ_HEX(v->vram[0x0000], 0x6E);
+    CHECK_EQ_HEX(v->vram[0x0A00], 0x6E);
     cogmaster_destroy(m);
 }
 

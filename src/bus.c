@@ -38,6 +38,7 @@ void cogmaster__bus_origin(cogmaster *m)
     m->ticks = 0u;
     m->frame = 0u;
     m->bus.at = 0u;
+    m->bus.vdp_at = 0u;
     m->bus.line = BUS_ORIGIN_LINE;
     m->bus.t = BUS_ORIGIN_TICK;
     m->bus.deadline = cogmaster__frame_ticks(m);
@@ -146,6 +147,7 @@ uint8_t cogmaster__bus_in(cogmaster *m, uint16_t port)
     cogmaster__bus_sync(m);
     int vp = vdp_port(m, port);
     if (vp >= 0) {
+        m->bus.vdp_at = m->ticks;
         return cogmaster__vdp_read(m, (uint32_t)vp);
     }
     return 0xFFu;
@@ -157,6 +159,7 @@ void cogmaster__bus_out(cogmaster *m, uint16_t port, uint8_t v)
     cogmaster__bus_sync(m);
     int vp = vdp_port(m, port);
     if (vp == COGMASTER__VDP_DATA || vp == COGMASTER__VDP_CONTROL) {
+        m->bus.vdp_at = m->ticks;
         cogmaster__vdp_write(m, (uint32_t)vp, v);
     }
 }
