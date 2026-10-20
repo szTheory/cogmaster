@@ -8,9 +8,9 @@ set_target_properties(cogmaster-test-bus PROPERTIES
 cogmaster_warnings(cogmaster-test-bus)
 
 # Fault prevented: a run_frame call that runs past its frame by more than one
-# step, or frames whose lengths drift from 179,208 ticks, so a jammed image
-# could hold the host past its frame time.
-foreach(case IN ITEMS halt_bound.di frame_origin)
+# step, or frames whose lengths drift from 179,208 ticks (214,092 on PAL), so
+# a jammed image could hold the host past its frame time.
+foreach(case IN ITEMS halt_bound.di halt_bound.di_pal frame_origin)
   cogmaster_add_test(NAME bus.${case} COMMAND cogmaster-test-bus ${case}
     LABELS bus portable TIMEOUT 10)
 endforeach()

@@ -56,7 +56,9 @@ program built against one header run with a library built from another.
 
 - A size below the struct's first released size returns `COGMASTER_STATUS_ERR_STRUCT_SIZE`.
 - A size between the first released size and the library's own: the fields the caller's header lacks read as
-  zero, and a field added later keeps the old behaviour when it is zero.
+  zero, and a field added later keeps the old behaviour when it is zero. A size equal to the first released size
+  reads every later field as zero, even one that lies in that struct's tail padding (`cogmaster_media.region` on
+  a 64-bit target).
 - A larger size from a newer header is accepted only if every byte past the library's struct is zero; otherwise
   the call returns `COGMASTER_STATUS_ERR_STRUCT_SIZE`.
 - A size above 4096 bytes returns `COGMASTER_STATUS_ERR_STRUCT_SIZE` whatever the bytes hold. Checking that the
@@ -117,6 +119,8 @@ cogmaster_media media;
 memset(&media, 0, sizeof media);
 media.size = (uint32_t)sizeof media;
 media.machine = COGMASTER_MACHINE_AUTO;   /* or COGMASTER_MACHINE_SMS2, COGMASTER_MACHINE_GG */
+media.region = COGMASTER_REGION_AUTO;     /* or COGMASTER_REGION_EXPORT, COGMASTER_REGION_JAPAN */
+media.tv = COGMASTER_TV_AUTO;             /* or COGMASTER_TV_NTSC, COGMASTER_TV_PAL */
 media.image = rom;                        /* the image bytes, or NULL for the test card */
 media.image_size = rom_size;              /* 0 with a NULL image */
 cogmaster_load(m, &media);
@@ -132,12 +136,15 @@ from your allocator, padded with `$FF` to a multiple of 16 KiB, so you may free 
 This release maps every image as a cartridge without a mapper: the first 48 KiB at `$0000` and 8 KiB of work RAM
 at `$C000`. The CPU starts as the console's BIOS leaves it (fast boot; no BIOS code runs): stack pointer `$DFF0`,
 `$AB` at `$C000` on the Master System, program counter 0. `machine` selects the profile: `COGMASTER_MACHINE_AUTO` (the default, a Master
-System II), `COGMASTER_MACHINE_SMS2` or `COGMASTER_MACHINE_GG`. Each `load` restarts the frame count and clears
-the fault record.
+System II), `COGMASTER_MACHINE_SMS2` or `COGMASTER_MACHINE_GG`. `region` selects the console's region:
+`COGMASTER_REGION_AUTO` (the default, export), `COGMASTER_REGION_EXPORT` or `COGMASTER_REGION_JAPAN`. `tv` selects
+the video standard: `COGMASTER_TV_AUTO` (the default, NTSC), `COGMASTER_TV_NTSC` or `COGMASTER_TV_PAL`. Each
+`load` restarts the frame count and clears the fault record.
 
-`cogmaster_run_frame` runs one frame, 179,208 ticks of the 10,738,635 Hz video clock. The CPU runs whole
-instructions, so a frame stops at the first instruction boundary at or after its end, at most 69 ticks late, and
-the next frame ends 179,208 ticks after this one should have: the frames never drift. If `out`, a
+`cogmaster_run_frame` runs one frame: 262 lines, 179,208 ticks of the 10,738,635 Hz video clock, on NTSC, and
+313 lines, 214,092 ticks of the 10,640,684.8 Hz (53,203,424 / 5) clock, on PAL. The CPU runs whole instructions,
+so a frame stops at the first instruction boundary at or after its end, at most 69 ticks late, and the next frame
+ends one frame length after this one should have: the frames never drift. If `out`, a
 `cogmaster_run_result`, is not NULL it receives `stop`, always `COGMASTER_STOP_FRAME` in this release, and
 `overshoot_ticks`, the ticks run past the frame's end (always 0 for the test card).
 
@@ -174,7 +181,7 @@ those bytes, not the `uint16_t` array, or a big-endian host gets a different dig
 `cogmaster_reset(m, kind)` restarts the loaded content without loading it again. Both kinds set the frame count
 and the tick count to zero, put the beam at the frame origin (line 192, tick 607, where a frame ends) as `load`
 does, start the CPU again from the fast-boot hand-off and clear the fault record. Every frame, the first after a
-load or reset included, is then exactly 179,208 ticks on NTSC:
+load or reset included, is then exactly 179,208 ticks on NTSC and 214,092 on PAL:
 
 - `COGMASTER_RESET_SOFT` (0) is the console's reset: memory the machine keeps across a reset, such as work RAM,
   stays as it was.
@@ -217,10 +224,13 @@ fault. The call works before a load too, and then reports `present` 0.
 | `crop_w`, `crop_h` | 256, 192 | 160, 144 |
 | `field_w`, `field_h` | 256, 192 | 256, 192 |
 | `max_w`, `max_h` | 256, 240 | 256, 240 |
-| `fps_num`, `fps_den` | 1,640,625 / 27,379 (about 59.92 Hz) | the same |
+| `fps_num`, `fps_den` | 1,640,625 / 27,379 (about 59.92 Hz); on PAL 13,300,856 / 267,615 (about 49.70 Hz) | 1,640,625 / 27,379 |
 | `par_num`, `par_den` | 8 / 7 | 6 / 5 |
+| `region` | the loaded region: `COGMASTER_REGION_EXPORT` or `COGMASTER_REGION_JAPAN` | the same |
+| `tv` | the loaded video standard: `COGMASTER_TV_NTSC` or `COGMASTER_TV_PAL` | `COGMASTER_TV_NTSC` |
 
-The pixel aspect ratio is reported, never applied. `max_w` × `max_h` sizes a buffer for any frame.
+`region` and `tv` are never AUTO: they report what `load` resolved. The pixel aspect ratio is reported, never
+applied. `max_w` × `max_h` sizes a buffer for any frame.
 
 ## Functions and statuses
 
@@ -235,7 +245,7 @@ changes no state; a failed `cogmaster_load` keeps the content that was loaded be
 | `COGMASTER_STATUS_ERR_NO_MEMORY` | 3 | `alloc` returned NULL in `cogmaster_create` (`*out` is left as it was) or in `cogmaster_load` |
 | `COGMASTER_STATUS_ERR_BUFFER_TOO_SMALL` | 4 | `pitch_bytes` is below `w × 2` for the rectangle requested |
 | `COGMASTER_STATUS_ERR_NO_CONTENT` | 5 | `cogmaster_run_frame`, `cogmaster_get_frame`, `cogmaster_get_info` or `cogmaster_reset` before a successful `cogmaster_load` |
-| `COGMASTER_STATUS_ERR_PROFILE_REJECTED` | 6 | `cogmaster_media.machine` is not one of the `COGMASTER_MACHINE_*` values |
+| `COGMASTER_STATUS_ERR_PROFILE_REJECTED` | 6 | `cogmaster_media.machine`, `region` or `tv` is not one of its `COGMASTER_MACHINE_*`, `COGMASTER_REGION_*` or `COGMASTER_TV_*` values |
 | `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE` | 7 | an image is below 1,024 or above 1,048,576 + 512 bytes; checked before every other load rule |
 
 | Function | Can return |
@@ -273,13 +283,15 @@ header does not know stays at the zero you wrote.
 Every public name, for reference: the opaque instance `cogmaster`; the types `cogmaster_status`,
 `cogmaster_allocator` (`alloc`, `free`, `user`), `cogmaster_config` (`size`, `allocator`), `cogmaster_versions`
 (`size`, `library_major`, `library_minor`, `library_patch`, `api`, `abi`, `behaviour`, `state`),
-`cogmaster_media` (`size`, `image`, `image_size`, `machine`), `cogmaster_info` (`size`, `machine`, `crop_w`,
-`crop_h`, `field_w`, `field_h`, `max_w`, `max_h`, `fps_num`, `fps_den`, `par_num`, `par_den`), `cogmaster_frame`
+`cogmaster_media` (`size`, `image`, `image_size`, `machine`, `region`, `tv`), `cogmaster_info` (`size`, `machine`,
+`crop_w`, `crop_h`, `field_w`, `field_h`, `max_w`, `max_h`, `fps_num`, `fps_den`, `par_num`, `par_den`, `region`,
+`tv`), `cogmaster_frame`
 (`size`, `pixels`, `pitch_bytes`, `flags`, `x`, `y`, `w`, `h`, `field_h`, `backdrop_rgb444`) and
 `cogmaster_run_result` (`size`, `stop`, `overshoot_ticks`) and `cogmaster_fault` (`size`, `present`, `frame`,
 `line`, `dot`, `pc`, `addr`, `opcode`, `width`, `device`, `kind`); the functions `cogmaster_get_versions`,
 `cogmaster_create`, `cogmaster_destroy`, `cogmaster_load`, `cogmaster_run_frame`, `cogmaster_get_frame`,
 `cogmaster_get_info`, `cogmaster_reset` and `cogmaster_get_fault`; the constants `COGMASTER_MACHINE_AUTO`,
-`COGMASTER_MACHINE_SMS2`, `COGMASTER_MACHINE_GG`, `COGMASTER_STOP_FRAME`, `COGMASTER_FRAME_FULL_FIELD`,
+`COGMASTER_MACHINE_SMS2`, `COGMASTER_MACHINE_GG`, `COGMASTER_REGION_AUTO`, `COGMASTER_REGION_EXPORT`,
+`COGMASTER_REGION_JAPAN`, `COGMASTER_TV_AUTO`, `COGMASTER_TV_NTSC`, `COGMASTER_TV_PAL`, `COGMASTER_STOP_FRAME`, `COGMASTER_FRAME_FULL_FIELD`,
 `COGMASTER_RESET_SOFT` and `COGMASTER_RESET_POWER`, the eight `COGMASTER_STATUS_*` values above and the
 version macros above.

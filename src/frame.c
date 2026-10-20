@@ -48,9 +48,10 @@ cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out)
         }
         /* The card is exactly one frame: the beam ends where it began. */
         m->frame++;
-        m->ticks += COGMASTER__TICKS_PER_FRAME_NTSC;
-        m->bus.at += COGMASTER__TICKS_PER_FRAME_NTSC;
-        m->bus.deadline += COGMASTER__TICKS_PER_FRAME_NTSC;
+        uint32_t ticks = cogmaster__frame_ticks(m);
+        m->ticks += ticks;
+        m->bus.at += ticks;
+        m->bus.deadline += ticks;
     }
     if (out != NULL) {
         cogmaster_run_result r;

@@ -55,6 +55,41 @@ int main(void)
     CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
     CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
 
+    /* Region and TV default to an export console on an NTSC set. */
+    CHECK_EQ_U64(COGMASTER_REGION_AUTO, 0);
+    CHECK_EQ_U64(COGMASTER_REGION_EXPORT, 1);
+    CHECK_EQ_U64(COGMASTER_REGION_JAPAN, 2);
+    CHECK_EQ_U64(COGMASTER_TV_AUTO, 0);
+    CHECK_EQ_U64(COGMASTER_TV_NTSC, 1);
+    CHECK_EQ_U64(COGMASTER_TV_PAL, 2);
+    cogmaster_info info;
+    memset(&info, 0, sizeof info);
+    info.size = (uint32_t)sizeof info;
+    media.region = COGMASTER_REGION_AUTO;
+    media.tv = COGMASTER_TV_AUTO;
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster_get_info(m, &info), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(info.region, COGMASTER_REGION_EXPORT);
+    CHECK_EQ_U64(info.tv, COGMASTER_TV_NTSC);
+
+    /* A European console: a 50 Hz frame. */
+    media.region = COGMASTER_REGION_EXPORT;
+    media.tv = COGMASTER_TV_PAL;
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster_get_info(m, &info), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(info.tv, COGMASTER_TV_PAL);
+    CHECK_EQ_U64(info.fps_num, 13300856);
+    CHECK_EQ_U64(info.fps_den, 267615);
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+
+    /* A Japanese console on an NTSC set. */
+    media.region = COGMASTER_REGION_JAPAN;
+    media.tv = COGMASTER_TV_NTSC;
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster_get_info(m, &info), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(info.region, COGMASTER_REGION_JAPAN);
+    CHECK_EQ_U64(info.fps_num, 1640625);
+
     cogmaster_destroy(m);
     CHECK_DONE();
 }

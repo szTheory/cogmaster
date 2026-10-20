@@ -21,8 +21,12 @@ typedef struct cogmaster__rect {
 } cogmaster__rect;
 cogmaster__rect cogmaster__crop(uint32_t machine);
 
-/* One NTSC frame is 262 lines of 684 ticks (ARCHITECTURE section 2). */
+/* A frame is 262 lines of 684 ticks on NTSC and 313 on PAL (ARCHITECTURE
+   section 2, SMS-SYSTEM section 1). */
+#define COGMASTER__LINES_NTSC 262u
+#define COGMASTER__LINES_PAL 313u
 #define COGMASTER__TICKS_PER_FRAME_NTSC 179208u
+#define COGMASTER__TICKS_PER_FRAME_PAL 214092u
 
 /* The largest pitch get_frame accepts, so a row offset stays inside a 32-bit
    size_t. */
@@ -75,7 +79,7 @@ enum {
 struct cogmaster__bus {
     uint64_t deadline; /* the tick the current frame ends at */
     uint64_t at;       /* the tick line and t describe */
-    uint32_t line;     /* 0 to 261 */
+    uint32_t line;     /* 0 to 261 (NTSC) or 312 (PAL) */
     uint32_t t;        /* tick in the line, 0 to 683 */
 };
 
@@ -96,6 +100,8 @@ struct cogmaster {
     uint64_t frame;                /* frames run since load */
     uint64_t ticks;                /* ticks run since load */
     uint32_t machine;              /* resolved machine: SMS2 or GG; valid while loaded */
+    uint32_t region;               /* resolved region: EXPORT or JAPAN; valid while loaded */
+    uint32_t tv;                   /* resolved TV: NTSC or PAL; valid while loaded */
     uint32_t loaded;               /* 1 after a successful load */
     struct cogmaster__counters counters;
     uint32_t fault_present;        /* 1 once a fault is recorded */
@@ -134,7 +140,11 @@ _Static_assert(offsetof(cogmaster_media, size) == 0, "media.size");
 _Static_assert(offsetof(cogmaster_media, image) == COGMASTER__P, "media.image");
 _Static_assert(offsetof(cogmaster_media, image_size) == 2 * COGMASTER__P, "media.image_size");
 _Static_assert(offsetof(cogmaster_media, machine) == 3 * COGMASTER__P, "media.machine");
-_Static_assert(sizeof(cogmaster_media) == 4 * COGMASTER__P, "media size");
+_Static_assert(offsetof(cogmaster_media, region) == 3 * COGMASTER__P + 4, "media.region");
+_Static_assert(offsetof(cogmaster_media, tv) == 3 * COGMASTER__P + 8, "media.tv");
+/* 3P + 12 bytes rounded up to a multiple of P: 40 on 64-bit, 24 on 32-bit. */
+_Static_assert(sizeof(cogmaster_media) == (4 * COGMASTER__P + 11) / COGMASTER__P * COGMASTER__P,
+               "media size");
 
 _Static_assert(offsetof(cogmaster_info, size) == 0, "info.size");
 _Static_assert(offsetof(cogmaster_info, machine) == 4, "info.machine");
@@ -148,7 +158,9 @@ _Static_assert(offsetof(cogmaster_info, fps_num) == 32, "info.fps_num");
 _Static_assert(offsetof(cogmaster_info, fps_den) == 36, "info.fps_den");
 _Static_assert(offsetof(cogmaster_info, par_num) == 40, "info.par_num");
 _Static_assert(offsetof(cogmaster_info, par_den) == 44, "info.par_den");
-_Static_assert(sizeof(cogmaster_info) == 48, "info size");
+_Static_assert(offsetof(cogmaster_info, region) == 48, "info.region");
+_Static_assert(offsetof(cogmaster_info, tv) == 52, "info.tv");
+_Static_assert(sizeof(cogmaster_info) == 56, "info size");
 
 _Static_assert(offsetof(cogmaster_frame, size) == 0, "frame.size");
 _Static_assert(offsetof(cogmaster_frame, pixels) == COGMASTER__P, "frame.pixels");
@@ -192,9 +204,9 @@ _Static_assert(sizeof(cogmaster_fault) == 32, "fault size");
 #define COGMASTER__FIRST_SIZE_RUN_RESULT 12u
 #define COGMASTER__FIRST_SIZE_FAULT 32u
 _Static_assert(COGMASTER__FIRST_SIZE_CONFIG == sizeof(cogmaster_config), "config first size");
-_Static_assert(COGMASTER__FIRST_SIZE_MEDIA == sizeof(cogmaster_media), "media first size");
+_Static_assert(COGMASTER__FIRST_SIZE_MEDIA == 4 * COGMASTER__P, "media first size");
 _Static_assert(COGMASTER__FIRST_SIZE_FRAME == sizeof(cogmaster_frame), "frame first size");
-_Static_assert(COGMASTER__FIRST_SIZE_INFO == sizeof(cogmaster_info), "info first size");
+_Static_assert(COGMASTER__FIRST_SIZE_INFO == offsetof(cogmaster_info, region), "info first size");
 _Static_assert(COGMASTER__FIRST_SIZE_VERSIONS == sizeof(cogmaster_versions), "versions first size");
 _Static_assert(COGMASTER__FIRST_SIZE_RUN_RESULT == sizeof(cogmaster_run_result),
                "run_result first size");
@@ -224,6 +236,10 @@ uint32_t cogmaster__crc32(uint32_t crc, const uint8_t *p, size_t n);
 /* The beam at the frame origin with ticks 0 and the first frame's deadline
    one frame away. Load and both resets call it. */
 void cogmaster__bus_origin(cogmaster *m);
+
+/* The loaded TV's frame length in ticks and in lines. */
+uint32_t cogmaster__frame_ticks(const cogmaster *m);
+uint32_t cogmaster__frame_lines(const cogmaster *m);
 
 /* Brings the beam up to m->ticks. */
 void cogmaster__bus_sync(cogmaster *m);

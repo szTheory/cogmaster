@@ -103,6 +103,19 @@ void cogmaster_destroy(cogmaster *m)
     a.free(a.user, m, sizeof *m);
 }
 
+/* A uint32_t media field at off, or 0 (AUTO) when the caller's size tag
+   does not cover it. A tag at the first released size reads every later
+   field as 0, even one that sits in that struct's tail padding. */
+static uint32_t media_field(const cogmaster_media *media, size_t off)
+{
+    uint32_t size = size_tag(media);
+    uint32_t v = 0u;
+    if (size > COGMASTER__FIRST_SIZE_MEDIA && off + sizeof v <= size) {
+        memcpy(&v, (const uint8_t *)media + off, sizeof v);
+    }
+    return v;
+}
+
 cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
 {
     if (m == NULL || media == NULL) {
@@ -133,6 +146,14 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     default:
         return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
     }
+    /* AUTO is an export console on an NTSC set. */
+    uint32_t region = media_field(media, offsetof(cogmaster_media, region));
+    uint32_t tv = media_field(media, offsetof(cogmaster_media, tv));
+    if (region > COGMASTER_REGION_JAPAN || tv > COGMASTER_TV_PAL) {
+        return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
+    }
+    region = region == COGMASTER_REGION_AUTO ? COGMASTER_REGION_EXPORT : region;
+    tv = tv == COGMASTER_TV_AUTO ? COGMASTER_TV_NTSC : tv;
     /* Every check is done; only the copy can still fail, and it touches
        nothing of the instance until it has succeeded. */
     struct cogmaster__cart cart;
@@ -145,6 +166,8 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     }
     cogmaster__cart_install(m, &cart);
     m->machine = machine;
+    m->region = region;
+    m->tv = tv;
     m->loaded = 1u;
     memset(&m->counters, 0, sizeof m->counters);
     m->fault_present = 0u;
@@ -175,9 +198,17 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out)
     info.field_h = COGMASTER__FIELD_H;
     info.max_w = COGMASTER__FIELD_W;
     info.max_h = COGMASTER__FIELD_MAX_H;
-    /* 179,208 ticks of 10,738,635 Hz per frame (ARCHITECTURE section 2). */
-    info.fps_num = 1640625u;
-    info.fps_den = 27379u;
+    info.region = m->region;
+    info.tv = m->tv;
+    /* NTSC: 179,208 ticks of 10,738,635 Hz per frame (ARCHITECTURE section
+       2). PAL: 214,092 ticks of 53,203,424 / 5 Hz (SMS-SYSTEM C2), reduced. */
+    if (m->tv == COGMASTER_TV_PAL) {
+        info.fps_num = 13300856u;
+        info.fps_den = 267615u;
+    } else {
+        info.fps_num = 1640625u;
+        info.fps_den = 27379u;
+    }
     cogmaster__rect crop = cogmaster__crop(m->machine);
     info.crop_w = crop.w;
     info.crop_h = crop.h;

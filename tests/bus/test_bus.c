@@ -9,6 +9,7 @@
 #include "../check.h"
 
 #define TICKS_PER_FRAME 179208u
+#define TICKS_PER_FRAME_PAL 214092u
 #define ORIGIN_LINE 192u
 #define ORIGIN_TICK 607u
 #define MAX_OVERSHOOT 69u
@@ -29,9 +30,9 @@ static void test_free(void *user, void *ptr, size_t size)
     free(ptr);
 }
 
-/* A new Master System instance running prog, padded with $00 to 1 KiB, the
-   smallest image accepted. */
-static cogmaster *load(const uint8_t *prog, size_t n)
+/* A new Master System instance on a tv set running prog, padded with $00 to
+   1 KiB, the smallest image accepted. */
+static cogmaster *load_tv(const uint8_t *prog, size_t n, uint32_t tv)
 {
     cogmaster_config cfg;
     memset(&cfg, 0, sizeof cfg);
@@ -51,8 +52,14 @@ static cogmaster *load(const uint8_t *prog, size_t n)
     media.image = image;
     media.image_size = sizeof image;
     media.machine = COGMASTER_MACHINE_SMS2;
+    media.tv = tv;
     CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
     return m;
+}
+
+static cogmaster *load(const uint8_t *prog, size_t n)
+{
+    return load_tv(prog, n, COGMASTER_TV_AUTO);
 }
 
 static cogmaster_run_result run(cogmaster *m)
@@ -78,10 +85,10 @@ static void expect_origin(const char *what, const cogmaster *m)
 /* DI; HALT runs ten frames: each stops at the frame with at most 69 ticks
    over, the overshoot is charged to the next frame, so the total is ten
    frames plus the last overshoot, and the CPU is still halted. */
-static void test_halt_bound_di(void)
+static void halt_bound_di(uint32_t tv, uint64_t frame_ticks)
 {
     static const uint8_t prog[] = {0xF3u, 0x76u};
-    cogmaster *m = load(prog, sizeof prog);
+    cogmaster *m = load_tv(prog, sizeof prog, tv);
     uint32_t overshoot = 0u;
     for (uint32_t i = 0; i < 10u; i++) {
         cogmaster_run_result r = run(m);
@@ -89,7 +96,7 @@ static void test_halt_bound_di(void)
         CHECK(r.overshoot_ticks <= MAX_OVERSHOOT);
         overshoot = r.overshoot_ticks;
     }
-    CHECK_EQ_U64(m->ticks, 10u * TICKS_PER_FRAME + overshoot);
+    CHECK_EQ_U64(m->ticks, 10u * frame_ticks + overshoot);
     CHECK_EQ_U64(m->frame, 10);
     CHECK_EQ_U64(m->z80.halted, 1);
     CHECK_EQ_U64(m->z80.iff1, 0);
@@ -98,6 +105,17 @@ static void test_halt_bound_di(void)
     CHECK_EQ_U64(m->bus.line, ORIGIN_LINE);
     CHECK_EQ_U64(m->bus.t, ORIGIN_TICK + overshoot);
     cogmaster_destroy(m);
+}
+
+static void test_halt_bound_di(void)
+{
+    halt_bound_di(COGMASTER_TV_AUTO, TICKS_PER_FRAME);
+}
+
+/* The same under PAL: 313 lines, so 214,092 ticks a frame. */
+static void test_halt_bound_di_pal(void)
+{
+    halt_bound_di(COGMASTER_TV_PAL, TICKS_PER_FRAME_PAL);
 }
 
 /* Load and both resets put the beam at the frame origin with ticks 0. */
@@ -159,6 +177,7 @@ static const struct {
     {"fault.ed_undefined", test_fault_ed_undefined},
     {"frame_origin", test_frame_origin},
     {"halt_bound.di", test_halt_bound_di},
+    {"halt_bound.di_pal", test_halt_bound_di_pal},
 };
 
 int main(int argc, char **argv)

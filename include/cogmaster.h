@@ -30,6 +30,14 @@ typedef uint32_t cogmaster_status;
 #define COGMASTER_MACHINE_SMS2 1u
 #define COGMASTER_MACHINE_GG 2u
 
+#define COGMASTER_REGION_AUTO 0u
+#define COGMASTER_REGION_EXPORT 1u
+#define COGMASTER_REGION_JAPAN 2u
+
+#define COGMASTER_TV_AUTO 0u
+#define COGMASTER_TV_NTSC 1u
+#define COGMASTER_TV_PAL 2u
+
 #define COGMASTER_STOP_FRAME 0u
 
 #define COGMASTER_FRAME_FULL_FIELD 1u
@@ -61,6 +69,8 @@ typedef struct cogmaster_media {
     const void *image; /* NULL with image_size 0: the built-in test card */
     size_t image_size;
     uint32_t machine; /* COGMASTER_MACHINE_* */
+    uint32_t region;  /* COGMASTER_REGION_* */
+    uint32_t tv;      /* COGMASTER_TV_* */
 } cogmaster_media;
 
 typedef struct cogmaster_info {
@@ -71,6 +81,7 @@ typedef struct cogmaster_info {
     uint32_t max_w, max_h;
     uint32_t fps_num, fps_den;
     uint32_t par_num, par_den;
+    uint32_t region, tv;
 } cogmaster_info;
 
 typedef struct cogmaster_frame {

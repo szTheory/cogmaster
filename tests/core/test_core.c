@@ -421,13 +421,13 @@ static uint8_t *tagged(const void *proto, uint32_t ours, uint32_t size)
     return b;
 }
 
-/* The input rule for one struct: below its size or above 4096 is
-   ERR_STRUCT_SIZE without reading past the tag; a larger struct is OK only
-   when every byte past ours is zero. */
-static void check_input(const char *what, const void *proto, uint32_t ours,
+/* The input rule for one struct: below its first released size or above
+   4096 is ERR_STRUCT_SIZE without reading past the tag; a larger struct is
+   OK only when every byte past ours is zero. */
+static void check_input(const char *what, const void *proto, uint32_t first, uint32_t ours,
                         cogmaster_status (*call)(void *))
 {
-    const uint32_t small[] = {0u, ours - 1u};
+    const uint32_t small[] = {0u, first - 1u};
     for (uint32_t i = 0; i < 2u; i++) {
         expect_status(what, small[i], call(tagged(proto, ours, small[i])),
                       COGMASTER_STATUS_ERR_STRUCT_SIZE);
@@ -447,13 +447,15 @@ static void check_input(const char *what, const void *proto, uint32_t ours,
     expect_status(what, TAG_MAX, call(tagged(proto, ours, TAG_MAX)), COGMASTER_STATUS_OK);
 }
 
-/* The output rule for one struct: below its size is ERR_STRUCT_SIZE with the
-   struct untouched; any larger size is OK with only ours bytes written. */
-static void check_output(const char *what, uint32_t ours, cogmaster_status (*call)(void *))
+/* The output rule for one struct: below its first released size is
+   ERR_STRUCT_SIZE with the struct untouched; any larger size is OK with only
+   ours bytes written. */
+static void check_output(const char *what, uint32_t first, uint32_t ours,
+                         cogmaster_status (*call)(void *))
 {
     static uint8_t before[TAG_BUF];
     uint8_t *b = (uint8_t *)tag_buf;
-    const uint32_t small[] = {0u, ours - 1u};
+    const uint32_t small[] = {0u, first - 1u};
     for (uint32_t i = 0; i < 2u; i++) {
         memset(b, POISON, TAG_BUF);
         memcpy(b, &small[i], sizeof small[i]);
@@ -556,14 +558,14 @@ static void test_size_tags(void)
     CHECK_EQ_U64(cogmaster_run_frame(NULL, &result), COGMASTER_STATUS_ERR_ARGUMENT);
     CHECK_EQ_U64(cogmaster_run_frame(shared, NULL), COGMASTER_STATUS_OK);
 
-    check_input("config", &cfg, (uint32_t)sizeof cfg, call_create);
-    check_input("media", &media, (uint32_t)sizeof media, call_load);
+    check_input("config", &cfg, 4u * P, (uint32_t)sizeof cfg, call_create);
+    check_input("media", &media, 4u * P, (uint32_t)sizeof media, call_load);
     run_frames(shared, 1);
-    check_input("frame", &io, (uint32_t)sizeof io, call_get_frame);
-    check_output("info", (uint32_t)sizeof info, call_get_info);
-    check_output("versions", (uint32_t)sizeof versions, call_get_versions);
-    check_output("run_result", (uint32_t)sizeof result, call_run_frame);
-    check_output("fault", (uint32_t)sizeof(cogmaster_fault), call_get_fault);
+    check_input("frame", &io, 2u * P + 32u, (uint32_t)sizeof io, call_get_frame);
+    check_output("info", 48u, (uint32_t)sizeof info, call_get_info);
+    check_output("versions", 32u, (uint32_t)sizeof versions, call_get_versions);
+    check_output("run_result", 12u, (uint32_t)sizeof result, call_run_frame);
+    check_output("fault", 32u, (uint32_t)sizeof(cogmaster_fault), call_get_fault);
     cogmaster_destroy(shared);
     shared = NULL;
 }
