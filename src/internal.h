@@ -138,6 +138,7 @@ struct cogmaster__cart {
     uint32_t crc32;    /* of the image after any copier header, before padding */
     uint32_t board;    /* COGMASTER__BOARD_*, 0 for the test card */
     uint32_t persistence, persistent_size, persistence_geometry;
+    uint64_t generation;
 };
 
 /* Boards, as the probe guesses them. 0 is no supported board. */
@@ -431,6 +432,8 @@ cogmaster_status cogmaster__cart_copy(cogmaster *m, const uint8_t *image, size_t
 
 /* Frees the instance's image, if any, and installs c (which may be empty). */
 void cogmaster__cart_install(cogmaster *m, const struct cogmaster__cart *c);
+uint32_t cogmaster__battery_length(const cogmaster *m);
+void cogmaster__battery_write(cogmaster *m, uint32_t offset, uint8_t value);
 
 /* The mapper. read and write take an address below $C000; write also takes
    the Sega registers at $FFFC-$FFFF, which the bus stores in work RAM too.

@@ -149,3 +149,9 @@ if(COGMASTER_NOFP)
       -P ${abi_scripts}/expect_fail.cmake
     LABELS abi TIMEOUT 30)
 endif()
+
+# Fault prevented: battery API tags, knowledge and status values changing silently.
+add_executable(cogmaster-test-api-v6 ${PROJECT_SOURCE_DIR}/tests/api/v6.c)
+target_link_libraries(cogmaster-test-api-v6 PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-api-v6)
+cogmaster_add_test(NAME abi.api_v6 COMMAND cogmaster-test-api-v6 LABELS abi portable TIMEOUT 10)

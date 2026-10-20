@@ -25,3 +25,13 @@ The ordinary Sega mapper remains bounded with its existing power-of-two allocati
 is authorized for this identity. The declaration never becomes a 24,575 mask, guessed modulo or truncation
 of physical RAM. Persistence consumers must refuse this geometry explicitly. The supported owned fixture
 provides the battery-continuation path independently. This disposition can change only with board evidence.
+
+## Persistent writes
+
+The Sega RAM window selects a 16 KiB bank with $FFFC bit 2 and enables RAM with bit 3.
+For supported 8/16/32 KiB boards, unwired address bits mirror the physical power-of-two RAM
+(SMS-CARTRIDGES-AND-PERIPHERALS section 2.1). Codemasters enables its 8 KiB window at
+A000–BFFF with bit 7 of the 4000 register (section 2.2). Translation uses physical RAM
+geometry first; only an offset in the separately classified persistent extent counts as a
+persistent write. Counting same-value writes makes the generation independent of value comparisons.
+This software persistence contract does not infer battery presence from mapper enable writes.

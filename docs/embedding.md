@@ -31,14 +31,14 @@ controls. RetroArch Restart calls SOFT on SMS and POWER on GG; Select changes on
 Reset level and cannot restart the CPU. Both restart kinds preserve cartridge RAM.
 The experimental flag remains enabled while the background tracer is expanded.
 API version 4 appends SMS1 and unsupported-video fault constants; all earlier
-values and struct layouts are retained. Behaviour revision 9 adds pin-output mixing, export-SMS1-only Reset
-and held-reconnect Pause suppression to native GG and completed-field geometry. The renderer includes independent line
+values and struct layouts are retained. Behaviour revision 10 adds classified battery write generations.
+The input model includes pin-output mixing, export-SMS1-only Reset and held-reconnect Pause suppression. The renderer includes independent line
 IRQs, six mode/TV V-counter sequences, the translated H coordinate and TH capture
-to the sprite/background semantics. State format 9 saves native LCD and palette-latch state,
+to the sprite/background semantics. State format 10 saves battery generations and native LCD and palette-latch state,
 completed pixels/height/backdrop alongside the line counter
 and pending source, rolling NTSC-240 phase and held H value alongside the sprite
 slots, dot cursor, scroll/display latches and last driven bus byte, so older state
-bytes are refused. The API and ABI layouts are unchanged.
+bytes are refused. API version 6 appends the battery query; existing ABI layouts remain unchanged.
 
 ## Getting it
 
@@ -403,6 +403,7 @@ changes no state; a failed `cogmaster_load` keeps the content that was loaded be
 | `COGMASTER_STATUS_ERR_NO_CONTENT` | 5 | `cogmaster_run_frame`, `cogmaster_get_frame`, `cogmaster_get_info` or `cogmaster_reset` before a successful `cogmaster_load` |
 | `COGMASTER_STATUS_ERR_PROFILE_REJECTED` | 6 | `cogmaster_media.machine`, `region` or `tv` is not one of its `COGMASTER_MACHINE_*`, `COGMASTER_REGION_*` or `COGMASTER_TV_*` values, or the pair was never made: `COGMASTER_TV_PAL` with `COGMASTER_MACHINE_GG` or with `COGMASTER_REGION_JAPAN` |
 | `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE` | 7 | an image is below 1,024 or above 1,048,576 + 512 bytes; checked before every other load rule |
+| `COGMASTER_STATUS_ERR_SAVE_SIZE` | 9 | raw save exceeds the classified persistent length |
 | `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD` | 8 | the image is on a cartridge board the library does not emulate, or is an 8 KiB Game Gear image (the X-Terminator cheat device) |
 
 | Function | Can return |
@@ -476,3 +477,24 @@ aspect without changing native emulation or its hashes. These options take effec
 on the next frame. Machine, region/timing and Game Gear mode options require content
 reload. SMS PAL uses PAR 2950000:2128137 and exact rational silence pacing (965 or
 966 stereo frames at 48 kHz); NTSC delivers 801 or 802.
+
+## Battery media
+
+`cogmaster_get_battery` fills `cogmaster_battery` (`size`, `data`, `length`, `knowledge`,
+`generation`). Set `size` to `sizeof(cogmaster_battery)`; a smaller tag is refused without
+changing the output or instance. Larger outputs retain their unknown tail. Before load it
+returns `COGMASTER_STATUS_ERR_NO_CONTENT`.
+
+`COGMASTER_BATTERY_KNOWN` exposes exactly the classified persistent bytes from load, before
+RAM is enabled. Its writable pointer and length stay fixed through frames, SOFT and POWER
+resets until the next successful load or destruction. Fresh bytes are FF. `COGMASTER_BATTERY_NONE`
+means known nonbattery content (including the test card); `COGMASTER_BATTERY_UNKNOWN` means
+unidentified persistence; `COGMASTER_BATTERY_UNSUPPORTED` means known battery with unsupported
+geometry. These three expose NULL, zero length and zero generation, never guessed storage.
+
+The uint64 generation starts at zero and increments once modulo 2^64 per CPU-mapped persistent
+write, including a same-value write. Reads, mapper register writes, disabled cartridge writes,
+volatile writes and direct host writes do not increment it. Both resets preserve bytes and
+generation. Internal states include and validate the generation, allowing only zero without
+supported persistence. Hosts compare generations with their last successful flush snapshot;
+acknowledge only after replacement succeeds. File persistence belongs to the host.

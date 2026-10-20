@@ -276,6 +276,8 @@ static void mapper_io(struct cogmaster__sio *io, cogmaster *m)
     struct cogmaster__mapper *p = &m->mapper;
     uint32_t board = m->cart.board;
     fixed(io, "mapper_board", board, 1u);
+    cogmaster__sio_u64(io, "battery_generation", &m->cart.generation, 0u,
+                       cogmaster__battery_length(m) != 0u ? UINT64_MAX : 0u);
     uint8_t ctrl_max = board == COGMASTER__BOARD_SEGA          ? UINT8_MAX
                        : board == COGMASTER__BOARD_CODEMASTERS ? 0x80u
                                                                : 0u;

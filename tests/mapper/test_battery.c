@@ -3,7 +3,7 @@
 #include "state.h"
 #include "../check.h"
 
-static uint8_t image[65536], saved[300000], after[300000];
+static uint8_t image[65536], saved[400000], after[400000];
 static void *allocate(void *u, size_t n)
 {
     (void)u;
@@ -46,7 +46,6 @@ static void classified(cogmaster *m, uint32_t board, uint32_t knowledge, uint32_
     cogmaster__mapper_reset(m);
 }
 
-#if COGMASTER_API_VERSION >= 6
 static cogmaster_battery battery(cogmaster *m)
 {
     cogmaster_battery b = {0};
@@ -99,13 +98,13 @@ static void generations(cogmaster *m)
     (void)cogmaster__bus_read(m, 0x8000u);
     cogmaster__bus_write(m, 0xfffdu, 1u);
     cogmaster__bus_write(m, 0xc001u, 1u);
-    cogmaster__io_write(m, 0x3eu, 0xebu);
+    cogmaster__io_out(m, 0x3eu, 0xebu);
     cogmaster__bus_write(m, 0x8000u, 3u);
     CHECK_EQ_U64(battery(m).generation, 2u);
     size_t n = cogmaster__state_size(m);
     CHECK(n < sizeof saved);
     CHECK_EQ_U64(cogmaster__state_save(m, saved, sizeof saved), COGMASTER_STATUS_OK);
-    cogmaster__io_write(m, 0x3eu, 0xabu);
+    cogmaster__io_out(m, 0x3eu, 0xabu);
     cogmaster__bus_write(m, 0x8000u, 4u);
     CHECK_EQ_U64(battery(m).generation, 3u);
     CHECK_EQ_U64(cogmaster__state_load(m, saved, n), COGMASTER_STATUS_OK);
@@ -119,9 +118,9 @@ static void generations(cogmaster *m)
 static void excluded(cogmaster *m)
 {
     static const uint32_t knowledge[] = {COGMASTER_PERSISTENCE_UNKNOWN, COGMASTER_PERSISTENCE_NONE,
-                                        COGMASTER_PERSISTENCE_BATTERY};
+                                         COGMASTER_PERSISTENCE_BATTERY};
     static const uint32_t expected[] = {COGMASTER_BATTERY_UNKNOWN, COGMASTER_BATTERY_NONE,
-                                       COGMASTER_BATTERY_UNSUPPORTED};
+                                        COGMASTER_BATTERY_UNSUPPORTED};
     for (uint32_t i = 0; i < 3u; i++) {
         classified(m, COGMASTER_BOARD_SEGA, knowledge[i], i == 2u ? 24576u : 0u,
                    i == 2u ? COGMASTER_GEOMETRY_UNSUPPORTED : COGMASTER_GEOMETRY_NONE);
@@ -170,12 +169,10 @@ static void fixture(cogmaster *m, const char *path)
     CHECK_EQ_HEX(b.data[1], 0x5au);
     CHECK_EQ_U64(battery(m).generation, 3u);
 }
-#endif
 
 int main(int argc, char **argv)
 {
     cogmaster *m = machine();
-#if COGMASTER_API_VERSION >= 6
     if (argc == 3)
         fixture(m, argv[2]);
     else if (argc == 2 && strcmp(argv[1], "spans") == 0)
@@ -184,26 +181,7 @@ int main(int argc, char **argv)
         excluded(m);
     else
         generations(m);
-#else
-    (void)argc;
-    (void)argv;
-    (void)saved;
-    (void)after;
-    classified(m, COGMASTER_BOARD_SEGA, COGMASTER_PERSISTENCE_BATTERY, 32768u,
-               COGMASTER_GEOMETRY_SUPPORTED);
-    size_t fields = cogmaster__state_record(m, NULL, 0);
-    struct cogmaster__state_field *record = malloc(fields * sizeof *record);
-    CHECK(record != NULL);
-    int generation_present = 0;
-    if (record != NULL) {
-        cogmaster__state_record(m, record, fields);
-        for (size_t i = 0; i < fields; i++)
-            if (strcmp(record[i].name, "battery_generation") == 0)
-                generation_present = 1;
-        free(record);
-    }
-    CHECK(generation_present);
-#endif
+
     cogmaster_destroy(m);
     CHECK_DONE();
 }

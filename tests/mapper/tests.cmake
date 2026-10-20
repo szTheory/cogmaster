@@ -28,7 +28,7 @@ set_target_properties(cogmaster-test-battery PROPERTIES RUNTIME_OUTPUT_DIRECTORY
 cogmaster_warnings(cogmaster-test-battery)
 foreach(case IN ITEMS spans generation excluded fixture)
   set(args ${case})
-  if(case STREQUAL fixture)
+  if(case STREQUAL "fixture")
     list(APPEND args ${PROJECT_BINARY_DIR}/fixtures/battery.sms)
   endif()
   cogmaster_add_test(NAME battery.${case} COMMAND cogmaster-test-battery ${args}

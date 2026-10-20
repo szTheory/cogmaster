@@ -229,6 +229,7 @@ cogmaster_status cogmaster__cart_copy(cogmaster *m, const uint8_t *image, size_t
     out->persistence = p->persistence;
     out->persistent_size = p->persistent_size;
     out->persistence_geometry = p->persistence_geometry;
+    out->generation = 0u;
     return COGMASTER_STATUS_OK;
 }
 

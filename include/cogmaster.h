@@ -11,10 +11,10 @@
 extern "C" {
 #endif
 
-#define COGMASTER_API_VERSION 5
+#define COGMASTER_API_VERSION 6
 #define COGMASTER_ABI_VERSION 1
-#define COGMASTER_BEHAVIOUR_REVISION 9
-#define COGMASTER_STATE_FORMAT_VERSION 9
+#define COGMASTER_BEHAVIOUR_REVISION 10
+#define COGMASTER_STATE_FORMAT_VERSION 10
 
 typedef uint32_t cogmaster_status;
 #define COGMASTER_STATUS_OK 0u
@@ -26,6 +26,20 @@ typedef uint32_t cogmaster_status;
 #define COGMASTER_STATUS_ERR_PROFILE_REJECTED 6u
 #define COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE 7u
 #define COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD 8u
+#define COGMASTER_STATUS_ERR_SAVE_SIZE 9u
+
+#define COGMASTER_BATTERY_UNKNOWN 0u
+#define COGMASTER_BATTERY_NONE 1u
+#define COGMASTER_BATTERY_KNOWN 2u
+#define COGMASTER_BATTERY_UNSUPPORTED 3u
+
+typedef struct cogmaster_battery {
+    uint32_t size;
+    uint8_t *data;
+    size_t length;
+    uint32_t knowledge; /* COGMASTER_BATTERY_* */
+    uint64_t generation;
+} cogmaster_battery;
 
 #define COGMASTER_MACHINE_AUTO 0u
 #define COGMASTER_MACHINE_SMS2 1u
@@ -189,6 +203,7 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out);
 cogmaster_status cogmaster_reset(cogmaster *m, uint32_t kind); /* COGMASTER_RESET_* */
 cogmaster_status cogmaster_get_fault(const cogmaster *m, cogmaster_fault *out);
 cogmaster_status cogmaster_probe(const void *image, size_t n, cogmaster_cart_info *out);
+cogmaster_status cogmaster_get_battery(const cogmaster *m, cogmaster_battery *out);
 uint32_t cogmaster_peek(const cogmaster *m, uint32_t space, uint32_t addr); /* above 255: none */
 
 #ifdef __cplusplus

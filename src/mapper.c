@@ -121,7 +121,7 @@ void cogmaster__mapper_write(cogmaster *m, uint16_t addr, uint8_t v)
             }
         } else if (addr >= 0x8000u && (p->ctrl & SEGA_RAM_ON) != 0u) {
             uint32_t base = (p->ctrl & SEGA_RAM_BANK) != 0u ? 0x4000u : 0u;
-            m->cart.ram[(base | (addr & SLOT_MASK)) & (m->cart.ram_size - 1u)] = v;
+            cogmaster__battery_write(m, (base | (addr & SLOT_MASK)) & (m->cart.ram_size - 1u), v);
         } else {
             cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_CART, COGMASTER__FAULT_ROM_WRITE);
         }
@@ -135,7 +135,7 @@ void cogmaster__mapper_write(cogmaster *m, uint16_t addr, uint8_t v)
             }
             p->bank[slot] = bank_write(m, addr, slot == 1u ? v & 0x7Fu : v);
         } else if (addr >= CM_RAM_BASE && addr < 0xC000u && (p->ctrl & CM_RAM_ON) != 0u) {
-            m->cart.ram[addr & (m->cart.ram_size - 1u)] = v;
+            cogmaster__battery_write(m, addr & (m->cart.ram_size - 1u), v);
         } else if (addr < 0xC000u) {
             cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_CART, COGMASTER__FAULT_ROM_WRITE);
         }
