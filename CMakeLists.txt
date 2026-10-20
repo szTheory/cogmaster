@@ -193,6 +193,9 @@ endif()
 # lanes; COGMASTER_INVENTORY names the tests/inventory/<name>.txt the
 # registered tests must equal.
 set(COGMASTER_TIMEOUT_SCALE 1 CACHE STRING "Multiplier for every test timeout")
+# The assembled test fixtures: configure builds the pinned WLA-DX and the
+# build assembles tests/roms/src into build/<preset>/fixtures.
+option(COGMASTER_FIXTURES "Build WLA-DX and the assembled test fixtures" ON)
 set(inventory ci)
 if(COGMASTER_HYGIENE)
   set(inventory hygiene)

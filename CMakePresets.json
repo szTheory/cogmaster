@@ -18,6 +18,7 @@
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "COGMASTER_FIXTURES": "ON",
         "CMAKE_COMPILE_WARNING_AS_ERROR": "ON",
         "CMAKE_OSX_DEPLOYMENT_TARGET": "10.13"
       }
@@ -27,6 +28,7 @@
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "COGMASTER_FIXTURES": "ON",
         "CMAKE_COMPILE_WARNING_AS_ERROR": "ON",
         "CMAKE_C_COMPILER": "cl",
         "CMAKE_CXX_COMPILER": "cl",
@@ -49,6 +51,7 @@
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "COGMASTER_FIXTURES": "ON",
         "CMAKE_COMPILE_WARNING_AS_ERROR": "ON",
         "CMAKE_C_COMPILER": "clang-21",
         "CMAKE_CXX_COMPILER": "clang++-21",
@@ -80,6 +83,7 @@
       "toolchainFile": "${sourceDir}/cmake/toolchains/ppc-linux-gnu.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "COGMASTER_FIXTURES": "ON",
         "CMAKE_COMPILE_WARNING_AS_ERROR": "ON",
         "COGMASTER_TIMEOUT_SCALE": "8",
         "COGMASTER_INVENTORY": "ci"
@@ -92,6 +96,7 @@
       "toolchainFile": "${sourceDir}/cmake/toolchains/wasm32-wasi.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "COGMASTER_FIXTURES": "ON",
         "CMAKE_COMPILE_WARNING_AS_ERROR": "ON",
         "COGMASTER_BUILD_LIBRETRO": "OFF",
         "COGMASTER_TIMEOUT_SCALE": "5",
@@ -102,8 +107,12 @@
     {
       "name": "bench",
       "inherits": "base",
-      "$comment": "The nightly bench: the runner only, built with the host compiler.",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+      "$comment": "The nightly bench: the runner only, built with the host compiler, with no tests and no fixtures.",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "COGMASTER_BUILD_TESTS": "OFF",
+        "COGMASTER_FIXTURES": "OFF"
+      }
     }
   ],
   "buildPresets": [
