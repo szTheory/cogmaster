@@ -97,12 +97,15 @@ io.port3f_region	io,portable
 io.port_dc_dd	io,portable
 libretro.host.content	libretro,portable
 libretro.host.gg	libretro,portable
+libretro.host.replay	libretro,portable
 libretro.host.rgb565	libretro,portable
 libretro.host.xrgb8888	libretro,portable
 libretro.info_claims	libretro
 libretro.info_claims.self_test	libretro
 libretro.screenshot.fixture	libretro,portable
+libretro.screenshot.oracle	libretro,portable
 libretro.screenshot.oracle_control	libretro,portable
+libretro.screenshot.pixel_control	libretro,portable
 libretro.vendored	libretro
 mapper.codemasters.banks	mapper,portable
 mapper.codemasters.ram	mapper,portable
@@ -122,6 +125,9 @@ perf.gate.no_base	perf
 perf.gate.plus_1_00	perf
 perf.gate.plus_1_01	perf
 perf.gate.unstable	perf
+policy.e2e_budget	hygiene,policy
+policy.e2e_budget.self_test	hygiene,policy
+policy.e2e_budget.shared_helper	hygiene,policy
 policy.no_skip	policy
 policy.no_skip.self_test	policy
 policy.notices	policy

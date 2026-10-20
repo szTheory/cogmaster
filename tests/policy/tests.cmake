@@ -82,3 +82,5 @@ cogmaster_add_test(NAME docs.api_names.self_test
 cogmaster_add_test(NAME policy.notices
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCHECK=notices -P ${policy_scripts}/repository.cmake
   LABELS policy TIMEOUT 10)
+
+include(${CMAKE_CURRENT_LIST_DIR}/e2e_cases.cmake)

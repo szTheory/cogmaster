@@ -21,6 +21,7 @@ policy.ci_required	hygiene,policy
 policy.ci_required.self_test	hygiene,policy
 policy.e2e_budget	hygiene,policy
 policy.e2e_budget.self_test	hygiene,policy
+policy.e2e_budget.shared_helper	hygiene,policy
 policy.pins	hygiene,policy
 policy.pins.self_test	hygiene,policy
 policy.publish_ref	hygiene,policy

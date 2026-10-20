@@ -568,6 +568,7 @@ int main(int argc, char **argv)
     CHECK_EQ_U64(p_serialize_size(), 0);
     CHECK_EQ_U64(p_serialize(first, sizeof first), 0);
     CHECK_EQ_U64(p_unserialize(first, sizeof first), 0);
+    CHECK_EQ_U64(p_unserialize(NULL, 0u), 0);
     CHECK_EQ_U64(p_get_memory_size(RETRO_MEMORY_SAVE_RAM), 0);
     CHECK_EQ_U64(p_get_memory_size(RETRO_MEMORY_SYSTEM_RAM), 0);
     CHECK(p_get_memory_data(RETRO_MEMORY_SAVE_RAM) == NULL);

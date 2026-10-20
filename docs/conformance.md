@@ -288,6 +288,16 @@ rows with profile `gg`. The records:
 
 The H counter latch, the Pause NMI counter and the Pause movies need input and are not in this fixture yet.
 
+## Frontend play evidence
+
+The hosted RetroArch job preserves the no-content card comparison and adds the owned SMS game with frontend
+replay input. Its baseline and press/hold/release/repeated-press screenshots must equal runner pixels and the
+independent coordinate oracle at counter/scroll 0 and 2. A one-pixel mutation must fail. The replay-only module
+adds existing internal state visitor forwarding for the frontend's initial checkpoint, while compiling the
+same input and video adapter source; it is excluded from installation and archives. The in-process host runs
+the richer sequence against both production and replay modules. This proves the SMS frontend path; two-pad,
+GG Start, region and lag expansions remain separately tested as they land.
+
 ## Fuzzing
 
 The loader and a two-frame run are fuzzed from generated seeds. Every pull request replays the seeds and the

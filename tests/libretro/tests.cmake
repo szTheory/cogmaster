@@ -27,6 +27,18 @@ if(TARGET cogmaster_libretro)
       -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
     LABELS libretro portable TIMEOUT 10)
   set_tests_properties(libretro.screenshot.oracle_control PROPERTIES DEPENDS libretro.screenshot.fixture)
+  cogmaster_add_test(NAME libretro.screenshot.oracle
+    COMMAND ${CMAKE_COMMAND} -E env EXPECT_SCROLL=0 ${CMAKE_CROSSCOMPILING_EMULATOR}
+      $<TARGET_FILE:cogmaster-test-screenshot> ${screenshot} ${screenshot}
+    LABELS libretro portable TIMEOUT 10)
+  set_tests_properties(libretro.screenshot.oracle PROPERTIES DEPENDS libretro.screenshot.fixture)
+  cogmaster_add_test(NAME libretro.screenshot.pixel_control
+    COMMAND ${CMAKE_COMMAND} -DCOMPARE=$<TARGET_FILE:cogmaster-test-screenshot>
+      -DEXPECTED=${screenshot} -DBMP=${screenshot}
+      "-DEMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}"
+      -P ${PROJECT_SOURCE_DIR}/tests/retroarch/flip.cmake
+    LABELS libretro portable TIMEOUT 10)
+  set_tests_properties(libretro.screenshot.pixel_control PROPERTIES DEPENDS libretro.screenshot.fixture)
   # The in-process frontend. It hashes the delivered frame with the runner's
   # SHA-256 and compares it with the same pinned card hash the runner's test
   # uses.
@@ -41,16 +53,22 @@ if(TARGET cogmaster_libretro)
   cogmaster_warnings(cogmaster-test-libretro-host)
   if(COGMASTER_FIXTURES)
     # Fault prevented: the installed adapter refusing content or polling after a frame starts.
-    cogmaster_add_test(NAME libretro.host.content
+    foreach(adapter content replay)
+      set(module cogmaster_libretro)
+      if(adapter STREQUAL "replay")
+        set(module cogmaster_libretro_replay)
+      endif()
+    cogmaster_add_test(NAME libretro.host.${adapter}
       COMMAND ${CMAKE_COMMAND} -DCASE=play -DNAME=boot_to_play
         -DINPUT=${PROJECT_BINARY_DIR}/tests/play.input
         -DIMAGE=${PROJECT_BINARY_DIR}/fixtures/boot_to_play.sms
         -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
         -DORACLE=$<TARGET_FILE:cogmaster-test-play> -DRUN=$<TARGET_FILE:cogmaster-run>
-        -DHOST=$<TARGET_FILE:cogmaster-test-libretro-host> -DMODULE=$<TARGET_FILE:cogmaster_libretro>
+        -DHOST=$<TARGET_FILE:cogmaster-test-libretro-host> -DMODULE=$<TARGET_FILE:${module}>
         "-DEMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}"
         -P ${PROJECT_SOURCE_DIR}/tests/fixtures/tests.cmake
       LABELS libretro portable TIMEOUT 60)
+    endforeach()
   endif()
   # Fault prevented: the core RetroArch loads shows a frame, rate, geometry
   # or audio length other than the library's, or needs content to start.

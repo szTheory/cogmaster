@@ -180,7 +180,8 @@ tests still execute their positive and negative cases in `ci-release`; their res
 deliverable contents and loader compatibility. Registration and fixture construction are test cases rather
 than checker implementations. Core ABI policy and every shared assertion helper remain counted in full.
 `repository.cmake` dispatches the source policy checks to one POSIX scanner; established test names identify
-their faults. `policy.e2e_budget` independently counts every file under `tests/retroarch`, at most 300 lines.
+their faults. `policy.e2e_budget` counts every file under `tests/retroarch` and its shared pixel oracle
+`tests/fixtures/play.h`, at most 300 lines. Its shared-helper control rejects 280 driver plus 21 oracle lines.
 
 The `perf.gate.*` tests feed the instructions-per-frame comparison its edge cases: identical, exactly +1.00 %,
 +1.01 %, an allowed exception, unstable bases, no base and a missing measurement. `policy.publish_ref` and
@@ -322,11 +323,25 @@ so it never skips itself off macOS. On `macos-15` it:
    configuration from `tests/retroarch/test.cfg.in`, and starts with `--verbose -L <core>`, no content and
    `--max-frames=60 --max-frames-ss`. The launch is bounded at 50 seconds; a failure prints RetroArch's log;
 4. writes the runner's frame with `cogmaster-run --frames 60 --png 60:runner.png`, converts both PNGs to BMP with
-   `sips`, builds `tests/retroarch/compare.c`, and requires `256x192, every pixel equal`;
-5. runs the negative control `tests/retroarch/flip.cmake`: one byte of pixel (7,3) inverted in a copy, and the
-   compare must exit 1 naming that pixel.
+   `sips`, builds `tests/retroarch/compare.c`, and requires successful equality with a tolerant diagnostic match;
+5. runs `tests/retroarch/flip.cmake`: the comparator inverts one channel of actual pixel (7,3) in memory,
+   and must exit 1 naming that pixel;
+6. downloads only the owned fixture, runner input and replay-only module from the same build. A 14-frame
+   baseline records a replay in the released frontend. `replay.c` checks the observed v2 event layout and
+   changes only port 0 RetroPad B: press, hold, release, press again. The frontend plays that stream into
+   the adapter's normal input callback in a fresh session. The final released frames remain at counter 2;
+7. compares both screenshots with runner frames and, independently, every coordinate with `play_pixel`:
+   baseline counter/scroll 0 and input counter/scroll 2. Both must match. The changed-frame comparison also
+   runs the pixel control. Only PNGs of these owned images are uploaded for inspection.
 
-Everything under `tests/retroarch` stays within 300 lines in total; `policy.e2e_budget` counts them.
+The shared driver, helpers, synthetic comparator fixture and shared pixel oracle total at most 300 physical
+lines; `policy.e2e_budget` counts them. The BMP reader accepts the uncompressed RGB24 output from `sips`.
+The test-only replay module compiles the production adapter unchanged and forwards only its three state
+entrypoints to the existing core state visitor. This enables the frontend's mandatory initial checkpoint;
+it supplies no input. It is never installed or packaged. The production module still refuses save states.
+`libretro.host.content` and `libretro.host.replay` run the same callback/pixel sequence against both modules.
+The portable screenshot tests prove matching pixels pass, equal images with wrong scroll fail, and a changed
+pixel fails. The replay layout was measured from the released 1.22.2 binary; no emulator source was read.
 
 **Rerunning it.** Rerun the job from the run page, or `gh run rerun <run-id> --failed`. On a Mac with a desktop
 session the same steps run locally from the job's commands, with `-DRETROARCH` pointing at an installed

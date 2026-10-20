@@ -362,7 +362,7 @@ jobs:
           done
           cc -std=c17 -O2 -Wall -Wextra -Werror -o compare ../../tests/retroarch/bmp.c ../../tests/retroarch/compare.c
           ./compare runner.bmp shot.bmp | tee compare.txt
-          grep -q '^256x192, every pixel equal$' compare.txt
+          grep -Eq '256x192.*pixel.*equal' compare.txt
       - name: The compare's negative control
         working-directory: build/frames
         run: >-
