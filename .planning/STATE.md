@@ -5,7 +5,7 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 3
 current_phase_name: Games play in RetroArch
 status: planning
-stopped_at: Phase 02 complete, ready to plan Phase 3
+stopped_at: "Phase 02 executed and verified (passed); next: /gsd-ship 02"
 last_updated: "2026-10-20T06:14:56.763Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 02 complete, transitioned to Phase 3
@@ -22,17 +22,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-18)
+See: .planning/PROJECT.md (updated 2026-10-20)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 02 — The CPU matches the public vectors
+**Current focus:** Phase 02 — The CPU matches the public vectors: executed and verified (passed), not yet shipped. Every phase ends in a release (rule 10), so `/gsd-ship 02` comes next, then Phase 3 planning.
 
 ## Current Position
 
 Phase: 3 — Games play in RetroArch
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-10-20 — Phase 02 complete, transitioned to Phase 3
+Status: Ready to plan after `/gsd-ship 02` merges and releases
+Last activity: 2026-10-20 — Phase 02 executed and verified (passed); PROJECT.md and STATE.md evolved
 
 Progress: [█████░░░░░] 50%
 
@@ -178,6 +178,10 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 02]: libFuzzer nightly job stays continue-on-error until ten green runs; crash inputs uploaded as fuzz-artifacts
 - [Phase 02]: vectors-full lane: COGMASTER_VECTORS_FULL selects its own inventory; the build converts the fetched archive and registers seven full shards plus vectors.sample_equal; nightly job vectors joins report
 - [Phase 02]: Every phase-2 test takes the 10 s TIMEOUT floor (slowest Linux x64 0.28 s); libFuzzer runs 123 s; be32 and wasm32 scales stay 8 and 5 since every test fits with wide margin
+- [Phase 02]: The Codemasters $4000 bank comes from bits 6-0; bit 7 is only the RAM enable
+- [Phase 02]: Writes while $3E disables the cartridge are ignored and recorded as unmapped_write (hardware docs silent; stated in src/bus.c)
+- [Phase 02]: The Z80 is split into z80.c, z80_cb.c, z80_ed.c and z80_x3.c, each under the 800-line cap
+- [Phase 02]: A save state refuses CPU combinations the core cannot reach and ties the beam to bus.at
 
 ### Pending Todos
 
@@ -187,8 +191,11 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 
 - [Phase 3]: VDP timing constants (frame/line interrupt tick, vertical scroll latch, SMS1 zoom slot rule, open-bus byte) conflict between sources; settled by fixtures against released binaries, hardware in v4.0.
 - [Phase 3]: devkitSMS crt0 linking exception to be quoted and judged at the first third-party fixture admission.
-- [Phase 2, 3]: SMS Power! returned 503 during preparation; facts taken from archived captures are flagged in SMSPOWER-EXTRACTS and re-read at the research steps.
+- [Phase 3]: SMS Power! returned 503 during preparation; facts taken from archived captures are flagged in SMSPOWER-EXTRACTS and re-read at the research steps.
 - [Phase 4]: OPLL seed choice and FM:PSG mix need research during planning.
+- [Phase 2]: Review-fix commits 775b29c..b8dad7a have not run in CI yet (local ci and vectors-full exit 0); confirm at ship.
+- [Phase 2]: Sanitizer lanes are evidenced only in CI; local clang-21 ASan hangs at start-up on macOS.
+- [Phase 3]: Deferred review info items IN-01..IN-06 (fault-record precision, unread bus.vdp_at, odd-size padding, probe UX, saved fault validation); see 02-REVIEW-DISPOSITION.md.
 
 ## Runtime Log
 
@@ -213,6 +220,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T05:54:45.481Z
-Stopped at: Phase 02 complete, ready to plan Phase 3
+Last session: 2026-10-20
+Stopped at: Phase 02 executed and verified (passed); next: /gsd-ship 02
 Resume file: None

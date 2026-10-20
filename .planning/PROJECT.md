@@ -20,12 +20,11 @@ MIT-licensed C library that any host can embed.
 
 ### Validated
 
-(None yet; the first phase validates the delivery path.)
+- ✓ Release automation from the first phase: library, runner and libretro core built, tested, attested and published on every platform by merging a pull request; one install line puts the core into RetroArch on a Mac — Phase 1
+- ✓ The Z80 matches the public SingleStepTests vectors on every cycle before any game runs, with the bus, Sega and Codemasters mappers, ports and the Pause NMI — Phase 2
 
 ### Active
 
-- [ ] Release automation from the first phase: library, runner and libretro core built, tested, attested and published on every platform by merging a pull request; one install line puts the core into RetroArch on a Mac.
-- [ ] The Z80 matches the public SingleStepTests vectors on every cycle before any game runs, with the bus, Sega and Codemasters mappers, ports and the Pause NMI.
 - [ ] Master System and Game Gear games play in RetroArch with two pads, regions, battery saves, self-authored fixtures that prove play, the owner's carts through a local preset, and a compatibility ledger that only ratchets up.
 - [ ] Sound: the PSG with Game Gear stereo and the YM2413 for the Japanese profile, with frame and audio hashes identical on every platform including a 32-bit big-endian lane and a wasm32 lane.
 
@@ -76,8 +75,8 @@ MIT-licensed C library that any host can embed.
 |---|---|---|
 | One core, SMS and Game Gear both in v1.0, as machine profiles | Shared Z80, VDP, PSG and mapper; the owner's collection spans both | — Pending |
 | Time in VDP-clock ticks; the Z80 drives the bus; devices catch up lazily; per-line VDP rendering with dot-exact interrupt and latch ticks | Every documented edge is an integer on this lattice; cheaper than per-dot on low-power targets | — Pending |
-| The whole Z80 against SingleStepTests on every cycle before any game | Exhaustive MIT vectors exist; siblings that grew CPUs from game traces stalled | — Pending |
-| Self-authored WLA-DX fixtures with a RAM mailbox as the primary evidence | Licence-clear, byte-identical builds, oracles that cannot be fooled | — Pending |
+| The whole Z80 against SingleStepTests on every cycle before any game | Exhaustive MIT vectors exist; siblings that grew CPUs from game traces stalled | ✓ Good — 100-per-file sample per PR, full set nightly (Phase 2) |
+| Self-authored WLA-DX fixtures with a RAM mailbox as the primary evidence | Licence-clear, byte-identical builds, oracles that cannot be fooled | ✓ Good — mapper_sega, mapper_codemasters and ports fixtures built in CI (Phase 2) |
 | ares (ISC) and MAME's BSD-3 files may be read; Genesis Plus GX, Gearsystem and other GPL or non-commercial sources never | MIT licence protection | — Pending |
 | Video is one 256×H RGB444 field with a crop rect; palettes and filters are host helpers | GG-native, SMS-lossless, hash-stable | — Pending |
 | Audio hash on the transition stream; PCM secondary; exact rational samples per frame | Mixer-independent determinism | — Pending |
@@ -87,6 +86,12 @@ MIT-licensed C library that any host can embed.
 | Proportional gates; real-host e2e ≤ 300 lines; no attempt quotas or ceremonies | Two siblings stalled on their own machinery | — Pending |
 | Pins are public and fetched with `gh api` | A sibling lost six plans to an unpushed pin | — Pending |
 | Pre-seeded GSD bootstrap, interactive, one step per session | Owner steering; fastest sibling path | — Pending |
+| NMI is not delayed by EI; only /INT waits one instruction after EI | Matches the SingleStepTests vectors | ✓ Good (Phase 2) |
+| Game Gear `$00` bit 5 reads 0 on NTSC: `$C0` export, `$80` Japan | SMS-SYSTEM section 8 | ✓ Good — `ports` fixture (Phase 2) |
+| The Codemasters `$4000` bank comes from bits 6-0; bit 7 is only the RAM enable | Passing bit 7 picked the wrong bank and raised mapper_range | ✓ Good — `mapper_codemasters` fixture (Phase 2) |
+| Writes while `$3E` disables the cartridge are ignored and recorded as unmapped_write | Hardware docs are silent; symmetric with reads, stated in `src/bus.c` | — Pending hardware evidence |
+| The Z80 is split into `z80.c`, `z80_cb.c`, `z80_ed.c` and `z80_x3.c` under an 800-line cap per file | Small modules; clang-format 21 and hygiene stay green | ✓ Good (Phase 2) |
+| A save state refuses CPU combinations the core cannot reach and ties the beam to the bus stamp | A hostile state must not break the bounded-frame guarantee | ✓ Good — state round-trip and refusal tests (Phase 2) |
 
 The full list with sources is `.planning/preparation/DECISIONS.md`.
 
@@ -103,4 +108,4 @@ After each milestone:
 3. Lessons are exported to `.planning/LESSONS.md`.
 
 ---
-*Last updated: 2026-10-18 during preparation*
+*Last updated: 2026-10-20 after Phase 2*
