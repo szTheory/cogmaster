@@ -1,5 +1,5 @@
 # The SHA-256 of each image built from tests/roms/src, one "<name> <sha256>"
 # line each. The images are built in the build tree and never committed.
 hello df488bb853f962aaf28f25cd8c187fe39e6f40c33ce56930da8e28033650c6a6
-mapper_sega 5644e129ae60e76268c3659676f7aa0a6e66b763d6e9d156517c821e3c431804
+mapper_sega fd1697152c427de373901dfbca4f80ad5daa56dcb38cceb2551ad1bb907d3459
 mapper_codemasters 6783c524d87dea63563c7f1c9d7b766fda9c89eb0fc3024f86635ff2325935a6

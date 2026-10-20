@@ -153,23 +153,86 @@ assembled the same bytes.
 
 ### Measurements and verdicts
 
-A fixture measures and never judges. It reports through the RAM mailbox (`mailbox.inc`, read by
-`cogmaster-run --mailbox` as [runner.md](runner.md#mailbox) describes), and `tests/diag/expected.csv` holds the
-verdicts, one row per record:
+A fixture measures and never judges. It reports through the RAM mailbox, and `tests/diag/expected.csv` holds the
+verdicts.
+
+### The mailbox protocol
+
+The mailbox is 256 bytes of work RAM at `$C100`-`$C1FF`, away from the stack and from the mapper registers' copy at
+`$DFFC`-`$DFFF`. The byte layout is the table in [runner.md](runner.md#mailbox): the magic `CMDG`, the protocol
+version 1, the status, the record count, the ROM's id, the CRC, then up to 60 four-byte records (test id, flags
+with bit 0 valid, value low byte first). A fixture includes `tests/roms/src/mailbox.inc` in bank 0's code and
+calls its three routines in order:
+
+1. `mb_init` with A = the ROM's id clears the mailbox, writes the header and sets the status to `$80`, running.
+2. `mb_record` with A = the test id and HL = the value appends one record; past the 60th it writes nothing.
+3. `mb_done` stores the CRC-16 of `$C110`-`$C1FF` (CCITT: polynomial `$1021`, initial value `$FFFF`, no reflection,
+   no final XOR, low byte first) and only then sets the status to `$00`, done.
+
+A fixture waits for the second frame before `mb_done`, so a run cut after one frame still reads `$80`.
+`cogmaster-run --mailbox` stops at the first frame whose status reads `$00`, or at `--frames N`, and prints the
+mailbox as `status=`, `rom=`, `magic=`, `crc=` and one `NN=VVVV flags=F` line per record.
+
+### The judge
+
+`tests/cmake/mailbox.cmake` judges a runner's output against the CSV rows for one ROM and one profile:
+
+```sh
+cmake -DOUT=build/ci/tests/mailbox/mapper_sega.txt -DCSV=tests/diag/expected.csv -DROM=mapper_sega \
+  -DPROFILE=sms-export -P tests/cmake/mailbox.cmake
+```
+
+It passes only when every record is inside its row and every row has its record. Otherwise it fails with one of
+five messages:
+
+| Message | Cause |
+|---|---|
+| `bad CRC or magic` | no `CMDG` magic (the ROM never wrote it), or records that fail their CRC (they changed after `mb_done`) |
+| `the status is not 00 at the frame cap (hang)` | the ROM did not reach `mb_done` within `--frames` |
+| `record NN=VVVV is outside its row` | a measurement differs from the expected value or range |
+| `record NN has no row` | the ROM reported a record the CSV does not list |
+| `row ... has no record` | the CSV lists a record the ROM did not report |
+
+### Adding a row
+
+Each row of `tests/diag/expected.csv` is one record of one ROM:
 
 ```text
 rom,test,profile,expected,source,citation
 mapper_sega,01:bank_sum_slot1,*,F1F0,doc,SMS-CARTRIDGES section 2.1
 ```
 
-`test` starts with the record's id in two hex digits and a colon. `expected` is a hex value, or `lo-hi` with both
-ends inclusive. `profile` `*` matches every profile. `source` is `hw`, `doc`, `oracle` or `derived`, and
-`citation` names the document and section (or the oracle and its pin). `tests/cmake/mailbox.cmake` judges a
-runner's output against the rows for one ROM and profile and fails with its own message for a bad magic or CRC,
-a status that is not `00` (`hang`), a record outside its row, a record with no row and a row with no record.
+- `rom` is the fixture's name, `tests/roms/src/<rom>.asm`.
+- `test` is the record's id in two hex digits, a colon and a short name.
+- `profile` is the machine profile the row applies to, or `*` for every profile.
+- `expected` is a hex value, or `lo-hi` with both ends inclusive for a measurement that varies.
+- `source` is `hw` (measured on hardware), `doc` (a document says so), `oracle` (a reference emulator's output)
+  or `derived` (computed from other rows), and `citation` names the document and section, or the oracle and its
+  pin.
 
-`fixtures.mapper_sega` runs a 512 KiB Sega-mapper image of 32 stamped banks: it sums each bank's stamp through
-slot 1 and through slot 2, and reads slot 0 after selecting bank 5 there, where the first 1 KiB must stay on bank
-0 while `$0400` reads bank 5. `fixtures.judge.wrong_value`, `fixtures.judge.missing_row` and
-`fixtures.judge.hang` are the judge's negative controls: a CSV copy with one value changed, a copy missing one
-row, and a run cut after one frame, each of which must fail with its message.
+To add a record, call `mb_record` with a new id in the fixture, add its row, rebuild, and update the image's
+SHA-256 line in `tests/built/expected.txt` to the digest `fixtures.<rom>` reports. The value comes from the
+cited source, never from the core's own output.
+
+### The mapper fixtures
+
+`fixtures.mapper_sega` runs a 512 KiB Sega-mapper image of 32 banks, each stamped with its number at `$0400`. Its
+records:
+
+- the sum of every bank's stamp through slot 1, and through slot 2;
+- slot 0 after selecting bank 5: the first 1 KiB stays on bank 0 while `$0400` reads bank 5;
+- wrap: `$FFFE = 35` selects bank 3 and `$FF` selects bank 31;
+- `$DFFF` reads back the value written to `$FFFF`;
+- cartridge RAM through `$FFFC` bit 3 (the written pattern, then ROM with the bit clear, then the pattern again),
+  its second 16 KiB bank through bit 2, and the bank shift in bits 1-0, which adds `$18`, `$10` or `$08` to a
+  later bank write.
+
+`fixtures.mapper_codemasters` runs a 128 KiB Codemasters image of 8 stamped banks with the Codemasters header at
+`$7FE0` and no `TMR SEGA`, so the test passes `--machine sms`. Its records: the banks at reset (0, 1, 0), the sum
+of every bank's stamp through `$0000`, `$4000` and `$8000` (slot 0 is paged by a loop copied to work RAM, with
+interrupts off), wrap, and 8 KiB of cartridge RAM at `$A000` through `$4000` bit 7 (the pattern, ROM with the bit
+clear, the pattern again). The header's checksum word is not the true sum; the probe does not check it.
+
+`fixtures.judge.wrong_value`, `fixtures.judge.missing_row` and `fixtures.judge.hang` are the judge's negative
+controls: a CSV copy with one value changed, a copy missing one row, and a run cut after one frame, each of which
+must fail with its message.

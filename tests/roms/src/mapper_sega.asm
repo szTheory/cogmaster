@@ -12,6 +12,20 @@
 ;   02  the same sum via slot 2
 ;   03  after $FFFD = 5: the byte at $0000 | the byte at $03FF << 8
 ;   04  after $FFFD = 5: the stamp word at $0400
+;   05  slot 1 after $FFFE = 35 | after $FFFE = $FF << 8
+;   06  after $FFFF = 61: the byte at $DFFF | slot 2's stamp number << 8
+;   07  after $FFFC = $08 and writes of $A5 to $8000 and $C3 to $BFFF: the
+;       byte at $8000 | after $FFFC = 0: slot 2's stamp number << 8
+;   08  after $FFFC = $08 again: the byte at $8000 | the byte at $BFFF << 8
+;   09  after $FFFC = $0C and a write of $5A to $8000: the byte at $8000 |
+;       after $FFFC = $08: the byte at $8000 << 8
+;   0A  after $FFFC = 1 and $FFFE = 0: slot 1's stamp number | after
+;       $FFFC = 3 and $FFFE = 1: slot 1's stamp number << 8
+;
+; $FFFC: b3 maps cartridge RAM over slot 2, b2 picks its 16 KiB
+; bank, and b1-0 add $18, $10 or $08 to every later bank write (section 2.1).
+; A bank write past the page count wraps on a power-of-two image
+; (section 2.4). A write to $FFFF also lands in work RAM, read back at $DFFF.
 
 .DEFINE FIXTURE_MAP
 
@@ -37,6 +51,9 @@ BANKS 32
 .DEFINE BANK_COUNT 32
 ; Bank 0's last byte below the fixed 1 KiB, read back after slot 0 moves.
 .DEFINE MARKER $5A
+; $FFFC bits: cartridge RAM over slot 2, and its second 16 KiB bank.
+.DEFINE RAM_ON $08
+.DEFINE RAM_BANK1 $04
 
 .BANK 0 SLOT 0
 .ORG $0000
@@ -85,6 +102,88 @@ main:
     call mb_record
     pop hl
     ld a,$04
+    call mb_record
+
+    ld a,35
+    ld ($FFFE),a
+    ld a,(STAMP+$4000)
+    ld l,a
+    ld a,$FF
+    ld ($FFFE),a
+    ld a,(STAMP+$4000)
+    ld h,a
+    ld a,1
+    ld ($FFFE),a
+    ld a,$05
+    call mb_record
+
+    ld a,61
+    ld ($FFFF),a
+    ld a,($DFFF)
+    ld l,a
+    ld a,(STAMP+$8000)
+    ld h,a
+    ld a,2
+    ld ($FFFF),a
+    ld a,$06
+    call mb_record
+
+    ld a,RAM_ON
+    ld ($FFFC),a
+    ld a,$A5
+    ld ($8000),a
+    ld a,$C3
+    ld ($BFFF),a
+    ld a,($8000)
+    ld l,a
+    xor a
+    ld ($FFFC),a
+    ld a,(STAMP+$8000)
+    ld h,a
+    ld a,$07
+    call mb_record
+
+    ld a,RAM_ON
+    ld ($FFFC),a
+    ld a,($8000)
+    ld l,a
+    ld a,($BFFF)
+    ld h,a
+    ld a,$08
+    call mb_record
+
+    ld a,RAM_ON|RAM_BANK1
+    ld ($FFFC),a
+    ld a,$5A
+    ld ($8000),a
+    ld a,($8000)
+    ld l,a
+    ld a,RAM_ON
+    ld ($FFFC),a
+    ld a,($8000)
+    ld h,a
+    xor a
+    ld ($FFFC),a
+    ld a,$09
+    call mb_record
+
+    ld a,1
+    ld ($FFFC),a
+    xor a
+    ld ($FFFE),a
+    ld a,(STAMP+$4000)
+    ld l,a
+    ld a,3
+    ld ($FFFC),a
+    ld a,1
+    ld ($FFFE),a
+    ld a,(STAMP+$4000)
+    ld h,a
+    xor a
+    ld ($FFFC),a
+    inc a
+    ld ($FFFE),a
+    ld a,$0A
     call mb_record
 
     ; Finish no earlier than the second frame, so a run cut after the first

@@ -3,6 +3,12 @@ mapper_sega,01:bank_sum_slot1,*,F1F0,doc,SMS-CARTRIDGES section 2.1
 mapper_sega,02:bank_sum_slot2,*,F1F0,doc,SMS-CARTRIDGES section 2.1
 mapper_sega,03:slot0_first_1k_fixed,*,5AF3,doc,SMS-CARTRIDGES section 2.1
 mapper_sega,04:slot0_paged_from_400,*,FA05,doc,SMS-CARTRIDGES section 2.1
+mapper_sega,05:bank_wrap,*,1F03,doc,SMS-CARTRIDGES section 2.4
+mapper_sega,06:dfff_reads_ffff_write,*,1D3D,doc,SMS-CARTRIDGES section 2.1
+mapper_sega,07:cart_ram_then_rom,*,02A5,doc,SMS-CARTRIDGES section 2.1
+mapper_sega,08:cart_ram_again,*,C3A5,doc,SMS-CARTRIDGES section 2.1
+mapper_sega,09:cart_ram_bank,*,A55A,doc,SMS-CARTRIDGES section 2.1
+mapper_sega,0A:bank_shift,*,0918,doc,SMS-CARTRIDGES section 2.1
 mapper_codemasters,01:reset_banks_0_1_0,*,0010,doc,SMS-CARTRIDGES section 2.2
 mapper_codemasters,02:bank_sum_slot0,*,DC1C,doc,SMS-CARTRIDGES section 2.2
 mapper_codemasters,03:bank_sum_slot1,*,DC1C,doc,SMS-CARTRIDGES section 2.2
