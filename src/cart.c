@@ -20,8 +20,11 @@ static size_t body_offset(size_t n)
 
 cogmaster_status cogmaster__cart_check(const void *image, size_t n)
 {
-    if (image == NULL || n < CART_MIN || n > CART_MAX) {
+    if (image == NULL) {
         return COGMASTER_STATUS_ERR_ARGUMENT;
+    }
+    if (n < CART_MIN || n > CART_MAX) {
+        return COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE;
     }
     return COGMASTER_STATUS_OK;
 }

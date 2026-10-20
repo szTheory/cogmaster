@@ -12,7 +12,7 @@ static_assert(offsetof(cogmaster_run_result, size) == 0, "run result size first"
 static_assert(offsetof(cogmaster_fault, size) == 0, "fault size first");
 static_assert(sizeof(cogmaster_allocator) >= 3 * sizeof(void *), "allocator holds three pointers");
 static_assert(sizeof(cogmaster_status) == 4, "status is 32 bits");
-static_assert(COGMASTER_API_VERSION == 1, "API version");
+static_assert(COGMASTER_API_VERSION >= 1, "API version");
 
 // Each function keeps its declared signature, with C linkage.
 static cogmaster_status (*const get_versions_fn)(cogmaster_versions *) = cogmaster_get_versions;

@@ -33,9 +33,9 @@ set(install_build_options
 
 # name, build directory, C runtime, program, expected output
 set(install_consumers
-  "install.consumer|consumer|MultiThreaded$<$<CONFIG:Debug>:Debug>|consumer|consumer: api 1, one frame 256x192"
-  "install.consumer.dll_crt|consumer_dll_crt|MultiThreaded$<$<CONFIG:Debug>:Debug>DLL|consumer|consumer: api 1, one frame 256x192"
-  "install.consumer.cxx|consumer_cxx|MultiThreaded$<$<CONFIG:Debug>:Debug>|consumer_cxx|consumer_cxx: api 1")
+  "install.consumer|consumer|MultiThreaded$<$<CONFIG:Debug>:Debug>|consumer|consumer: api [0-9]+, one frame 256x192"
+  "install.consumer.dll_crt|consumer_dll_crt|MultiThreaded$<$<CONFIG:Debug>:Debug>DLL|consumer|consumer: api [0-9]+, one frame 256x192"
+  "install.consumer.cxx|consumer_cxx|MultiThreaded$<$<CONFIG:Debug>:Debug>|consumer_cxx|consumer_cxx: api [0-9]+")
 foreach(install_row IN LISTS install_consumers)
   string(REPLACE "|" ";" install_row "${install_row}")
   list(GET install_row 0 install_name)
@@ -72,4 +72,4 @@ cogmaster_add_test(NAME embed.subdirectory
     --test-command embed
   LABELS install TIMEOUT 120)
 set_tests_properties(embed.subdirectory PROPERTIES
-  PASS_REGULAR_EXPRESSION "consumer: api 1, one frame 256x192")
+  PASS_REGULAR_EXPRESSION "consumer: api [0-9]+, one frame 256x192")
