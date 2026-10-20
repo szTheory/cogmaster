@@ -23,7 +23,72 @@ if(CMAKE_SCRIPT_MODE_FILE)
     endif()
   endfunction()
 
-  if(CASE STREQUAL "png_file")
+  # Runs cogmaster-run --probe FILE and sets out and rc in the caller.
+  macro(probe file)
+    execute_process(COMMAND ${EMULATOR} ${RUN} --probe ${file} RESULT_VARIABLE rc
+      OUTPUT_VARIABLE out ERROR_VARIABLE err)
+  endmacro()
+
+  # Fails unless out holds every probe key once, in order, each value in its
+  # documented form. CMake regexes have no {n}, so digests are built by
+  # repetition.
+  function(expect_probe_form out)
+    string(REPEAT "[0-9a-f]" 40 h40)
+    string(REPEAT "[0-9a-f]" 64 h64)
+    string(REPEAT "[0-9a-f]" 8 h8)
+    string(REPEAT "[0-9a-f]" 32 h32)
+    set(num "([0-9]+|none)")
+    set(form "^size=[0-9]+\ncopier_header=[01]\nheader_at=([$][0-9A-F][0-9A-F][0-9A-F][0-9A-F]|none)\n"
+      "header_magic=[01]\nchecksum=${num}\nchecksum_ok=([01]|none)\nproduct_code=${num}\n"
+      "version=${num}\nregion_code=${num}\nrom_size_code=${num}\nmachine_guess=(sms|gg)\n"
+      "region_guess=(ntsc-u|ntsc-j|pal)\nmapper_guess=(none|sega|codemasters|unsupported)\n"
+      "sha1=${h40}\nsha256=${h64}\ncrc32=${h8}\nmd5=${h32}\n"
+      "sha1_headerless=(${h40}|none)\nsha256_headerless=(${h64}|none)\n"
+      "crc32_headerless=(${h8}|none)\nmd5_headerless=(${h32}|none)\n$")
+    string(CONCAT form ${form})
+    if(NOT out MATCHES "${form}")
+      message(FATAL_ERROR "--probe output is not the documented 21 keys in order:\n${out}")
+    endif()
+  endfunction()
+
+  # Fails unless the probe line key has the value.
+  function(expect_key out key value)
+    if(NOT out MATCHES "(^|\n)${key}=${value}\n")
+      message(FATAL_ERROR "--probe: expected ${key}=${value} in\n${out}")
+    endif()
+  endfunction()
+
+  if(CASE STREQUAL "probe_keys")
+    # A 128 KiB export image with a good header and no mapper stores: the
+    # keys in order, the header read at $7FF0 and the Sega board guessed.
+    probe(${SEEDS}/header-export-128k.sms)
+    if(NOT rc STREQUAL "0")
+      message(FATAL_ERROR "--probe: expected exit 0, got ${rc}\n${out}${err}")
+    endif()
+    expect_probe_form("${out}")
+    expect_key("${out}" header_at "[$]7FF0")
+    expect_key("${out}" header_magic 1)
+    expect_key("${out}" checksum_ok 1)
+    expect_key("${out}" region_code 4)
+    expect_key("${out}" rom_size_code 15)
+    expect_key("${out}" machine_guess sms)
+    expect_key("${out}" mapper_guess sega)
+    expect_key("${out}" md5_headerless none)
+    # A bad checksum is reported, not refused.
+    probe(${SEEDS}/header-export-128k-bad.sms)
+    expect_key("${out}" checksum_ok 0)
+  elseif(CASE STREQUAL "probe_digests")
+    # The digest code against the RFC vectors, then the runner's lines
+    # against CMake's own digests of the same file.
+    unit(digests)
+    set(file ${SEEDS}/header-export-32k.sms)
+    probe(${file})
+    foreach(algo IN ITEMS MD5 SHA1 SHA256)
+      file(${algo} ${file} want)
+      string(TOLOWER ${algo} key)
+      expect_key("${out}" ${key} ${want})
+    endforeach()
+  elseif(CASE STREQUAL "png_file")
     # The decode check runs first, so the pinned digest is only ever
     # compared for a file whose IHDR and every pixel are already known good.
     file(REMOVE "${OUT}")
@@ -94,23 +159,37 @@ if(CMAKE_SCRIPT_MODE_FILE)
     expect_exit(2 "usage")
   elseif(CASE STREQUAL "unknown")
     # Options a later release adds are refused now, and --help does not
-    # mention them; --help and --version take nothing else.
-    foreach(opt --probe --trace --region --expect --port1 --port2 --input --hash-audio
-        --capabilities --boot --bios)
+    # mention them; --help and --version take nothing else; --trace takes
+    # only first-fault and --region only its four names.
+    foreach(opt --expect --port1 --port2 --input --hash-audio --capabilities --boot --bios
+        --mailbox)
       expect_exit(2 "unknown option" --frames 1 ${opt})
       expect_exit(2 "unknown option" --frames 1 ${opt} x)
     endforeach()
     expect_exit(2 "usage" --help --version)
     expect_exit(2 "usage" --frames 1 --help)
     expect_exit(2 "usage" --version x)
+    expect_exit(2 "usage" --frames 1 --trace)
+    expect_exit(2 "usage" --frames 1 --trace full)
+    expect_exit(2 "usage" --frames 1 --region)
+    expect_exit(2 "usage" --frames 1 --region eu)
+    expect_exit(2 "usage" --probe)
+    expect_exit(2 "usage" --probe --frames 1 ${SEEDS}/di-halt.sms)
     execute_process(COMMAND ${EMULATOR} ${RUN} --help RESULT_VARIABLE rc OUTPUT_VARIABLE out)
-    if(NOT rc STREQUAL "0" OR out MATCHES "--(probe|trace|region|expect|port|input|hash-audio|capabilities|boot|bios)")
+    if(NOT rc STREQUAL "0" OR out MATCHES "--(expect|port|input|hash-audio|capabilities|boot|bios|mailbox)")
       message(FATAL_ERROR "--help: expected exit 0 and no later option, got exit ${rc}\n${out}")
     endif()
   elseif(CASE STREQUAL "positional")
-    # This release loads no cartridge, so a file name is a usage error.
-    expect_exit(2 "unexpected argument" --frames 1 content.sms)
-    expect_exit(2 "unexpected argument" content.sms)
+    # One file, positional or after --rom, runs; a second file, a file with
+    # no frame count, and an empty --rom are usage errors. A file that
+    # cannot be read is a failure.
+    expect_exit(0 "^$" --frames 1 ${SEEDS}/di-halt.sms)
+    expect_exit(0 "^$" --rom ${SEEDS}/di-halt.sms --frames 1)
+    expect_exit(2 "give one file" --frames 1 ${SEEDS}/di-halt.sms ${SEEDS}/di-halt.sms)
+    expect_exit(2 "give one file" --frames 1 --rom ${SEEDS}/di-halt.sms ${SEEDS}/di-halt.sms)
+    expect_exit(2 "usage" ${SEEDS}/di-halt.sms)
+    expect_exit(2 "usage" --frames 1 --rom)
+    expect_exit(1 "cannot read" --frames 1 ${SEEDS}/missing.sms)
   elseif(CASE STREQUAL "frame_range")
     expect_exit(2 "usage" --frames 0)
     expect_exit(2 "usage" --frames -1)
@@ -223,7 +302,7 @@ cogmaster_add_test(NAME runner.png
   LABELS runner portable TIMEOUT 10)
 
 set(runner_check ${CMAKE_COMMAND} -DRUN=$<TARGET_FILE:cogmaster-run>
-  "-DEMULATOR=${runner_emulator}")
+  "-DEMULATOR=${runner_emulator}" -DSEEDS=${COGMASTER_SEEDS_DIR})
 
 # Fault prevented: the reference PNG the RetroArch screenshot is compared
 # with changes bytes (palette, layout or encoder) while the frame hash still
@@ -246,6 +325,8 @@ cogmaster_add_test(NAME runner.usage.png_syntax
 add_executable(cogmaster-test-bench
   ${CMAKE_CURRENT_LIST_DIR}/test_runner.c
   ${PROJECT_SOURCE_DIR}/runner/bench.c
+  ${PROJECT_SOURCE_DIR}/runner/md5.c
+  ${PROJECT_SOURCE_DIR}/runner/sha1.c
   ${PROJECT_SOURCE_DIR}/runner/stop.c)
 set_target_properties(cogmaster-test-bench PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
@@ -301,7 +382,7 @@ cogmaster_add_test(NAME runner.exit.failure
   LABELS portable runner TIMEOUT 30)
 
 # Fault prevented: a command line that runs something it should refuse: no
-# arguments, an option a later release adds, a file name, or a frame count
+# arguments, an option a later release adds, two files, or a frame count
 # that is zero, negative, malformed, too large or given twice.
 foreach(case no_args unknown positional frame_range)
   cogmaster_add_test(NAME runner.usage.${case}
@@ -318,4 +399,18 @@ cogmaster_add_test(NAME runner.hash.repeat
 # Fault prevented: --version printing something a script cannot parse.
 cogmaster_add_test(NAME runner.version
   COMMAND ${runner_check} -DCASE=version -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 30)
+
+# Fault prevented: a --probe report that drops, reorders or reformats a key,
+# misreads the header, or guesses the wrong board, so a script parsing it
+# reads the wrong field.
+cogmaster_add_test(NAME runner.probe.keys
+  COMMAND ${runner_check} -DCASE=probe_keys -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 30)
+
+# Fault prevented: a SHA-1 or MD5 that is wrong for some lengths, so the
+# printed md5 is not the RetroAchievements hash and the sha1 matches no
+# database entry.
+cogmaster_add_test(NAME runner.probe.digests
+  COMMAND ${bench_check} -DCASE=probe_digests -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS portable runner TIMEOUT 30)

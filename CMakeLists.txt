@@ -125,11 +125,15 @@ if(COGMASTER_BUILD_RUNNER)
   # without other extensions.
   set(COGMASTER_RUNNER_SOURCES
     runner/main.c
+    runner/args.c
     runner/bench.c
     runner/clock.c
     runner/crc32.c
+    runner/md5.c
     runner/png.c
+    runner/probe.c
     runner/rss.c
+    runner/sha1.c
     runner/sha256.c
     runner/stop.c)
   list(TRANSFORM COGMASTER_RUNNER_SOURCES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/)

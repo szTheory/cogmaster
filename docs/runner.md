@@ -98,9 +98,10 @@ started, as under `nohup`, stays ignored.
 `cogmaster-run --help` prints this table:
 
 ```text
-  0  ok       every frame ran, or SIGINT or SIGTERM stopped the run after a whole frame
-  1  failure  a file could not be written, memory ran out or the core failed
+  0  ok       every frame ran or the probe printed, or a signal stopped the run after a whole frame
+  1  failure  a file could not be read or written, memory ran out or the core failed
   2  usage    the command line is invalid, so nothing ran
+  77  refused  the cartridge, its size or the machine and region is not supported, so nothing ran
 ```
 
 Errors and usage messages go to standard error. Standard output holds only the results described above.
