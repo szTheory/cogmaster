@@ -310,7 +310,7 @@ static void RETRO_CALLCONV on_poll(void)
 static int16_t RETRO_CALLCONV input(unsigned port, unsigned device, unsigned index, unsigned id)
 {
     if (content_mode && port == 0u && device == RETRO_DEVICE_JOYPAD && index == 0u &&
-        id == (content_gg ? RETRO_DEVICE_ID_JOYPAD_START : RETRO_DEVICE_ID_JOYPAD_B)) {
+        id == (unsigned)(content_gg ? RETRO_DEVICE_ID_JOYPAD_START : RETRO_DEVICE_ID_JOYPAD_B)) {
         CHECK_EQ_U64(poll_calls, content_frame);
         return content_frame == 5u || content_frame == 6u || content_frame == 8u ? 1 : 0;
     }
