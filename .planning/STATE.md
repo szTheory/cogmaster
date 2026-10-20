@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 02
 current_phase_name: The CPU matches the public vectors
-status: executing
-stopped_at: Completed 02-16-PLAN.md
-last_updated: "2026-10-20T05:43:04.622Z"
+status: verifying
+stopped_at: Completed 02-17-PLAN.md
+last_updated: "2026-10-20T05:54:45.547Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 02 execution started
-state_head: a3d32d969c6ef8ce4e7be1af94702be86132fc0f
+state_head: de88bb9e9fac3470241af3eb59d61f070db81132
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 29
-  completed_plans: 28
+  completed_plans: 29
   percent: 25
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 
 Phase: 02 (The CPU matches the public vectors) — EXECUTING
 Plan: 17 of 17
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-19 — Phase 02 execution started
 
 Progress: [███░░░░░░░] 25%
@@ -86,6 +86,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P14 | 25min | 2 tasks | 11 files |
 | Phase 02 P15 | 7 min | 2 tasks | 13 files |
 | Phase 02 P16 | 23 min | 2 tasks | 15 files |
+| Phase 02 P17 | 14min | 2 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -174,6 +175,8 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 02]: A Game Gear fixture image is the SMS source assembled with FIXTURE_GG (region code 6), judged against the same rom's rows under profile gg
 - [Phase 02]: Fuzz loader entry loads on the probe's machine and region guess and aborts when probe and load disagree on accepting an image
 - [Phase 02]: libFuzzer nightly job stays continue-on-error until ten green runs; crash inputs uploaded as fuzz-artifacts
+- [Phase 02]: vectors-full lane: COGMASTER_VECTORS_FULL selects its own inventory; the build converts the fetched archive and registers seven full shards plus vectors.sample_equal; nightly job vectors joins report
+- [Phase 02]: Every phase-2 test takes the 10 s TIMEOUT floor (slowest Linux x64 0.28 s); libFuzzer runs 123 s; be32 and wasm32 scales stay 8 and 5 since every test fits with wide margin
 
 ### Pending Todos
 
@@ -209,6 +212,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T05:43:04.561Z
-Stopped at: Completed 02-16-PLAN.md
+Last session: 2026-10-20T05:54:45.481Z
+Stopped at: Completed 02-17-PLAN.md
 Resume file: None

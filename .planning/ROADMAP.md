@@ -73,7 +73,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. The `ports` fixture reports the profile's values for ports `$3E`, `$3F`, `$7E`, `$7F`, `$BE`, `$BF`, `$DC`, `$DD` and GG `$00`–`$06` per machine profile and region, and a test shows the Pause NMI firing at the start of the last line (CPU-04).
   5. `cogmaster-run --probe` prints header fields, region, size, mapper guess, SHA-1, SHA-256, CRC-32 and the RetroAchievements MD5; `cogmaster-run --trace first-fault` prints the first fault (PC, opcode, address, width, device, frame, line, dot) for a ROM that touches an unmapped device; the bounded `fuzz.run` regression replays the loader fuzz seeds per PR (CPU-05).
 
-**Plans**: 16/17 plans executed, 02-01 to 02-17, one sequential chain (waves 1–17; every plan registers tests in the shared inventories)
+**Plans**: 17/17 plans executed, 02-01 to 02-17, one sequential chain (waves 1–17; every plan registers tests in the shared inventories)
 **Wave 1**
 - [x] 02-01-PLAN.md — Vector pipeline: stream builder, sst2bin, committed sample, harness, NOP and LD (BC),A
 
@@ -123,7 +123,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 02-16-PLAN.md — Fuzz entries, per-PR replay, nightly libFuzzer
 
 **Wave 17** *(blocked on Wave 16 completion)*
-- [ ] 02-17-PLAN.md — Nightly full vectors, measured timeouts, all-legs CI run, maintainer docs
+- [x] 02-17-PLAN.md — Nightly full vectors, measured timeouts, all-legs CI run, maintainer docs
 
 **UI hint**: no
 **Canonical refs:** `.planning/preparation/SMS-SYSTEM.md`, `.planning/preparation/SMS-CARTRIDGES-AND-PERIPHERALS.md`, `.planning/preparation/ARCHITECTURE.md`, `.planning/preparation/CONFORMANCE.md`, `.planning/preparation/SMSPOWER-EXTRACTS.md`
@@ -168,6 +168,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. A test frame in RetroArch | 12/12 | Complete    | 2026-10-19 |
-| 2. The CPU matches the public vectors | 16/17 | In Progress | - |
+| 2. The CPU matches the public vectors | 17/17 | In Progress | - |
 | 3. Games play in RetroArch | 0/TBD | Not started | - |
 | 4. Sound | 0/TBD | Not started | - |
