@@ -181,6 +181,7 @@ static size_t batch_frames;
 static unsigned batch_nonzero;
 static unsigned content_frame, poll_calls;
 static int content_mode;
+static int content_gg;
 static unsigned descriptors_calls, controllers_calls;
 static unsigned options_calls;
 static const char *option_machine, *option_mode, *option_region, *option_aspect, *option_view;
@@ -309,7 +310,7 @@ static void RETRO_CALLCONV on_poll(void)
 static int16_t RETRO_CALLCONV input(unsigned port, unsigned device, unsigned index, unsigned id)
 {
     if (content_mode && port == 0u && device == RETRO_DEVICE_JOYPAD && index == 0u &&
-        id == RETRO_DEVICE_ID_JOYPAD_B) {
+        id == (content_gg ? RETRO_DEVICE_ID_JOYPAD_START : RETRO_DEVICE_ID_JOYPAD_B)) {
         CHECK_EQ_U64(poll_calls, content_frame);
         return content_frame == 5u || content_frame == 6u || content_frame == 8u ? 1 : 0;
     }
@@ -435,8 +436,9 @@ static int content_test(const char *path, const char *digest)
     size_t n = fread(image, 1u, sizeof image, f);
     CHECK_EQ_U64(n, sizeof image);
     CHECK_EQ_U64(fclose(f), 0u);
-    want_w = 256u;
-    want_h = 192u;
+    content_gg = (image[0x7FFFu] >> 4) == 6u;
+    want_w = content_gg ? 160u : 256u;
+    want_h = content_gg ? 144u : 192u;
     content_mode = 1;
     p_set_environment(env);
     p_init();
@@ -459,11 +461,13 @@ static int content_test(const char *path, const char *digest)
         CHECK_EQ_U64(poll_calls, content_frame);
         if (content_frame >= 4u) {
             uint32_t scroll = content_frame >= 8u ? 2u : (content_frame >= 5u ? 1u : 0u);
-            for (uint32_t y = 0u; y < 192u; y++) {
-                for (uint32_t x = 0u; x < 256u; x++) {
+            for (uint32_t y = 0u; y < want_h; y++) {
+                for (uint32_t x = 0u; x < want_w; x++) {
                     uint16_t got;
-                    if (!to_rgb444(y * 256u + x, &got) || got != play_pixel(x, y, scroll)) {
-                        CHECK_EQ_HEX(got, play_pixel(x, y, scroll));
+                    uint16_t expected = play_pixel(x + (content_gg ? 48u : 0u),
+                                                   y + (content_gg ? 24u : 0u), scroll);
+                    if (!to_rgb444(y * want_w + x, &got) || got != expected) {
+                        CHECK_EQ_HEX(got, expected);
                         p_deinit();
                         return 1;
                     }
@@ -492,12 +496,14 @@ static int content_test(const char *path, const char *digest)
         for (content_frame = 1u; content_frame <= 14u; content_frame++) {
             (void)run_one();
         }
-        for (uint32_t y = 0u; y < 192u; y++) {
-            for (uint32_t x = 0u; x < 256u; x++) {
+        for (uint32_t y = 0u; y < want_h; y++) {
+            for (uint32_t x = 0u; x < want_w; x++) {
                 uint16_t got;
-                CHECK(to_rgb444(y * 256u + x, &got));
-                if (got != play_pixel(x, y, 0u)) {
-                    CHECK_EQ_HEX(got, play_pixel(x, y, 0u));
+                CHECK(to_rgb444(y * want_w + x, &got));
+                uint16_t expected =
+                    play_pixel(x + (content_gg ? 48u : 0u), y + (content_gg ? 24u : 0u), 0u);
+                if (got != expected) {
+                    CHECK_EQ_HEX(got, expected);
                     p_deinit();
                     return 1;
                 }

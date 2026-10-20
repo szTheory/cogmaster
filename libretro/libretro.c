@@ -413,6 +413,13 @@ bool retro_load_game(const struct retro_game_info *game)
     media.size = (uint32_t)sizeof media;
     media.machine = game == NULL ? LR_NO_CONTENT_MACHINE : COGMASTER_MACHINE_AUTO;
     if (game != NULL) {
+        cogmaster_cart_info cart = {0};
+        cart.size = sizeof cart;
+        if (cogmaster_probe(game->data, game->size, &cart) != COGMASTER_STATUS_OK) {
+            return false;
+        }
+        media.machine = cart.machine_guess;
+        media.region = cart.region_guess;
         if (lr_option("cogmaster_machine", "sms2"))
             media.machine = COGMASTER_MACHINE_SMS2;
         if (lr_option("cogmaster_machine", "sms1"))
@@ -423,8 +430,10 @@ bool retro_load_game(const struct retro_game_info *game)
             media.video_mode = COGMASTER_VIDEO_SMS;
         if (lr_option("cogmaster_gg_mode", "gg"))
             media.video_mode = COGMASTER_VIDEO_GG;
-        if (lr_option("cogmaster_region", "pal"))
+        if (lr_option("cogmaster_region", "pal")) {
             media.tv = COGMASTER_TV_PAL;
+            media.region = COGMASTER_REGION_EXPORT;
+        }
         if (lr_option("cogmaster_region", "ntsc-u")) {
             media.tv = COGMASTER_TV_NTSC;
             media.region = COGMASTER_REGION_EXPORT;

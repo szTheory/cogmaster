@@ -63,20 +63,30 @@ if(TARGET cogmaster_libretro)
   if(COGMASTER_FIXTURES)
     # Fault prevented: the installed adapter refusing content or polling after a frame starts.
     foreach(adapter content replay)
-      set(module cogmaster_libretro)
-      if(adapter STREQUAL "replay")
-        set(module cogmaster_libretro_replay)
-      endif()
-    cogmaster_add_test(NAME libretro.host.${adapter}
-      COMMAND ${CMAKE_COMMAND} -DCASE=play -DNAME=boot_to_play
-        -DINPUT=${PROJECT_BINARY_DIR}/tests/play.input
-        -DIMAGE=${PROJECT_BINARY_DIR}/fixtures/boot_to_play.sms
-        -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
-        -DORACLE=$<TARGET_FILE:cogmaster-test-play> -DRUN=$<TARGET_FILE:cogmaster-run>
-        -DHOST=$<TARGET_FILE:cogmaster-test-libretro-host> -DMODULE=$<TARGET_FILE:${module}>
-        "-DEMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}"
-        -P ${PROJECT_SOURCE_DIR}/tests/fixtures/tests.cmake
-      LABELS libretro portable TIMEOUT 60)
+      foreach(machine sms gg)
+        set(module cogmaster_libretro)
+        if(adapter STREQUAL "replay")
+          set(module cogmaster_libretro_replay)
+        endif()
+        set(suffix "")
+        set(name boot_to_play)
+        set(input play.input)
+        if(machine STREQUAL "gg")
+          set(suffix .gg)
+          set(name boot_to_play_gg)
+          set(input play-gg.input)
+        endif()
+      cogmaster_add_test(NAME libretro.host.${adapter}${suffix}
+        COMMAND ${CMAKE_COMMAND} -DCASE=play -DNAME=${name}
+          -DINPUT=${PROJECT_BINARY_DIR}/tests/${input}
+          -DIMAGE=${PROJECT_BINARY_DIR}/fixtures/boot_to_play.${machine}
+          -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+          -DORACLE=$<TARGET_FILE:cogmaster-test-play> -DRUN=$<TARGET_FILE:cogmaster-run>
+          -DHOST=$<TARGET_FILE:cogmaster-test-libretro-host> -DMODULE=$<TARGET_FILE:${module}>
+          "-DEMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}"
+          -P ${PROJECT_SOURCE_DIR}/tests/fixtures/tests.cmake
+        LABELS libretro portable TIMEOUT 60)
+      endforeach()
     endforeach()
   endif()
   # Fault prevented: the core RetroArch loads shows a frame, rate, geometry

@@ -36,7 +36,8 @@ static int presentation_test(void)
             for (unsigned pal = 0u; pal < (machine == 0u ? 2u : 1u); pal++) {
                 image[1] = height == 0u ? 0x04u : 0x06u;
                 image[9] = height == 1u ? 0x50u : (height == 2u ? 0x48u : 0x40u);
-                option_machine = machine == 0u ? "sms1" : "gg";
+                image[0x7FFFu] = machine == 0u ? 0x4Cu : 0x6Cu;
+                option_machine = machine == 0u ? "sms1" : (machine == 1u ? "auto" : "gg");
                 /* SMS1 cannot extend height; SMS2 exercises the full set. */
                 if (height != 0u && machine == 0u)
                     option_machine = "sms2";
