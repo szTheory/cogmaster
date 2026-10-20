@@ -86,6 +86,13 @@ cogmaster_add_test(NAME abi.api_v2 COMMAND cogmaster-test-api-v2
   LABELS abi portable TIMEOUT 10)
 
 # The public header compiles alone as C17 and as C++17 with warnings fatal.
+add_executable(cogmaster-test-api-v3 ${PROJECT_SOURCE_DIR}/tests/api/v3.c)
+target_link_libraries(cogmaster-test-api-v3 PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-api-v3)
+# Fault prevented: absolute input or the appended result breaking legacy ABI calls.
+cogmaster_add_test(NAME abi.api_v3 COMMAND cogmaster-test-api-v3
+  LABELS abi portable TIMEOUT 10)
+
 # Fault prevented: a header that only the core's own build, with its own
 # flags and language, can compile. C++ is enabled here only; an embedding
 # project never meets it. The targets are built only by these tests, which
