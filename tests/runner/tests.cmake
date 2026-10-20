@@ -68,6 +68,13 @@ if(CMAKE_SCRIPT_MODE_FILE)
     expect_exit(77 "unsupported" --frames 1 --machine sms1 --video-mode gg)
     expect_exit(2 "usage" --frames 1 --video-mode invalid)
     expect_exit(2 "usage" --frames 1 --video-mode)
+  elseif(CASE STREQUAL "lag")
+    string(REPEAT "p1=00 p2=00 pause=0 reset=0 start=0\n" 14 body)
+    file(WRITE "${OUT}" "${body}")
+    expect_exit(0 "(^|\n)lag_frames=14\n" ${SEEDS}/di-halt.sms --frames 14 --input ${OUT})
+    expect_exit(0 "(^|\n)lag_frames=3\n" ${READ_ROM} --frames 14 --input ${OUT})
+    expect_exit(0 "(^|\n)lag_frames=3\n" ${READ_ROM} --frames 14 --input ${OUT}
+      --port1 none --port2 none)
   elseif(CASE STREQUAL "input")
     set(record "p1=00 p2=00 pause=0 reset=0 start=0")
     foreach(ending IN ITEMS lf crlf none)
@@ -473,6 +480,15 @@ cogmaster_add_test(NAME runner.png
 
 set(runner_check ${CMAKE_COMMAND} -DRUN=$<TARGET_FILE:cogmaster-run>
   "-DEMULATOR=${runner_emulator}" -DSEEDS=${COGMASTER_SEEDS_DIR})
+
+if(COGMASTER_FIXTURES)
+  # Fault prevented: host polling credited as guest reads, or lag output omitted.
+  cogmaster_add_test(NAME runner.lag
+    COMMAND ${runner_check} -DCASE=lag -DOUT=${PROJECT_BINARY_DIR}/tests/lag.input
+      -DREAD_ROM=${PROJECT_BINARY_DIR}/fixtures/boot_to_play.sms
+      -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS runner portable TIMEOUT 10)
+endif()
 
 # Fault prevented: malformed, truncated or surplus absolute input being run as released input.
 cogmaster_add_test(NAME runner.input

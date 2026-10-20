@@ -167,6 +167,7 @@ runner.hashes_compare.byte.self_test	runner
 runner.hashes_compare.count.self_test	runner
 runner.hashes_file	portable,runner
 runner.input	portable,runner
+runner.lag	portable,runner
 runner.load.machine_auto	portable,runner
 runner.load.region	portable,runner
 runner.load.video_override	portable,runner

@@ -56,6 +56,9 @@ if(TARGET cogmaster_libretro)
     if(format STREQUAL "rgb565")
       set(module cogmaster_libretro_rgb565)
     endif()
+    cogmaster_add_test(NAME libretro.controls.${format}
+      COMMAND cogmaster-test-libretro-host $<TARGET_FILE:${module}> controls ${format}
+      LABELS libretro portable TIMEOUT 60)
     cogmaster_add_test(NAME libretro.presentation.${format}
       COMMAND cogmaster-test-libretro-host $<TARGET_FILE:${module}> presentation ${format}
       LABELS libretro portable TIMEOUT 60)

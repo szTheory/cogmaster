@@ -121,6 +121,8 @@ io.pause_history	io,portable
 io.port3e	io,portable
 io.port3f_region	io,portable
 io.port_dc_dd	io,portable
+libretro.controls.rgb565	libretro,portable
+libretro.controls.xrgb8888	libretro,portable
 libretro.host.content	libretro,portable
 libretro.host.content.gg	libretro,portable
 libretro.host.gg	libretro,portable
@@ -181,6 +183,7 @@ runner.hashes_compare.byte.self_test	runner
 runner.hashes_compare.count.self_test	runner
 runner.hashes_file	portable,runner
 runner.input	portable,runner
+runner.lag	portable,runner
 runner.load.machine_auto	portable,runner
 runner.load.region	portable,runner
 runner.load.video_override	portable,runner
