@@ -99,8 +99,8 @@ jobs:
         run: |
           mkdir -p report
           build/pins/wasmtime/wasmtime run --dir="$PWD::$PWD" build/wasm32/cogmaster-run \
-            build/wasm32/fixtures/boot_to_play.sms --machine sms --region ntsc-u --video-mode sms \
-            --input build/wasm32/300000.input --bench 300000 > report/bench.txt
+            "$PWD/build/wasm32/fixtures/boot_to_play.sms" --machine sms --region ntsc-u --video-mode sms \
+            --input "$PWD/build/wasm32/300000.input" --bench 300000 > report/bench.txt
           { cat report/bench.txt; echo "runner wasm32-wasmtime"; } > report/report.txt
           cat report/report.txt
           { echo "### bench wasm32-wasmtime"; echo '```'; cat report/report.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
