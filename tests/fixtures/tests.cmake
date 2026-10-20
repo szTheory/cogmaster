@@ -103,6 +103,14 @@ foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_t
 endforeach()
 add_custom_target(cogmaster-fixtures ALL DEPENDS ${fixtures_images})
 
+add_executable(cogmaster-test-lines ${CMAKE_CURRENT_LIST_DIR}/lines.c
+  ${PROJECT_SOURCE_DIR}/runner/sha256.c)
+target_include_directories(cogmaster-test-lines PRIVATE ${PROJECT_SOURCE_DIR}/runner)
+target_link_libraries(cogmaster-test-lines PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-lines)
+cogmaster_add_test(NAME fixtures.vdp_lines.pixels.ntsc.240 COMMAND cogmaster-test-lines
+  ${COGMASTER_FIXTURES_DIR}/boot_to_play.sms 240 ntsc LABELS portable fixtures TIMEOUT 10)
+
 add_executable(cogmaster-test-play ${CMAKE_CURRENT_LIST_DIR}/play.c
   ${PROJECT_SOURCE_DIR}/runner/sha256.c)
 target_include_directories(cogmaster-test-play PRIVATE ${PROJECT_SOURCE_DIR}/runner)
