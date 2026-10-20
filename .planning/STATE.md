@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 03
 current_phase_name: Games play in RetroArch
 status: executing
-stopped_at: Completed 03-11-PLAN.md; runtime Codex; model GPT-6
-last_updated: "2026-10-20T21:15:23.842Z"
+stopped_at: Completed 03-12-PLAN.md; runtime Codex; model GPT-6
+last_updated: "2026-10-20T21:29:35.148Z"
 last_activity: 2026-10-20
-last_activity_desc: Completed plan 03-11; runtime Codex; model GPT-6
-state_head: d388617db31d7312229cc406d109023412bd9763
+last_activity_desc: Completed plan 03-12; runtime Codex; model GPT-6
+state_head: 53573de3b6c7f42c8455ac5d2eef48fe2ab8271d
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 47
-  completed_plans: 40
+  completed_plans: 41
   percent: 50
 ---
 
@@ -30,16 +30,16 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 03 (Games play in RetroArch) — EXECUTING
-Plan: 12 of 18
+Plan: 13 of 18
 Status: Ready to execute
-Last activity: 2026-10-20 — Completed plan 03-11; runtime Codex; model GPT-6
+Last activity: 2026-10-20 — Completed plan 03-12; runtime Codex; model GPT-6
 
 Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 40
+- Total plans completed: 41
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -49,7 +49,7 @@ Progress: [█████░░░░░] 50%
 |-------|-------|-------|----------|
 | 01 | 12 | - | - |
 | 02 | 17 | - | - |
-| 03 | 11 | - | - |
+| 03 | 12 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -100,6 +100,7 @@ Progress: [█████░░░░░] 50%
 | Phase 03 P09 | 13min | 2 tasks | 19 files |
 | Phase 03 P10 | 10min | 2 tasks | 23 files |
 | Phase 03 P11 | 14min | 2 tasks | 36 files |
+| Phase 03 P12 | 12min | 2 tasks | 21 files |
 
 ## Accumulated Context
 
@@ -216,6 +217,9 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 03]: Moldorian retains known battery identity and 24576-byte declaration with unsupported persistence geometry; no guessed battery span.
 - [Phase 03]: Owned battery fixture is a fixed MIT hash fact consumed by production lookup and checked after linking independently of core targets.
 - [Phase 03]: Card/cartridge aliases coalesce only when hardware facts agree; the shared SMS and GG SMS-mode image defaults to SMS.
+- [Phase 03]: Battery spans use API 6 and transactional raw import API 7; existing ABI layouts and numeric values remain unchanged.
+- [Phase 03]: Persistent extent accounting follows physical mapper translation; same-value mapped persistent writes increment generation, while import and resets preserve it.
+- [Phase 03]: Raw import refuses known-none as no-content, unknown or unsupported persistence as unsupported-board, and supported oversize as save-size before reading bytes.
 
 ### Pending Todos
 
@@ -227,7 +231,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 3]: devkitSMS crt0 linking exception to be quoted and judged at the first third-party fixture admission.
 - [Phase 3]: SMS Power! timing and GG port references were accessible during planning research; Moldorian's 24 KiB metadata is confirmed, physical bank decoding remains unresolved and must not be guessed.
 - [Phase 4]: OPLL seed choice and FM:PSG mix need research during planning.
-- [Phase 2]: Sanitizer lanes are evidenced only in CI; local clang-21 ASan hangs at start-up on macOS.
+- [Phase 2]: Full sanitizer lanes are evidenced in CI; local Homebrew clang-21 ASan hangs at startup on macOS. Plan 03-12's focused battery replay and timed save fuzzing passed locally with the installed Apple sanitizer runtime.
 - [Phase 3]: Deferred review info items IN-01..IN-06 (fault-record precision, unread bus.vdp_at, odd-size padding, probe UX, saved fault validation); see 02-REVIEW-DISPOSITION.md.
 
 ## Runtime Log
@@ -244,7 +248,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-10-19 | Execute phase 2 (gsd-execute-phase) | Claude Code | claude-opus-5-5 |
 | 2026-10-20 | Ship phase 2 (gsd-ship) | Codex | GPT-6 |
 | 2026-10-20 | Plan phase 3 (gsd-plan-phase) | Codex | GPT-6 |
-| 2026-10-20 | Execute phase 3 through plan 03-09 (gsd-execute-phase) | Codex | GPT-6 |
+| 2026-10-20 | Execute phase 3 through plan 03-12 (gsd-execute-phase) | Codex | GPT-6 |
 
 ## Deferred Items
 
@@ -256,6 +260,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T21:15:18.229Z
-Stopped at: Completed 03-11-PLAN.md; runtime Codex; model GPT-6
+Last session: 2026-10-20T21:29:15.146Z
+Stopped at: Completed 03-12-PLAN.md; runtime Codex; model GPT-6
 Resume file: None
