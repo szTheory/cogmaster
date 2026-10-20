@@ -14,6 +14,8 @@ abi.undefined.self_test	abi
 bus.frame_origin	bus,portable
 bus.halt_bound.di	bus,portable
 bus.halt_bound.di_pal	bus,portable
+bus.halt_bound.ei_masked	bus,portable
+bus.halt_bound.ie_positive	bus,portable
 core.api.error_changes_nothing	core,portable
 core.api.first_released_sizes	core,portable
 core.api.size_tags	core,portable

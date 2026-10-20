@@ -10,10 +10,15 @@ cogmaster_warnings(cogmaster-test-bus)
 # Fault prevented: a run_frame call that runs past its frame by more than one
 # step, or frames whose lengths drift from 179,208 ticks (214,092 on PAL), so
 # a jammed image could hold the host past its frame time.
-foreach(case IN ITEMS halt_bound.di halt_bound.di_pal frame_origin)
+foreach(case IN ITEMS halt_bound.di halt_bound.di_pal halt_bound.ei_masked frame_origin)
   cogmaster_add_test(NAME bus.${case} COMMAND cogmaster-test-bus ${case}
     LABELS bus portable TIMEOUT 10)
 endforeach()
+
+# Fault prevented: a frame interrupt that never reaches the CPU, or reaches
+# it more than once a frame because a status read does not release /INT.
+cogmaster_add_test(NAME bus.halt_bound.ie_positive COMMAND cogmaster-test-bus
+  halt_bound.ie_positive LABELS bus portable TIMEOUT 10)
 
 # Fault prevented: an undefined ED opcode that runs silently, so the first
 # fault a host reads names nothing.

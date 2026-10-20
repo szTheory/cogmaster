@@ -43,19 +43,32 @@ void cogmaster__bus_origin(cogmaster *m)
     m->bus.deadline = cogmaster__frame_ticks(m);
 }
 
-/* Fires the events due by m->ticks: here only the line wrap. A Z80 step is
-   at most 23 T-states (69 ticks), so the loop runs at most once per access. */
+/* Brings the beam up to m->ticks, firing each VDP event the beam reaches
+   on the way, so an access sees every event at or before its stamp. A Z80
+   step is at most 23 T-states (69 ticks), so the loop runs a few times per
+   access at most. */
 void cogmaster__bus_sync(cogmaster *m)
 {
     struct cogmaster__bus *b = &m->bus;
     uint32_t lines = cogmaster__frame_lines(m);
-    uint32_t t = b->t + (uint32_t)(m->ticks - b->at);
+    uint32_t left = (uint32_t)(m->ticks - b->at);
     b->at = m->ticks;
-    while (t >= BUS_LINE_TICKS) {
-        t -= BUS_LINE_TICKS;
-        b->line = b->line + 1u == lines ? 0u : b->line + 1u;
+    while (left > 0u) {
+        uint32_t next = cogmaster__vdp_next_event(m, b->line, b->t);
+        uint32_t gap = next - b->t;
+        if (left < gap) {
+            b->t += left;
+            break;
+        }
+        left -= gap;
+        if (next == BUS_LINE_TICKS) {
+            b->t = 0u;
+            b->line = b->line + 1u == lines ? 0u : b->line + 1u;
+        } else {
+            b->t = next;
+            cogmaster__vdp_event(m, b->line, next);
+        }
     }
-    b->t = t;
 }
 
 /* No step loops inside itself (prefix byte, block-op iteration, halted M1
@@ -106,19 +119,46 @@ void cogmaster__bus_write(cogmaster *m, uint16_t addr, uint8_t v)
     }
 }
 
-/* No port is decoded yet: reads see $FF, the idle data bus. */
+/* The VDP's port for an I/O address, or -1. The export Master System
+   decodes A7, A6 and A0 only, so $40-$7F and $80-$BF mirror $7E/$7F and
+   $BE/$BF; the Japanese console and the Game Gear decode the full address
+   (SMS-SYSTEM section 4, SMS-VDP section 2.1). */
+static int vdp_port(const cogmaster *m, uint16_t port)
+{
+    uint32_t p = port & 0xFFu;
+    if (m->machine == COGMASTER_MACHINE_GG || m->region == COGMASTER_REGION_JAPAN) {
+        if (p != 0x7Eu && p != 0x7Fu && p != 0xBEu && p != 0xBFu) {
+            return -1;
+        }
+    }
+    switch (p & 0xC1u) {
+    case 0x40u: return COGMASTER__VDP_VCOUNT;
+    case 0x41u: return COGMASTER__VDP_HCOUNT;
+    case 0x80u: return COGMASTER__VDP_DATA;
+    case 0x81u: return COGMASTER__VDP_CONTROL;
+    default: return -1;
+    }
+}
+
+/* Ports the bus does not decode read $FF, the idle data bus. */
 uint8_t cogmaster__bus_in(cogmaster *m, uint16_t port)
 {
-    (void)port;
     cogmaster__bus_sync(m);
+    int vp = vdp_port(m, port);
+    if (vp >= 0) {
+        return cogmaster__vdp_read(m, (uint32_t)vp);
+    }
     return 0xFFu;
 }
 
+/* Writes to $40-$7F go to the sound chip, which is not modelled yet. */
 void cogmaster__bus_out(cogmaster *m, uint16_t port, uint8_t v)
 {
-    (void)port;
-    (void)v;
     cogmaster__bus_sync(m);
+    int vp = vdp_port(m, port);
+    if (vp == COGMASTER__VDP_DATA || vp == COGMASTER__VDP_CONTROL) {
+        cogmaster__vdp_write(m, (uint32_t)vp, v);
+    }
 }
 
 /* The step has fetched ED and op, so the instruction started two bytes

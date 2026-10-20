@@ -82,13 +82,14 @@ static void expect_origin(const char *what, const cogmaster *m)
     }
 }
 
-/* DI; HALT runs ten frames: each stops at the frame with at most 69 ticks
-   over, the overshoot is charged to the next frame, so the total is ten
-   frames plus the last overshoot, and the CPU is still halted. */
-static void halt_bound_di(uint32_t tv, uint64_t frame_ticks)
+/* A halted image runs ten frames: each stops at the frame with at most 69
+   ticks over, the overshoot is charged to the next frame, so the total is
+   ten frames plus the last overshoot, and the CPU is still halted. iff1 is
+   the enable the image leaves. */
+static cogmaster *halt_bound(const uint8_t *prog, size_t n, uint32_t tv, uint64_t frame_ticks,
+                             uint8_t iff1)
 {
-    static const uint8_t prog[] = {0xF3u, 0x76u};
-    cogmaster *m = load_tv(prog, sizeof prog, tv);
+    cogmaster *m = load_tv(prog, n, tv);
     uint32_t overshoot = 0u;
     for (uint32_t i = 0; i < 10u; i++) {
         cogmaster_run_result r = run(m);
@@ -99,12 +100,19 @@ static void halt_bound_di(uint32_t tv, uint64_t frame_ticks)
     CHECK_EQ_U64(m->ticks, 10u * frame_ticks + overshoot);
     CHECK_EQ_U64(m->frame, 10);
     CHECK_EQ_U64(m->z80.halted, 1);
-    CHECK_EQ_U64(m->z80.iff1, 0);
+    CHECK_EQ_U64(m->z80.iff1, iff1);
     CHECK_EQ_HEX(m->z80.pc, 0x0002);
     /* The beam is back at the origin, overshoot ticks on. */
     CHECK_EQ_U64(m->bus.line, ORIGIN_LINE);
     CHECK_EQ_U64(m->bus.t, ORIGIN_TICK + overshoot);
-    cogmaster_destroy(m);
+    return m;
+}
+
+/* DI; HALT. */
+static void halt_bound_di(uint32_t tv, uint64_t frame_ticks)
+{
+    static const uint8_t prog[] = {0xF3u, 0x76u};
+    cogmaster_destroy(halt_bound(prog, sizeof prog, tv, frame_ticks, 0u));
 }
 
 static void test_halt_bound_di(void)
@@ -116,6 +124,56 @@ static void test_halt_bound_di(void)
 static void test_halt_bound_di_pal(void)
 {
     halt_bound_di(COGMASTER_TV_PAL, TICKS_PER_FRAME_PAL);
+}
+
+/* EI; HALT with the frame interrupt masked in the VDP (R1 IE0 clear, as
+   load leaves it): the frame flag rises every frame but /INT stays high,
+   so the CPU stays halted with interrupts enabled, on NTSC and PAL. */
+static void test_halt_bound_ei_masked(void)
+{
+    static const uint8_t prog[] = {0xFBu, 0x76u};
+    const uint32_t tvs[] = {COGMASTER_TV_NTSC, COGMASTER_TV_PAL};
+    const uint64_t lengths[] = {TICKS_PER_FRAME, TICKS_PER_FRAME_PAL};
+    for (size_t k = 0; k < 2u; k++) {
+        cogmaster *m = halt_bound(prog, sizeof prog, tvs[k], lengths[k], 1u);
+        CHECK_EQ_HEX(m->vdp.status & 0x80u, 0x80);
+        CHECK_EQ_U64(m->z80.int_line, 0);
+        cogmaster_destroy(m);
+    }
+}
+
+/* The positive control: with IE0 set, each frame interrupt reaches the
+   CPU once. The handler at $0038 reads the status port, which releases
+   /INT, and counts in $C100.
+     $0000  DI; IM 1; LD A,$20; OUT ($BF),A; LD A,$81; OUT ($BF),A  (R1 = IE0)
+     $000B  EI; HALT; JR $000B
+     $0038  IN A,($BF); LD HL,$C100; INC (HL); EI; RETI */
+static void test_halt_bound_ie_positive(void)
+{
+    static const uint8_t prog[] = {
+        0xF3u, 0xEDu, 0x56u, 0x3Eu, 0x20u, 0xD3u, 0xBFu, 0x3Eu, 0x81u, 0xD3u,
+        0xBFu, 0xFBu, 0x76u, 0x18u, 0xFCu, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+        0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+        0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+        0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+        0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0xDBu, 0xBFu, 0x21u, 0x00u,
+        0xC1u, 0x34u, 0xFBu, 0xEDu, 0x4Du};
+    _Static_assert(sizeof prog == 0x38u + 9u, "the handler starts at $0038");
+    cogmaster *m = load(prog, sizeof prog);
+    /* The first frame starts just after its own interrupt tick, so its
+       interrupt is served at the start of the second. */
+    (void)run(m);
+    CHECK_EQ_HEX(m->vdp.reg[1], 0x20);
+    uint8_t count = m->ram[0x100];
+    for (uint32_t i = 0; i < 10u; i++) {
+        cogmaster_run_result r = run(m);
+        CHECK_EQ_U64(r.stop, COGMASTER_STOP_FRAME);
+        CHECK(r.overshoot_ticks <= MAX_OVERSHOOT);
+        CHECK_EQ_U64(m->ram[0x100], (uint8_t)(count + 1u));
+        count = m->ram[0x100];
+        CHECK_EQ_U64(m->z80.halted, 1);
+    }
+    cogmaster_destroy(m);
 }
 
 /* Load and both resets put the beam at the frame origin with ticks 0. */
@@ -178,6 +236,8 @@ static const struct {
     {"frame_origin", test_frame_origin},
     {"halt_bound.di", test_halt_bound_di},
     {"halt_bound.di_pal", test_halt_bound_di_pal},
+    {"halt_bound.ei_masked", test_halt_bound_ei_masked},
+    {"halt_bound.ie_positive", test_halt_bound_ie_positive},
 };
 
 int main(int argc, char **argv)

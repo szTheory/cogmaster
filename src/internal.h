@@ -83,6 +83,33 @@ struct cogmaster__bus {
     uint32_t t;        /* tick in the line, 0 to 683 */
 };
 
+/* The VDP's timing half: registers, ports, status and the stores the CPU
+   writes. No renderer reads them yet. */
+#define COGMASTER__VDP_REGS 11u
+#define COGMASTER__VRAM_SIZE 16384u
+#define COGMASTER__CRAM_SIZE 32u
+
+struct cogmaster__vdp {
+    uint16_t addr;                         /* the 14-bit VRAM or CRAM address */
+    uint8_t reg[COGMASTER__VDP_REGS];      /* R0 to R10 */
+    uint8_t status;                        /* the flags: bit 7 frame interrupt pending */
+    uint8_t latch;                         /* 1 after the first control byte */
+    uint8_t first;                         /* the first control byte */
+    uint8_t code;                          /* the control code, 0 to 3 */
+    uint8_t buffer;                        /* the data port's read-ahead byte */
+    uint8_t pause;                         /* 1 while a Pause press waits for its NMI tick */
+    uint8_t cram[COGMASTER__CRAM_SIZE];
+    uint8_t vram[COGMASTER__VRAM_SIZE];
+};
+
+/* The VDP's ports after the bus has decoded an address. */
+enum {
+    COGMASTER__VDP_VCOUNT = 0, /* $7E read */
+    COGMASTER__VDP_HCOUNT = 1, /* $7F read */
+    COGMASTER__VDP_DATA = 2,   /* $BE */
+    COGMASTER__VDP_CONTROL = 3 /* $BF: control on write, status on read */
+};
+
 /* The cartridge image, in one allocator buffer padded with $FF to a 16 KiB
    multiple. rom is NULL when the test card is loaded. Not saved state: it
    is the media. */
@@ -108,6 +135,7 @@ struct cogmaster {
     struct cogmaster__fault fault; /* valid while fault_present */
     struct cogmaster__z80 z80;
     struct cogmaster__bus bus;
+    struct cogmaster__vdp vdp;
     struct cogmaster__cart cart;
     uint8_t ram[COGMASTER__RAM_SIZE];
     uint16_t field[COGMASTER__FIELD_MAX_H][COGMASTER__FIELD_W]; /* RGB444 per dot */
@@ -247,6 +275,22 @@ void cogmaster__bus_sync(cogmaster *m);
 /* Runs the Z80 until the frame deadline and returns the overshoot in ticks;
    the next frame's deadline is one frame after this one's. */
 uint32_t cogmaster__bus_run_frame(cogmaster *m);
+
+/* The VDP as load and reset leave it: registers zero except R2 $0E and R10
+   $FF, status, latch and Pause clear; power also zeroes VRAM and CRAM. */
+void cogmaster__vdp_reset(cogmaster *m, int power);
+
+/* The tick of the next VDP event on line after tick t, or the line's
+   length when none is left. */
+uint32_t cogmaster__vdp_next_event(const cogmaster *m, uint32_t line, uint32_t t);
+
+/* Runs the event at tick t of line; the bus calls it when the beam reaches
+   a tick cogmaster__vdp_next_event named. */
+void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t);
+
+/* A CPU access to a decoded VDP port at the beam position. */
+uint8_t cogmaster__vdp_read(cogmaster *m, uint32_t port);
+void cogmaster__vdp_write(cogmaster *m, uint32_t port, uint8_t v);
 
 /* The load rules for an image of n bytes: OK, or the status a load returns
    before it changes anything. */
