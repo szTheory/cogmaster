@@ -10,6 +10,8 @@ abi.header.cxx17	abi
 abi.symbols	abi
 abi.undefined	abi
 abi.undefined.self_test	abi
+bus.frame_origin	bus,portable
+bus.halt_bound.di	bus,portable
 core.api.error_changes_nothing	core,portable
 core.api.first_released_sizes	core,portable
 core.api.size_tags	core,portable

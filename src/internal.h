@@ -51,6 +51,46 @@ struct cogmaster__fault {
     uint8_t opcode, width, device, kind;
 };
 
+/* Fault kinds and devices, as the fault record's kind and device bytes.
+   Append-only; 0 is none (docs/embedding.md names them). */
+enum {
+    COGMASTER__FAULT_NONE = 0,
+    COGMASTER__FAULT_UNMAPPED_READ = 1,
+    COGMASTER__FAULT_UNMAPPED_WRITE = 2,
+    COGMASTER__FAULT_ROM_WRITE = 3,
+    COGMASTER__FAULT_MAPPER_RANGE = 4,
+    COGMASTER__FAULT_ED_UNDEFINED = 5
+};
+enum {
+    COGMASTER__DEVICE_NONE = 0,
+    COGMASTER__DEVICE_CPU = 1,
+    COGMASTER__DEVICE_CART = 2,
+    COGMASTER__DEVICE_RAM = 3,
+    COGMASTER__DEVICE_MAPPER = 4,
+    COGMASTER__DEVICE_CTRL = 5
+};
+
+/* The beam and the frame deadline. line and t are the beam position at tick
+   at; the bus brings them up to ticks before each access. */
+struct cogmaster__bus {
+    uint64_t deadline; /* the tick the current frame ends at */
+    uint64_t at;       /* the tick line and t describe */
+    uint32_t line;     /* 0 to 261 */
+    uint32_t t;        /* tick in the line, 0 to 683 */
+};
+
+/* The cartridge image, in one allocator buffer padded with $FF to a 16 KiB
+   multiple. rom is NULL when the test card is loaded. Not saved state: it
+   is the media. */
+struct cogmaster__cart {
+    uint8_t *rom;
+    uint32_t size;  /* bytes in rom */
+    uint32_t crc32; /* of the image after any copier header, before padding */
+};
+
+/* The Master System's work RAM, mirrored over $C000-$FFFF. */
+#define COGMASTER__RAM_SIZE 8192u
+
 struct cogmaster {
     cogmaster_allocator allocator; /* the caller's, copied at create */
     uint64_t frame;                /* frames run since load */
@@ -61,6 +101,9 @@ struct cogmaster {
     uint32_t fault_present;        /* 1 once a fault is recorded */
     struct cogmaster__fault fault; /* valid while fault_present */
     struct cogmaster__z80 z80;
+    struct cogmaster__bus bus;
+    struct cogmaster__cart cart;
+    uint8_t ram[COGMASTER__RAM_SIZE];
     uint16_t field[COGMASTER__FIELD_MAX_H][COGMASTER__FIELD_W]; /* RGB444 per dot */
 };
 
@@ -177,6 +220,34 @@ void cogmaster__fault_record(cogmaster *m, const struct cogmaster__fault *f);
    value and final XOR 0xFFFFFFFF. Continue a running CRC by passing it back
    as crc; start from 0. */
 uint32_t cogmaster__crc32(uint32_t crc, const uint8_t *p, size_t n);
+
+/* The beam at the frame origin with ticks 0 and the first frame's deadline
+   one frame away. Load and both resets call it. */
+void cogmaster__bus_origin(cogmaster *m);
+
+/* Brings the beam up to m->ticks. */
+void cogmaster__bus_sync(cogmaster *m);
+
+/* Runs the Z80 until the frame deadline and returns the overshoot in ticks;
+   the next frame's deadline is one frame after this one's. */
+uint32_t cogmaster__bus_run_frame(cogmaster *m);
+
+/* The load rules for an image of n bytes: OK, or the status a load returns
+   before it changes anything. */
+cogmaster_status cogmaster__cart_check(const void *image, size_t n);
+
+/* Copies a checked image into a new allocator buffer described by out, which
+   the caller installs with cogmaster__cart_install. ERR_NO_MEMORY changes
+   nothing. */
+cogmaster_status cogmaster__cart_copy(cogmaster *m, const uint8_t *image, size_t n,
+                                      struct cogmaster__cart *out);
+
+/* Frees the instance's image, if any, and installs c (which may be empty). */
+void cogmaster__cart_install(cogmaster *m, const struct cogmaster__cart *c);
+
+/* The fast-boot hand-off: the CPU and RAM as the BIOS leaves them. power
+   also clears work RAM first. */
+void cogmaster__boot_handoff(cogmaster *m, int power);
 
 /* The test card's RGB444 colour at field dot (x, y) for a resolved machine. */
 uint16_t cogmaster__testcard_pixel(uint32_t x, uint32_t y, uint32_t machine);

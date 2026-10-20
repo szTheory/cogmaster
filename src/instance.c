@@ -96,6 +96,9 @@ void cogmaster_destroy(cogmaster *m)
     if (m == NULL) {
         return;
     }
+    struct cogmaster__cart none;
+    memset(&none, 0, sizeof none);
+    cogmaster__cart_install(m, &none);
     cogmaster_allocator a = m->allocator;
     a.free(a.user, m, sizeof *m);
 }
@@ -110,9 +113,13 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     if (st != COGMASTER_STATUS_OK) {
         return st;
     }
-    /* This release loads only the built-in test card. */
-    if (media->image != NULL || media->image_size != 0u) {
-        return COGMASTER_STATUS_ERR_ARGUMENT;
+    /* No image (NULL, 0) is the built-in test card. */
+    int has_image = media->image != NULL || media->image_size != 0u;
+    if (has_image) {
+        st = cogmaster__cart_check(media->image, media->image_size);
+        if (st != COGMASTER_STATUS_OK) {
+            return st;
+        }
     }
     uint32_t machine;
     switch (media->machine) {
@@ -126,14 +133,25 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     default:
         return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
     }
+    /* Every check is done; only the copy can still fail, and it touches
+       nothing of the instance until it has succeeded. */
+    struct cogmaster__cart cart;
+    memset(&cart, 0, sizeof cart);
+    if (has_image) {
+        st = cogmaster__cart_copy(m, (const uint8_t *)media->image, media->image_size, &cart);
+        if (st != COGMASTER_STATUS_OK) {
+            return st;
+        }
+    }
+    cogmaster__cart_install(m, &cart);
     m->machine = machine;
     m->loaded = 1u;
-    m->frame = 0u;
-    m->ticks = 0u;
     memset(&m->counters, 0, sizeof m->counters);
     m->fault_present = 0u;
     memset(&m->fault, 0, sizeof m->fault);
     memset(m->field, 0, sizeof m->field);
+    cogmaster__bus_origin(m);
+    cogmaster__boot_handoff(m, 1);
     return COGMASTER_STATUS_OK;
 }
 
@@ -176,10 +194,10 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out)
     return COGMASTER_STATUS_OK;
 }
 
-/* Both kinds return the beam to line 0, tick 0, frame 0 and clear the first
-   fault (ARCHITECTURE section 9); POWER also zeroes the counters, which a
-   power cycle resets (section 8). The test card has no RAM, VRAM or CRAM, so
-   the kinds differ only in what later machines add. */
+/* Both kinds return the beam to the frame origin with frame and ticks 0,
+   apply the fast-boot hand-off again and clear the first fault (ARCHITECTURE
+   section 9); POWER also clears work RAM and zeroes the counters, which a
+   power cycle resets (section 8). */
 cogmaster_status cogmaster_reset(cogmaster *m, uint32_t kind)
 {
     if (m == NULL || (kind != COGMASTER_RESET_SOFT && kind != COGMASTER_RESET_POWER)) {
@@ -188,8 +206,8 @@ cogmaster_status cogmaster_reset(cogmaster *m, uint32_t kind)
     if (!m->loaded) {
         return COGMASTER_STATUS_ERR_NO_CONTENT;
     }
-    m->frame = 0u;
-    m->ticks = 0u;
+    cogmaster__bus_origin(m);
+    cogmaster__boot_handoff(m, kind == COGMASTER_RESET_POWER);
     m->fault_present = 0u;
     memset(&m->fault, 0, sizeof m->fault);
     if (kind == COGMASTER_RESET_POWER) {

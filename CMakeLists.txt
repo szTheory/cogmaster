@@ -43,12 +43,18 @@ endfunction()
 # memcmp: no stack protector or fortify helpers, no MSVC security cookie and
 # no default runtime library, and no build path recorded in the objects.
 add_library(cogmaster STATIC
+  src/boot.c
+  src/bus.c
+  src/cart.c
   src/crc32.c
   src/fault.c
   src/instance.c
   src/frame.c
   src/state.c
-  src/testcard.c)
+  src/testcard.c
+  src/z80.c
+  src/z80_cb.c
+  src/z80_ed.c)
 add_library(cogmaster::cogmaster ALIAS cogmaster)
 target_include_directories(cogmaster PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
