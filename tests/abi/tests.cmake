@@ -93,6 +93,13 @@ cogmaster_warnings(cogmaster-test-api-v3)
 cogmaster_add_test(NAME abi.api_v3 COMMAND cogmaster-test-api-v3
   LABELS abi portable TIMEOUT 10)
 
+# Fault prevented: appending SMS1 or VDP diagnostics renumbering existing values.
+add_executable(cogmaster-test-api-v4 ${PROJECT_SOURCE_DIR}/tests/api/v4.c)
+target_link_libraries(cogmaster-test-api-v4 PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-api-v4)
+cogmaster_add_test(NAME abi.api_v4 COMMAND cogmaster-test-api-v4
+  LABELS abi portable TIMEOUT 10)
+
 # Fault prevented: a header that only the core's own build, with its own
 # flags and language, can compile. C++ is enabled here only; an embedding
 # project never meets it. The targets are built only by these tests, which

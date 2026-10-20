@@ -84,6 +84,7 @@ struct cogmaster__bus {
     uint32_t t;        /* tick in the line, 0 to 683 */
     uint16_t op_pc;    /* the running instruction's address, its first prefix included */
     uint8_t op;        /* the running instruction's first byte after any DD or FD */
+    uint8_t data;      /* last driven data-bus byte, SMS-SYSTEM C5 */
 };
 
 /* VDP registers, ports, status and the stores shared with the renderer. */
@@ -156,7 +157,7 @@ struct cogmaster {
     cogmaster_allocator allocator; /* the caller's, copied at create */
     uint64_t frame;                /* frames run since load */
     uint64_t ticks;                /* ticks run since load */
-    uint32_t machine;              /* resolved machine: SMS2 or GG; valid while loaded */
+    uint32_t machine;              /* resolved machine: SMS1, SMS2 or GG; valid while loaded */
     uint32_t region;               /* resolved region: EXPORT or JAPAN; valid while loaded */
     uint32_t tv;                   /* resolved TV: NTSC or PAL; valid while loaded */
     uint32_t loaded;               /* 1 after a successful load */
@@ -176,6 +177,19 @@ struct cogmaster {
     uint8_t ram[COGMASTER__RAM_SIZE];
     uint16_t field[COGMASTER__FIELD_MAX_H][COGMASTER__FIELD_W]; /* RGB444 per dot */
 };
+
+/* Shared revision facts: the 315-5124 masks VDP addresses and has no
+   pull-ups on an undriven bus (SMS-VDP section 1; SMS-SYSTEM C5). */
+struct cogmaster__profile {
+    uint8_t vdp_masks, bus_pullup;
+};
+static inline struct cogmaster__profile cogmaster__profile(const cogmaster *m)
+{
+    struct cogmaster__profile p;
+    p.vdp_masks = (uint8_t)(m->machine == COGMASTER_MACHINE_SMS1);
+    p.bus_pullup = p.vdp_masks ? 0u : 0xFFu;
+    return p;
+}
 
 /* The public layouts, pinned on every target. P is the pointer size; on
    64-bit targets a pointer after a leading size field starts at P, leaving 4
@@ -367,6 +381,9 @@ void cogmaster__vdp_render_to(cogmaster *m, uint32_t end);
 void cogmaster__vdp_render_until(cogmaster *m, uint32_t line, uint32_t x);
 #define COGMASTER__VDP_PRIORITY 32u
 uint32_t cogmaster__vdp_background(const cogmaster *m, uint32_t x, uint32_t y);
+uint32_t cogmaster__vdp_pattern_address(const cogmaster *m, uint32_t address);
+uint32_t cogmaster__vdp_sat_address(const cogmaster *m, uint32_t offset);
+uint32_t cogmaster__vdp_sprite_address(const cogmaster *m, uint32_t tile, uint32_t row);
 void cogmaster__vdp_finish_field(cogmaster *m);
 uint16_t cogmaster__vdp_backdrop(const cogmaster *m);
 

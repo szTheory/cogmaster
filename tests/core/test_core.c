@@ -413,7 +413,7 @@ static void test_profile_rejected(void)
 {
     cogmaster *m = make(COGMASTER_MACHINE_GG);
     run_frames(m, 1);
-    static const uint32_t bad[] = {3u, 0xFFFFFFFFu};
+    static const uint32_t bad[] = {4u, 0xFFFFFFFFu};
     for (size_t i = 0; i < 2u; i++) {
         cogmaster_media media = make_media(bad[i]);
         CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_ERR_PROFILE_REJECTED);
@@ -1004,7 +1004,7 @@ static void test_load_rejected_unchanged(void)
         cogmaster_status want = COGMASTER_STATUS_OK;
         if (n < IMAGE_MIN || n > IMAGE_MAX) {
             want = COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE;
-        } else if (machine > COGMASTER_MACHINE_GG || region > COGMASTER_REGION_JAPAN ||
+        } else if (machine > COGMASTER_MACHINE_SMS1 || region > COGMASTER_REGION_JAPAN ||
                    tv > COGMASTER_TV_PAL) {
             want = COGMASTER_STATUS_ERR_PROFILE_REJECTED;
         } else if (tv == COGMASTER_TV_PAL &&
@@ -1137,6 +1137,12 @@ static void test_load_profiles(void)
         cogmaster_status status;
         uint32_t want_region, want_tv;
     } rows[] = {
+        {COGMASTER_MACHINE_SMS1, COGMASTER_REGION_EXPORT, COGMASTER_TV_NTSC, COGMASTER_STATUS_OK,
+         COGMASTER_REGION_EXPORT, COGMASTER_TV_NTSC},
+        {COGMASTER_MACHINE_SMS1, COGMASTER_REGION_EXPORT, COGMASTER_TV_PAL, COGMASTER_STATUS_OK,
+         COGMASTER_REGION_EXPORT, COGMASTER_TV_PAL},
+        {COGMASTER_MACHINE_SMS1, COGMASTER_REGION_JAPAN, COGMASTER_TV_PAL,
+         COGMASTER_STATUS_ERR_PROFILE_REJECTED, 0u, 0u},
         {COGMASTER_MACHINE_AUTO, COGMASTER_REGION_AUTO, COGMASTER_TV_AUTO, COGMASTER_STATUS_OK,
          COGMASTER_REGION_EXPORT, COGMASTER_TV_NTSC},
         {COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT, COGMASTER_TV_PAL, COGMASTER_STATUS_OK,

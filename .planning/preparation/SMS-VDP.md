@@ -66,7 +66,7 @@ updated: 2026-10-18
 | 2 | 3–1 | name table address bits 13–11; 224/240 modes use bits 3–2 and base $0700/$1700/$2700/$3700; SMS1: bit 0 ANDs address bit 10 (§3.1) |
 | 3, 4 | all | unused in mode 4 on SMS2/GG; SMS1 wants reg 3 = $FF and reg 4 bits 2–0 = 1 or addresses are masked |
 | 5 | 6–1 | SAT address bits 13–8; SMS1: bit 0 clear fetches X/tile from the low 128 bytes |
-| 6 | 2 | sprite pattern index bit 8 (tiles 256–511); SMS1: bits 1–0 mask tile index bits 8 and 6 |
+| 6 | 2 | sprite pattern index bit 8 (tiles 256–511); SMS1: bits 1–0 mask address A12/A11, tile index bits 7/6 (VDP.02 register diagram, rechecked 2026-10-20) |
 | 7 | 3–0 | backdrop/border colour, from the sprite palette (CRAM 16 + n) |
 | 8 | 7–0 | hscroll (bits 7–3 start column, 2–0 fine) |
 | 9 | 7–0 | vscroll (latched once per frame, §3.3) |

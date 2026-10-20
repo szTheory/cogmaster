@@ -24,8 +24,10 @@ frame; D-pad/B/A map to the six pad bits. Port-1 Start maps to SMS Pause or nati
 GG Start, and Select drives SMS Reset. Pad/none and button descriptors are sent
 to the frontend. Missing callbacks and none devices submit released levels.
 The experimental flag remains enabled while the background tracer is expanded.
-Behaviour revision 2 identifies content video/input; state format 3 includes input,
-the rendering cursor and emitted field, so older state bytes are refused.
+API version 4 appends SMS1 and unsupported-video fault constants; all earlier
+values and struct layouts are retained. Behaviour revision 3 identifies complete
+background/scroll semantics. State format 4 includes the dot cursor, scroll/display
+latches and last driven bus byte, so older state bytes are refused.
 
 ## Getting it
 
@@ -159,7 +161,10 @@ The library guesses the cartridge's board from the image (see [Probing an image]
 at `$0000`-`$BFFF`, with 8 KiB of work RAM at `$C000`; an image on no supported board returns
 `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD`. The CPU starts as the console's BIOS leaves it (fast boot; no BIOS code runs): stack pointer `$DFF0`,
 `$AB` at `$C000` on the Master System, program counter 0. `machine` selects the profile: `COGMASTER_MACHINE_AUTO` (the default, a Master
-System II), `COGMASTER_MACHINE_SMS2` or `COGMASTER_MACHINE_GG`. `region` selects the console's region:
+System II), `COGMASTER_MACHINE_SMS2`, `COGMASTER_MACHINE_GG` (2), or
+`COGMASTER_MACHINE_SMS1` (3, the 315-5124 VDP). SMS1 uses the console boot and
+port rules with address masks described in [video](hardware/video.md).
+`region` selects the console's region:
 `COGMASTER_REGION_AUTO` (the default, export), `COGMASTER_REGION_EXPORT` or `COGMASTER_REGION_JAPAN`. `tv` selects
 the video standard: `COGMASTER_TV_AUTO` (the default, NTSC), `COGMASTER_TV_NTSC` or `COGMASTER_TV_PAL`. No Game
 Gear and no Japanese console was made for PAL, so `COGMASTER_TV_PAL` with either returns
@@ -292,6 +297,7 @@ The record is part of the instance's saved state.
 | 3 | `COGMASTER_FAULT_KIND_ROM_WRITE` | a write to `$0000`–`$BFFF` that is neither a register of the cartridge's mapper nor cartridge RAM |
 | 4 | `COGMASTER_FAULT_KIND_MAPPER_RANGE` | a bank number at or past the end of an image whose page count is not a power of two, or a write to `$FFFC` that sets bit 7, bit 4 or bits 1–0 |
 | 5 | `COGMASTER_FAULT_KIND_ED_UNDEFINED` | the CPU ran an opcode after `$ED` that the Z80 does not define, as an 8 T-state no-operation; `opcode` is that second byte and `pc` the address of the `$ED` |
+| 6 | `COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE` | an enabled display selects an unsupported TMS or invalid text mode; output is backdrop and frame delivery stays bounded |
 
 | `device` | Constant | Meaning |
 |---|---|---|
@@ -301,6 +307,7 @@ The record is part of the instance's saved state.
 | 3 | `COGMASTER_FAULT_DEVICE_RAM` | work RAM |
 | 4 | `COGMASTER_FAULT_DEVICE_MAPPER` | the cartridge's mapper |
 | 5 | `COGMASTER_FAULT_DEVICE_CTRL` | the memory and I/O control ports `$3E` and `$3F` |
+| 6 | `COGMASTER_FAULT_DEVICE_VDP` | the video display processor |
 
 `addr` is the full 16-bit bus address; for `IN A,(n)` and `OUT (n),A` that is A × 256 + n. Outside kind 5, `pc`
 is the address of the instruction, its first `$DD` or `$FD` prefix included, and `opcode` its first byte after
@@ -310,7 +317,11 @@ Things shipped games do are never faults, so the record stays free for the real 
 port `$3E` has the I/O chip disabled, ports `$F0`–`$F2`, `$DE` and `$DF`, writes to the I/O chip's ports, the Game
 Gear's link ports `$01`–`$05`, a bank number past the end of an image whose page count is a power of two (it
 wraps), toggling port `$3E`, and undocumented CPU instructions. An undriven read returns `$FF` and counts in the
-instance's open-bus counter instead. The test card runs no CPU, so it never records a fault. The call works before
+instance's open-bus counter instead. SMS1 undriven memory/port reads retain the
+last byte driven by a CPU fetch, read or write; SMS2/GG pull it to `$FF`.
+Peeks observe it without changing it or the counter. The selected model follows
+preparation SMS-SYSTEM C5; instruction-specific electrical behavior remains unmeasured.
+The test card runs no CPU, so it never records a fault. The call works before
 a load too, and then reports `present` 0.
 
 ## Reading memory

@@ -201,6 +201,23 @@ static void test_gg_ports(void)
    open-bus read each time. */
 static void test_open_bus(void)
 {
+    cogmaster *sms1 = load(COGMASTER_MACHINE_SMS1, COGMASTER_REGION_EXPORT, COGMASTER_TV_NTSC);
+    CHECK_EQ_HEX(sms1->bus.data, 0xFFu);
+    cogmaster__bus_write(sms1, 0xC100u, 0x6Au);
+    CHECK_EQ_HEX(cogmaster__bus_in(sms1, 0x3Fu), 0x6Au);
+    (void)cogmaster__bus_fetch(sms1, 0u, 0u);
+    CHECK_EQ_HEX(cogmaster__bus_in(sms1, 0x3Fu), image[0]);
+    cogmaster__bus_write(sms1, 0xC100u, 0x55u);
+    (void)cogmaster__bus_read(sms1, 0xC100u);
+    CHECK_EQ_HEX(cogmaster__bus_in(sms1, 0x3Fu), 0x55u);
+    cogmaster__bus_out(sms1, 0x3Eu, 0xAFu);
+    CHECK_EQ_HEX(cogmaster__bus_in(sms1, 0xDCu), 0xAFu);
+    cogmaster__bus_out(sms1, 0x3Eu, 0xEBu);
+    uint32_t count = sms1->counters.open_bus_reads;
+    CHECK_EQ_HEX(cogmaster_peek(sms1, COGMASTER_SPACE_BUS, 0u), 0xEBu);
+    CHECK_EQ_U64(sms1->counters.open_bus_reads, count);
+    CHECK_EQ_HEX(cogmaster__bus_read(sms1, 0u), 0xEBu);
+    cogmaster_destroy(sms1);
     static const struct {
         uint32_t machine, region;
         uint16_t port;

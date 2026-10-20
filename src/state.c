@@ -78,7 +78,7 @@ static struct state_time header_io(struct cogmaster__sio *io, cogmaster *m, uint
     fixed(io, "total_size", total, 4u);
     fixed(io, "behaviour_revision", COGMASTER_BEHAVIOUR_REVISION, 4u);
     fixed(io, "api_version", COGMASTER_API_VERSION, 4u);
-    /* The resolved profile, each field 1 or 2, then a zero byte. A state
+    /* The resolved profile, then a zero byte. A state
        loads only into an instance of the same profile, so the frame length
        below is the instance's. */
     fixed(io, "machine", m->machine, 1u);
@@ -191,6 +191,7 @@ static void bus_io(struct cogmaster__sio *io, cogmaster *m, struct state_time ti
     uint32_t t = cogmaster__sio_u32(io, "bus_t", &b->t, 0u, STATE_T_MAX);
     cogmaster__sio_u16(io, "bus_op_pc", &b->op_pc, 0u, UINT16_MAX);
     cogmaster__sio_u8(io, "bus_op", &b->op, 0u, UINT8_MAX);
+    cogmaster__sio_u8(io, "bus_data", &b->data, 0u, UINT8_MAX);
     cogmaster__sio_check(io, deadline == (time.frame + 1u) * frame_ticks);
     cogmaster__sio_check(io, time.ticks < deadline);
     cogmaster__sio_check(io, at <= time.ticks && time.ticks - at <= STATE_STEP_TICKS_MAX);

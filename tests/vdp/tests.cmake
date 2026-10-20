@@ -6,7 +6,8 @@ target_link_libraries(cogmaster-test-background PRIVATE cogmaster::cogmaster)
 set_target_properties(cogmaster-test-background PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
 cogmaster_warnings(cogmaster-test-background)
-foreach(case IN ITEMS tiles scroll locks intervals latches empty priority state_interval)
+foreach(case IN ITEMS tiles scroll locks intervals latches empty priority state_interval
+                      sms1_masks sms1_state unsupported)
   cogmaster_add_test(NAME vdp.background.${case} COMMAND cogmaster-test-background ${case}
     LABELS portable vdp TIMEOUT 10)
 endforeach()

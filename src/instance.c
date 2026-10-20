@@ -145,6 +145,9 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     case COGMASTER_MACHINE_GG:
         machine = COGMASTER_MACHINE_GG;
         break;
+    case COGMASTER_MACHINE_SMS1:
+        machine = COGMASTER_MACHINE_SMS1;
+        break;
     default:
         return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
     }

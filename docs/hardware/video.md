@@ -28,6 +28,20 @@ Sources: preparation SMS-VDP sections 2, 3, 4.7, 6 and 9;
 [SMS Power tilemap](https://www.smspower.org/Development/Tilemap) and
 [registers](https://www.smspower.org/Development/VDPRegisters).
 
+`COGMASTER_MACHINE_SMS1` selects the 315-5124 through the same renderer.
+For 192 lines R2 bit 0 gates name-table address A10: when clear, rows
+16–27 mirror rows 0–11. R3 gates pattern A13–A6 for planes 0/1; R4 bits
+2–0 gate A13–A11 for planes 2/3. Set R3=$FF and R4=7 for full addressing.
+R5 bit 0 gates SAT address A7 (X/tile pairs mirror Y storage when clear).
+R6 bit 2 supplies sprite A13; bits 1/0 gate A12/A11, or tile bits 7/6.
+SMS2/GG ignore these mask bits. The address helpers are shared by tile
+fetches and the sprite pipeline. Source: the register diagrams linked above.
+
+Legacy TMS modes and invalid text modes render deterministic backdrop and
+record `COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE` on the VDP, while the
+CPU still returns at the fixed frame deadline. SMS1 only supports Mode 4
+combinations 1000, 1010 and 1100; its extended-height combinations are invalid.
+
 The owned `boot_to_play` fixture writes a diamond in plane 0 and $55, $33,
 $0F in planes 1–3, with palette entry n containing n. Its independent oracle
 expands the diamond into eight explicit bit rows, adds 2 for odd columns,

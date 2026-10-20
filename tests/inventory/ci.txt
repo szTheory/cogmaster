@@ -3,6 +3,7 @@
 abi.api_v1	abi,portable
 abi.api_v2	abi,portable
 abi.api_v3	abi,portable
+abi.api_v4	abi,portable
 abi.api_version	abi
 abi.api_version.self_test	abi
 abi.globals	abi
@@ -181,8 +182,11 @@ vdp.background.latches	portable,vdp
 vdp.background.locks	portable,vdp
 vdp.background.priority	portable,vdp
 vdp.background.scroll	portable,vdp
+vdp.background.sms1_masks	portable,vdp
+vdp.background.sms1_state	portable,vdp
 vdp.background.state_interval	portable,vdp
 vdp.background.tiles	portable,vdp
+vdp.background.unsupported	portable,vdp
 vdp.control_port	portable,vdp
 vdp.data_port	portable,vdp
 vdp.hcounter	portable,vdp

@@ -1006,7 +1006,7 @@ static void test_error_changes_nothing(void)
                      COGMASTER_STATUS_ERR_ARGUMENT, m);
     media.image = NULL;
     media.image_size = 0u;
-    media.machine = 3u;
+    media.machine = 4u;
     expect_unchanged("load another machine", cogmaster_load(m, &media),
                      COGMASTER_STATUS_ERR_PROFILE_REJECTED, m);
 
@@ -1099,7 +1099,7 @@ static void test_error_changes_nothing(void)
                      COGMASTER_STATUS_ERR_NO_CONTENT, e);
     expect_untouched("reset before load", cogmaster_reset(e, COGMASTER_RESET_POWER),
                      COGMASTER_STATUS_ERR_NO_CONTENT, e);
-    media.machine = 3u;
+    media.machine = 4u;
     expect_untouched("load another machine before load", cogmaster_load(e, &media),
                      COGMASTER_STATUS_ERR_PROFILE_REJECTED, e);
     cogmaster_destroy(e);

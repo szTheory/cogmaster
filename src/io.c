@@ -57,13 +57,14 @@ static int full_decode(const cogmaster *m)
     return is_gg(m) || m->region == COGMASTER_REGION_JAPAN;
 }
 
-/* An undriven read: the SMS2 and the Game Gear pull the data bus up to $FF
+/* An undriven read: SMS1 retains the last driven byte, whereas the SMS2
+   and the Game Gear pull the data bus up to $FF
    (SMS-SYSTEM C5). Shipped software makes such reads, so they are counted,
    not faults. */
 uint8_t cogmaster__io_open_bus(cogmaster *m)
 {
     m->counters.open_bus_reads++;
-    return 0xFFu;
+    return (uint8_t)(m->bus.data | cogmaster__profile(m).bus_pullup);
 }
 
 void cogmaster__io_reset(cogmaster *m)
