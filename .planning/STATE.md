@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 02
 current_phase_name: The CPU matches the public vectors
 status: executing
-stopped_at: Completed 02-04-PLAN.md
-last_updated: "2026-10-20T02:33:11.214Z"
+stopped_at: Completed 02-05-PLAN.md
+last_updated: "2026-10-20T02:40:16.960Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 02 execution started
-state_head: 9e63ce2566fed02541f05d721aaf434e1d0f7297
+state_head: d3ddf4f67b6ea11434b4e8443515cbebc8a0acd1
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 29
-  completed_plans: 16
+  completed_plans: 17
   percent: 25
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 02 (The CPU matches the public vectors) — EXECUTING
-Plan: 5 of 17
+Plan: 6 of 17
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 02 execution started
 
@@ -74,6 +74,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P02 | 12min | 2 tasks | 13 files |
 | Phase 02 P03 | 5min | 2 tasks | 6 files |
 | Phase 02 P04 | 10min | 3 tasks | 7 files |
+| Phase 02 P05 | 25min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -127,6 +128,8 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 02]: A halted step runs one M1 at PC and steps PC back so R counts and the step stays bounded
 - [Phase 02]: Each DD/FD byte is its own step: step() returns after the prefix fetch with idx set and clears idx after any other opcode
 - [Phase 02]: Index remapping is centralised in hx/r8/mem_hl/rp_hi; EX DE,HL and EXX use the true HL pair
+- [Phase 02]: NMI is not delayed by EI; only /INT waits one instruction after EI; both wait for a pending prefix
+- [Phase 02]: Block instructions are one iteration per step; ED holes (176) are 8-T NOPs reaching the ed_undefined seam
 
 ### Pending Todos
 
@@ -162,6 +165,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T02:33:11.134Z
-Stopped at: Completed 02-04-PLAN.md
+Last session: 2026-10-20T02:40:16.906Z
+Stopped at: Completed 02-05-PLAN.md
 Resume file: None
