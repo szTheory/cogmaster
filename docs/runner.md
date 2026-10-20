@@ -29,6 +29,7 @@ cogmaster-run --help | --version
 | `--hash` | After the last frame, print the SHA-256 of its picture. |
 | `--png N:FILE` | After frame N, write its picture to FILE as a PNG. N is from 1 to the frame count. Repeat the option to write more frames or files. |
 | `--trace first-fault` | After each frame, read the core's first-fault record; stop at the first fault and print it, described under [First fault](#first-fault). |
+| `--mailbox` | After each frame, read the RAM mailbox a diagnostic ROM fills; stop at the first frame whose status reads done and print the mailbox, described under [Mailbox](#mailbox). |
 | `--probe` | Print the file's header fields and digests, described under [Probe](#probe), and run nothing. Give it only with a file. |
 | `--help` | Print the usage text and the exit statuses. Give it alone. |
 | `--version` | Print `cogmaster-run` and the version, for example `cogmaster-run 1.2.3`. Give it alone. |
@@ -127,6 +128,42 @@ the guest, not a failure of the run. `--hash` and `--bench` output follows the l
 
 [Embedding](embedding.md) says when each kind is recorded and which guest behaviour is never a fault. Later
 releases add kinds and devices; scripts should accept names they do not know.
+
+## Mailbox
+
+The diagnostic ROMs in `tests/roms/src` measure the machine and write what they measured into work RAM at
+`$C100`-`$C1FF`:
+
+| Address | Content |
+|---|---|
+| `$C100`-`$C103` | the magic `CMDG` |
+| `$C104` | the protocol version, 1 |
+| `$C105` | the status: `$80` running, `$00` done |
+| `$C106`, `$C107` | the record count and the ROM's id |
+| `$C108`-`$C109` | the CRC-16 of `$C110`-`$C1FF`, low byte first |
+| `$C110` + 4 × n | record n: its test id, its flags (bit 0 valid), its value low byte first; up to 60 records |
+
+The CRC-16 is CCITT's: polynomial `$1021`, initial value `$FFFF`, no reflection and no final XOR, so the nine
+bytes `123456789` give `$29B1`.
+
+`--mailbox` reads the mailbox after each frame without disturbing the run (the library's `cogmaster_peek`). The run
+stops after the first frame whose status reads `$00`, or after `--frames N` frames. Then the runner prints, in
+hexadecimal:
+
+```text
+status=00
+rom=01
+magic=ok
+crc=ok
+01=F1F0 flags=1
+02=F1F0 flags=1
+```
+
+`status` and `rom` are the bytes at `$C105` and `$C107`. `magic` is `ok` when `$C100` holds `CMDG`, else `bad`;
+`crc` is `ok` when the stored CRC matches the records, else `bad`. Then one `NN=VVVV flags=F` line per record, in
+order: the test id, the value and the flags. A status other than `00` means the ROM had not finished by the last
+frame. The runner only measures: it judges nothing, and the exit status is 0 whatever the mailbox holds.
+`--hash` and `--bench` output follows the mailbox.
 
 ## Bench report
 

@@ -150,3 +150,26 @@ never committed and never packed into a release archive: the source and the pinn
 header and a jump to itself, checks its digest and that `cogmaster-run --probe` reports `checksum_ok=1`.
 `runner.hashes_file` adds each image's digest to `hashes.txt`, so the `hash-equality` job also shows every lane
 assembled the same bytes.
+
+### Measurements and verdicts
+
+A fixture measures and never judges. It reports through the RAM mailbox (`mailbox.inc`, read by
+`cogmaster-run --mailbox` as [runner.md](runner.md#mailbox) describes), and `tests/diag/expected.csv` holds the
+verdicts, one row per record:
+
+```text
+rom,test,profile,expected,source,citation
+mapper_sega,01:bank_sum_slot1,*,F1F0,doc,SMS-CARTRIDGES section 2.1
+```
+
+`test` starts with the record's id in two hex digits and a colon. `expected` is a hex value, or `lo-hi` with both
+ends inclusive. `profile` `*` matches every profile. `source` is `hw`, `doc`, `oracle` or `derived`, and
+`citation` names the document and section (or the oracle and its pin). `tests/cmake/mailbox.cmake` judges a
+runner's output against the rows for one ROM and profile and fails with its own message for a bad magic or CRC,
+a status that is not `00` (`hang`), a record outside its row, a record with no row and a row with no record.
+
+`fixtures.mapper_sega` runs a 512 KiB Sega-mapper image of 32 stamped banks: it sums each bank's stamp through
+slot 1 and through slot 2, and reads slot 0 after selecting bank 5 there, where the first 1 KiB must stay on bank
+0 while `$0400` reads bank 5. `fixtures.judge.wrong_value`, `fixtures.judge.missing_row` and
+`fixtures.judge.hang` are the judge's negative controls: a CSV copy with one value changed, a copy missing one
+row, and a run cut after one frame, each of which must fail with its message.

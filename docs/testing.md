@@ -99,7 +99,7 @@ fixture) and `wasm32.txt` (the `ci` list without the `libretro` tests).
 | `install` | The library installed and found by an outside project, and embedded with `add_subdirectory`. |
 | `perf` | Allocation-free frames and the instructions-per-frame gate's own logic. |
 | `policy` | Rules about the repository, the documents and the tests themselves. |
-| `fixtures` | The images assembled from `tests/roms/src` with the pinned WLA-DX, and that pin's negative control. |
+| `fixtures` | The images assembled from `tests/roms/src` with the pinned WLA-DX, their mailbox records judged against `tests/diag/expected.csv`, and the negative controls of the pin and of the judge. |
 | `release` | The packaged zips, run after the package step. |
 | `hygiene` | The hygiene lane's checks. |
 
