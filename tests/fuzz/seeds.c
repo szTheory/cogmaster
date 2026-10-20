@@ -188,6 +188,11 @@ static void programs(void)
     static const uint8_t ed_00[] = {0xEDu, 0x00u, 0xF3u, 0x76u};
     /* LD A,0; loop: OUT ($BE),A; INC A; JR loop. */
     static const uint8_t be_hammer[] = {0x3Eu, 0x00u, 0xD3u, 0xBEu, 0x3Cu, 0x18u, 0xFBu};
+    /* Enable display; alternate VRAM/CRAM/register control bytes while
+       writing data continuously. No interrupt or HALT can end the loop. */
+    static const uint8_t render_hammer[] = {
+        0xF3u, 0x3Eu, 4u,    0xD3u, 0xBFu, 0x3Eu, 0x80u, 0xD3u, 0xBFu, 0x3Eu, 0x40u, 0xD3u, 0xBFu,
+        0x3Eu, 0x81u, 0xD3u, 0xBFu, 0xD3u, 0xBFu, 0xD3u, 0xBEu, 0x3Cu, 0xC3u, 17u,   0u};
     /* Each Sega register in turn: $FFFC = 0, $FFFD = 1, $FFFE = 2, $FFFF = 3. */
     static const uint8_t fffc[] = {0x3Eu, 0x00u, 0x32u, 0xFCu, 0xFFu, 0x3Cu, 0x32u,
                                    0xFDu, 0xFFu, 0x3Cu, 0x32u, 0xFEu, 0xFFu, 0x3Cu,
@@ -205,6 +210,7 @@ static void programs(void)
         {"ld-8000.sms", ld_8000, sizeof ld_8000, 32u * KIB},
         {"ed-00.sms", ed_00, sizeof ed_00, 32u * KIB},
         {"be-hammer.sms", be_hammer, sizeof be_hammer, 32u * KIB},
+        {"render-hammer.sms", render_hammer, sizeof render_hammer, 32u * KIB},
         {"fffc-writes.sms", fffc, sizeof fffc, 64u * KIB},
     };
     for (size_t i = 0; i < sizeof list / sizeof list[0]; i++) {

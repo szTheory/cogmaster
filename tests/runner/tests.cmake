@@ -69,8 +69,11 @@ if(CMAKE_SCRIPT_MODE_FILE)
       "-DEMULATOR=${EMULATOR}" -DOUT=${OUT} -DFIXTURES=${FIXTURES} -P ${HASHES}
       COMMAND_ERROR_IS_FATAL ANY)
     file(READ "${OUT}/hashes.txt" hashes)
+    if(NOT FIXTURES)
+      return()
+    endif()
     foreach(row IN ITEMS "playing boot_to_play.gg native ntsc-u input"
-        "playing boot_to_play.sms sms1 pal input" "playing boot_to_play.sms gg-sms pal input"
+        "playing boot_to_play.sms sms1 pal input" "playing boot_to_play.sms gg-sms ntsc-j input"
         "playing vdp_lines_240.sms sms pal baseline")
       if(NOT hashes MATCHES "${row} frame 14 sha256 [0-9a-f]+")
         message(FATAL_ERROR "playing matrix missing ${row}")

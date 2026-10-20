@@ -476,6 +476,11 @@ static void test_record_sweep(void)
     const uint32_t tvs[] = {COGMASTER_TV_NTSC, COGMASTER_TV_PAL};
     for (size_t k = 0; k < 2u; k++) {
         cogmaster *src = make_with(img_loop, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO, tvs[k]);
+        cogmaster__bus_out(src, 0xBFu, 6u);
+        cogmaster__bus_out(src, 0xBFu, 0x80u);
+        cogmaster__bus_out(src, 0xBFu, 0x50u);
+        cogmaster__bus_out(src, 0xBFu, 0x81u);
+        memset(src->vdp.vram, 0x55, sizeof src->vdp.vram);
         run_frames(src, 3u);
         cogmaster *target =
             make_with(img_loop, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO, tvs[k]);

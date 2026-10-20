@@ -103,6 +103,19 @@ under wasmtime. Each scale is the largest ratio rounded up; `CMakePresets.json` 
 
 ### Comparing hashes across lanes
 
+Playing rows cover the owned boot fixture with released input, each pad separately,
+both pads together and native GG Start. SMS1/SMS2 run NTSC export, NTSC Japan and PAL;
+native GG and GG SMS mode run the two NTSC regions. The three line fixtures cover
+192/224/240-line output on those profiles. PAL Game Gear profiles remain refused.
+Every `.sms` and `.gg` fixture also contributes its image SHA-256. Hashes serialize
+the crop's RGB444 words little-endian; host aspect ratios and colour conversion do
+not enter them. Independent fixture oracles and wrong-pixel controls remain separate.
+`core.no_alloc_after_load` uses loaded content across supported machine/TV/video
+profiles with input, VRAM/CRAM/register writes, interleaved instances, bounded sprite
+scans and state round trips. State-field refusal sweeps also exercise enabled,
+populated video. Fuzz replay checks allocation counts, raster bounds and the fixed
+deadline with at most 69 ticks of instruction overshoot.
+
 `runner.hashes_file` (`tests/cmake/hashes.cmake`, mode `write`) writes `build/<preset>/hashes.txt`: the frame 60
 hash line of the Master System card and of the Game Gear card, then a `fixture <name> sha256 <hex>` line per
 assembled fixture image, with Unix newlines on every host. CI collects the

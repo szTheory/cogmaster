@@ -737,10 +737,9 @@ static void test_allocator(void)
     cogmaster_destroy(NULL);
 }
 
-/* After load, 600 frames with a frame copy each, then a state save and a
-   state load into buffers the caller owns, make no allocator call at all:
-   the frame loop never allocates. */
-static void test_no_alloc_after_load(void)
+/* Content writes, absolute input, mode changes, copies and state round trips
+   allocate nothing. An idle neighbour is byte-identical throughout. */
+static void playing_no_alloc(uint32_t machine, uint32_t tv, uint32_t video)
 {
     counts c;
     memset(&c, 0, sizeof c);
@@ -750,8 +749,16 @@ static void test_no_alloc_after_load(void)
     cfg.allocator.user = &c;
     cogmaster *m = NULL;
     CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
-    cogmaster_media media = make_media(COGMASTER_MACHINE_SMS2);
+    static const uint8_t image[32768] = {0xF3u, 0xD3u, 0xBEu, 0x3Cu, 0xC3u, 1u, 0u};
+    cogmaster_media media = make_media(machine);
+    media.image = image;
+    media.image_size = sizeof image;
+    media.tv = tv;
+    media.video_mode = video;
     CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    cogmaster *neighbour = make(COGMASTER_MACHINE_GG);
+    static uint8_t idle[sizeof(struct cogmaster)];
+    memcpy(idle, neighbour, sizeof idle);
     size_t size = cogmaster__state_size(m);
     CHECK(size > 0u);
     uint8_t *state = (uint8_t *)malloc(size);
@@ -759,14 +766,48 @@ static void test_no_alloc_after_load(void)
     if (m == NULL || state == NULL) {
         free(state);
         cogmaster_destroy(m);
+        cogmaster_destroy(neighbour);
         return;
     }
     uint32_t allocs = c.allocs;
     uint32_t frees = c.frees;
-    for (uint32_t i = 0; i < 600u; i++) {
-        CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    for (uint32_t i = 0; i < 60u; i++) {
+        /* Every register combination, CRAM word and SAT entry is reachable;
+           the cursor may advance but repeated earlier catch-up cannot redraw. */
+        cogmaster__bus_out(m, 0xBFu, (uint8_t)(i | 4u));
+        cogmaster__bus_out(m, 0xBFu, 0x80u);
+        cogmaster__bus_out(m, 0xBFu, (uint8_t)(0x40u | ((i & 3u) << 3)));
+        cogmaster__bus_out(m, 0xBFu, 0x81u);
+        memset(m->vdp.vram, (int)(i * 7u), sizeof m->vdp.vram);
+        cogmaster__bus_out(m, 0xBFu, 0u);
+        cogmaster__bus_out(m, 0xBFu, 0xC0u);
+        for (uint32_t byte = 0u; byte < 64u; byte++)
+            cogmaster__bus_out(m, 0xBEu, (uint8_t)i);
+        cogmaster_input input = {0};
+        input.size = sizeof input;
+        input.p1 = i & 63u;
+        input.p2 = (i ^ 63u) & 63u;
+        input.port1 = COGMASTER_DEVICE_PAD;
+        input.port2 = COGMASTER_DEVICE_PAD;
+        input.pause = i & 1u;
+        input.start = i & 1u;
+        CHECK_EQ_U64(cogmaster_set_input(m, &input), COGMASTER_STATUS_OK);
+        cogmaster_run_result r = {0};
+        r.size = sizeof r;
+        uint64_t end = (m->frame + 1u) * (tv == COGMASTER_TV_PAL ? 214092u : 179208u);
+        CHECK_EQ_U64(cogmaster_run_frame(m, &r), COGMASTER_STATUS_OK);
+        CHECK(r.overshoot_ticks <= 69u);
+        CHECK(m->ticks >= end && m->ticks <= end + 69u);
+        CHECK(m->vdp.sprite_scanned <= 64u && m->vdp.sprite_count <= 8u);
+        uint32_t cursor = m->render_line * FIELD_W + m->render_x;
+        cogmaster__vdp_render_until(m, 0u, 0u);
+        CHECK_EQ_U64(m->render_line * FIELD_W + m->render_x, cursor);
+        CHECK(m->render_line <= FIELD_MAX_H);
         cogmaster_frame io = frame_io(pixels, FIELD_W * 2u, 0u);
         CHECK_EQ_U64(cogmaster_get_frame(m, &io), COGMASTER_STATUS_OK);
+        CHECK(memcmp(idle, neighbour, sizeof idle) == 0);
+        CHECK_EQ_U64(cogmaster_run_frame(neighbour, NULL), COGMASTER_STATUS_OK);
+        memcpy(idle, neighbour, sizeof idle);
     }
     CHECK_EQ_U64(cogmaster__state_save(m, state, size), COGMASTER_STATUS_OK);
     CHECK_EQ_U64(cogmaster__state_load(m, state, size), COGMASTER_STATUS_OK);
@@ -774,7 +815,20 @@ static void test_no_alloc_after_load(void)
     CHECK_EQ_U64(c.frees - frees, 0);
     free(state);
     cogmaster_destroy(m);
+    cogmaster_destroy(neighbour);
     CHECK_EQ_U64(c.frees, c.allocs);
+}
+
+static void test_no_alloc_after_load(void)
+{
+    for (uint32_t tv = COGMASTER_TV_NTSC; tv <= COGMASTER_TV_PAL; tv++) {
+        playing_no_alloc(COGMASTER_MACHINE_SMS2, tv, COGMASTER_VIDEO_SMS);
+        playing_no_alloc(COGMASTER_MACHINE_SMS1, tv, COGMASTER_VIDEO_SMS);
+        if (tv == COGMASTER_TV_NTSC) {
+            playing_no_alloc(COGMASTER_MACHINE_GG, tv, COGMASTER_VIDEO_GG);
+            playing_no_alloc(COGMASTER_MACHINE_GG, tv, COGMASTER_VIDEO_SMS);
+        }
+    }
 }
 
 /* Each struct at the size it was first released with, derived here from its
