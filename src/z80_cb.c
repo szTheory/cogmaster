@@ -33,9 +33,9 @@ static uint8_t rot(struct cogmaster__z80 *z, unsigned y, uint8_t v)
 static void bit(struct cogmaster__z80 *z, unsigned y, uint8_t v, uint8_t xy)
 {
     unsigned b = v & (1u << y);
-    cogmaster__z80_setf(z, (uint8_t)((z->reg[RF] & COGMASTER__Z80_CF) | COGMASTER__Z80_HF |
-                                     (xy & 0x28u) |
-                                     (b ? (b & COGMASTER__Z80_SF) : (COGMASTER__Z80_ZF | COGMASTER__Z80_PF))));
+    cogmaster__z80_setf(
+        z, (uint8_t)((z->reg[RF] & COGMASTER__Z80_CF) | COGMASTER__Z80_HF | (xy & 0x28u) |
+                     (b ? (b & COGMASTER__Z80_SF) : (COGMASTER__Z80_ZF | COGMASTER__Z80_PF))));
 }
 
 /* Rotate (x = 0), RES (x = 2) or SET (x = 3) bit y of v. RES and SET leave

@@ -362,10 +362,18 @@ int main(int argc, char **argv)
     static const struct {
         const char *name;
         void (*run)(void);
-    } cases[] = {{"im0", im0},           {"im1", im1},           {"im2", im2},
-                 {"ei_delay", ei_delay}, {"di", di},             {"nmi", nmi},
-                 {"retn", retn},         {"ld_a_i", ld_a_i},     {"halt_exit", halt_exit},
-                 {"block_op", block_op}, {"prefix_run", prefix_run}, {"r_prefixes", r_prefixes},
+    } cases[] = {{"im0", im0},
+                 {"im1", im1},
+                 {"im2", im2},
+                 {"ei_delay", ei_delay},
+                 {"di", di},
+                 {"nmi", nmi},
+                 {"retn", retn},
+                 {"ld_a_i", ld_a_i},
+                 {"halt_exit", halt_exit},
+                 {"block_op", block_op},
+                 {"prefix_run", prefix_run},
+                 {"r_prefixes", r_prefixes},
                  {"holes", holes}};
     if (argc != 2) {
         fprintf(stderr, "usage: cogmaster-test-z80int CASE\n");

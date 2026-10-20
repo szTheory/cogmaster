@@ -494,139 +494,392 @@ static void exec(cogmaster *m, uint8_t op, uint8_t q_prev)
         return;
     }
     switch (op) {
-    case 0x00: break; /* NOP */
-    case 0x01: set_rp(z, 0, imm16(m)); break;
-    case 0x02: ld_ind_a(m, RB); break;
-    case 0x03: inc_rp(m, 0, 1); break;
-    case 0x04: inc_r(m, RB, 0); break;
-    case 0x05: inc_r(m, RB, 1); break;
-    case 0x06: ld_r_n(m, RB); break;
-    case 0x07: rot_a(z, 0); break;
-    case 0x08: ex_af(z); break;
-    case 0x09: add_hl(m, 0); break;
-    case 0x0A: ld_a_ind(m, RB); break;
-    case 0x0B: inc_rp(m, 0, 0xFFFF); break;
-    case 0x0C: inc_r(m, RC, 0); break;
-    case 0x0D: inc_r(m, RC, 1); break;
-    case 0x0E: ld_r_n(m, RC); break;
-    case 0x0F: rot_a(z, 1); break;
-    case 0x10: djnz(m); break;
-    case 0x11: set_rp(z, 1, imm16(m)); break;
-    case 0x12: ld_ind_a(m, RD); break;
-    case 0x13: inc_rp(m, 1, 1); break;
-    case 0x14: inc_r(m, RD, 0); break;
-    case 0x15: inc_r(m, RD, 1); break;
-    case 0x16: ld_r_n(m, RD); break;
-    case 0x17: rot_a(z, 2); break;
-    case 0x18: jr(m, 1); break;
-    case 0x19: add_hl(m, 1); break;
-    case 0x1A: ld_a_ind(m, RD); break;
-    case 0x1B: inc_rp(m, 1, 0xFFFF); break;
-    case 0x1C: inc_r(m, RE, 0); break;
-    case 0x1D: inc_r(m, RE, 1); break;
-    case 0x1E: ld_r_n(m, RE); break;
-    case 0x1F: rot_a(z, 3); break;
-    case 0x20: jr(m, cc(z, 0)); break;
-    case 0x21: set_rp(z, 2, imm16(m)); break;
-    case 0x22: ld_nn_hl(m, 0); break;
-    case 0x23: inc_rp(m, 2, 1); break;
-    case 0x24: inc_r(m, RH, 0); break;
-    case 0x25: inc_r(m, RH, 1); break;
-    case 0x26: ld_r_n(m, RH); break;
-    case 0x27: daa(z); break;
-    case 0x28: jr(m, cc(z, 1)); break;
-    case 0x29: add_hl(m, 2); break;
-    case 0x2A: ld_nn_hl(m, 1); break;
-    case 0x2B: inc_rp(m, 2, 0xFFFF); break;
-    case 0x2C: inc_r(m, RL, 0); break;
-    case 0x2D: inc_r(m, RL, 1); break;
-    case 0x2E: ld_r_n(m, RL); break;
-    case 0x2F: cpl(z); break;
-    case 0x30: jr(m, cc(z, 2)); break;
-    case 0x31: set_rp(z, 3, imm16(m)); break;
-    case 0x32: ld_nn_a(m, 0); break;
-    case 0x33: inc_rp(m, 3, 1); break;
-    case 0x34: inc_r(m, 6, 0); break;
-    case 0x35: inc_r(m, 6, 1); break;
-    case 0x36: ld_r_n(m, 6); break;
-    case 0x37: scf_ccf(z, q_prev, 0); break;
-    case 0x38: jr(m, cc(z, 3)); break;
-    case 0x39: add_hl(m, 3); break;
-    case 0x3A: ld_nn_a(m, 1); break;
-    case 0x3B: inc_rp(m, 3, 0xFFFF); break;
-    case 0x3C: inc_r(m, RA, 0); break;
-    case 0x3D: inc_r(m, RA, 1); break;
-    case 0x3E: ld_r_n(m, RA); break;
-    case 0x3F: scf_ccf(z, q_prev, 1); break;
-    case 0xC0: ret_cc(m, 0); break;
-    case 0xC1: pop_rp(m, 0); break;
-    case 0xC2: jp(m, cc(z, 0)); break;
-    case 0xC3: jp(m, 1); break;
-    case 0xC4: call(m, cc(z, 0)); break;
-    case 0xC5: push_rp(m, 0); break;
-    case 0xC6: cogmaster__z80_alu(z, 0, imm8(m)); break;
-    case 0xC7: rst(m, 0x00); break;
-    case 0xC8: ret_cc(m, 1); break;
-    case 0xC9: ret(m, 1); break;
-    case 0xCA: jp(m, cc(z, 1)); break;
-    case 0xCB: cogmaster__z80_cb(m); break;
-    case 0xCC: call(m, cc(z, 1)); break;
-    case 0xCD: call(m, 1); break;
-    case 0xCE: cogmaster__z80_alu(z, 1, imm8(m)); break;
-    case 0xCF: rst(m, 0x08); break;
-    case 0xD0: ret_cc(m, 2); break;
-    case 0xD1: pop_rp(m, 1); break;
-    case 0xD2: jp(m, cc(z, 2)); break;
-    case 0xD3: out_n(m); break;
-    case 0xD4: call(m, cc(z, 2)); break;
-    case 0xD5: push_rp(m, 1); break;
-    case 0xD6: cogmaster__z80_alu(z, 2, imm8(m)); break;
-    case 0xD7: rst(m, 0x10); break;
-    case 0xD8: ret_cc(m, 3); break;
-    case 0xD9: exx(z); break;
-    case 0xDA: jp(m, cc(z, 3)); break;
-    case 0xDB: in_n(m); break;
-    case 0xDC: call(m, cc(z, 3)); break;
-    case 0xDE: cogmaster__z80_alu(z, 3, imm8(m)); break;
-    case 0xDF: rst(m, 0x18); break;
-    case 0xE0: ret_cc(m, 4); break;
-    case 0xE1: pop_rp(m, 2); break;
-    case 0xE2: jp(m, cc(z, 4)); break;
-    case 0xE3: ex_sp_hl(m); break;
-    case 0xE4: call(m, cc(z, 4)); break;
-    case 0xE5: push_rp(m, 2); break;
-    case 0xE6: cogmaster__z80_alu(z, 4, imm8(m)); break;
-    case 0xE7: rst(m, 0x20); break;
-    case 0xE8: ret_cc(m, 5); break;
-    case 0xE9: z->pc = hl(z); break; /* JP (HL) or (IX); WZ unchanged */
-    case 0xEA: jp(m, cc(z, 5)); break;
-    case 0xEB: ex_de_hl(z); break;
-    case 0xEC: call(m, cc(z, 5)); break;
-    case 0xED: cogmaster__z80_ed(m); break;
-    case 0xEE: cogmaster__z80_alu(z, 5, imm8(m)); break;
-    case 0xEF: rst(m, 0x28); break;
-    case 0xF0: ret_cc(m, 6); break;
-    case 0xF1: pop_rp(m, 3); break;
-    case 0xF2: jp(m, cc(z, 6)); break;
-    case 0xF3: ei_di(z, 0); break;
-    case 0xF4: call(m, cc(z, 6)); break;
-    case 0xF5: push_rp(m, 3); break;
-    case 0xF6: cogmaster__z80_alu(z, 6, imm8(m)); break;
-    case 0xF7: rst(m, 0x30); break;
-    case 0xF8: ret_cc(m, 7); break;
-    case 0xF9: cogmaster__z80_idle(m, ir(z), 2); z->sp = hl(z); break; /* LD SP,HL */
-    case 0xFA: jp(m, cc(z, 7)); break;
-    case 0xFB: ei_di(z, 1); break;
-    case 0xFC: call(m, cc(z, 7)); break;
-    case 0xFE: cogmaster__z80_alu(z, 7, imm8(m)); break;
-    case 0xFF: rst(m, 0x38); break;
-    default: break; /* DD and FD never reach here */
+    case 0x00:
+        break; /* NOP */
+    case 0x01:
+        set_rp(z, 0, imm16(m));
+        break;
+    case 0x02:
+        ld_ind_a(m, RB);
+        break;
+    case 0x03:
+        inc_rp(m, 0, 1);
+        break;
+    case 0x04:
+        inc_r(m, RB, 0);
+        break;
+    case 0x05:
+        inc_r(m, RB, 1);
+        break;
+    case 0x06:
+        ld_r_n(m, RB);
+        break;
+    case 0x07:
+        rot_a(z, 0);
+        break;
+    case 0x08:
+        ex_af(z);
+        break;
+    case 0x09:
+        add_hl(m, 0);
+        break;
+    case 0x0A:
+        ld_a_ind(m, RB);
+        break;
+    case 0x0B:
+        inc_rp(m, 0, 0xFFFF);
+        break;
+    case 0x0C:
+        inc_r(m, RC, 0);
+        break;
+    case 0x0D:
+        inc_r(m, RC, 1);
+        break;
+    case 0x0E:
+        ld_r_n(m, RC);
+        break;
+    case 0x0F:
+        rot_a(z, 1);
+        break;
+    case 0x10:
+        djnz(m);
+        break;
+    case 0x11:
+        set_rp(z, 1, imm16(m));
+        break;
+    case 0x12:
+        ld_ind_a(m, RD);
+        break;
+    case 0x13:
+        inc_rp(m, 1, 1);
+        break;
+    case 0x14:
+        inc_r(m, RD, 0);
+        break;
+    case 0x15:
+        inc_r(m, RD, 1);
+        break;
+    case 0x16:
+        ld_r_n(m, RD);
+        break;
+    case 0x17:
+        rot_a(z, 2);
+        break;
+    case 0x18:
+        jr(m, 1);
+        break;
+    case 0x19:
+        add_hl(m, 1);
+        break;
+    case 0x1A:
+        ld_a_ind(m, RD);
+        break;
+    case 0x1B:
+        inc_rp(m, 1, 0xFFFF);
+        break;
+    case 0x1C:
+        inc_r(m, RE, 0);
+        break;
+    case 0x1D:
+        inc_r(m, RE, 1);
+        break;
+    case 0x1E:
+        ld_r_n(m, RE);
+        break;
+    case 0x1F:
+        rot_a(z, 3);
+        break;
+    case 0x20:
+        jr(m, cc(z, 0));
+        break;
+    case 0x21:
+        set_rp(z, 2, imm16(m));
+        break;
+    case 0x22:
+        ld_nn_hl(m, 0);
+        break;
+    case 0x23:
+        inc_rp(m, 2, 1);
+        break;
+    case 0x24:
+        inc_r(m, RH, 0);
+        break;
+    case 0x25:
+        inc_r(m, RH, 1);
+        break;
+    case 0x26:
+        ld_r_n(m, RH);
+        break;
+    case 0x27:
+        daa(z);
+        break;
+    case 0x28:
+        jr(m, cc(z, 1));
+        break;
+    case 0x29:
+        add_hl(m, 2);
+        break;
+    case 0x2A:
+        ld_nn_hl(m, 1);
+        break;
+    case 0x2B:
+        inc_rp(m, 2, 0xFFFF);
+        break;
+    case 0x2C:
+        inc_r(m, RL, 0);
+        break;
+    case 0x2D:
+        inc_r(m, RL, 1);
+        break;
+    case 0x2E:
+        ld_r_n(m, RL);
+        break;
+    case 0x2F:
+        cpl(z);
+        break;
+    case 0x30:
+        jr(m, cc(z, 2));
+        break;
+    case 0x31:
+        set_rp(z, 3, imm16(m));
+        break;
+    case 0x32:
+        ld_nn_a(m, 0);
+        break;
+    case 0x33:
+        inc_rp(m, 3, 1);
+        break;
+    case 0x34:
+        inc_r(m, 6, 0);
+        break;
+    case 0x35:
+        inc_r(m, 6, 1);
+        break;
+    case 0x36:
+        ld_r_n(m, 6);
+        break;
+    case 0x37:
+        scf_ccf(z, q_prev, 0);
+        break;
+    case 0x38:
+        jr(m, cc(z, 3));
+        break;
+    case 0x39:
+        add_hl(m, 3);
+        break;
+    case 0x3A:
+        ld_nn_a(m, 1);
+        break;
+    case 0x3B:
+        inc_rp(m, 3, 0xFFFF);
+        break;
+    case 0x3C:
+        inc_r(m, RA, 0);
+        break;
+    case 0x3D:
+        inc_r(m, RA, 1);
+        break;
+    case 0x3E:
+        ld_r_n(m, RA);
+        break;
+    case 0x3F:
+        scf_ccf(z, q_prev, 1);
+        break;
+    case 0xC0:
+        ret_cc(m, 0);
+        break;
+    case 0xC1:
+        pop_rp(m, 0);
+        break;
+    case 0xC2:
+        jp(m, cc(z, 0));
+        break;
+    case 0xC3:
+        jp(m, 1);
+        break;
+    case 0xC4:
+        call(m, cc(z, 0));
+        break;
+    case 0xC5:
+        push_rp(m, 0);
+        break;
+    case 0xC6:
+        cogmaster__z80_alu(z, 0, imm8(m));
+        break;
+    case 0xC7:
+        rst(m, 0x00);
+        break;
+    case 0xC8:
+        ret_cc(m, 1);
+        break;
+    case 0xC9:
+        ret(m, 1);
+        break;
+    case 0xCA:
+        jp(m, cc(z, 1));
+        break;
+    case 0xCB:
+        cogmaster__z80_cb(m);
+        break;
+    case 0xCC:
+        call(m, cc(z, 1));
+        break;
+    case 0xCD:
+        call(m, 1);
+        break;
+    case 0xCE:
+        cogmaster__z80_alu(z, 1, imm8(m));
+        break;
+    case 0xCF:
+        rst(m, 0x08);
+        break;
+    case 0xD0:
+        ret_cc(m, 2);
+        break;
+    case 0xD1:
+        pop_rp(m, 1);
+        break;
+    case 0xD2:
+        jp(m, cc(z, 2));
+        break;
+    case 0xD3:
+        out_n(m);
+        break;
+    case 0xD4:
+        call(m, cc(z, 2));
+        break;
+    case 0xD5:
+        push_rp(m, 1);
+        break;
+    case 0xD6:
+        cogmaster__z80_alu(z, 2, imm8(m));
+        break;
+    case 0xD7:
+        rst(m, 0x10);
+        break;
+    case 0xD8:
+        ret_cc(m, 3);
+        break;
+    case 0xD9:
+        exx(z);
+        break;
+    case 0xDA:
+        jp(m, cc(z, 3));
+        break;
+    case 0xDB:
+        in_n(m);
+        break;
+    case 0xDC:
+        call(m, cc(z, 3));
+        break;
+    case 0xDE:
+        cogmaster__z80_alu(z, 3, imm8(m));
+        break;
+    case 0xDF:
+        rst(m, 0x18);
+        break;
+    case 0xE0:
+        ret_cc(m, 4);
+        break;
+    case 0xE1:
+        pop_rp(m, 2);
+        break;
+    case 0xE2:
+        jp(m, cc(z, 4));
+        break;
+    case 0xE3:
+        ex_sp_hl(m);
+        break;
+    case 0xE4:
+        call(m, cc(z, 4));
+        break;
+    case 0xE5:
+        push_rp(m, 2);
+        break;
+    case 0xE6:
+        cogmaster__z80_alu(z, 4, imm8(m));
+        break;
+    case 0xE7:
+        rst(m, 0x20);
+        break;
+    case 0xE8:
+        ret_cc(m, 5);
+        break;
+    case 0xE9:
+        z->pc = hl(z);
+        break; /* JP (HL) or (IX); WZ unchanged */
+    case 0xEA:
+        jp(m, cc(z, 5));
+        break;
+    case 0xEB:
+        ex_de_hl(z);
+        break;
+    case 0xEC:
+        call(m, cc(z, 5));
+        break;
+    case 0xED:
+        cogmaster__z80_ed(m);
+        break;
+    case 0xEE:
+        cogmaster__z80_alu(z, 5, imm8(m));
+        break;
+    case 0xEF:
+        rst(m, 0x28);
+        break;
+    case 0xF0:
+        ret_cc(m, 6);
+        break;
+    case 0xF1:
+        pop_rp(m, 3);
+        break;
+    case 0xF2:
+        jp(m, cc(z, 6));
+        break;
+    case 0xF3:
+        ei_di(z, 0);
+        break;
+    case 0xF4:
+        call(m, cc(z, 6));
+        break;
+    case 0xF5:
+        push_rp(m, 3);
+        break;
+    case 0xF6:
+        cogmaster__z80_alu(z, 6, imm8(m));
+        break;
+    case 0xF7:
+        rst(m, 0x30);
+        break;
+    case 0xF8:
+        ret_cc(m, 7);
+        break;
+    case 0xF9:
+        cogmaster__z80_idle(m, ir(z), 2);
+        z->sp = hl(z);
+        break; /* LD SP,HL */
+    case 0xFA:
+        jp(m, cc(z, 7));
+        break;
+    case 0xFB:
+        ei_di(z, 1);
+        break;
+    case 0xFC:
+        call(m, cc(z, 7));
+        break;
+    case 0xFE:
+        cogmaster__z80_alu(z, 7, imm8(m));
+        break;
+    case 0xFF:
+        rst(m, 0x38);
+        break;
+    default:
+        break; /* DD and FD never reach here */
     }
 }
 
 /* The start of an acceptance: IFF1 clears, a halted CPU resumes with PC
    already past HALT, and an NMOS part accepting right after LD A,I or
-   LD A,R leaves P/V clear in F (Sean Young sections 5.3 and 5.4; MAME's
+   LD A,R leaves P/V clear in F (Sean Young section 5.3 and section 5.4; MAME's
    Z80 notes on NMOS parts). */
 static void accept(struct cogmaster__z80 *z, uint8_t p_prev)
 {
@@ -638,8 +891,8 @@ static void accept(struct cogmaster__z80 *z, uint8_t p_prev)
 }
 
 /* NMI acceptance, 11 T-states: a 5 T-state opcode fetch whose byte is
-   ignored, then PC pushed; IFF2 keeps the old IFF1 (Sean Young sections
-   5.1 and 5.3). */
+   ignored, then PC pushed; IFF2 keeps the old IFF1 (Sean Young
+   section 5.1 and section 5.3). */
 static void nmi(cogmaster *m, uint8_t p_prev)
 {
     struct cogmaster__z80 *z = &m->z80;

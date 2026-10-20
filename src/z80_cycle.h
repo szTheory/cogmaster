@@ -149,9 +149,10 @@ static inline void cogmaster__z80_alu(struct cogmaster__z80 *z, unsigned op, uin
 static inline uint8_t cogmaster__z80_inc8(struct cogmaster__z80 *z, uint8_t v)
 {
     uint8_t r = (uint8_t)(v + 1u);
-    cogmaster__z80_setf(z, (uint8_t)((z->reg[COGMASTER__Z80_F] & COGMASTER__Z80_CF) |
-                                     cogmaster__z80_sz53(r) | ((r & 0x0Fu) ? 0u : COGMASTER__Z80_HF) |
-                                     (r == 0x80u ? COGMASTER__Z80_PF : 0u)));
+    cogmaster__z80_setf(z,
+                        (uint8_t)((z->reg[COGMASTER__Z80_F] & COGMASTER__Z80_CF) |
+                                  cogmaster__z80_sz53(r) | ((r & 0x0Fu) ? 0u : COGMASTER__Z80_HF) |
+                                  (r == 0x80u ? COGMASTER__Z80_PF : 0u)));
     return r;
 }
 

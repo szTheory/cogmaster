@@ -132,8 +132,8 @@ static void ld_a_ir(cogmaster *m, uint8_t v)
 {
     struct cogmaster__z80 *z = &m->z80;
     z->reg[RA] = v;
-    cogmaster__z80_setf(z, (uint8_t)((z->reg[RF] & CF) | cogmaster__z80_sz53(v) |
-                                     (z->iff2 ? PF : 0u)));
+    cogmaster__z80_setf(
+        z, (uint8_t)((z->reg[RF] & CF) | cogmaster__z80_sz53(v) | (z->iff2 ? PF : 0u)));
     z->p = 1;
 }
 
@@ -280,10 +280,18 @@ static void block(cogmaster *m, unsigned y, unsigned s)
     uint16_t d = y & 1u ? 0xFFFFu : 1u;
     int rep = y >= 6;
     switch (s) {
-    case 0: ldx(m, d, rep); break;
-    case 1: cpx(m, d, rep); break;
-    case 2: inx(m, d, rep); break;
-    default: outx(m, d, rep); break;
+    case 0:
+        ldx(m, d, rep);
+        break;
+    case 1:
+        cpx(m, d, rep);
+        break;
+    case 2:
+        inx(m, d, rep);
+        break;
+    default:
+        outx(m, d, rep);
+        break;
     }
 }
 
@@ -293,10 +301,18 @@ static void x1(cogmaster *m, unsigned y, unsigned s)
     struct cogmaster__z80 *z = &m->z80;
     static const uint8_t im[8] = {0, 0, 1, 2, 0, 0, 1, 2};
     switch (s) {
-    case 0: in_c(m, y); break;
-    case 1: out_c(m, y); break;
-    case 2: adc_hl(m, y >> 1, !(y & 1u)); break;
-    case 3: ld_nn_rp(m, y >> 1, (int)(y & 1u)); break;
+    case 0:
+        in_c(m, y);
+        break;
+    case 1:
+        out_c(m, y);
+        break;
+    case 2:
+        adc_hl(m, y >> 1, !(y & 1u));
+        break;
+    case 3:
+        ld_nn_rp(m, y >> 1, (int)(y & 1u));
+        break;
     case 4: /* NEG */
     {
         uint8_t a = z->reg[RA];
@@ -304,17 +320,38 @@ static void x1(cogmaster *m, unsigned y, unsigned s)
         cogmaster__z80_alu(z, 2, a);
         break;
     }
-    case 5: retn(m); break;
-    case 6: z->im = im[y]; break;
+    case 5:
+        retn(m);
+        break;
+    case 6:
+        z->im = im[y];
+        break;
     default:
         switch (y) {
-        case 0: cogmaster__z80_idle(m, ir(z), 1); z->i = z->reg[RA]; break;
-        case 1: cogmaster__z80_idle(m, ir(z), 1); z->r = z->reg[RA]; break;
-        case 2: cogmaster__z80_idle(m, ir(z), 1); ld_a_ir(m, z->i); break;
-        case 3: cogmaster__z80_idle(m, ir(z), 1); ld_a_ir(m, z->r); break;
-        case 4: rxd(m, 0); break;
-        case 5: rxd(m, 1); break;
-        default: break; /* 0x77 and 0x7F: 8 T-state NOPs */
+        case 0:
+            cogmaster__z80_idle(m, ir(z), 1);
+            z->i = z->reg[RA];
+            break;
+        case 1:
+            cogmaster__z80_idle(m, ir(z), 1);
+            z->r = z->reg[RA];
+            break;
+        case 2:
+            cogmaster__z80_idle(m, ir(z), 1);
+            ld_a_ir(m, z->i);
+            break;
+        case 3:
+            cogmaster__z80_idle(m, ir(z), 1);
+            ld_a_ir(m, z->r);
+            break;
+        case 4:
+            rxd(m, 0);
+            break;
+        case 5:
+            rxd(m, 1);
+            break;
+        default:
+            break; /* 0x77 and 0x7F: 8 T-state NOPs */
         }
         break;
     }

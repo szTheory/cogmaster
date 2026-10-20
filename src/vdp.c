@@ -1,7 +1,7 @@
 /* The VDP's timing half: the beam events it raises (the frame interrupt
    and the Pause NMI), the V and H counters, the control and data ports with
-   VRAM, CRAM and R0-R10, the status byte and /INT. There is no renderer yet; the mode bits in R0 and
-   R1 are stored and the mode is treated as 192 lines.
+   VRAM, CRAM and R0-R10, the status byte and /INT. There is no renderer yet; the mode bits in R0
+   and R1 are stored and the mode is treated as 192 lines.
 
    Time is in ticks, one per VDP clock; t is the tick in a 684-tick line,
    with t 0 at the first active dot (SMS-VDP sections 2 and 4, SMS-SYSTEM
@@ -13,7 +13,7 @@
 #define VDP_LINE_TICKS 684u
 
 /* The CPU sees the V counter step to the next line's value at tick 604
-   (SMS-VDP sections 4.2 and 4.9; SMS-SYSTEM section 2 measures "at or
+   (SMS-VDP section 4.2 and section 4.9; SMS-SYSTEM section 2 measures "at or
    after 599"). */
 #define VDP_VCOUNT_TICK 604u
 
@@ -84,12 +84,12 @@ void cogmaster__vdp_reset(cogmaster *m, int power)
 }
 
 /* /INT is a level: the frame flag AND IE0, held until a status read
-   (SMS-VDP sections 2.6 and 4.6). */
+   (SMS-VDP section 2.6 and section 4.6). */
 static void vdp_irq(cogmaster *m)
 {
     const struct cogmaster__vdp *v = &m->vdp;
-    m->z80.int_line = (uint8_t)((v->status & VDP_STATUS_FRAME) != 0u &&
-                                (v->reg[1] & VDP_R1_IE0) != 0u);
+    m->z80.int_line =
+        (uint8_t)((v->status & VDP_STATUS_FRAME) != 0u && (v->reg[1] & VDP_R1_IE0) != 0u);
 }
 
 /* The line /NMI is asserted on. The Game Gear has no Pause button: in its
@@ -159,8 +159,8 @@ static uint8_t vdp_status_read(cogmaster *m)
 /* The control port takes two bytes: the address's low 8 bits, then its
    high 6 bits with the code in bits 7-6. Code 0 loads the read-ahead byte
    and steps the address; code 2 writes the first byte to the register the
-   second byte's low 4 bits name, and R11-R15 do not exist (SMS-VDP section
-   2.2). */
+   second byte's low 4 bits name, and R11-R15 do not exist
+   (SMS-VDP section 2.2). */
 static void vdp_control_write(cogmaster *m, uint8_t b)
 {
     struct cogmaster__vdp *v = &m->vdp;
@@ -189,7 +189,7 @@ static void vdp_control_write(cogmaster *m, uint8_t b)
    A read returns the read-ahead byte and refills it from VRAM at the
    address the last access stepped to, so reads stream VRAM one byte
    behind the address; a write stores the byte in CRAM under code 3, in VRAM under the
-   other codes, and in the read-ahead byte (SMS-VDP sections 2.2 and 2.3). */
+   other codes, and in the read-ahead byte (SMS-VDP section 2.2 and section 2.3). */
 static uint8_t vdp_data_read(cogmaster *m)
 {
     struct cogmaster__vdp *v = &m->vdp;
@@ -216,10 +216,14 @@ static void vdp_data_write(cogmaster *m, uint8_t b)
 uint8_t cogmaster__vdp_read(cogmaster *m, uint32_t port)
 {
     switch (port) {
-    case COGMASTER__VDP_VCOUNT: return vdp_vcount(m);
-    case COGMASTER__VDP_HCOUNT: return vdp_hcount(m);
-    case COGMASTER__VDP_DATA: return vdp_data_read(m);
-    default: return vdp_status_read(m);
+    case COGMASTER__VDP_VCOUNT:
+        return vdp_vcount(m);
+    case COGMASTER__VDP_HCOUNT:
+        return vdp_hcount(m);
+    case COGMASTER__VDP_DATA:
+        return vdp_data_read(m);
+    default:
+        return vdp_status_read(m);
     }
 }
 
