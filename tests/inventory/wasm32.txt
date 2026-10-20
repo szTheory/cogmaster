@@ -80,3 +80,4 @@ runner.usage.png_syntax	portable,runner
 runner.usage.positional	portable,runner
 runner.usage.unknown	portable,runner
 runner.version	portable,runner
+vectors.self_test	portable,vectors

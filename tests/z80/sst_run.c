@@ -5,12 +5,19 @@
 
      cogmaster-test-sst --sample FILE [--group base|cb|dd|ddcb|ed|fd|fdcb]
                         [--only NAMES] [--expect-count N]
+     cogmaster-test-sst --sample FILE --corrupt-copy OUT NAME TEST FIELD
 
    NAMES is a comma-separated list of upstream file names ("00,02"). Prints
    a line beginning "mismatch" naming the file, the test index and the first
    differing field or T-state for each failing test, then "executed N".
    Exit status 1 on any mismatch, on an executed count other than
-   --expect-count, or on a sample that cannot be read; 2 on misuse. */
+   --expect-count, or on a sample that cannot be read; 2 on misuse.
+
+   --corrupt-copy runs nothing: it writes a copy of the sample to OUT in
+   which test TEST of file NAME expects FIELD (a state field name such as
+   "a") with its lowest bit flipped, so a harness run on the copy must
+   report that mismatch. Exit status 0, or 1 when the test or field does
+   not exist or OUT cannot be written. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -315,19 +322,82 @@ static uint32_t get32(const uint8_t *p)
 static int usage(void)
 {
     fprintf(stderr, "usage: cogmaster-test-sst --sample FILE [--group base|cb|dd|ddcb|ed|fd|fdcb]"
-                    " [--only NAMES] [--expect-count N]\n");
+                    " [--only NAMES] [--expect-count N]\n"
+                    "       cogmaster-test-sst --sample FILE --corrupt-copy OUT NAME TEST FIELD\n");
     return 2;
+}
+
+/* Writes buf to out with one test's expected final field flipped in its
+   lowest bit. The test is re-encoded, since an unchanged field is stored
+   only once, in the initial state; every other byte is copied. */
+static int corrupt_copy(const uint8_t *buf, size_t len, const char *out, const char *file,
+                        long test, const char *field)
+{
+    unsigned k = 0;
+    while (k < SST_FIELDS && strcmp(field, sst_field_names[k]) != 0) {
+        k++;
+    }
+    if (k == SST_FIELDS) {
+        fprintf(stderr, "sst: %s is not a state field\n", field);
+        return 1;
+    }
+    uint32_t per_file = get32(buf + 12), files = get32(buf + 16);
+    size_t pos = 20;
+    struct sst_test t;
+    for (uint32_t f = 0; f < files && f < SST_FILES && pos + 2 <= len; f++) {
+        char name[SST_NAME_MAX];
+        sst_file_name((unsigned)(buf[pos] | buf[pos + 1] << 8), name);
+        pos += 2;
+        for (long n = 0; n < (long)per_file; n++) {
+            size_t start = pos;
+            if (sst_decode(buf, len, &pos, &t) != 0) {
+                fprintf(stderr, "sst: truncated or malformed record\n");
+                return 1;
+            }
+            if (n != test || strcmp(name, file) != 0) {
+                continue;
+            }
+            t.final[k] ^= 1u;
+            uint8_t rec[1024];
+            size_t n_rec = sst_encode(&t, rec);
+            FILE *o = fopen(out, "wb");
+            int err = !o || fwrite(buf, 1, start, o) != start || fwrite(rec, 1, n_rec, o) != n_rec ||
+                      fwrite(buf + pos, 1, len - pos, o) != len - pos;
+            if (o && fclose(o) != 0) {
+                err = 1;
+            }
+            if (err) {
+                fprintf(stderr, "sst: cannot write %s\n", out);
+                return 1;
+            }
+            return 0;
+        }
+    }
+    fprintf(stderr, "sst: the sample holds no test %ld in \"%s\"\n", test, file);
+    return 1;
 }
 
 int main(int argc, char **argv)
 {
     const char *sample = NULL, *group = NULL, *only = NULL;
-    long expect = -1;
+    const char *const *corrupt = NULL;
+    long expect = -1, corrupt_test = -1;
     for (int k = 1; k < argc; k++) {
         if (k + 1 >= argc) {
             return usage();
         }
-        if (strcmp(argv[k], "--sample") == 0) {
+        if (strcmp(argv[k], "--corrupt-copy") == 0) {
+            if (k + 4 >= argc) {
+                return usage();
+            }
+            corrupt = (const char *const *)argv + k + 1;
+            char *end;
+            corrupt_test = strtol(corrupt[2], &end, 10);
+            if (*end != '\0' || corrupt_test < 0) {
+                return usage();
+            }
+            k += 4;
+        } else if (strcmp(argv[k], "--sample") == 0) {
             sample = argv[++k];
         } else if (strcmp(argv[k], "--group") == 0) {
             group = argv[++k];
@@ -353,6 +423,11 @@ int main(int argc, char **argv)
         fprintf(stderr, "sst: %s is not a readable vector sample\n", sample);
         free(buf);
         return 1;
+    }
+    if (corrupt) {
+        int rc = corrupt_copy(buf, len, corrupt[0], corrupt[1], corrupt_test, corrupt[3]);
+        free(buf);
+        return rc;
     }
     uint32_t per_file = get32(buf + 12);
     uint32_t files = get32(buf + 16);

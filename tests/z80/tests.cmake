@@ -30,3 +30,30 @@ add_executable(cogmaster-sst2bin
 set_target_properties(cogmaster-sst2bin PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
 cogmaster_warnings(cogmaster-sst2bin)
+
+# Every command that starts a z80 tool goes through the build's
+# CMAKE_CROSSCOMPILING_EMULATOR, so an emulated lane runs its own guest binary.
+set(z80_sample ${PROJECT_SOURCE_DIR}/tests/vectors/z80/sst-sample.bin)
+set(z80_out ${PROJECT_BINARY_DIR}/tests/vectors)
+set(z80_expect_fail ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake)
+file(MAKE_DIRECTORY ${z80_out})
+
+# A copy of the sample in which file 00 test 0 expects a different final a,
+# written at build time into the build tree; the committed sample is never
+# changed.
+add_custom_command(OUTPUT ${z80_out}/sst-corrupt.bin
+  COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:cogmaster-test-sst> --sample ${z80_sample}
+    --corrupt-copy ${z80_out}/sst-corrupt.bin 00 0 a
+  DEPENDS cogmaster-test-sst ${z80_sample}
+  VERBATIM)
+add_custom_target(cogmaster-sst-corrupt ALL DEPENDS ${z80_out}/sst-corrupt.bin)
+
+# Fault prevented: a harness that reports green whatever the core computes.
+# On the corrupted copy it must exit 1 naming the file, the test and the field.
+set(cmd ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:cogmaster-test-sst>
+  --sample ${z80_out}/sst-corrupt.bin --only 00)
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+cogmaster_add_test(NAME vectors.self_test
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=mismatch.*00.*0.*[^a-z]a([^a-z]|$)"
+    -P ${z80_expect_fail}
+  LABELS portable vectors TIMEOUT 30)
