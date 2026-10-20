@@ -3,6 +3,14 @@
 # inventory check in cmake/CogmasterTests.cmake sees them all. The hygiene lane
 # registers only its own tests, the nofp lane only the abi tests, the fuzz
 # lane only the libFuzzer runs and the vectors-full lane only the full shards.
+if(COGMASTER_LIBRARY)
+  find_program(library_sh sh REQUIRED)
+  add_test(NAME library.local COMMAND ${CMAKE_COMMAND} -E env
+    "COGMASTER_LIBRARY_RUN=$<TARGET_FILE:cogmaster-run>" "COGMASTER_LIBRARY_EMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}"
+    ${library_sh} ${PROJECT_SOURCE_DIR}/scripts/library.sh run)
+  set_tests_properties(library.local PROPERTIES LABELS local)
+  return()
+endif()
 if(COGMASTER_HYGIENE)
   include(${CMAKE_CURRENT_LIST_DIR}/hygiene/tests.cmake)
   return()

@@ -209,6 +209,10 @@ option(COGMASTER_LIBFUZZER "Build the libFuzzer targets; register only the fuzz 
 # from the fetched archive and registers only the full shards and the sample
 # equality check.
 option(COGMASTER_VECTORS_FULL "Convert the fetched z80 vectors; register only the full shards" OFF)
+option(COGMASTER_LIBRARY "Register only the private local library operation" OFF)
+if(COGMASTER_LIBRARY AND NOT IS_DIRECTORY "$ENV{COGMASTER_ROM_DIR}")
+  message(FATAL_ERROR "library: COGMASTER_ROM_DIR must name an existing directory")
+endif()
 # Fault prevented: a nightly run that reports green after converting nothing
 # because the fetched tree is missing.
 if(COGMASTER_VECTORS_FULL AND NOT EXISTS "${PROJECT_SOURCE_DIR}/build/pins/sst-z80/v1")
@@ -232,6 +236,8 @@ elseif(COGMASTER_LIBFUZZER)
   set(inventory fuzz)
 elseif(COGMASTER_VECTORS_FULL)
   set(inventory vectors-full)
+elseif(COGMASTER_LIBRARY)
+  set(inventory library)
 endif()
 set(COGMASTER_INVENTORY ${inventory} CACHE STRING "Test inventory file under tests/inventory")
 # Fault prevented: every wasm32 test failing on a missing runtime, with a

@@ -21,6 +21,12 @@ reproduce a CI failure. Releases and repository settings are in [maintaining.md]
 
 ## The entry point
 
+For private dumps, put a literal directory in `COGMASTER_ROM_DIR` in ignored `.env.local`, then run
+`sh scripts/library.sh` from the repository root. This invokes the local `library` configure/build/test
+workflow; an exported variable takes precedence. Direct `cmake --workflow --preset library` needs the
+variable already exported. CI runs `library.synthetic` with owned temporary images, never `library.local`.
+No library build directory is uploaded. Local per-file results stay in ignored `build/library/results/`.
+
 ```sh
 cmake --workflow --preset ci
 ```

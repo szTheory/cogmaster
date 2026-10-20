@@ -34,3 +34,5 @@ behavior|tests/compat/tests.cmake|Executes quoted parser and runner predicate in
 check|scripts/compat-common.sh|Shared bounded quoted ledger normalization and deterministic public documentation generation
 behavior|tests/compat/ratchet.cmake|Constructs independent ledger mutations and asserts observable protected-judge decisions
 check|scripts/compat-ratchet.sh|Trusted compatibility judge entry point with adjacent parser dependency
+operation|scripts/library.sh|Enumerates private local files and orchestrates bounded executable observations without asserting repository content
+operation|scripts/library.cmake|Probes and executes each local image against accepted expectations and writes private local results

@@ -1,5 +1,17 @@
 # Conformance
 
+The local `library` workflow enumerates one directory in byte order: regular `.sms`, `.gg`, `.bin`, and
+`.rom` files, case insensitive, including hidden names. It excludes symlinks, directories and other
+extensions, and never recurses. Filenames pass as inert environment data, including quotes and semicolons.
+Every candidate is probed once; supported metadata misses run 20 frames and remain `unknown`. Accepted
+ledger predicates run with their fixed configuration, capped at 600 frames each. Only exact admitted
+SHA-256 fixture bytes receive fixture expectations. Empty libraries explicitly report zero coverage;
+a missing directory fails configure. `unsupported`, `malformed_io` (invalid small image or read failure),
+and `infrastructure_error` remain separate from evaluated `pass`/`fail`. Counts of evaluated predicates
+are separate from candidate and attempted-image counts. Current observations never become expectations.
+All probes, private names, hashes and diagnostics stay in ignored `build/library/results/`; the command
+prints aggregate counts only. These bounded observations establish no playable, completable or sound claim.
+
 The [compatibility ledger](compatibility.md) reports accepted predicates, never general support.
 `runner.expect.predicates` exercises independent frame/RAM values, mismatch/usage/refusal/I/O
 statuses, mailbox completion and interrupt-driven HALT smoke, with static-display and first-fault
