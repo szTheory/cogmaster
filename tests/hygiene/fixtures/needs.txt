@@ -10,6 +10,7 @@ perf skipped in a nested call|pull_request|true|true|true|perf=skipped|pass
 perf skipped on a pull request|pull_request|true|false|true|perf=skipped|fail
 asan failed|pull_request|true|false|true|asan=failure|fail
 build cancelled|push|true|false|true|build=cancelled|fail
+compatibility ratchet failed in build lane|pull_request|true|false|true|build=failure|fail
 rehearsal skipped when no release input changed|pull_request|true|false|false|rehearsal=skipped,cleanup=skipped|pass
 rehearsal skipped when a release input changed|pull_request|true|false|true|rehearsal=skipped,cleanup=skipped|fail
 rehearsal skipped on push|push|true|false|true|rehearsal=skipped,cleanup=skipped,title=skipped,perf=skipped|pass

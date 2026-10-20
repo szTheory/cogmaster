@@ -130,6 +130,23 @@ jobs:
           - { runner: windows-2025, preset: ci-msvc, os: windows, arch: x64 }
           - { runner: windows-11-arm, preset: ci-msvc, os: windows, arch: arm64 }
     steps:
+      - name: Check out compatibility baseline before candidate code
+        if: matrix.os == 'linux' && matrix.arch == 'x64'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.base.sha || inputs.ref || github.sha }}
+      - name: Preserve baseline judge and its complete helper closure
+        if: matrix.os == 'linux' && matrix.arch == 'x64'
+        run: |
+          trusted="$RUNNER_TEMP/compat-base"
+          mkdir -p "$trusted/scripts" "$trusted/tests/compat" "$trusted/include"
+          git rev-parse HEAD > "$trusted/sha"
+          cp include/cogmaster.h "$trusted/include/"
+          if [ -f scripts/compat-ratchet.sh ]; then
+            cp scripts/compat-ratchet.sh scripts/compat-common.sh "$trusted/scripts/"
+            cp tests/compat/ledger.csv "$trusted/tests/compat/"
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -146,6 +163,22 @@ jobs:
             ForEach-Object { if ($_ -match '^([^=]+)=(.*)$') { "$($Matches[1])=$($Matches[2])" >> $env:GITHUB_ENV } }
       - name: Build, test, package
         run: cmake --workflow --preset ${{ matrix.preset }}
+      - name: Protected compatibility comparison
+        if: matrix.os == 'linux' && matrix.arch == 'x64'
+        run: |
+          trusted="$RUNNER_TEMP/compat-base"
+          date=$(date -u +%F)
+          head_rev=$(awk '/^#define COGMASTER_BEHAVIOUR_REVISION / {print $3}' include/cogmaster.h)
+          echo "compat base=$(cat "$trusted/sha") head=$(git rev-parse HEAD) run=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          if [ -f "$trusted/scripts/compat-ratchet.sh" ]; then
+            base_rev=$(awk '/^#define COGMASTER_BEHAVIOUR_REVISION / {print $3}' "$trusted/include/cogmaster.h")
+            sh "$trusted/scripts/compat-ratchet.sh" "$trusted/tests/compat/ledger.csv" tests/compat/ledger.csv \
+              tests/compat/allow.txt "$date" "$base_rev" "$head_rev" build/ci/tests/compat-fixtures/results.csv
+          else
+            echo 'compat: first introduction; head tests validate now, baseline protection starts after merge'
+            sh scripts/compat-ratchet.sh tests/compat/ledger.csv tests/compat/ledger.csv \
+              tests/compat/allow.txt "$date" "$head_rev" "$head_rev" build/ci/tests/compat-fixtures/results.csv
+          fi
       - name: Every test ran
         run: >-
           cmake -DJUNIT=build/${{ matrix.preset }}/junit.xml -DINVENTORY=tests/inventory/ci.txt

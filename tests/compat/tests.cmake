@@ -79,7 +79,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(NOT evaluated EQUAL 4)
       message(FATAL_ERROR "fixture predicate coverage changed: ${evaluated}; update expected coverage explicitly")
     endif()
-    common(normalize "${ROOT}/tests/compat/ledger.csv")
+    common(results "${ROOT}/tests/compat/ledger.csv")
     if(NOT rc STREQUAL "0")
       message(FATAL_ERROR "cannot serialize evaluated results: ${err}")
     endif()
@@ -185,6 +185,10 @@ endif()
 cogmaster_add_test(NAME compat.ratchet
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat-ratchet
     -P ${CMAKE_CURRENT_LIST_DIR}/ratchet.cmake LABELS ${compat_labels} TIMEOUT 30)
+cogmaster_add_test(NAME compat.trusted_judge
+  COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=trusted
+    -DOUT=${PROJECT_BINARY_DIR}/tests/compat-trusted -P ${CMAKE_CURRENT_LIST_DIR}/ratchet.cmake
+  LABELS ${compat_labels} TIMEOUT 30)
 cogmaster_add_test(NAME compat.csv
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat
     -P ${CMAKE_CURRENT_LIST_FILE} LABELS ${compat_labels} TIMEOUT 30)

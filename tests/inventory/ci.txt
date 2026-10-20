@@ -41,6 +41,7 @@ cart.probe.sizes	cart,portable
 compat.csv	compat
 compat.fixtures	compat,portable
 compat.ratchet	compat
+compat.trusted_judge	compat
 core.api.error_changes_nothing	core,portable
 core.api.first_released_sizes	core,portable
 core.api.size_tags	core,portable

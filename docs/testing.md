@@ -47,6 +47,21 @@ manifest entry and pass the image-name/content checks; their arbitrary bytes are
 `hygiene.tree.binary_manifest` and `hygiene.tree.binary_unlisted` prove both sides with synthetic binary data.
 MSVC builds retain ISO C stdio through `_CRT_SECURE_NO_WARNINGS`, with all other selected warnings still fatal.
 
+The Linux x64 build lane first checks out the pull request's exact base SHA and copies its ledger, public
+behaviour revision, ratchet and adjacent shared parser into the runner's temporary directory. After checking
+out and testing the candidate, that copied judge compares base passes to the committed ledger and compares
+the ledger's eligible own-fixture cases to freshly executed results in both directions. Improvements must be
+committed. The step prints the actual base/head SHAs and run URL; its failure fails the existing build job and
+`CI required`. `compat.trusted_judge` proves that candidate judge/helper replacements cannot change the copied
+judge's decision, and tests missing/extra results and status/value disagreements. Results exclude unevaluated
+and non-fixture metadata. `compat.ratchet` exercises deletion, aliases, adjacent cases, script digests,
+profiles, devices and dated revision exceptions. Both run in CI and hygiene.
+
+When the base has no ratchet, CI explicitly reports first introduction, validates candidate tests and fresh
+results with the candidate judge, and establishes protected-baseline comparison after merge. This case does
+not claim that an absent baseline judge ran. To reproduce a protected comparison locally, use
+`sh scripts/compat-ratchet.sh BASE.csv HEAD.csv ALLOW.txt YYYY-MM-DD BASE_REV HEAD_REV RESULTS.csv`.
+
 ## Lanes
 
 Each lane is one workflow preset, `cmake --workflow --preset <name>`, building into `build/<name>`.

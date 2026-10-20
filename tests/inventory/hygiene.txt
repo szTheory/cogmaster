@@ -3,6 +3,7 @@
 ci.classify	hygiene
 compat.csv	compat,hygiene
 compat.ratchet	compat,hygiene
+compat.trusted_judge	compat,hygiene
 docs.budgets	hygiene,policy
 docs.budgets.helper	hygiene,policy
 docs.budgets.helper_unclassified	hygiene,policy

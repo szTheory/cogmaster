@@ -29,7 +29,7 @@ function predicate(s, machine, p,n,a,b,t,frame,address,value,cfg) {
   expected=value; parameter=kind "@" frame (kind=="ram"?":$" address:""); config=cfg; cap=frame;
   return cfg "/" parameter (value!=""?"=" value:"")
 }
-BEGIN { header="id,title,machine,region,mapper,predicate,status,evidence,date"; empty="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"; if(mode!="normalize" && mode!="cases" && mode!="docs" && mode!="ratchet") bad() }
+BEGIN { header="id,title,machine,region,mapper,predicate,status,evidence,date"; empty="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"; if(mode!="normalize" && mode!="cases" && mode!="docs" && mode!="ratchet" && mode!="results") bad() }
 {
   sub(/\r$/,"" ); if(length($0)>4096 || $0=="" || $0 ~ /[[:cntrl:]]/ || FNR>4097) bad();
   delete f; field=1; text=""; state=0;
@@ -52,9 +52,9 @@ END {
   if(failed) exit 2; if(NR==0) bad();
   if(mode=="ratchet") {
     today=day(ENVIRON["COMPAT_TODAY"]); base=ENVIRON["COMPAT_BASE_REV"]; head=ENVIRON["COMPAT_HEAD_REV"];
-    if(stage<2 || stage>3 || base !~ /^[0-9]+$/ || head !~ /^[0-9]+$/ || head+0<base+0) bad();
-    while((getline line < ENVIRON["COMPAT_ALLOW"])>0) {
-      if(line ~ /^#/ || line=="") continue; n=split(line,a," "); if(length(line)>4096 || n<6 || a[n-1] !~ /^behaviour-rev=[0-9]+$/ || a[n] !~ /^expires=/) bad();
+    if(stage<2 || stage>3 || base !~ /^[0-9]+$/ || head !~ /^[0-9]+$/ || head+0>4294967295 || head+0<base+0) bad();
+    while((readline=(getline line < ENVIRON["COMPAT_ALLOW"]))!=0) {
+      if(readline<0 || ++allow_rows>4096 || length(line)>4096) bad(); if(line ~ /^#/ || line=="") continue; n=split(line,a," "); if(n<6 || a[n-1] !~ /^behaviour-rev=[0-9]+$/ || a[n] !~ /^expires=/) bad();
       rev=a[n-1]; sub(/^behaviour-rev=/,"",rev); expiry=a[n]; sub(/^expires=/,"",expiry); until_day=day(expiry);
       if(day(a[1])>today || until_day<today || until_day-today>60 || day(a[1])>until_day || rev+0!=head+0 || head+0<=base+0) bad();
       matches=0; for(key in ids) if(seen[1,key] && statuses[1,key]=="pass" && ids[key]==a[2] && predicates[1,key]==predicate(a[3],machines[key])) { allowed[key]=1; matches++ }
@@ -70,7 +70,7 @@ END {
     print "compat: protected comparison passed"; exit 0
   }
   for(i=2;i<=count;i++) { key=order[i]; j=i-1; while(j>0 && order[j]>key) { order[j+1]=order[j]; j-- } order[j+1]=key }
-  if(mode=="normalize") { print header; for(i=1;i<=count;i++) { line=""; for(j=1;j<=9;j++) line=line (j>1?",":"") quote(r[order[i],j]); print line } }
+  if(mode=="normalize" || mode=="results") { print header; for(i=1;i<=count;i++) { if(mode=="results" && (r[order[i],1] !~ /^fixture\// || r[order[i],7] !~ /^(pass|fail)$/)) continue; line=""; for(j=1;j<=9;j++) line=line (j>1?",":"") quote(r[order[i],j]); print line } }
   if(mode=="cases") { print "set(compat_count " count+0 ")"; split("id title machine region mapper predicate status evidence date parameter expected config cap",names," "); for(i=1;i<=count;i++) for(j=1;j<=13;j++) if(j!=2 && j!=8) print "set(compat_" i "_" names[j] " [[" r[order[i],j] "]])" }
   if(mode=="docs") {
     for(i=1;i<=count;i++) { key=order[i]; status[r[key,7]]++; split(r[key,10],a,"@"); predicates[a[1]]++; if(r[key,1] ~ /^fixture\//) fixtures[r[key,1]]=1; group=r[key,3] "/" r[key,5] "/" r[key,7]; groups[group]++; }
