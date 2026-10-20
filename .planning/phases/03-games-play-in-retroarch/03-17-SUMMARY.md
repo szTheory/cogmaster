@@ -162,18 +162,18 @@ changed. Actual tokens use realized diff characters divided by four, rounded up;
 the persisted plan ledger through the final production commit. No files were deleted.
 Runtime: Codex. Model: GPT-6.
 
-## Verification
+## Evidence
 
 | Command | Exit | Evidence |
 |---|---:|---|
-| `cmake --workflow --preset ci` | 0 | 341 tests and 4 packaged-output checks passed |
-| `cmake --workflow --preset hygiene` | 0 | All 38 tests passed |
-| `cmake -DROOT=. -P tests/cmake/budgets.cmake` | 0 | 528 complete counted check lines / 5,298 source lines, strictly below one tenth |
-| `cmake -DDIR=tests/retroarch -DCHECK=e2e_budget -P tests/cmake/repository.cmake` | 0 | 300 hosted helper lines, at most 300 |
-| `cmake -DJUNIT=build/ci/junit.xml -DINVENTORY=tests/inventory/ci.txt -DEXCLUDE=release -DCHECK=check_junit -P tests/cmake/repository.cmake` | 0 | Executed native inventory matched |
-| `cmake -DJUNIT=build/hygiene/junit.xml -DINVENTORY=tests/inventory/hygiene.txt -DCHECK=check_junit -P tests/cmake/repository.cmake` | 0 | Executed hygiene inventory matched |
-| `node "$HOME/.codex/gsd-core/bin/gsd-tools.cjs" check evaluation-scope --plan 03-17 --commits-only --raw` | 0 | All four task commits resolved |
-| `git diff --check` | 0 | No whitespace errors |
+| cmake --workflow --preset ci | 0 | 341 tests and 4 packaged-output checks passed |
+| cmake --workflow --preset hygiene | 0 | All 38 tests passed |
+| cmake -DROOT=. -P tests/cmake/budgets.cmake | 0 | 528 complete counted check lines / 5,298 source lines, strictly below one tenth |
+| cmake -DDIR=tests/retroarch -DCHECK=e2e_budget -P tests/cmake/repository.cmake | 0 | 300 hosted helper lines, at most 300 |
+| cmake -DJUNIT=build/ci/junit.xml -DINVENTORY=tests/inventory/ci.txt -DEXCLUDE=release -DCHECK=check_junit -P tests/cmake/repository.cmake | 0 | Executed native inventory matched |
+| cmake -DJUNIT=build/hygiene/junit.xml -DINVENTORY=tests/inventory/hygiene.txt -DCHECK=check_junit -P tests/cmake/repository.cmake | 0 | Executed hygiene inventory matched |
+| node "$HOME/.codex/gsd-core/bin/gsd-tools.cjs" check evaluation-scope --plan 03-17 --commits-only --raw | 0 | All four task commits resolved |
+| git diff --check | 0 | No whitespace errors |
 
 The tracer gate reran the complete CI workflow successfully before Task 2. Verification here is native
 Apple Silicon; the registered Windows and cross lanes run in phase CI. No hosted run was started by this
