@@ -4,7 +4,7 @@
    stream rebuilt from the sample's.
 
      cogmaster-test-sst --sample FILE [--group base|cb|dd|ddcb|ed|fd|fdcb]
-                        [--only NAMES] [--expect-count N]
+                        [--only NAMES] [--expect-count N] [--allow FILE]
      cogmaster-test-sst --sample FILE --corrupt-copy OUT NAME TEST FIELD
 
    NAMES is a comma-separated list of upstream file names ("00,02"). Prints
@@ -12,6 +12,13 @@
    differing field or T-state for each failing test, then "executed N".
    Exit status 1 on any mismatch, on an executed count other than
    --expect-count, or on a sample that cannot be read; 2 on misuse.
+
+   --allow FILE excuses listed failures. Each line that is not blank or a
+   comment (#) reads
+     YYYY-MM-DD "NAME" TEST FIELD https://... REASON
+   naming the field the mismatch line names. A matching mismatch is printed
+   as "allowed" and not counted; a malformed line, or a line whose file runs
+   and which matches no failure, makes the exit status 1.
 
    --corrupt-copy runs nothing: it writes a copy of the sample to OUT in
    which test TEST of file NAME expects FIELD (a state field name such as
@@ -161,6 +168,114 @@ static void set_field(struct cogmaster__z80 *z, unsigned k, uint16_t v)
     }
 }
 
+/* At most this many allow-list entries, each line at most this long. */
+#define MAX_ALLOW 256u
+#define ALLOW_LINE 512u
+
+struct allow {
+    char file[SST_NAME_MAX];
+    long test;
+    char field[32];
+    unsigned line;
+    int ran, used;
+};
+
+static struct allow allows[MAX_ALLOW];
+static unsigned n_allow;
+
+/* Copies the run of characters up to stop (not a NUL) into out; returns a
+   pointer past stop, or NULL when stop is missing or the run is empty or
+   does not fit. */
+static const char *token(const char *p, char stop, char *out, size_t cap)
+{
+    size_t n = 0;
+    while (p[n] && p[n] != stop) {
+        n++;
+    }
+    if (p[n] != stop || n == 0 || n >= cap) {
+        return NULL;
+    }
+    memcpy(out, p, n);
+    out[n] = '\0';
+    return p + n + 1;
+}
+
+/* Parses one allow-list line into a; returns 0, or -1 when malformed. */
+static int parse_allow(const char *p, struct allow *a)
+{
+    for (unsigned k = 0; k < 10; k++) {
+        int dash = k == 4 || k == 7;
+        if (dash ? p[k] != '-' : (p[k] < '0' || p[k] > '9')) {
+            return -1;
+        }
+    }
+    if (p[10] != ' ' || p[11] != '"') {
+        return -1;
+    }
+    char test[12], url[ALLOW_LINE];
+    p = token(p + 12, '"', a->file, sizeof a->file);
+    if (!p || *p++ != ' ') {
+        return -1;
+    }
+    p = token(p, ' ', test, sizeof test);
+    if (!p) {
+        return -1;
+    }
+    char *end;
+    a->test = strtol(test, &end, 10);
+    if (*end != '\0' || test[0] < '0' || test[0] > '9') {
+        return -1;
+    }
+    p = token(p, ' ', a->field, sizeof a->field);
+    p = p ? token(p, ' ', url, sizeof url) : NULL;
+    if (!p || strncmp(url, "https://", 8) != 0 || url[8] == '\0' || *p == '\0' || *p == ' ') {
+        return -1;
+    }
+    return 0;
+}
+
+static int read_allow(const char *path)
+{
+    FILE *f = fopen(path, "r");
+    if (!f) {
+        fprintf(stderr, "sst: cannot read allow list %s\n", path);
+        return -1;
+    }
+    char text[ALLOW_LINE];
+    unsigned line = 0;
+    int bad = 0;
+    while (!bad && fgets(text, sizeof text, f)) {
+        line++;
+        size_t n = strlen(text);
+        if (n > 0 && text[n - 1] == '\n') {
+            text[--n] = '\0';
+        } else if (!feof(f)) {
+            bad = 1;
+            break;
+        }
+        if (n > 0 && text[n - 1] == '\r') {
+            text[--n] = '\0';
+        }
+        if (strspn(text, " \t") == n || text[0] == '#') {
+            continue;
+        }
+        if (n_allow == MAX_ALLOW || parse_allow(text, &allows[n_allow]) != 0) {
+            bad = 1;
+            break;
+        }
+        allows[n_allow].line = line;
+        n_allow++;
+    }
+    fclose(f);
+    if (bad) {
+        fprintf(stderr,
+                "sst: allow list %s line %u is not: YYYY-MM-DD \"NAME\" TEST FIELD URL REASON\n",
+                path, line);
+        return -1;
+    }
+    return 0;
+}
+
 /* The T-state of the data within each kind's bus cycle, at which
    z80_cycle.h calls the seam. */
 static const uint8_t stamp_offset[6] = {0, 2, 2, 2, 3, 3};
@@ -173,6 +288,15 @@ struct run {
 
 static void mismatch(struct run *r, const char *field, const char *expected, const char *actual)
 {
+    for (unsigned k = 0; k < n_allow; k++) {
+        struct allow *a = &allows[k];
+        if (a->test == r->test && strcmp(a->file, r->file) == 0 && strcmp(a->field, field) == 0) {
+            a->used = 1;
+            printf("allowed \"%s\" test %ld %s: expected %s, actual %s (allow line %u)\n", r->file,
+                   r->test, field, expected, actual, a->line);
+            return;
+        }
+    }
     if (r->failed < MAX_PRINTED) {
         printf("mismatch \"%s\" test %ld %s: expected %s, actual %s\n", r->file, r->test, field,
                expected, actual);
@@ -322,7 +446,7 @@ static uint32_t get32(const uint8_t *p)
 static int usage(void)
 {
     fprintf(stderr, "usage: cogmaster-test-sst --sample FILE [--group base|cb|dd|ddcb|ed|fd|fdcb]"
-                    " [--only NAMES] [--expect-count N]\n"
+                    " [--only NAMES] [--expect-count N] [--allow FILE]\n"
                     "       cogmaster-test-sst --sample FILE --corrupt-copy OUT NAME TEST FIELD\n");
     return 2;
 }
@@ -361,7 +485,8 @@ static int corrupt_copy(const uint8_t *buf, size_t len, const char *out, const c
             uint8_t rec[1024];
             size_t n_rec = sst_encode(&t, rec);
             FILE *o = fopen(out, "wb");
-            int err = !o || fwrite(buf, 1, start, o) != start || fwrite(rec, 1, n_rec, o) != n_rec ||
+            int err = !o || fwrite(buf, 1, start, o) != start ||
+                      fwrite(rec, 1, n_rec, o) != n_rec ||
                       fwrite(buf + pos, 1, len - pos, o) != len - pos;
             if (o && fclose(o) != 0) {
                 err = 1;
@@ -379,7 +504,7 @@ static int corrupt_copy(const uint8_t *buf, size_t len, const char *out, const c
 
 int main(int argc, char **argv)
 {
-    const char *sample = NULL, *group = NULL, *only = NULL;
+    const char *sample = NULL, *group = NULL, *only = NULL, *allow = NULL;
     const char *const *corrupt = NULL;
     long expect = -1, corrupt_test = -1;
     for (int k = 1; k < argc; k++) {
@@ -401,6 +526,8 @@ int main(int argc, char **argv)
             sample = argv[++k];
         } else if (strcmp(argv[k], "--group") == 0) {
             group = argv[++k];
+        } else if (strcmp(argv[k], "--allow") == 0) {
+            allow = argv[++k];
         } else if (strcmp(argv[k], "--only") == 0) {
             only = argv[++k];
         } else if (strcmp(argv[k], "--expect-count") == 0) {
@@ -417,6 +544,9 @@ int main(int argc, char **argv)
         return usage();
     }
 
+    if (allow && read_allow(allow) != 0) {
+        return 1;
+    }
     size_t len = 0;
     uint8_t *buf = read_sample(sample, &len);
     if (!buf || len < 20 || memcmp(buf, SST_MAGIC, 8) != 0 || get32(buf + 8) != SST_VERSION) {
@@ -457,6 +587,9 @@ int main(int argc, char **argv)
         if (only && listed(only, name)) {
             matched_only++;
         }
+        for (unsigned k = 0; run && k < n_allow; k++) {
+            allows[k].ran |= strcmp(allows[k].file, name) == 0;
+        }
         r.file = name;
         for (r.test = 0; r.test < (long)per_file; r.test++) {
             if (sst_decode(buf, len, &pos, t) != 0) {
@@ -480,6 +613,13 @@ int main(int argc, char **argv)
         }
         if (matched_only != names) {
             fprintf(stderr, "sst: --only names a file the sample does not hold\n");
+            bad = 1;
+        }
+    }
+    for (unsigned k = 0; k < n_allow; k++) {
+        if (allows[k].ran && !allows[k].used) {
+            printf("allow line %u (\"%s\" test %ld %s) matches no failure\n", allows[k].line,
+                   allows[k].file, allows[k].test, allows[k].field);
             bad = 1;
         }
     }
