@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 03
 current_phase_name: Games play in RetroArch
 status: executing
-stopped_at: Completed 03-05-PLAN.md; runtime Codex; model GPT-6
-last_updated: "2026-10-20T19:44:38.666Z"
+stopped_at: Completed 03-06-PLAN.md; runtime Codex; model GPT-6
+last_updated: "2026-10-20T20:05:21.208Z"
 last_activity: 2026-10-20
-last_activity_desc: Completed plan 03-05; runtime Codex; model GPT-6
-state_head: f148e804dfff341b06e6f81bf0e795fb568d9ac6
+last_activity_desc: Completed plan 03-06; runtime Codex; model GPT-6
+state_head: 42e8cf171bb7561181cd2046576d9c3a1dd2b511
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 47
-  completed_plans: 34
+  completed_plans: 35
   percent: 50
 ---
 
@@ -30,16 +30,16 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 03 (Games play in RetroArch) — EXECUTING
-Plan: 6 of 18
+Plan: 7 of 18
 Status: Ready to execute
-Last activity: 2026-10-20 — Completed plan 03-05; runtime Codex; model GPT-6
+Last activity: 2026-10-20 — Completed plan 03-06; runtime Codex; model GPT-6
 
 Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 34
+- Total plans completed: 35
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -49,7 +49,7 @@ Progress: [█████░░░░░] 50%
 |-------|-------|-------|----------|
 | 01 | 12 | - | - |
 | 02 | 17 | - | - |
-| 03 | 5 | - | - |
+| 03 | 6 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -94,6 +94,7 @@ Progress: [█████░░░░░] 50%
 | Phase 03 P03 | 24min | 2 tasks | 29 files |
 | Phase 03 P04 | 16min | 2 tasks | 22 files |
 | Phase 03 P05 | 9min | 2 tasks | 15 files |
+| Phase 03 P06 | 17min | 2 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -200,6 +201,8 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 03]: Use a saved monotonic dot cursor, tick-600 line hscroll/display latches and final-physical-line per-frame vscroll latch.
 - [Phase 03]: Append SMS1=3; share VDP masks and retained-bus facts; R6 gates address A12/A11 (tile bits 7/6).
 - [Phase 03]: Prepare bounded next-line SAT slots at tick 600; SMS1 width requires slot i+4; observe active-dot flags before clearing status.
+- [Phase 03]: Retain 607/608 IRQ edges and independent pending sources; keep rolling NTSC-240 counter phase separate from fixed host deadlines.
+- [Phase 03]: H origin uses qualified 32-tick inference; share effective TH mixing for rising capture and stable held reads.
 
 ### Pending Todos
 
@@ -228,7 +231,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-10-19 | Execute phase 2 (gsd-execute-phase) | Claude Code | claude-opus-5-5 |
 | 2026-10-20 | Ship phase 2 (gsd-ship) | Codex | GPT-6 |
 | 2026-10-20 | Plan phase 3 (gsd-plan-phase) | Codex | GPT-6 |
-| 2026-10-20 | Execute phase 3 through plan 03-05 (gsd-execute-phase) | Codex | GPT-6 |
+| 2026-10-20 | Execute phase 3 through plan 03-06 (gsd-execute-phase) | Codex | GPT-6 |
 
 ## Deferred Items
 
@@ -240,6 +243,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T19:44:38.582Z
-Stopped at: Completed 03-05-PLAN.md; runtime Codex; model GPT-6
+Last session: 2026-10-20T20:05:21.102Z
+Stopped at: Completed 03-06-PLAN.md; runtime Codex; model GPT-6
 Resume file: None
