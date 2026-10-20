@@ -4,12 +4,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <string.h>
 
 #define CAP 4096u
 struct fact {
     char sha[41], title[256];
     uint32_t bytes, board, machine, region, video, persistence, declared, geometry;
+    uint32_t public_identity;
 };
 static struct fact facts[CAP];
 static size_t count, compound;
@@ -117,6 +119,7 @@ static void parse(char *s)
             fail("unterminated software");
         *end = 0;
         struct fact f = {0};
+        f.public_identity = 1u;
         char *desc = strstr(p, "<description>"), *de = desc ? strstr(desc, "</description>") : NULL;
         if (!desc || !de)
             fail("missing description");
@@ -124,6 +127,7 @@ static void parse(char *s)
         char *part = strstr(p, "<part ");
         if (!part || strstr(part + 1, "<part ")) {
             compound++;
+            fprintf(stderr, "cartdb: excluded multipart record: %s\n", f.title);
             p = end + 11;
             continue;
         }
@@ -189,12 +193,15 @@ static void parse(char *s)
         }
         if (areas != 1u || roms != 1u || romsize != f.bytes || offset || strlen(f.sha) != 40u) {
             compound++;
+            fprintf(stderr, "cartdb: excluded compound/incomplete record: %s\n", f.title);
             p = end + 11;
             continue;
         }
         if (strspn(f.sha, "0123456789abcdef") != 40u)
             fail("invalid SHA1");
         f.board = f.machine ? (f.bytes <= 49152u ? 1u : 2u) : 0u;
+        if (f.machine == 2u && f.bytes == 8192u)
+            f.board = 0u;
         if (*slot)
             f.board = !strcmp(slot, "codemasters") ? 3u
                       : !strcmp(slot, "rom")       ? 1u
@@ -236,6 +243,32 @@ int main(int argc, char **argv)
     if (argc < 2)
         fail("supply CC0 XML files");
     for (int i = 1; i < argc; i++) {
+        if (!strcmp(argv[i], "--fixture")) {
+            if (++i == argc || count == CAP)
+                fail("missing fixture facts");
+            FILE *file = fopen(argv[i], "rb");
+            if (!file)
+                fail("cannot open fixture facts");
+            struct fact f = {0};
+            int fields = fscanf(file,
+                                "%40s %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32
+                                " %" SCNu32 " %" SCNu32 " %" SCNu32 " %255[^\n]",
+                                f.sha, &f.bytes, &f.board, &f.machine, &f.region, &f.video,
+                                &f.persistence, &f.declared, &f.geometry, f.title);
+            if (fields != 10 || strlen(f.sha) != 40u || strspn(f.sha, "0123456789abcdef") != 40u ||
+                f.bytes != 65536u || f.board != 2u || f.persistence != 2u || f.declared != 32768u ||
+                f.geometry != 1u)
+                fail("invalid owned fixture facts");
+            while (fgets(input, sizeof input, file)) {
+                if (strspn(input, " \t\r\n") != strlen(input))
+                    fail("extra fixture facts");
+            }
+            if (ferror(file))
+                fail("unreadable fixture facts");
+            fclose(file);
+            facts[count++] = f;
+            continue;
+        }
         FILE *file = fopen(argv[i], "rb");
         if (!file)
             fail("cannot open input");
@@ -249,7 +282,8 @@ int main(int argc, char **argv)
         parse(input);
     }
     qsort(facts, count, sizeof facts[0], compare);
-    puts("/* Generated from pinned CC0 MAME hash lists; see PROVENANCE.md. */");
+    puts("/* Generated from pinned MAME CC0 and optional owned MIT fixture facts; see "
+         "PROVENANCE.md. */");
     for (size_t i = 0; i < count; i++) {
         if (i && !strcmp(facts[i - 1u].sha, facts[i].sha)) {
             const struct fact *a = &facts[i - 1u], *b = &facts[i];
@@ -258,6 +292,7 @@ int main(int argc, char **argv)
             if (a->bytes != b->bytes || a->board != b->board || a->region != b->region ||
                 a->video != b->video || a->persistence != b->persistence ||
                 a->declared != b->declared || a->geometry != b->geometry ||
+                a->public_identity != b->public_identity ||
                 (a->machine != b->machine && a->video != 1u)) {
                 fprintf(stderr, "%s: %s / %s\n", a->sha, a->title, b->title);
                 fail("conflicting identity");
@@ -267,8 +302,8 @@ int main(int argc, char **argv)
         struct fact *f = &facts[i];
         printf("{\"%s\",", f->sha);
         quoted(f->title);
-        printf(",%uu,%uu,%uu,%uu,%uu,%uu,%uu,%uu,1u},\n", f->bytes, f->board, f->machine, f->region,
-               f->video, f->persistence, f->declared, f->geometry);
+        printf(",%uu,%uu,%uu,%uu,%uu,%uu,%uu,%uu,%uu},\n", f->bytes, f->board, f->machine,
+               f->region, f->video, f->persistence, f->declared, f->geometry, f->public_identity);
     }
     fprintf(stderr, "cartdb: %zu candidate facts; %zu compound/incomplete records excluded\n",
             count, compound);

@@ -9,6 +9,19 @@ target_include_directories(cogmaster-test-cartdb PRIVATE ${PROJECT_SOURCE_DIR}/s
 add_executable(cogmaster-cartdb ${PROJECT_SOURCE_DIR}/tools/cartdb.c)
 cogmaster_warnings(cogmaster-cartdb)
 string(REPLACE ";" "$<SEMICOLON>" cartdb_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
+# Fault prevented: filename classification and a changed assembler output losing battery metadata.
+cogmaster_add_test(NAME cart.fixture_hash COMMAND ${CMAKE_COMMAND}
+  -DIMAGE=${PROJECT_BINARY_DIR}/fixtures/battery.sms
+  -DFACT=${CMAKE_CURRENT_LIST_DIR}/fixture_facts.txt
+  -DOUT=${PROJECT_BINARY_DIR}/tests/cart-fixture -DORACLE=$<TARGET_FILE:cogmaster-test-cartdb>
+  "-DEMULATOR=${cartdb_emulator}" -P ${CMAKE_CURRENT_LIST_DIR}/fixture.cmake
+  LABELS cart portable TIMEOUT 10)
+set(cmd ${CMAKE_COMMAND} -DWRONG=1 -DIMAGE=${PROJECT_BINARY_DIR}/fixtures/battery.sms
+  -DFACT=${CMAKE_CURRENT_LIST_DIR}/fixture_facts.txt -P ${CMAKE_CURRENT_LIST_DIR}/fixture.cmake)
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+cogmaster_add_test(NAME cart.fixture_wrong_hash COMMAND ${CMAKE_COMMAND}
+  "-DCMD=${cmd}" -DCODE=1 "-DREGEX=SHA-1.*mismatch"
+  -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake LABELS cart portable TIMEOUT 10)
 # Fault prevented: guessed whole-image identities, conflicting facts and metadata parser drift.
 cogmaster_add_test(NAME cart.generator COMMAND ${CMAKE_COMMAND}
   -DGEN=$<TARGET_FILE:cogmaster-cartdb> -DOUT=${PROJECT_BINARY_DIR}/tests/cartdb

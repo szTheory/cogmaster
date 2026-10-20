@@ -1,4 +1,4 @@
-/* Generated from pinned CC0 MAME hash lists; see PROVENANCE.md. */
+/* Generated from pinned MAME CC0 and optional owned MIT fixture facts; see PROVENANCE.md. */
 {"006ce9972fd532abb1b426de2bf02e75dd616bba","NBA Action Starring David Robinson (prototype, 19940212)",262144u,2u,2u,0u,2u,1u,0u,0u,1u},
 {"00cfce623709b8d9bc9e6bbb96feb9faf9a81f84","Crazy Faces (Europe, prototype)",131072u,2u,2u,0u,2u,1u,0u,0u,1u},
 {"010560dee1eafae3266eb9720e2f802c0deccf40","Poker Face Paul's Blackjack (USA)",131072u,2u,2u,0u,2u,1u,0u,0u,1u},
@@ -1403,6 +1403,7 @@
 {"d96c174e63393406d4b442e5796228eebb7deb93","James 'Buster' Douglas Knockout Boxing (USA, prototype)",262144u,2u,1u,0u,1u,1u,0u,0u,1u},
 {"d98332eba27fd4a0db82d551a54bee4fdccf41a2","Megami Tensei Gaiden - Last Bible (Japan)",524288u,2u,2u,2u,2u,2u,8192u,1u,1u},
 {"d98344a2c644ce9a0184e8f836271c038aa16a23","Wonder Boy - The Dragon's Trap (Europe)",262144u,2u,2u,0u,2u,1u,0u,0u,1u},
+{"d9f9fbc463a136cdd5349da772abd0b4347787cb","cogmaster battery fixture",65536u,2u,1u,1u,1u,2u,32768u,1u,0u},
 {"da0acdb1b9e806aa67a0216a675cb02ed24abf8b","Wonder Boy in Monster World (Europe, Korea)",524288u,2u,1u,0u,1u,1u,0u,0u,1u},
 {"da0bf41dc5fd68a191d0f02fb1213ffdb006d7b8","Alex Kidd in Miracle World (Taiwan, SMS mode)",131072u,2u,2u,0u,1u,1u,0u,0u,1u},
 {"da3df145b8e9f2a2e680d2c92939084d4530ed90","Tails Adventures (World)",524288u,2u,2u,0u,2u,1u,0u,0u,1u},

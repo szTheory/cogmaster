@@ -1,5 +1,13 @@
 # Conformance
 
+Cartridge classification is covered by `cart.database` and `cart.generator`: known nonbattery, unknown,
+known battery and unsupported geometry are distinct from board allocation and ledger membership.
+`cart.fixture_identity` and `cart.fixture_hash` run the assembled battery fixture through production lookup,
+check its mailbox, reject a one-byte identity mutation, retain identity with a copier header, and rename it
+without changing classification. Assembly independently checks the fixed SHA-1 fact; the mismatch control
+`cart.fixture_wrong_hash` must fail with the identity diagnostic. Physical 24 KiB wiring remains explicitly
+unsupported as described in [Cartridge identity and RAM](hardware/cartridges.md).
+
 How the core is checked against public test data, assembled test programs and generated inputs. This page covers
 the Z80 vectors, the assembled fixtures and their mailbox, and fuzzing; testing in general is in
 [testing.md](testing.md).

@@ -5,3 +5,4 @@
 tests/vectors/z80/sst-sample.bin	https://github.com/SingleStepTests/z80	ebe1875d48f374bcfd4b505d8eb8ee751568b5f7	MIT	189a33d4396f13b2cb93acbcc5da42fb7d5da0176f2558aaf09ae10d23f26bda	SingleStepTests z80 vectors
 # Owned vdp_lines_192/224/240 images are built only; digests live in tests/built/expected.txt.
 # Owned boot_to_play.gg is built only from shared source with a GG header; its digest is in tests/built/expected.txt.
+# Owned battery.sms is built only from MIT source; SHA-256 is in tests/built/expected.txt and its production SHA-1 fact is in tests/cart/fixture_facts.txt.

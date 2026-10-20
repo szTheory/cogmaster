@@ -101,6 +101,12 @@ foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_t
     set(image_name boot_to_play)
   endif()
   set(image ${COGMASTER_FIXTURES_DIR}/${image_name}.${extension})
+  set(identity_check "")
+  if(name STREQUAL "battery")
+    set(identity_check COMMAND ${CMAKE_COMMAND} -DHASH_ONLY=1 -DIMAGE=${image}
+      -DFACT=${PROJECT_SOURCE_DIR}/tests/cart/fixture_facts.txt
+      -P ${PROJECT_SOURCE_DIR}/tests/cart/fixture.cmake)
+  endif()
   # The source directory is the assembler's working directory, so .INCLUDE
   # finds header.inc; the linker's is the build directory, so the link file
   # names the object without a path.
@@ -109,9 +115,11 @@ foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_t
     COMMAND ${COGMASTER_WLA_Z80} -q -o ${COGMASTER_FIXTURES_DIR}/${name}.o ${name}.asm
     COMMAND ${CMAKE_COMMAND} -E chdir ${COGMASTER_FIXTURES_DIR}
       ${COGMASTER_WLALINK} -r ${fixtures_src}/${name}.link ${image}
+    ${identity_check}
     WORKING_DIRECTORY ${fixtures_src}
     DEPENDS ${fixtures_src}/${name}.asm ${fixtures_src}/${name}.link ${fixtures_src}/header.inc
       ${fixtures_src}/mailbox.inc ${fixtures_src}/ports.asm ${fixtures_src}/boot_to_play.asm
+      ${PROJECT_SOURCE_DIR}/tests/cart/fixture_facts.txt ${PROJECT_SOURCE_DIR}/tests/cart/fixture.cmake
     COMMENT "Assembling the ${name} fixture"
     VERBATIM)
   list(APPEND fixtures_images ${image})

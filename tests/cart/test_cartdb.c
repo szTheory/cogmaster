@@ -34,6 +34,36 @@ int main(int argc, char **argv)
         CHECK_EQ_U64(p.persistence, COGMASTER_PERSISTENCE_BATTERY);
         CHECK_EQ_U64(p.persistent_size, 32768u);
         CHECK_EQ_U64(p.persistence_geometry, COGMASTER_GEOMETRY_SUPPORTED);
+        cogmaster_config cfg = {0};
+        cfg.size = sizeof cfg;
+        cfg.allocator.alloc = allocate;
+        cfg.allocator.free = release;
+        cogmaster *m = NULL;
+        CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+        cogmaster_media media = {0};
+        media.size = sizeof media;
+        media.image = fixture;
+        media.image_size = n;
+        CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+        cogmaster_run_result result = {0};
+        result.size = sizeof result;
+        for (unsigned int frame = 0; frame < 8u; frame++)
+            CHECK_EQ_U64(cogmaster_run_frame(m, &result), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xc105), 0u);
+        CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xc112), 0u);
+        CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xc113), 1u);
+        CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0x8000), 0xa5u);
+        cogmaster_destroy(m);
+        fixture[32] ^= 1u;
+        CHECK_EQ_U64(cogmaster_probe(fixture, n, &p), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(p.identified, 0u);
+        CHECK_EQ_U64(p.persistence, COGMASTER_PERSISTENCE_UNKNOWN);
+        fixture[32] ^= 1u;
+        memmove(fixture + 512, fixture, n);
+        memset(fixture, 0, 512);
+        CHECK_EQ_U64(cogmaster_probe(fixture, n + 512u, &p), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(p.identified, 1u);
+        CHECK_EQ_U64(p.body_offset, 512u);
         CHECK_DONE();
     }
     const struct cogmaster__cart_fact *f =

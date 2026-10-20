@@ -209,13 +209,16 @@ cogmaster_status cogmaster__cart_copy(cogmaster *m, const uint8_t *image, size_t
     uint32_t ram_size = p->board == COGMASTER__BOARD_SEGA          ? CART_RAM_SEGA
                         : p->board == COGMASTER__BOARD_CODEMASTERS ? CART_RAM_CODEMASTERS
                                                                    : 0u;
+    if (p->persistence_geometry == COGMASTER_GEOMETRY_SUPPORTED &&
+        p->board == COGMASTER__BOARD_SEGA)
+        ram_size = p->persistent_size;
     uint8_t *rom = (uint8_t *)m->allocator.alloc(m->allocator.user, (size_t)size + ram_size);
     if (rom == NULL) {
         return COGMASTER_STATUS_ERR_NO_MEMORY;
     }
     memcpy(rom, image + off, body);
     memset(rom + body, 0xFF, size - body);
-    memset(rom + size, 0, ram_size);
+    memset(rom + size, p->persistence == COGMASTER_PERSISTENCE_BATTERY ? 0xFF : 0, ram_size);
     out->rom = rom;
     out->ram = ram_size != 0u ? rom + size : NULL;
     out->size = size;
