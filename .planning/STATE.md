@@ -4,12 +4,11 @@ milestone: v1.0
 milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 2
 current_phase_name: The CPU matches the public vectors
-status: planning
-stopped_at: Phase 01 verified; next /gsd-ship 1 (owner applies branch ruleset first)
-last_updated: "2026-10-19T23:49:18.460Z"
+status: "Phase 01 shipped — PR #4"
+stopped_at: Phase 01 shipped as PR #4 (auto-merge); next /gsd-discuss-phase 2
+last_updated: "2026-10-20T00:06:49.693Z"
 last_activity: 2026-10-19
-last_activity_desc: Phase 01 complete, transitioned to Phase 2
-state_head: b493100b7b340b2351737db12582fb791e706695
+state_head: 75acfe01d3f0dfc0a4a5ec0b120ff32a39181282
 progress:
   total_phases: 4
   completed_phases: 1
@@ -31,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 
 Phase: 2 — The CPU matches the public vectors
 Plan: Not started
-Status: Phase 1 verified, awaiting /gsd-ship 1; then plan Phase 2
-Last activity: 2026-10-19 — Phase 01 complete, transitioned to Phase 2
+Status: Phase 01 shipped — PR #4
+Last activity: 2026-10-19
 
 Progress: [███░░░░░░░] 25%
 
@@ -118,7 +117,6 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 ### Pending Todos
 
 - [ci] Post-merge ci follow-ups (perf gate arming, nightly forced failure, Dependabot, wasm32 promotion): `.planning/todos/pending/post-merge-ci-follow-ups.md`
-- [owner] Apply the branch ruleset now that `CI required` has reported: `scripts/apply-repo-settings.sh`, then `scripts/apply-repo-settings.sh --check` (admin rights; see 01-12-SUMMARY)
 
 ### Blockers/Concerns
 
@@ -135,6 +133,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-10-19 | Discuss phase 1 (gsd-discuss-phase) | Claude Code | claude-opus-5-5 |
 | 2026-10-19 | Plan phase 1 (gsd-plan-phase) | Claude Code | claude-opus-5-5 |
 | 2026-10-19 | Execute phase 1 (gsd-execute-phase) | Claude Code | claude-opus-5-5 |
+| 2026-10-19 | Ship phase 1 (gsd-ship) | Claude Code | claude-opus-5-5 |
 
 ## Deferred Items
 
