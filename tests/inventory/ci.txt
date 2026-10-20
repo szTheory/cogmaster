@@ -205,6 +205,9 @@ vdp.sprites.sms1_zoom	portable,vdp
 vdp.sprites.wrap_clip	portable,vdp
 vdp.sprites.zoom	portable,vdp
 vdp.status	portable,vdp
+vdp.timing.irq_edges	portable,vdp
+vdp.timing.irq_pending	portable,vdp
+vdp.timing.irq_reload	portable,vdp
 vdp.vcounter.ntsc	portable,vdp
 vdp.vcounter.pal	portable,vdp
 vectors.allow.self_test	portable,vectors

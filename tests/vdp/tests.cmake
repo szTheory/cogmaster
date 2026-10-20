@@ -12,6 +12,18 @@ foreach(case IN ITEMS tiles scroll locks intervals latches empty priority state_
     LABELS portable vdp TIMEOUT 10)
 endforeach()
 
+# Fault prevented: missed IRQ edges, lost pending sources or premature reloads.
+add_executable(cogmaster-test-timing ${CMAKE_CURRENT_LIST_DIR}/test_timing.c)
+target_include_directories(cogmaster-test-timing PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-timing PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-timing PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-timing)
+foreach(case IN ITEMS irq_edges irq_reload irq_pending)
+  cogmaster_add_test(NAME vdp.timing.${case} COMMAND cogmaster-test-timing ${case}
+    LABELS portable vdp TIMEOUT 10)
+endforeach()
+
 # Fault prevented: incorrect sprite shapes, SAT ordering and zoom slots.
 add_executable(cogmaster-test-sprites ${CMAKE_CURRENT_LIST_DIR}/test_sprites.c)
 target_include_directories(cogmaster-test-sprites PRIVATE ${PROJECT_SOURCE_DIR}/src)
