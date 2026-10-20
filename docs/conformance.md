@@ -288,6 +288,26 @@ rows with profile `gg`. The records:
 
 The H counter latch, the Pause NMI counter and the Pause movies need input and are not in this fixture yet.
 
+## Video geometry and timing fixture
+
+`vdp_lines` is assembled three times from the same owned source, as
+`vdp_lines_192.sms`, `vdp_lines_224.sms` and `vdp_lines_240.sms`. Only their
+SHA-256 digests are committed; all image bytes stay under the build directory.
+Each runs on NTSC and PAL, with eight numeric mailbox records judged against
+`tests/diag/expected.csv`: line IRQ count, frame IRQ count, entry H/V and two
+status reads plus V samples either side of the selected $3F/$40 boundary. The [video notes](hardware/video.md) derive the counts, handler
+range, rolling phase and feature coordinates.
+
+`fixtures.vdp_lines.pixels.*` checks every coordinate against an independent
+diagonal/solid-colour construction, including both sprite sizes, zoom, SAT
+order, flips, palette, priority, mask, scroll locks, IRQ scroll bands and the
+last active row. `fixtures.vdp_lines.mailbox.*` also pins each assembled image.
+Named wrong-value, missing-row and one-frame-hang controls must return their
+expected nonzero result. The lane hash file contains all fixture image
+digests plus actual playing-frame hashes for both TV standards; comparison
+across portable lanes detects host-dependent rendering. The separate
+`boot_to_play` pixel oracle remains unchanged.
+
 ## Frontend play evidence
 
 The hosted RetroArch job preserves the no-content card comparison and adds the owned SMS game with frontend

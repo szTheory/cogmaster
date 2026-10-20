@@ -152,6 +152,16 @@ static void transitions(void)
                     run(m);
                     run(m);
                     uint32_t before = info(m).field_h;
+                    /* A following raster's live palette and backdrop cannot
+                       change any pixel or metadata of the completed image. */
+                    m->vdp.cram[1] = 0x30u;
+                    m->vdp.cram[17] = 0x0Cu;
+                    reg(m, 7u, 1u);
+                    cogmaster_frame old = image(m, 0u, 520u);
+                    CHECK_EQ_U64(old.h, before);
+                    CHECK_EQ_HEX(old.backdrop_rgb444, 0u);
+                    CHECK_EQ_HEX(pixels[8u], 0x00Fu);
+                    CHECK_EQ_HEX(pixels[8u + (before - 1u) * 260u], 0x0F0u);
                     uint32_t last = tv == COGMASTER_TV_PAL ? 312u : 261u;
                     m->bus.line = last;
                     m->bus.t = 599u;

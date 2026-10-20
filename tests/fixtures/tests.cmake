@@ -101,6 +101,23 @@ foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_t
     VERBATIM)
   list(APPEND fixtures_images ${image})
 endforeach()
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${fixtures_src}/vdp_lines.link)
+file(READ ${fixtures_src}/vdp_lines.link lines_link)
+foreach(height IN ITEMS 192 224 240)
+  string(REPLACE "vdp_lines.o" "vdp_lines_${height}.o" link "${lines_link}")
+  set(image ${COGMASTER_FIXTURES_DIR}/vdp_lines_${height}.sms)
+  file(GENERATE OUTPUT ${COGMASTER_FIXTURES_DIR}/vdp_lines_${height}.link
+    CONTENT "${link}")
+  add_custom_command(OUTPUT ${image}
+    COMMAND ${COGMASTER_WLA_Z80} -q -D LINES_HEIGHT=${height}
+      -o ${COGMASTER_FIXTURES_DIR}/vdp_lines_${height}.o vdp_lines.asm
+    COMMAND ${CMAKE_COMMAND} -E chdir ${COGMASTER_FIXTURES_DIR}
+      ${COGMASTER_WLALINK} -r vdp_lines_${height}.link ${image}
+    WORKING_DIRECTORY ${fixtures_src}
+    DEPENDS ${fixtures_src}/vdp_lines.asm ${fixtures_src}/vdp_lines.link
+      ${fixtures_src}/header.inc ${fixtures_src}/mailbox.inc VERBATIM)
+  list(APPEND fixtures_images ${image})
+endforeach()
 add_custom_target(cogmaster-fixtures ALL DEPENDS ${fixtures_images})
 
 add_executable(cogmaster-test-lines ${CMAKE_CURRENT_LIST_DIR}/lines.c
@@ -108,14 +125,21 @@ add_executable(cogmaster-test-lines ${CMAKE_CURRENT_LIST_DIR}/lines.c
 target_include_directories(cogmaster-test-lines PRIVATE ${PROJECT_SOURCE_DIR}/runner)
 target_link_libraries(cogmaster-test-lines PRIVATE cogmaster::cogmaster)
 cogmaster_warnings(cogmaster-test-lines)
-cogmaster_add_test(NAME fixtures.vdp_lines.pixels.ntsc.240 COMMAND cogmaster-test-lines
-  ${COGMASTER_FIXTURES_DIR}/boot_to_play.sms 240 ntsc LABELS portable fixtures TIMEOUT 10)
 
 add_executable(cogmaster-test-play ${CMAKE_CURRENT_LIST_DIR}/play.c
   ${PROJECT_SOURCE_DIR}/runner/sha256.c)
 target_include_directories(cogmaster-test-play PRIVATE ${PROJECT_SOURCE_DIR}/runner)
 target_link_libraries(cogmaster-test-play PRIVATE cogmaster::cogmaster)
 cogmaster_warnings(cogmaster-test-play)
+
+# Fault prevented: guest-only rendering regressions across both TV standards and every height.
+foreach(tv IN ITEMS ntsc pal)
+  foreach(height IN ITEMS 192 224 240)
+    cogmaster_add_test(NAME fixtures.vdp_lines.pixels.${tv}.${height}
+      COMMAND cogmaster-test-lines ${COGMASTER_FIXTURES_DIR}/vdp_lines_${height}.sms ${height} ${tv}
+      LABELS fixtures portable TIMEOUT 10)
+  endforeach()
+endforeach()
 
 string(REPLACE ";" "$<SEMICOLON>" fixtures_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
 
@@ -200,6 +224,23 @@ cogmaster_add_test(NAME fixtures.mapper_codemasters
     -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/mapper_codemasters.txt
     -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS fixtures portable TIMEOUT 10)
+# Fault prevented: unjudged guest counter/IRQ/status measurements.
+foreach(tv IN ITEMS ntsc pal)
+  set(region ntsc-u)
+  if(tv STREQUAL "pal")
+    set(region pal)
+  endif()
+  foreach(height IN ITEMS 192 224 240)
+    cogmaster_add_test(NAME fixtures.vdp_lines.mailbox.${tv}.${height}
+      COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=vdp_lines_${height}
+        -DREGION=${region} -DPROFILE=${tv}
+        -DIMAGE=${COGMASTER_FIXTURES_DIR}/vdp_lines_${height}.sms -DFRAMES=30
+        -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+        -DOUT=${fixtures_out}/vdp_lines.${tv}.${height}.txt -P ${CMAKE_CURRENT_LIST_FILE}
+      LABELS fixtures portable TIMEOUT 10)
+  endforeach()
+endforeach()
+
 # The ports fixture once per profile: the I/O chip and the VDP answer by
 # machine, region and TV standard. The Game Gear runs ports_gg, the same
 # source under a Game Gear header, judged against the ports rows.
@@ -234,32 +275,42 @@ file(READ ${PROJECT_SOURCE_DIR}/tests/diag/expected.csv fixtures_csv)
 string(REGEX REPLACE "(\nmapper_sega,03:[^,]*,[^,]*,)5AF3," "\\15AF4," fixtures_wrong
   "${fixtures_csv}")
 string(REGEX REPLACE "\nmapper_sega,02:[^\n]*" "" fixtures_missing "${fixtures_csv}")
+string(REGEX REPLACE "(\nvdp_lines_192,01:[^,]*,[^,]*,)0006," "\\10005," fixtures_wrong "${fixtures_wrong}")
+string(REGEX REPLACE "\nvdp_lines_192,02:[^\n]*" "" fixtures_missing "${fixtures_missing}")
 file(WRITE ${fixtures_out}/wrong_value.csv "${fixtures_wrong}")
 file(WRITE ${fixtures_out}/missing_row.csv "${fixtures_missing}")
 string(REPLACE ";" "\;" fixtures_inner_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
-foreach(control IN ITEMS wrong_value missing_row hang)
-  set(csv ${fixtures_out}/${control}.csv)
-  set(frames 120)
-  if(control STREQUAL "wrong_value")
-    set(regex "outside its row")
-  elseif(control STREQUAL "missing_row")
-    set(regex "has no row")
-  else()
-    set(csv ${PROJECT_SOURCE_DIR}/tests/diag/expected.csv)
-    set(frames 1)
-    set(regex "[(]hang[)]")
+foreach(rom IN ITEMS mapper_sega vdp_lines_192)
+  set(prefix fixtures.judge)
+  set(profile sms-export)
+  if(rom STREQUAL "vdp_lines_192")
+    set(prefix fixtures.vdp_lines.judge)
+    set(profile ntsc)
   endif()
-  set(cmd ${CMAKE_COMMAND} -DCASE=mailbox -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
-    -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${fixtures_inner_emulator}"
-    -DJUDGE=${PROJECT_SOURCE_DIR}/tests/cmake/mailbox.cmake -DPROFILE=sms-export
-    -DNAME=mapper_sega -DIMAGE=${COGMASTER_FIXTURES_DIR}/mapper_sega.sms -DFRAMES=${frames}
-    -DCSV=${csv} -DOUT=${fixtures_out}/${control}.txt -P ${CMAKE_CURRENT_LIST_FILE})
-  string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
-  # Timeout: 10 s floor; 2 x 0.02 s, slowest of 2 runs, run 39376644025, provisional.
-  cogmaster_add_test(NAME fixtures.judge.${control}
-    COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=${regex}"
-      -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
-    LABELS fixtures portable TIMEOUT 10)
+  foreach(control IN ITEMS wrong_value missing_row hang)
+    set(csv ${fixtures_out}/${control}.csv)
+    set(frames 120)
+    if(control STREQUAL "wrong_value")
+      set(regex "outside its row")
+    elseif(control STREQUAL "missing_row")
+      set(regex "has no row")
+    else()
+      set(csv ${PROJECT_SOURCE_DIR}/tests/diag/expected.csv)
+      set(frames 1)
+      set(regex "[(]hang[)]")
+    endif()
+    set(cmd ${CMAKE_COMMAND} -DCASE=mailbox -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+      -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${fixtures_inner_emulator}"
+      -DJUDGE=${PROJECT_SOURCE_DIR}/tests/cmake/mailbox.cmake -DPROFILE=${profile}
+      -DNAME=${rom} -DIMAGE=${COGMASTER_FIXTURES_DIR}/${rom}.sms -DFRAMES=${frames}
+      -DCSV=${csv} -DOUT=${fixtures_out}/${rom}.${control}.txt -P ${CMAKE_CURRENT_LIST_FILE})
+    string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+    # Timeout: 10 s floor; 2 x 0.02 s, slowest of 2 runs, run 39376644025, provisional.
+    cogmaster_add_test(NAME ${prefix}.${control}
+      COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=${regex}"
+        -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+      LABELS fixtures portable TIMEOUT 10)
+  endforeach()
 endforeach()
 
 # Fault prevented: an assembler pin that accepts a tarball other than the

@@ -58,3 +58,30 @@ boot_to_play,05:released_sample,*,0000,derived,owned ROM released input and scro
 boot_to_play,06:released_sample,*,0000,derived,owned ROM released input and scroll
 boot_to_play,07:released_sample,*,0000,derived,owned ROM released input and scroll
 boot_to_play,08:released_sample,*,0000,derived,owned ROM released input and scroll
+vdp_lines_192,01:line_interrupt_count,*,0006,derived,SMS-VDP 4.5 floor((H+1)/32) R10=31
+vdp_lines_192,02:frame_interrupt_count,*,0004,derived,owned guest waits four frame handlers
+vdp_lines_192,03:h_at_frame_handler,*,0033-003D,derived,SMS-VDP 4.3 event607 plus 249 ticks to IN sample plus 0..38 instruction tail
+vdp_lines_192,04:v_at_frame_handler,ntsc,00C1,derived,SMS-VDP 4.4 physical H+1 or rolling phase minus four at fourth IRQ
+vdp_lines_192,04:v_at_frame_handler,pal,00C1,derived,SMS-VDP 4.4 physical H+1 before next604
+vdp_lines_192,05:frame_status,*,009F,derived,SMS-VDP 2.6 frame pending and low pull-ups after prior line clears
+vdp_lines_192,06:status_cleared,*,001F,derived,SMS-VDP 2.6 immediate second status read clears frame and sprite flags
+vdp_lines_224,01:line_interrupt_count,*,0007,derived,SMS-VDP 4.5 floor((H+1)/32) R10=31
+vdp_lines_224,02:frame_interrupt_count,*,0004,derived,owned guest waits four frame handlers
+vdp_lines_224,03:h_at_frame_handler,*,0033-003D,derived,SMS-VDP 4.3 event607 plus 249 ticks to IN sample plus 0..38 instruction tail
+vdp_lines_224,04:v_at_frame_handler,ntsc,00E1,derived,SMS-VDP 4.4 physical H+1 or rolling phase minus four at fourth IRQ
+vdp_lines_224,04:v_at_frame_handler,pal,00E1,derived,SMS-VDP 4.4 physical H+1 before next604
+vdp_lines_224,05:frame_status,*,009F,derived,SMS-VDP 2.6 frame pending and low pull-ups after prior line clears
+vdp_lines_224,06:status_cleared,*,001F,derived,SMS-VDP 2.6 immediate second status read clears frame and sprite flags
+vdp_lines_240,01:line_interrupt_count,*,0007,derived,SMS-VDP 4.5 floor((H+1)/32) R10=31
+vdp_lines_240,02:frame_interrupt_count,*,0004,derived,owned guest waits four frame handlers
+vdp_lines_240,03:h_at_frame_handler,*,0033-003D,derived,SMS-VDP 4.3 event607 plus 249 ticks to IN sample plus 0..38 instruction tail
+vdp_lines_240,04:v_at_frame_handler,ntsc,00ED,derived,SMS-VDP 4.4 physical H+1 or rolling phase minus four at fourth IRQ
+vdp_lines_240,04:v_at_frame_handler,pal,00F1,derived,SMS-VDP 4.4 physical H+1 before next604
+vdp_lines_240,05:frame_status,*,009F,derived,SMS-VDP 2.6 frame pending and low pull-ups after prior line clears
+vdp_lines_240,06:status_cleared,*,001F,derived,SMS-VDP 2.6 immediate second status read clears frame and sprite flags
+vdp_lines_192,07:v_before_boundary,*,003F,derived,SMS-VDP 4.4 counter value before selected increment
+vdp_lines_192,08:v_after_boundary,*,0040,derived,SMS-VDP 4.4 first CPU sample after selected increment
+vdp_lines_224,07:v_before_boundary,*,003F,derived,SMS-VDP 4.4 counter value before selected increment
+vdp_lines_224,08:v_after_boundary,*,0040,derived,SMS-VDP 4.4 first CPU sample after selected increment
+vdp_lines_240,07:v_before_boundary,*,003F,derived,SMS-VDP 4.4 counter value before selected increment
+vdp_lines_240,08:v_after_boundary,*,0040,derived,SMS-VDP 4.4 first CPU sample after selected increment

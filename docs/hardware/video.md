@@ -164,3 +164,31 @@ one host call later. SMS PAR is 8:7 NTSC and 2950000:2128137 PAL; GG
 remains 6:5. The two fixed buffers are instance-owned and saved with the
 height latch and completed metadata; restoration validates heights before
 applying. Pixel conversion and caller pitch remain outside emulation.
+
+The owned `vdp_lines` guest runs the same source at 192/224/240 lines on
+NTSC and PAL. Four tiles encode zero, a one-bit diagonal, solid colour 2,
+and solid colour 3. Row one columns 2–5 select hflip, vflip, palette two and
+priority. R0 enables the left mask and both scroll locks; R9=8. R10=31
+interrupts on 31/63/...; R8 starts at 8 and advances by 8 after each IRQ.
+The handler writes after the next line has started but before its tick 600,
+so bands begin on lines 33/65/... . Top-16 horizontal and right-eight-column
+vertical locks are checked independently at every returned coordinate.
+
+Two overlapping sprites at (40,0)/(48,0) use zoomed 8×16 tiles: sixteen
+green rows followed by sixteen white rows. The second line IRQ clears size
+and zoom before (72,96), where two overlapping 8×8 sprites demonstrate SAT
+order. Background priority hides only opaque diagonal dots. The oracle in
+`tests/fixtures/lines.c` constructs these coordinates without calling any
+renderer helper and hashes its expected little-endian RGB444 words.
+
+The guest seals eight numeric records after four frame handlers: completed
+line-IRQ count, frame-IRQ count, H/V at frame-handler entry, first frame
+status and its immediate second read, then V samples $3F/$40 across a
+selected visible-counter boundary with IRQs disabled. R10=31 gives floor((H+1)/32) =
+6/7/7 interrupts. The frame handler reaches its H sample 249 ticks after
+pending plus 0–38 ticks for an interrupted instruction tail: H=$33–$3D.
+The following V read precedes the next tick 604: $C1/$E1/$F1 on the physical
+beam; NTSC-240 reads $ED at the fourth IRQ because its rolling phase is four
+counts behind that beam. Prior line handlers clear sprite flags, leaving
+first frame status $9F and second $1F. These source-derived model checks
+are not console measurements.
