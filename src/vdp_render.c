@@ -135,7 +135,8 @@ void cogmaster__vdp_sprite_scan(cogmaster *m, uint32_t line)
    (SMS-VDP 3.A, ARCHITECTURE section 13). */
 static uint32_t vdp_sprite_pixel(cogmaster *m, uint32_t x)
 {
-    const struct cogmaster__vdp *v = &m->vdp;
+    struct cogmaster__vdp *v = &m->vdp;
+    uint32_t first = 0u;
     for (uint32_t i = 0u; i < v->sprite_count; i++) {
         int32_t left = (int32_t)v->sprite[i].x - (v->sprite_shift ? 8 : 0);
         uint32_t dx = (uint32_t)((int32_t)x - left);
@@ -150,10 +151,16 @@ static uint32_t vdp_sprite_pixel(cogmaster *m, uint32_t x)
             colour |= ((uint32_t)(v->vram[row + plane] >> (7u - (dx >> wide))) & 1u) << plane;
         }
         if (colour != 0u) {
-            return 16u + colour;
+            if (first != 0u) {
+                /* Shared opaque active dot, independent of background priority
+                   (SMS-VDP section 3, docs/hardware/video.md). */
+                v->status |= 0x20u;
+                return first;
+            }
+            first = 16u + colour;
         }
     }
-    return 0u;
+    return first;
 }
 
 /* Exclusive raster coordinate: stamped mutations cannot repaint earlier dots. */
@@ -179,6 +186,11 @@ void cogmaster__vdp_render_until(cogmaster *m, uint32_t line, uint32_t x)
             if (sprite != 0u && (colour & COGMASTER__VDP_PRIORITY) == 0u) {
                 colour = sprite;
             }
+        }
+        /* Selected model: a ninth Y match asserts at the line's first
+           enabled active dot, regardless of opacity or X (video.md). */
+        if (m->render_x == 0u && m->vdp.display && vdp_supported(m) && m->vdp.sprite_overflow) {
+            m->vdp.status |= 0x40u;
         }
         m->field[m->render_line][m->render_x] = vdp_colour(m->vdp.cram[colour & 31u]);
         at++;

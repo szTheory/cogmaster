@@ -183,6 +183,12 @@ static uint8_t vdp_hcount(const cogmaster *m)
    flags and the control latch and releases /INT (SMS-VDP section 2.6). */
 static uint8_t vdp_status_read(cogmaster *m)
 {
+    /* Events at this tick precede the read: include its current active dot,
+       then clear. The monotonic cursor prevents reasserting that same dot
+       on a second read (SMS-VDP section 3; selected model in video.md). */
+    if (m->bus.line < COGMASTER__FIELD_H) {
+        cogmaster__vdp_render_until(m, m->bus.line, m->bus.t / 2u + 1u);
+    }
     struct cogmaster__vdp *v = &m->vdp;
     uint8_t s = (uint8_t)(v->status | VDP_STATUS_LOW);
     v->status = 0u;

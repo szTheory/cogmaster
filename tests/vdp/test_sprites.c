@@ -297,9 +297,15 @@ static void collision(void)
     solid(m, 3u, 2u);
     sprite(m, 0u, 0xFFu, 20u, 2u);
     sprite(m, 1u, 0xFFu, 20u, 3u);
+    m->vdp.reg[1] |= 0x20u;
     run(m);
-    (void)status_at(m, 192u, 608u);
+    CHECK_EQ_U64(m->z80.int_line, 1u);
+    m->vdp.latch = 1u;
+    CHECK_EQ_HEX(status_at(m, 192u, 608u), 0xBFu);
+    CHECK_EQ_U64(m->vdp.latch, 0u);
+    CHECK_EQ_U64(m->z80.int_line, 0u);
     CHECK_EQ_HEX(status_at(m, 0u, 40u), 0x3Fu);
+    CHECK_EQ_U64(m->z80.int_line, 0u);
     CHECK_EQ_HEX(status_at(m, 0u, 41u), 0x1Fu);
     CHECK_EQ_HEX(status_at(m, 0u, 42u), 0x3Fu);
     CHECK_EQ_HEX(m->field[0][20], 0x00Fu);
@@ -324,7 +330,7 @@ static void overflow(void)
         CHECK_EQ_HEX(status_at(m, 0u, 1u), 0x1Fu);
         CHECK_EQ_HEX(status_at(m, 0u, 2u), 0x1Fu);
         CHECK_EQ_U64(m->vdp.sprite_count, 8u);
-        CHECK_EQ_U64(m->vdp.sprite_scanned, count == 9u ? 9u : 9u);
+        CHECK_EQ_U64(m->vdp.sprite_scanned, 9u);
         CHECK_EQ_HEX(status_at(m, 1u, 0u), count == 9u ? 0x5Fu : 0x1Fu);
         cogmaster_destroy(m);
     }

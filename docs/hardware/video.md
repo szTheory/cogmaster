@@ -57,6 +57,20 @@ display-off dots show backdrop. Normally hidden GG sprites still use slots.
 Sources: preparation SMS-VDP sections 3.4–3.8 and ARCHITECTURE section 13;
 [SMS Power sprites](https://www.smspower.org/Development/Sprites).
 
+The ninth Y match sets overflow at the first enabled active dot of that
+line, even for transparent or clipped sprites; no ninth slot is rendered.
+Collision sets only on a dot shared by two opaque retained sprites, with
+display enabled and outside the masked left column. Touching edges,
+transparent dots and pixels outside the 256×192 active field cannot collide.
+Background priority hides sprite colour but does not suppress occupancy.
+These are tests of the selected active-area model, not hardware timing
+measurements. A status read catches up through the dot at `tick / 2`,
+observes flags, then clears all flags and the control latch and recomputes
+the frame IRQ level. Bits 4–0 still read as ones. Re-reading that same dot
+cannot reassert; a later real overlap can. Sprite flags alone do not drive
+IRQ. Sources: SMS-VDP sections 2.6 and 3.5–3.8, and
+[SMS Power collision detection](https://www.smspower.org/Development/CollisionDetection).
+
 The owned `boot_to_play` fixture writes a diamond in plane 0 and $55, $33,
 $0F in planes 1–3, with palette entry n containing n. Its independent oracle
 expands the diamond into eight explicit bit rows, adds 2 for odd columns,
