@@ -376,6 +376,23 @@ static void test_info(void)
     CHECK_EQ_U64(info.fps_den, 27379);
     CHECK_EQ_U64(info.par_num, 6);
     CHECK_EQ_U64(info.par_den, 5);
+    CHECK_EQ_U64(info.region, COGMASTER_REGION_EXPORT);
+    CHECK_EQ_U64(info.tv, COGMASTER_TV_NTSC);
+    cogmaster_destroy(m);
+
+    /* A PAL Master System: 214,092 ticks of 53,203,424 / 5 Hz a frame. */
+    cogmaster_config cfg = make_config();
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    cogmaster_media media = make_media(COGMASTER_MACHINE_SMS2);
+    media.tv = COGMASTER_TV_PAL;
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    info = info_of(m);
+    CHECK_EQ_U64(info.machine, COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(info.region, COGMASTER_REGION_EXPORT);
+    CHECK_EQ_U64(info.tv, COGMASTER_TV_PAL);
+    CHECK_EQ_U64(info.fps_num, 13300856);
+    CHECK_EQ_U64(info.fps_den, 267615);
+    CHECK_EQ_U64((uint64_t)info.fps_num * 5u * 214092u, (uint64_t)info.fps_den * 53203424u);
     cogmaster_destroy(m);
 
     cogmaster_versions v;
@@ -943,7 +960,8 @@ static uint8_t instance_before[sizeof(struct cogmaster)];
 /* An image up to 1 MiB + 511 bytes with no copier header pads to 65 pages. */
 static uint8_t rom_before[1048576u + PAGE];
 
-/* 200 seeded loads with sizes near both bounds and any machine value: each
+/* 200 seeded loads with sizes near both bounds and any machine, region and
+   tv value: each
    refused load returns the status the rules give, allocates nothing and
    leaves every byte of the instance and of its image as it was. */
 static void test_load_rejected_unchanged(void)
@@ -973,10 +991,17 @@ static void test_load_rejected_unchanged(void)
         size_t delta = (size_t)((r >> 8) % 33u);
         size_t n = base + delta >= 16u ? base + delta - 16u : delta;
         uint32_t machine = (r >> 24) % 4u == 0u ? (uint32_t)(r >> 32) : (uint32_t)((r >> 40) % 4u);
+        uint64_t r2 = splitmix64(&seed);
+        uint32_t region = r2 % 8u == 0u ? (uint32_t)(r2 >> 32) : (uint32_t)((r2 >> 8) % 4u);
+        uint32_t tv = (r2 >> 16) % 8u == 0u ? (uint32_t)(r2 >> 24) : (uint32_t)((r2 >> 20) % 4u);
         cogmaster_status want = COGMASTER_STATUS_OK;
         if (n < IMAGE_MIN || n > IMAGE_MAX) {
             want = COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE;
-        } else if (machine > COGMASTER_MACHINE_GG) {
+        } else if (machine > COGMASTER_MACHINE_GG || region > COGMASTER_REGION_JAPAN ||
+                   tv > COGMASTER_TV_PAL) {
+            want = COGMASTER_STATUS_ERR_PROFILE_REJECTED;
+        } else if (tv == COGMASTER_TV_PAL &&
+                   (machine == COGMASTER_MACHINE_GG || region == COGMASTER_REGION_JAPAN)) {
             want = COGMASTER_STATUS_ERR_PROFILE_REJECTED;
         }
         memcpy(instance_before, m, sizeof instance_before);
@@ -986,14 +1011,19 @@ static void test_load_rejected_unchanged(void)
         }
         uint32_t allocs = c.allocs;
         cogmaster_media media = image_media(big, n, machine);
+        media.region = region;
+        media.tv = tv;
         cogmaster_status got = cogmaster_load(m, &media);
         expect_status("seeded load", (uint32_t)n, got, want);
         if (got != COGMASTER_STATUS_OK) {
             refusals++;
             if (memcmp(instance_before, m, sizeof instance_before) != 0 || c.allocs != allocs ||
                 (m->cart.rom != NULL && memcmp(rom_before, m->cart.rom, rom_size) != 0)) {
-                fprintf(stderr, "seeded load %lu: size %lu machine %lu changed the instance\n",
-                        (unsigned long)i, (unsigned long)n, (unsigned long)machine);
+                fprintf(stderr,
+                        "seeded load %lu: size %lu machine %lu region %lu tv %lu changed the "
+                        "instance\n",
+                        (unsigned long)i, (unsigned long)n, (unsigned long)machine,
+                        (unsigned long)region, (unsigned long)tv);
                 changed++;
             }
         } else {
@@ -1007,6 +1037,84 @@ static void test_load_rejected_unchanged(void)
     cogmaster_destroy(m);
     CHECK_EQ_U64(c.frees, c.allocs);
     CHECK_EQ_U64(c.live_bytes, 0);
+}
+
+/* Every profile pair: AUTO is an export console on an NTSC set; each legal
+   pair loads, reports itself and runs frames of its TV's length; PAL on a
+   Game Gear or a Japanese console, which were never made (SMS-SYSTEM C6),
+   and a value outside its set are refused with the instance unchanged. */
+static void test_load_profiles(void)
+{
+    static const struct {
+        uint32_t machine, region, tv;
+        cogmaster_status status;
+        uint32_t want_region, want_tv;
+    } rows[] = {
+        {COGMASTER_MACHINE_AUTO, COGMASTER_REGION_AUTO, COGMASTER_TV_AUTO, COGMASTER_STATUS_OK,
+         COGMASTER_REGION_EXPORT, COGMASTER_TV_NTSC},
+        {COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT, COGMASTER_TV_PAL, COGMASTER_STATUS_OK,
+         COGMASTER_REGION_EXPORT, COGMASTER_TV_PAL},
+        {COGMASTER_MACHINE_GG, COGMASTER_REGION_AUTO, COGMASTER_TV_PAL,
+         COGMASTER_STATUS_ERR_PROFILE_REJECTED, 0u, 0u},
+        {COGMASTER_MACHINE_GG, COGMASTER_REGION_EXPORT, COGMASTER_TV_PAL,
+         COGMASTER_STATUS_ERR_PROFILE_REJECTED, 0u, 0u},
+        {COGMASTER_MACHINE_SMS2, COGMASTER_REGION_JAPAN, COGMASTER_TV_PAL,
+         COGMASTER_STATUS_ERR_PROFILE_REJECTED, 0u, 0u},
+        {COGMASTER_MACHINE_AUTO, COGMASTER_REGION_JAPAN, COGMASTER_TV_PAL,
+         COGMASTER_STATUS_ERR_PROFILE_REJECTED, 0u, 0u},
+        {COGMASTER_MACHINE_SMS2, 3u, COGMASTER_TV_NTSC, COGMASTER_STATUS_ERR_PROFILE_REJECTED, 0u,
+         0u},
+        {COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT, 3u,
+         COGMASTER_STATUS_ERR_PROFILE_REJECTED, 0u, 0u},
+        {COGMASTER_MACHINE_SMS2, 0xFFFFFFFFu, COGMASTER_TV_AUTO,
+         COGMASTER_STATUS_ERR_PROFILE_REJECTED, 0u, 0u},
+        {COGMASTER_MACHINE_AUTO, COGMASTER_REGION_AUTO, COGMASTER_TV_PAL, COGMASTER_STATUS_OK,
+         COGMASTER_REGION_EXPORT, COGMASTER_TV_PAL},
+        {COGMASTER_MACHINE_SMS2, COGMASTER_REGION_JAPAN, COGMASTER_TV_AUTO, COGMASTER_STATUS_OK,
+         COGMASTER_REGION_JAPAN, COGMASTER_TV_NTSC},
+        {COGMASTER_MACHINE_GG, COGMASTER_REGION_JAPAN, COGMASTER_TV_NTSC, COGMASTER_STATUS_OK,
+         COGMASTER_REGION_JAPAN, COGMASTER_TV_NTSC},
+        {COGMASTER_MACHINE_GG, COGMASTER_REGION_AUTO, COGMASTER_TV_AUTO, COGMASTER_STATUS_OK,
+         COGMASTER_REGION_EXPORT, COGMASTER_TV_NTSC},
+    };
+    cogmaster *m = make(COGMASTER_MACHINE_SMS2);
+    for (size_t i = 0; i < sizeof rows / sizeof rows[0]; i++) {
+        run_frames(m, 2);
+        cogmaster_media media = make_media(rows[i].machine);
+        media.region = rows[i].region;
+        media.tv = rows[i].tv;
+        memcpy(instance_before, m, sizeof instance_before);
+        cogmaster_status got = cogmaster_load(m, &media);
+        expect_status("profile row", (uint32_t)i, got, rows[i].status);
+        if (rows[i].status != COGMASTER_STATUS_OK) {
+            if (memcmp(instance_before, m, sizeof instance_before) != 0) {
+                fprintf(stderr, "profile row %lu: the refused load changed the instance\n",
+                        (unsigned long)i);
+                check_failures++;
+            }
+            continue;
+        }
+        cogmaster_info info = info_of(m);
+        CHECK_EQ_U64(info.region, rows[i].want_region);
+        CHECK_EQ_U64(info.tv, rows[i].want_tv);
+        int pal = rows[i].want_tv == COGMASTER_TV_PAL;
+        CHECK_EQ_U64(info.fps_num, pal ? 13300856u : 1640625u);
+        CHECK_EQ_U64(info.fps_den, pal ? 267615u : 27379u);
+        run_frames(m, 1);
+        CHECK_EQ_U64(m->ticks, pal ? 214092u : 179208u);
+    }
+
+    /* A size tag at the first released size reads region and tv as AUTO,
+       even where the old struct's tail padding holds them. */
+    cogmaster_media media = make_media(COGMASTER_MACHINE_SMS2);
+    media.region = COGMASTER_REGION_JAPAN;
+    media.tv = COGMASTER_TV_PAL;
+    uint8_t *b = tagged(&media, (uint32_t)sizeof media, 4u * P);
+    CHECK_EQ_U64(cogmaster_load(m, (const cogmaster_media *)b), COGMASTER_STATUS_OK);
+    cogmaster_info info = info_of(m);
+    CHECK_EQ_U64(info.region, COGMASTER_REGION_EXPORT);
+    CHECK_EQ_U64(info.tv, COGMASTER_TV_NTSC);
+    cogmaster_destroy(m);
 }
 
 /* After load the CPU and RAM are as the BIOS leaves them, with no BIOS code
@@ -1058,6 +1166,7 @@ static const struct {
     {"frame.pitch_wide", test_pitch_wide},
     {"info", test_info},
     {"load.profile_rejected", test_profile_rejected},
+    {"load.profiles", test_load_profiles},
     {"load.rejected_unchanged", test_load_rejected_unchanged},
     {"load.sizes", test_load_sizes},
     {"no_alloc_after_load", test_no_alloc_after_load},

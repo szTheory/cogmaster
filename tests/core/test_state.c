@@ -53,22 +53,9 @@ static cogmaster_config make_config(void)
     return cfg;
 }
 
-/* A new instance with the test card of machine loaded. */
-static cogmaster *make(uint32_t machine)
-{
-    cogmaster_config cfg = make_config();
-    cogmaster *m = NULL;
-    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
-    cogmaster_media media;
-    memset(&media, 0, sizeof media);
-    media.size = (uint32_t)sizeof media;
-    media.machine = machine;
-    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
-    return m;
-}
-
-/* A new Master System instance running the 1 KiB image img. */
-static cogmaster *make_image(const uint8_t *img)
+/* A new instance of the profile running the 1 KiB image img, or the test
+   card when img is NULL. */
+static cogmaster *make_with(const uint8_t *img, uint32_t machine, uint32_t region, uint32_t tv)
 {
     cogmaster_config cfg = make_config();
     cogmaster *m = NULL;
@@ -77,10 +64,24 @@ static cogmaster *make_image(const uint8_t *img)
     memset(&media, 0, sizeof media);
     media.size = (uint32_t)sizeof media;
     media.image = img;
-    media.image_size = IMAGE_SIZE;
-    media.machine = COGMASTER_MACHINE_SMS2;
+    media.image_size = img != NULL ? IMAGE_SIZE : 0u;
+    media.machine = machine;
+    media.region = region;
+    media.tv = tv;
     CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
     return m;
+}
+
+/* A new instance with the test card of machine loaded. */
+static cogmaster *make(uint32_t machine)
+{
+    return make_with(NULL, machine, COGMASTER_REGION_AUTO, COGMASTER_TV_AUTO);
+}
+
+/* A new Master System instance running the 1 KiB image img. */
+static cogmaster *make_image(const uint8_t *img)
+{
+    return make_with(img, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO, COGMASTER_TV_AUTO);
 }
 
 /* An image that keeps changing RAM, registers and flags: a loop that
@@ -180,17 +181,17 @@ static void expect_refused(const char *what, cogmaster *target, size_t size, siz
 /* A state taken mid-frame from a running image, loaded into a fresh
    instance of the same image, resumes exactly: five more frames of each
    save the same bytes. */
-static void test_round_trip_image(void)
+static void round_trip_image(uint32_t region, uint32_t tv)
 {
     fill_images();
-    cogmaster *a = make_image(img_loop);
+    cogmaster *a = make_with(img_loop, COGMASTER_MACHINE_SMS2, region, tv);
     run_frames(a, 2u);
     for (uint32_t i = 0; i < 1000u; i++) {
         cogmaster__z80_step(a);
     }
     CHECK(a->ticks < a->bus.deadline);
     size_t size = save(a, good);
-    cogmaster *b = make_image(img_loop);
+    cogmaster *b = make_with(img_loop, COGMASTER_MACHINE_SMS2, region, tv);
     run_frames(b, 1u);
     if (size != 0u) {
         CHECK_EQ_U64(cogmaster__state_size(b), size);
@@ -244,11 +245,21 @@ static void sweep(cogmaster *src, cogmaster *target)
            (unsigned long)swept);
     CHECK(swept >= 30u);
     CHECK_EQ_U64(ram, 8192);
-    static const char *const named[] = {"z80_pc", "z80_sp", "z80_wz", "z80_im", "z80_idx",
-                                        "z80_halted", "z80_int_line", "z80_nmi_pending",
-                                        "bus_deadline", "bus_at", "bus_line", "bus_t"};
+    static const char *const named[] = {"z80_pc",       "z80_sp",          "z80_wz",
+                                        "z80_im",       "z80_idx",         "z80_halted",
+                                        "z80_int_line", "z80_nmi_pending", "bus_deadline",
+                                        "bus_at",       "bus_line",        "bus_t",
+                                        "machine",      "region",          "tv"};
     for (size_t i = 0; i < sizeof named / sizeof named[0]; i++) {
         (void)field(n, named[i]);
+    }
+    /* The profile is resolved: no field of it is AUTO or outside its set. */
+    static const char *const profile[] = {"machine", "region", "tv"};
+    for (size_t i = 0; i < 3u; i++) {
+        const struct cogmaster__state_field *fd = field(n, profile[i]);
+        if (fd != NULL) {
+            CHECK(fd->min >= 1u && fd->max <= 2u);
+        }
     }
     /* The control: the unchanged state, resealed, loads. */
     if (size != 0u) {
@@ -259,11 +270,41 @@ static void sweep(cogmaster *src, cogmaster *target)
     }
 }
 
-/* save, load into a fresh instance of the same machine, save again: the two
-   states are equal byte for byte. */
+/* A state of one profile is refused by an instance of another, and loads
+   into its own. */
+static void reject_other_profile(void)
+{
+    static const uint32_t pairs[][2] = {
+        {COGMASTER_REGION_EXPORT, COGMASTER_TV_PAL},
+        {COGMASTER_REGION_JAPAN, COGMASTER_TV_NTSC},
+    };
+    for (size_t k = 0; k < 2u; k++) {
+        cogmaster *src = make_with(NULL, COGMASTER_MACHINE_SMS2, pairs[k][0], pairs[k][1]);
+        run_frames(src, 3u);
+        cogmaster *target = make(COGMASTER_MACHINE_SMS2);
+        run_frames(target, 3u);
+        size_t size = save(src, bad);
+        size_t target_size = save(target, before);
+        CHECK_EQ_U64(size, target_size);
+        if (size != 0u && size == target_size) {
+            expect_refused("state of another profile", target, size, target_size);
+            cogmaster *same = make_with(NULL, COGMASTER_MACHINE_SMS2, pairs[k][0], pairs[k][1]);
+            CHECK_EQ_U64(cogmaster__state_load(same, bad, size), COGMASTER_STATUS_OK);
+            cogmaster_destroy(same);
+        }
+        cogmaster_destroy(src);
+        cogmaster_destroy(target);
+    }
+}
+
+/* save, load into a fresh instance of the same profile, save again: the two
+   states are equal byte for byte, on NTSC and PAL and in both regions. */
 static void test_round_trip(void)
 {
-    test_round_trip_image();
+    round_trip_image(COGMASTER_REGION_AUTO, COGMASTER_TV_AUTO);
+    round_trip_image(COGMASTER_REGION_EXPORT, COGMASTER_TV_PAL);
+    round_trip_image(COGMASTER_REGION_JAPAN, COGMASTER_TV_NTSC);
+    reject_other_profile();
     const uint32_t machines[] = {COGMASTER_MACHINE_SMS2, COGMASTER_MACHINE_GG};
     const uint32_t frames[] = {0u, 1u, 60u};
     for (size_t k = 0; k < 2u; k++) {
@@ -303,10 +344,24 @@ static void test_record_sweep(void)
         cogmaster_destroy(target);
     }
     fill_images();
-    cogmaster *src = make_image(img_loop);
-    run_frames(src, 3u);
-    cogmaster *target = make_image(img_loop);
-    run_frames(target, 1u);
+    const uint32_t tvs[] = {COGMASTER_TV_NTSC, COGMASTER_TV_PAL};
+    for (size_t k = 0; k < 2u; k++) {
+        cogmaster *src = make_with(img_loop, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO, tvs[k]);
+        run_frames(src, 3u);
+        cogmaster *target =
+            make_with(img_loop, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO, tvs[k]);
+        run_frames(target, 1u);
+        sweep(src, target);
+        cogmaster_destroy(src);
+        cogmaster_destroy(target);
+    }
+    /* A Japanese PAL test card cannot exist; a PAL export one can. */
+    cogmaster *src = make_with(NULL, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT,
+                               COGMASTER_TV_PAL);
+    run_frames(src, 60u);
+    cogmaster *target = make_with(NULL, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT,
+                                  COGMASTER_TV_PAL);
+    run_frames(target, 5u);
     sweep(src, target);
     cogmaster_destroy(src);
     cogmaster_destroy(target);

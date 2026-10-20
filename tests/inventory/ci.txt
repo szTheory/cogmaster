@@ -27,6 +27,7 @@ core.fault.state_round_trip	core,portable
 core.frame.pitch_wide	core,portable
 core.info	core,portable
 core.load.profile_rejected	core,portable
+core.load.profiles	core,portable
 core.load.rejected_unchanged	core,portable
 core.load.sizes	core,portable
 core.no_alloc_after_load	perf,portable
