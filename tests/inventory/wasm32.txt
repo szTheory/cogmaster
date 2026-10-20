@@ -82,6 +82,7 @@ runner.usage.unknown	portable,runner
 runner.version	portable,runner
 vectors.allow.self_test	portable,vectors
 vectors.base	portable,vectors
+vectors.cb	portable,vectors
 vectors.self_test	portable,vectors
 vectors.sst2bin.accept	portable,vectors
 vectors.sst2bin.bad_stream	portable,vectors

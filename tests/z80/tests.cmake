@@ -23,7 +23,8 @@ endif()
 # so linking both would give duplicate definitions. The z80 sources build as
 # an object library with the core's own compile options.
 get_target_property(z80_options cogmaster COMPILE_OPTIONS)
-add_library(cogmaster-z80-sst OBJECT ${PROJECT_SOURCE_DIR}/src/z80.c)
+add_library(cogmaster-z80-sst OBJECT ${PROJECT_SOURCE_DIR}/src/z80.c
+  ${PROJECT_SOURCE_DIR}/src/z80_cb.c)
 target_include_directories(cogmaster-z80-sst PRIVATE
   ${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR}/generated ${PROJECT_SOURCE_DIR}/src)
 target_compile_options(cogmaster-z80-sst PRIVATE ${z80_options})
@@ -122,4 +123,8 @@ endforeach()
 cogmaster_add_test(NAME vectors.base
   COMMAND cogmaster-test-sst --sample ${z80_sample} --group base
     --allow ${PROJECT_SOURCE_DIR}/tests/vectors/z80/allow.txt --expect-count 25200
+  LABELS portable vectors TIMEOUT 60)
+cogmaster_add_test(NAME vectors.cb
+  COMMAND cogmaster-test-sst --sample ${z80_sample} --group cb
+    --allow ${PROJECT_SOURCE_DIR}/tests/vectors/z80/allow.txt --expect-count 25600
   LABELS portable vectors TIMEOUT 60)

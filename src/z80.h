@@ -50,6 +50,10 @@ struct cogmaster__z80 {
    one interrupt acceptance. */
 void cogmaster__z80_step(cogmaster *m);
 
+/* The CB page, after the step fetched 0xCB; with a pending prefix it runs
+   DD CB or FD CB. */
+void cogmaster__z80_cb(cogmaster *m);
+
 /* The bus seam. Each is called once per bus cycle, with m->ticks at the
    cycle's data T-state (see z80_cycle.h). The library defines them in its
    bus; the vector harness defines its own. */

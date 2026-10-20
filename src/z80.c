@@ -531,6 +531,7 @@ void cogmaster__z80_step(cogmaster *m)
     case 0xC8: ret_cc(m, 1); break;
     case 0xC9: ret(m, 1); break;
     case 0xCA: jp(m, cc(z, 1)); break;
+    case 0xCB: cogmaster__z80_cb(m); break;
     case 0xCC: call(m, cc(z, 1)); break;
     case 0xCD: call(m, 1); break;
     case 0xCE: cogmaster__z80_alu(z, 1, imm8(m)); break;
@@ -582,6 +583,6 @@ void cogmaster__z80_step(cogmaster *m)
     case 0xFD: z->idx = COGMASTER__Z80_IDX_IY; break;
     case 0xFE: cogmaster__z80_alu(z, 7, imm8(m)); break;
     case 0xFF: rst(m, 0x38); break;
-    default: break; /* the CB and ED pages */
+    default: break; /* the ED page */
     }
 }
