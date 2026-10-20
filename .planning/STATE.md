@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 03
 current_phase_name: Games play in RetroArch
 status: executing
-stopped_at: Completed 03-16-PLAN.md; runtime Codex; model GPT-6
-last_updated: "2026-10-20T22:14:46.411Z"
+stopped_at: Completed 03-17-PLAN.md; runtime Codex; model GPT-6
+last_updated: "2026-10-20T22:29:17.056Z"
 last_activity: 2026-10-20
-last_activity_desc: Completed plan 03-16; runtime Codex; model GPT-6
-state_head: 06919dc56d9ae40511827aff48f7f67e5f34772e
+last_activity_desc: Completed plan 03-17; runtime Codex; model GPT-6
+state_head: 2153d87b3e83e5ca16bb0fcab208af4db30550b2
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 47
-  completed_plans: 45
+  completed_plans: 46
   percent: 50
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 03 (Games play in RetroArch) — EXECUTING
-Plan: 17 of 18
+Plan: 18 of 18
 Status: Ready to execute
-Last activity: 2026-10-20 — Completed plan 03-16; runtime Codex; model GPT-6
+Last activity: 2026-10-20 — Completed plan 03-17; runtime Codex; model GPT-6
 
 Progress: [█████░░░░░] 50%
 
@@ -105,6 +105,7 @@ Progress: [█████░░░░░] 50%
 | Phase 03 P14 | 5min | 2 tasks | 11 files |
 | Phase 03 P15 | 14min | 2 tasks | 30 files |
 | Phase 03 P16 | 7min | 2 tasks | 16 files |
+| Phase 03 P17 | 12min | 2 tasks | 24 files |
 
 ## Accumulated Context
 
@@ -231,6 +232,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 03]: Use bounded accepted predicates and a shared quoted CSV normalizer; keep expected values outside identity and healthy HALT outside boot-smoke rejection.
 - [Phase 03]: Copy the base compatibility judge and adjacent shared parser before candidate checkout; compare eligible fresh fixture results in both directions.
 - [Phase 03]: Compatibility exceptions name one unique old pass, require the actual new behaviour revision, and expire inclusively within 60 supplied-date days; GAME-06 remains pending through plan 03-17.
+- [Phase 03]: Match fixtures by admitted SHA-256; run metadata misses as bounded unknown observations and restrict public updates to seeded CC0 cases with unchanged expectations.
 
 ### Pending Todos
 
@@ -271,6 +273,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T22:14:46.280Z
-Stopped at: Completed 03-16-PLAN.md; runtime Codex; model GPT-6
+Last session: 2026-10-20T22:29:16.907Z
+Stopped at: Completed 03-17-PLAN.md; runtime Codex; model GPT-6
 Resume file: None
