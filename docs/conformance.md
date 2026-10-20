@@ -310,6 +310,26 @@ across portable lanes detects host-dependent rendering. The separate
 
 ## Frontend play evidence
 
+The owned `boot_to_play.gg` is assembled from a thin GG-header wrapper
+over the SMS fixture. Its own diamond/bar glyphs cover the LCD window and
+its 64-byte palette supplies the independently widened SMS colour sequence
+as native RGB444. The fixture polls native Start once per VBlank; press
+edges change CRAM 15 and scroll, while held and released levels do not.
+The first eight polls record both counter/scroll and raw Start/region
+bytes, sealed with the mailbox CRC. Baseline and scripted rows are judged
+against `tests/diag/expected.csv`; every LCD coordinate and the runner hash
+are checked against the explicit diamond table and colour arithmetic.
+The same SMS source now polls button 1 on either pad, with separate p1/p2
+scripts proving the same first-boundary, held and repeated-edge sequence.
+The image digests are in `tests/built/expected.txt`; no built ROM is committed.
+
+`vdp.gg` tests exhaust all 4096 native colours and 64 SMS colours, shared
+even-byte latch reuse across address changes/wrap, raster immutability,
+192/224 crop identity, held LCD versus live full-field output, SOFT/POWER
+reset, matching-mode state restore and specific controller aliases. These
+are checks of the selected sourced model; LCD freeze behavior and remaining
+full-decode uncertainty still need hardware measurement for stronger claims.
+
 The hosted RetroArch job preserves the no-content card comparison and adds the owned SMS game with frontend
 replay input. Its baseline and press/hold/release/repeated-press screenshots must equal runner pixels and the
 independent coordinate oracle at counter/scroll 0 and 2. A one-pixel mutation must fail. The replay-only module

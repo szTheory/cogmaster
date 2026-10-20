@@ -39,12 +39,19 @@ clear_names:
     out ($BF),a
     ld a,$C0
     out ($BF),a
+.IFDEF FIXTURE_GG
+    ld hl,gg_palette
+    ld b,64
+    ld c,$BE
+    otir
+.ELSE
     ld b,32
     xor a
 palette:
     out ($BE),a
     inc a
     djnz palette
+.ENDIF
     ; Terminate a dedicated SAT before enabling the background display.
     xor a
     out ($BF),a
@@ -70,10 +77,28 @@ palette:
     call wait_frame
 forever:
     ; One poll in VBlank per frame; bit 4 is active-low button 1.
+.IFDEF FIXTURE_GG
+    in a,($00)
+    ld ($C204),a
+    cpl
+    rrca
+    rrca
+    rrca
+    and $10
+    ld b,a
+.ELSE
     in a,($DC)
     cpl
     and $10
     ld b,a
+    in a,($DD)
+    cpl
+    and 4
+    rlca
+    rlca
+    or b
+    ld b,a
+.ENDIF
     ld a,($C201)
     xor b
     and b
@@ -90,12 +115,27 @@ forever:
     ld a,$88
     out ($BF),a
     ; Palette entry 15 is the visible colour counter, six-bit SMS CRAM.
+.IFDEF FIXTURE_GG
+    ld a,30
+.ELSE
     ld a,15
+.ENDIF
     out ($BF),a
     ld a,$C0
     out ($BF),a
     ld a,($C200)
+.IFDEF FIXTURE_GG
+    ; Counter values 1..3 widen exactly into the red nibble.
+    ld b,a
+    add a,a
+    add a,a
+    add a,b
+.ENDIF
     out ($BE),a
+.IFDEF FIXTURE_GG
+    xor a
+    out ($BE),a
+.ENDIF
 no_edge:
     ; Record the first eight polls, then seal once. CRC calculation never
     ; delays any of the press/hold/release measurements.
@@ -110,6 +150,14 @@ no_edge:
     ld l,a
     pop af
     call mb_record
+.IFDEF FIXTURE_GG
+    ld a,($C204)
+    ld l,a
+    ld h,0
+    ld a,($C202)
+    add a,$10
+    call mb_record
+.ENDIF
     ld a,($C202)
     cp 8
     jr nz,sampled
@@ -131,4 +179,15 @@ glyph:
     .DB $24,$55,$33,$0F
     .DB $42,$55,$33,$0F
     .DB $81,$55,$33,$0F
+.IFDEF FIXTURE_GG
+gg_palette:
+    .DB $00,$00,$05,$00,$0A,$00,$0F,$00
+    .DB $50,$00,$55,$00,$5A,$00,$5F,$00
+    .DB $A0,$00,$A5,$00,$AA,$00,$AF,$00
+    .DB $F0,$00,$F5,$00,$FA,$00,$FF,$00
+    .DB $00,$05,$05,$05,$0A,$05,$0F,$05
+    .DB $50,$05,$55,$05,$5A,$05,$5F,$05
+    .DB $A0,$05,$A5,$05,$AA,$05,$AF,$05
+    .DB $F0,$05,$F5,$05,$FA,$05,$FF,$05
+.ENDIF
 .INCLUDE "mailbox.inc"

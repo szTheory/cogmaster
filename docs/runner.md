@@ -8,6 +8,20 @@ to check that a build produces the expected picture. It can also describe a cart
 With no file, every run shows the built-in test card (see [Test card](#test-card)). Content uses the Mode 4
 background renderer; audio remains silent.
 
+`--machine sms` keeps the SMS2 profile; `--machine sms1` selects SMS1.
+`--video-mode auto|sms|gg` selects video independently of the machine.
+AUTO uses native video on GG and SMS video on SMS. GG video on either SMS
+profile exits 77; unknown mode names exit 2. The existing sms/gg defaults
+and no-content card hashes are unchanged.
+
+Native GG output is the 160×144 crop at (48,24), or (48,40) at 224 lines.
+Its 240-line LCD freeze holds the last valid crop until POWER reset while
+the full field continues rendering. Explicit SMS video on GG exposes the
+full SMS field with NTSC PAR 8:7 and immediate six-bit palette writes;
+physical LCD resampling is a host presentation choice. In that mode Start
+press edges act as Pause. Native GG Start is the port-00 level. Embedders
+can inspect the resolved machine and video mode through `cogmaster_get_info`.
+
 `--input FILE` reads exactly one absolute record per requested frame, in this order:
 `p1=00 p2=00 pause=0 reset=0 start=0`. Masks have two hexadecimal digits; bits 0–5 are Up, Down, Left,
 Right, button 1 and button 2. Console values are 0 or 1. LF, CRLF and an optional final newline work.

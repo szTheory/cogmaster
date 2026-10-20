@@ -85,3 +85,35 @@ vdp_lines_224,07:v_before_boundary,*,003F,derived,SMS-VDP 4.4 counter value befo
 vdp_lines_224,08:v_after_boundary,*,0040,derived,SMS-VDP 4.4 first CPU sample after selected increment
 vdp_lines_240,07:v_before_boundary,*,003F,derived,SMS-VDP 4.4 counter value before selected increment
 vdp_lines_240,08:v_after_boundary,*,0040,derived,SMS-VDP 4.4 first CPU sample after selected increment
+boot_to_play_gg,01:counter_scroll,baseline,0000,derived,owned absolute Start edge sequence
+boot_to_play_gg,11:raw_start_region,baseline,00C0,doc,SMS-SYSTEM section 4 native GG Start
+boot_to_play_gg,02:counter_scroll,baseline,0000,derived,owned absolute Start edge sequence
+boot_to_play_gg,12:raw_start_region,baseline,00C0,doc,SMS-SYSTEM section 4 native GG Start
+boot_to_play_gg,03:counter_scroll,baseline,0000,derived,owned absolute Start edge sequence
+boot_to_play_gg,13:raw_start_region,baseline,00C0,doc,SMS-SYSTEM section 4 native GG Start
+boot_to_play_gg,04:counter_scroll,baseline,0000,derived,owned absolute Start edge sequence
+boot_to_play_gg,14:raw_start_region,baseline,00C0,doc,SMS-SYSTEM section 4 native GG Start
+boot_to_play_gg,05:counter_scroll,baseline,0000,derived,owned absolute Start edge sequence
+boot_to_play_gg,15:raw_start_region,baseline,00C0,doc,SMS-SYSTEM section 4 native GG Start
+boot_to_play_gg,06:counter_scroll,baseline,0000,derived,owned absolute Start edge sequence
+boot_to_play_gg,16:raw_start_region,baseline,00C0,doc,SMS-SYSTEM section 4 native GG Start
+boot_to_play_gg,07:counter_scroll,baseline,0000,derived,owned absolute Start edge sequence
+boot_to_play_gg,17:raw_start_region,baseline,00C0,doc,SMS-SYSTEM section 4 native GG Start
+boot_to_play_gg,08:counter_scroll,baseline,0000,derived,owned absolute Start edge sequence
+boot_to_play_gg,18:raw_start_region,baseline,00C0,doc,SMS-SYSTEM section 4 native GG Start
+boot_to_play_gg,01:counter_scroll,start,0000,derived,owned absolute Start edge sequence
+boot_to_play_gg,11:raw_start_region,start,00C0,doc,SMS-SYSTEM section 4 native GG Start
+boot_to_play_gg,02:counter_scroll,start,0101,derived,owned absolute Start edge sequence
+boot_to_play_gg,12:raw_start_region,start,0040,doc,SMS-SYSTEM section 4 native GG Start
+boot_to_play_gg,03:counter_scroll,start,0101,derived,owned absolute Start edge sequence
+boot_to_play_gg,13:raw_start_region,start,0040,doc,SMS-SYSTEM section 4 native GG Start
+boot_to_play_gg,04:counter_scroll,start,0101,derived,owned absolute Start edge sequence
+boot_to_play_gg,14:raw_start_region,start,00C0,doc,SMS-SYSTEM section 4 native GG Start
+boot_to_play_gg,05:counter_scroll,start,0202,derived,owned absolute Start edge sequence
+boot_to_play_gg,15:raw_start_region,start,0040,doc,SMS-SYSTEM section 4 native GG Start
+boot_to_play_gg,06:counter_scroll,start,0202,derived,owned absolute Start edge sequence
+boot_to_play_gg,16:raw_start_region,start,00C0,doc,SMS-SYSTEM section 4 native GG Start
+boot_to_play_gg,07:counter_scroll,start,0202,derived,owned absolute Start edge sequence
+boot_to_play_gg,17:raw_start_region,start,00C0,doc,SMS-SYSTEM section 4 native GG Start
+boot_to_play_gg,08:counter_scroll,start,0202,derived,owned absolute Start edge sequence
+boot_to_play_gg,18:raw_start_region,start,00C0,doc,SMS-SYSTEM section 4 native GG Start

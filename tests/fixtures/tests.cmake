@@ -22,6 +22,9 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(INPUT)
       set(script --input ${INPUT})
       set(oracle_arg scripted)
+      if(PAD2)
+        set(oracle_arg pad2)
+      endif()
     endif()
     execute_process(COMMAND ${EMULATOR} ${ORACLE} ${IMAGE} ${oracle_arg} RESULT_VARIABLE rc
       OUTPUT_VARIABLE want ERROR_VARIABLE err)
@@ -63,6 +66,9 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(REGION)
       list(APPEND machine --region ${REGION})
     endif()
+    if(INPUT)
+      list(APPEND machine --input ${INPUT})
+    endif()
     execute_process(COMMAND ${EMULATOR} ${RUN} ${machine} ${IMAGE} --frames ${FRAMES} --mailbox
       RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
     if(NOT rc STREQUAL "0")
@@ -84,8 +90,14 @@ endif()
 set(COGMASTER_FIXTURES_DIR ${PROJECT_BINARY_DIR}/fixtures)
 set(fixtures_src ${PROJECT_SOURCE_DIR}/tests/roms/src)
 set(fixtures_images "")
-foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_to_play)
-  set(image ${COGMASTER_FIXTURES_DIR}/${name}.sms)
+foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_to_play boot_to_play_gg)
+  set(extension sms)
+  set(image_name ${name})
+  if(name STREQUAL "boot_to_play_gg")
+    set(extension gg)
+    set(image_name boot_to_play)
+  endif()
+  set(image ${COGMASTER_FIXTURES_DIR}/${image_name}.${extension})
   # The source directory is the assembler's working directory, so .INCLUDE
   # finds header.inc; the linker's is the build directory, so the link file
   # names the object without a path.
@@ -96,7 +108,7 @@ foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_t
       ${COGMASTER_WLALINK} -r ${fixtures_src}/${name}.link ${image}
     WORKING_DIRECTORY ${fixtures_src}
     DEPENDS ${fixtures_src}/${name}.asm ${fixtures_src}/${name}.link ${fixtures_src}/header.inc
-      ${fixtures_src}/mailbox.inc ${fixtures_src}/ports.asm
+      ${fixtures_src}/mailbox.inc ${fixtures_src}/ports.asm ${fixtures_src}/boot_to_play.asm
     COMMENT "Assembling the ${name} fixture"
     VERBATIM)
   list(APPEND fixtures_images ${image})
@@ -162,6 +174,45 @@ foreach(frame RANGE 1 14)
   string(APPEND play_body "p1=${pad} p2=00 pause=0 reset=0 start=0\n")
 endforeach()
 file(WRITE ${play_input} "${play_body}")
+set(play_pad2 "")
+foreach(frame RANGE 1 14)
+  set(pad 00)
+  if(frame EQUAL 5 OR frame EQUAL 6 OR frame EQUAL 8)
+    set(pad 10)
+  endif()
+  string(APPEND play_pad2 "p1=00 p2=${pad} pause=0 reset=0 start=0\n")
+endforeach()
+file(WRITE ${PROJECT_BINARY_DIR}/tests/play-pad2.input "${play_pad2}")
+set(gg_body "")
+foreach(frame RANGE 1 14)
+  set(start 0)
+  if(frame EQUAL 5 OR frame EQUAL 6 OR frame EQUAL 8)
+    set(start 1)
+  endif()
+  string(APPEND gg_body "p1=00 p2=00 pause=0 reset=0 start=${start}\n")
+endforeach()
+file(WRITE ${PROJECT_BINARY_DIR}/tests/play-gg.input "${gg_body}")
+foreach(variant IN ITEMS baseline start)
+  set(input "")
+  if(variant STREQUAL "start")
+    set(input -DINPUT=${PROJECT_BINARY_DIR}/tests/play-gg.input)
+  endif()
+  cogmaster_add_test(NAME fixtures.boot_to_play.gg.${variant}
+    COMMAND ${CMAKE_COMMAND} -DCASE=play -DNAME=boot_to_play_gg ${input}
+      -DIMAGE=${COGMASTER_FIXTURES_DIR}/boot_to_play.gg
+      -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+      -DORACLE=$<TARGET_FILE:cogmaster-test-play> -DRUN=$<TARGET_FILE:cogmaster-run>
+      "-DEMULATOR=${fixtures_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures portable TIMEOUT 10)
+endforeach()
+cogmaster_add_test(NAME fixtures.boot_to_play.pad2
+  COMMAND ${CMAKE_COMMAND} -DCASE=play -DNAME=boot_to_play -DPAD2=1
+    -DINPUT=${PROJECT_BINARY_DIR}/tests/play-pad2.input
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/boot_to_play.sms
+    -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+    -DORACLE=$<TARGET_FILE:cogmaster-test-play> -DRUN=$<TARGET_FILE:cogmaster-run>
+    "-DEMULATOR=${fixtures_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 10)
 # Fault prevented: held input counting twice, late boundary input, or disconnected pins sticking.
 cogmaster_add_test(NAME fixtures.boot_to_play.input
   COMMAND ${CMAKE_COMMAND} -DCASE=play -DNAME=boot_to_play -DINPUT=${play_input}
@@ -202,6 +253,19 @@ set(fixtures_mailbox -DCASE=mailbox -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built
   -DJUDGE=${PROJECT_SOURCE_DIR}/tests/cmake/mailbox.cmake -DPROFILE=sms-export)
 set(fixtures_out ${PROJECT_BINARY_DIR}/tests/mailbox)
 file(MAKE_DIRECTORY ${fixtures_out})
+foreach(variant IN ITEMS baseline start)
+  set(input "")
+  if(variant STREQUAL "start")
+    set(input -DINPUT=${PROJECT_BINARY_DIR}/tests/play-gg.input)
+  endif()
+  cogmaster_add_test(NAME fixtures.boot_to_play.gg.mailbox.${variant}
+    COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=boot_to_play_gg
+      -DPROFILE=${variant} ${input}
+      -DIMAGE=${COGMASTER_FIXTURES_DIR}/boot_to_play.gg -DFRAMES=14
+      -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+      -DOUT=${fixtures_out}/boot_to_play_gg.${variant}.txt -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures portable TIMEOUT 10)
+endforeach()
 # Fault prevented: input measurements with invalid mailbox CRC or missing records.
 cogmaster_add_test(NAME fixtures.boot_to_play.mailbox
   COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=boot_to_play

@@ -279,6 +279,7 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     }
     media.region = opt->region;
     media.tv = opt->tv;
+    media.video_mode = opt->video_mode;
     int status = load_status(cogmaster_load(m, &media), image_size);
     FILE *input = NULL;
     if (status == COGMASTER__EXIT_OK && opt->input != NULL) {

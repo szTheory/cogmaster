@@ -71,8 +71,13 @@ fault.rom_write	bus,portable
 fault.unmapped_read	bus,portable
 fault.unmapped_write	bus,portable
 fixtures.boot_to_play	fixtures,portable
+fixtures.boot_to_play.gg.baseline	fixtures,portable
+fixtures.boot_to_play.gg.mailbox.baseline	fixtures,portable
+fixtures.boot_to_play.gg.mailbox.start	fixtures,portable
+fixtures.boot_to_play.gg.start	fixtures,portable
 fixtures.boot_to_play.input	fixtures,portable
 fixtures.boot_to_play.mailbox	fixtures,portable
+fixtures.boot_to_play.pad2	fixtures,portable
 fixtures.boot_to_play.wrong_hash	fixtures,portable
 fixtures.hello	fixtures,portable
 fixtures.judge.hang	fixtures,portable

@@ -16,7 +16,8 @@ static const char synopsis[] =
     "       cogmaster-run --probe FILE\n"
     "       cogmaster-run --help | --version\n"
     "  FILE, --rom FILE     the cartridge image to run; without one, the test card\n"
-    "  --machine NAME       auto (default), sms or gg\n"
+    "  --machine NAME       auto (default), sms, sms1 or gg\n"
+    "  --video-mode NAME    auto (default), sms or gg\n"
     "  --region NAME        auto (default), ntsc-u, ntsc-j or pal\n"
     "  --frames N           run N frames (N >= 1)\n"
     "  --bench N            run N frames and report the time per frame\n"
@@ -114,6 +115,8 @@ static int parse_machine(const char *value, uint32_t *machine)
         *machine = COGMASTER_MACHINE_AUTO;
     } else if (is(value, "sms")) {
         *machine = COGMASTER_MACHINE_SMS2;
+    } else if (is(value, "sms1")) {
+        *machine = COGMASTER_MACHINE_SMS1;
     } else if (is(value, "gg")) {
         *machine = COGMASTER_MACHINE_GG;
     } else {
@@ -236,8 +239,15 @@ int cogmaster__parse_options(int argc, char **argv, cogmaster__run_options *o)
             i++;
         } else if (strcmp(arg, "--machine") == 0) {
             if (!parse_machine(value, &o->machine)) {
-                return usage("--machine needs auto, sms or gg");
+                return usage("--machine needs auto, sms, sms1 or gg");
             }
+            i++;
+        } else if (strcmp(arg, "--video-mode") == 0) {
+            if (!is(value, "auto") && !is(value, "sms") && !is(value, "gg"))
+                return usage("--video-mode needs auto, sms or gg");
+            o->video_mode = is(value, "gg")    ? COGMASTER_VIDEO_GG
+                            : is(value, "sms") ? COGMASTER_VIDEO_SMS
+                                               : COGMASTER_VIDEO_AUTO;
             i++;
         } else if (strcmp(arg, "--region") == 0) {
             if (!parse_region(value, &o->region, &o->tv)) {

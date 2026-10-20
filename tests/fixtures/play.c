@@ -24,7 +24,7 @@ int main(int argc, char **argv)
         return 2;
     }
     int scripted = argc == 3;
-    uint8_t image[32768];
+    static uint8_t image[32768];
     FILE *f = fopen(argv[1], "rb");
     if (f == NULL) {
         return 1;
@@ -43,13 +43,19 @@ int main(int argc, char **argv)
     media.size = sizeof media;
     media.image = image;
     media.image_size = n;
-    media.machine = COGMASTER_MACHINE_SMS2;
+    int gg = (image[32767] >> 4) == 6u;
+    media.machine = gg ? COGMASTER_MACHINE_GG : COGMASTER_MACHINE_SMS2;
     CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
     for (uint32_t i = 0; i < 14u; i++) {
         cogmaster_input in = {0};
         in.size = sizeof in;
         if (scripted && (i == 4u || i == 5u || i == 7u)) {
-            in.p1 = 16u;
+            if (gg)
+                in.start = 1u;
+            else if (strcmp(argv[2], "pad2") == 0)
+                in.p2 = 16u;
+            else
+                in.p1 = 16u;
         }
         CHECK_EQ_U64(cogmaster_set_input(m, &in), COGMASTER_STATUS_OK);
         CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
@@ -64,22 +70,27 @@ int main(int argc, char **argv)
     frame.pixels = &pixels[0][0];
     frame.pitch_bytes = 512u;
     CHECK_EQ_U64(cogmaster_get_frame(m, &frame), COGMASTER_STATUS_OK);
-    CHECK_EQ_U64(frame.w, 256u);
-    CHECK_EQ_U64(frame.h, 192u);
+    CHECK_EQ_U64(frame.w, gg ? 160u : 256u);
+    CHECK_EQ_U64(frame.h, gg ? 144u : 192u);
     CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC105u), 0u);
-    CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC106u), 8u);
+    CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC106u), gg ? 16u : 8u);
     static const uint8_t counts[8] = {0u, 1u, 1u, 1u, 2u, 2u, 2u, 2u};
     for (uint32_t i = 0u; i < 8u; i++) {
         uint32_t value = scripted ? counts[i] : 0u;
-        CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC110u + 4u * i), i + 1u);
-        CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC112u + 4u * i), value);
-        CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC113u + 4u * i), value);
+        CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC110u + (gg ? 8u : 4u) * i), i + 1u);
+        CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC112u + (gg ? 8u : 4u) * i), value);
+        CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC113u + (gg ? 8u : 4u) * i), value);
+        if (gg) {
+            CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC114u + 8u * i), i + 17u);
+            CHECK_EQ_HEX(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC116u + 8u * i),
+                         scripted && (i == 1u || i == 2u || i == 4u) ? 0x40u : 0xC0u);
+        }
     }
     cogmaster__sha256 hash;
     cogmaster__sha256_init(&hash);
-    for (uint32_t y = 0; y < 192u; y++) {
-        for (uint32_t x = 0; x < 256u; x++) {
-            uint16_t want = play_pixel(x, y, scripted ? 2u : 0u);
+    for (uint32_t y = 0; y < frame.h; y++) {
+        for (uint32_t x = 0; x < frame.w; x++) {
+            uint16_t want = play_pixel(x + frame.x, y + frame.y, scripted ? 2u : 0u);
             if (pixels[y][x] != want) {
                 CHECK_EQ_HEX(pixels[y][x], want);
                 cogmaster_destroy(m);

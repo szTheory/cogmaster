@@ -226,7 +226,7 @@ void cogmaster__vdp_finish_field(cogmaster *m)
     m->completed.backdrop = cogmaster__vdp_backdrop(m);
     memcpy(m->completed.pixels, m->field, sizeof m->field);
     /* Selected LCD model: 240 lines freezes the last native picture until
-       POWER reset; the diagnostic full field continues (SMS-VDP 6.3). */
+       POWER reset; the diagnostic full field continues (SMS-VDP section 6). */
     if (cogmaster__native_gg(m)) {
         if (m->vdp.height == 240u)
             m->lcd.frozen = 1u;
