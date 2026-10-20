@@ -104,5 +104,23 @@ checks that rule. The list is empty today.
 `ctest -L vectors` runs the sample in shards, one per prefix group, each with `--allow` and the group's exact
 test count. `vectors.base` runs the main page (252 files, 25,200 tests), `vectors.cb` the CB page (256 files),
 `vectors.dd` and `vectors.fd` the indexed pages (252 files each) and `vectors.ddcb` and `vectors.fdcb` the indexed
-bit operations (256 files each). A DD or FD byte is a step of its own, so the harness steps until no prefix is
-pending and compares the whole instruction. The ED group gets a shard when its page is complete.
+bit operations (256 files each), and `vectors.ed` the ED page (80 files, 8,000 tests). A DD or FD byte is a step
+of its own, so the harness steps until no prefix is pending and compares the whole instruction. A repeating block
+instruction (LDIR, CPIR, INIR, OTIR and their decrementing forms) runs one iteration per step and moves PC back
+to itself, so each vector is one iteration.
+
+### What the vectors do not cover
+
+The set has no interrupts, no NMI, no prefix runs and no undefined ED opcodes. `cogmaster-test-z80int` scripts
+those cases in a flat 64 KiB memory, one case per test (`ctest -L z80`):
+
+- `z80.int.im0`, `z80.int.im1`, `z80.int.im2`: acceptance in each interrupt mode, with $FF on the data bus as
+  on the SMS; 13 T-states for IM 0 and IM 1, 19 for IM 2.
+- `z80.int.ei_delay`, `z80.int.di`: no acceptance until the instruction after the last EI; none after DI.
+- `z80.int.nmi`, `z80.int.retn`: an 11 T-state NMI to $0066, even after DI, that keeps IFF2; RETN restores IFF1.
+- `z80.int.ld_a_i`: an interrupt right after LD A,I clears P/V, as on NMOS parts.
+- `z80.int.halt_exit`, `z80.int.block_op`: the pushed address is the one after HALT, or the block instruction's
+  own address between iterations.
+- `z80.int.prefix_run`, `z80.int.r_prefixes`: 65,536 DD bytes run in 4 T-state steps with no acceptance between
+  them, and R counts one per opcode fetch with bit 7 kept.
+- `z80.ed.holes`: each of the 176 undefined ED opcodes is an 8 T-state no-operation that adds 2 to R.

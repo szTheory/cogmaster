@@ -66,7 +66,7 @@ static void in_c(cogmaster *m, unsigned y)
 }
 
 /* OUT (C),r: WZ = BC + 1. y = 6 is OUT (C),0, which writes 0 on NMOS
-   parts (SMSPOWER-EXTRACTS SP.033). */
+   parts (msx.org forum, "Turbo-R and out(c),0", 2022). */
 static void out_c(cogmaster *m, unsigned y)
 {
     struct cogmaster__z80 *z = &m->z80;
@@ -127,7 +127,7 @@ static void retn(cogmaster *m)
 
 /* LD A,I and LD A,R: one internal T-state; P/V from IFF2, H and N clear,
    C kept, and p marks the step so that an interrupt accepted next clears
-   P/V (SMSPOWER-EXTRACTS SP.026, SP.027). */
+   P/V (Sean Young section 5.3; MAME's Z80 notes on NMOS parts). */
 static void ld_a_ir(cogmaster *m, uint8_t v)
 {
     struct cogmaster__z80 *z = &m->z80;
@@ -161,7 +161,8 @@ static void rxd(cogmaster *m, int left)
 
 /* A repeating block instruction's extra iteration: five internal T-states,
    PC back to the ED byte, WZ = PC + 1, and Y and X from PC's high byte
-   (SMSPOWER-EXTRACTS SP.018, SP.022). Returns the new flags. */
+   (stardot "Z80 Protocol Decoder" thread, 2018; the MEMPTR document).
+   Returns the new flags. */
 static uint8_t repeat(cogmaster *m, uint16_t addr, uint8_t f)
 {
     struct cogmaster__z80 *z = &m->z80;
@@ -222,7 +223,7 @@ static void cpx(cogmaster *m, uint16_t d, int rep)
 /* The flags of INI, IND, OUTI, OUTD and their repeats, from the new B,
    the byte v and k = v plus C +/- 1 (IN) or the new L (OUT): N from v's
    bit 7, H and C from k's carry, P/V from the parity of (k & 7) ^ B. A
-   repeat also adjusts P/V and H (SMSPOWER-EXTRACTS SP.018). */
+   repeat also adjusts P/V and H (stardot "Z80 Protocol Decoder" thread). */
 static void io_flags(cogmaster *m, uint8_t v, unsigned k, int rep, uint16_t addr)
 {
     struct cogmaster__z80 *z = &m->z80;

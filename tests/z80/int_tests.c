@@ -196,6 +196,16 @@ static void nmi(void)
     CHECK_EQ_U64(z->iff1, 0);
     CHECK_EQ_U64(z->iff2, 1);
     CHECK_EQ_HEX(z->r, 0x00);
+
+    /* EI delays /INT only: an NMI right after EI is accepted. */
+    static const uint8_t ei[] = {0xFB, 0x00};
+    z = setup(ei, sizeof ei);
+    step();
+    z->nmi_pending = 1;
+    CHECK_EQ_U64(step(), 11);
+    CHECK_EQ_HEX(top_of_stack(z), 0x0101);
+    CHECK_EQ_U64(z->iff1, 0);
+    CHECK_EQ_U64(z->iff2, 1);
 }
 
 static void retn(void)

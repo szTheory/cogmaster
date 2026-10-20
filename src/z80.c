@@ -624,14 +624,84 @@ static void exec(cogmaster *m, uint8_t op, uint8_t q_prev)
     }
 }
 
+/* The start of an acceptance: IFF1 clears, a halted CPU resumes with PC
+   already past HALT, and an NMOS part accepting right after LD A,I or
+   LD A,R leaves P/V clear in F (Sean Young sections 5.3 and 5.4; MAME's
+   Z80 notes on NMOS parts). */
+static void accept(struct cogmaster__z80 *z, uint8_t p_prev)
+{
+    z->iff1 = 0;
+    z->halted = 0;
+    if (p_prev) {
+        z->reg[RF] = (uint8_t)(z->reg[RF] & 0xFBu);
+    }
+}
+
+/* NMI acceptance, 11 T-states: a 5 T-state opcode fetch whose byte is
+   ignored, then PC pushed; IFF2 keeps the old IFF1 (Sean Young sections
+   5.1 and 5.3). */
+static void nmi(cogmaster *m, uint8_t p_prev)
+{
+    struct cogmaster__z80 *z = &m->z80;
+    z->nmi_pending = 0;
+    accept(z, p_prev);
+    (void)cogmaster__z80_m1(m);
+    z->pc = (uint16_t)(z->pc - 1u);
+    cogmaster__z80_idle(m, ir(z), 1);
+    push(m, z->pc);
+    z->pc = 0x0066;
+    z->wz = z->pc;
+}
+
+/* /INT acceptance: an acknowledge cycle of 6 T-states (an M1 with two
+   automatic wait states) that counts in R, one internal T-state, then PC
+   pushed. Nothing on the SMS drives the data bus during the acknowledge,
+   so the byte read is $FF (Sean Young section 5.2; Charles MacDonald,
+   smstech-20021112.txt). IM 0 runs it as RST $38 like IM 1, 13 T-states;
+   IM 2 reads the handler address at I<<8 | $FF, 19 T-states (Sean Young
+   chapter 5). */
+static void irq(cogmaster *m, uint8_t p_prev)
+{
+    struct cogmaster__z80 *z = &m->z80;
+    accept(z, p_prev);
+    z->iff2 = 0;
+    m->ticks += 3u * 6u;
+    z->r = (uint8_t)((z->r & 0x80u) | ((z->r + 1u) & 0x7Fu));
+    cogmaster__z80_idle(m, ir(z), 1);
+    push(m, z->pc);
+    if (z->im == 2) {
+        uint16_t v = (uint16_t)((unsigned)z->i << 8 | 0xFFu);
+        uint8_t lo = cogmaster__z80_mread(m, v);
+        z->pc = (uint16_t)(cogmaster__z80_mread(m, (uint16_t)(v + 1u)) << 8 | lo);
+    } else {
+        z->pc = 0x0038;
+    }
+    z->wz = z->pc;
+}
+
 void cogmaster__z80_step(cogmaster *m)
 {
     struct cogmaster__z80 *z = &m->z80;
     /* Q and the LD A,I/R and EI marks describe only the step just run. */
-    uint8_t q_prev = z->q;
+    uint8_t q_prev = z->q, p_prev = z->p, ei_prev = z->ei;
     z->q = 0;
     z->p = 0;
     z->ei = 0;
+
+    /* Acceptance happens only between instructions: never after a prefix
+       byte. /INT also waits one instruction after EI; an NMI does not
+       (UM0080, "EI"; Sean Young section 5.5; hoglet67 Z80Decoder wiki,
+       "NMI during EI Anomaly"). */
+    if (z->idx == COGMASTER__Z80_IDX_NONE) {
+        if (z->nmi_pending) {
+            nmi(m, p_prev);
+            return;
+        }
+        if (z->int_line && z->iff1 && !ei_prev) {
+            irq(m, p_prev);
+            return;
+        }
+    }
 
     if (z->halted) {
         /* a halted CPU runs M1 cycles at PC without advancing it, so R
