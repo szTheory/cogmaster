@@ -1,5 +1,12 @@
 # Fault prevented: incorrect tile flags, wrap coordinates, scroll locks or
 # raster writes changing dots already emitted in this field.
+add_executable(cogmaster-test-gg ${CMAKE_CURRENT_LIST_DIR}/test_gg.c)
+target_include_directories(cogmaster-test-gg PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-gg PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-gg PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-gg)
+cogmaster_add_test(NAME vdp.gg.palette COMMAND cogmaster-test-gg palette LABELS portable vdp TIMEOUT 10)
+
 add_executable(cogmaster-test-geometry ${CMAKE_CURRENT_LIST_DIR}/test_geometry.c)
 target_include_directories(cogmaster-test-geometry PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(cogmaster-test-geometry PRIVATE cogmaster::cogmaster)

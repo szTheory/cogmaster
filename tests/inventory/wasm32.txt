@@ -200,6 +200,7 @@ vdp.geometry.heights	portable,vdp
 vdp.geometry.hostile	portable,vdp
 vdp.geometry.state	portable,vdp
 vdp.geometry.transitions	portable,vdp
+vdp.gg.palette	portable,vdp
 vdp.hcounter	portable,vdp
 vdp.pause_nmi	portable,vdp
 vdp.port_decode	portable,vdp
