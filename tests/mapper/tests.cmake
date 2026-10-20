@@ -11,9 +11,10 @@ cogmaster_warnings(cogmaster-test-mapper)
 # slot 0 switch that moves the interrupt vectors, cartridge RAM that loses
 # its bytes or shadows the wrong slot, or a register no longer readable from
 # its RAM mirror, so a paged game runs code or reads data from the wrong
-# place.
+# place; or a cartridge or work RAM disabled by $3E that still takes writes,
+# or drops them unrecorded.
 foreach(case IN ITEMS sega.banks sega.wrap sega.ram sega.mirror sega.shift codemasters.banks
-                      codemasters.ram codemasters.wrap none.layout pad_wrap)
+                      codemasters.ram codemasters.wrap none.layout pad_wrap slot_off)
   # Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
   cogmaster_add_test(NAME mapper.${case} COMMAND cogmaster-test-mapper ${case}
     LABELS mapper portable TIMEOUT 10)

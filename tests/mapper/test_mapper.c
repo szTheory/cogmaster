@@ -412,6 +412,96 @@ static void test_pad_wrap(void)
     cogmaster_destroy(m);
 }
 
+/* The first fault m recorded. */
+static cogmaster_fault fault_of(const cogmaster *m)
+{
+    cogmaster_fault f;
+    memset(&f, 0, sizeof f);
+    f.size = (uint32_t)sizeof f;
+    CHECK_EQ_U64(cogmaster_get_fault(m, &f), COGMASTER_STATUS_OK);
+    return f;
+}
+
+static void expect_fault(const cogmaster *m, uint32_t device, uint32_t addr)
+{
+    cogmaster_fault f = fault_of(m);
+    CHECK_EQ_U64(f.present, 1);
+    CHECK_EQ_U64(f.kind, COGMASTER__FAULT_UNMAPPED_WRITE);
+    CHECK_EQ_U64(f.device, device);
+    CHECK_EQ_HEX(f.addr, addr);
+}
+
+/* With $3E b6 set the cartridge is off the bus for writes as for reads:
+   the Sega registers, cartridge RAM and the Codemasters registers keep
+   their values, work RAM still takes its mirror of $FFFC-$FFFF, and the
+   first write recorded is unmapped_write on the cartridge. With b4 set a
+   write to work RAM records unmapped_write on RAM, while the enabled
+   cartridge's registers still take $FFFC-$FFFF. */
+static void test_slot_off(void)
+{
+    sega_image(512u * 1024u);
+    cogmaster *m = load(512u * 1024u);
+    cogmaster__bus_write(m, 0xFFFCu, 0x08u);
+    cogmaster__bus_write(m, 0x8000u, 0x11u);
+    cogmaster__bus_write(m, 0xFFFCu, 0x00u);
+    cogmaster__bus_out(m, 0x003Eu, 0xEBu);
+    cogmaster__bus_write(m, 0xFFFFu, 9u);
+    CHECK_EQ_U64(fault_of(m).present, 0);
+    cogmaster__bus_write(m, 0x8000u, 0x22u);
+    expect_fault(m, COGMASTER__DEVICE_CART, 0x8000u);
+    cogmaster__bus_write(m, 0xFFFCu, 0x08u);
+    cogmaster__bus_out(m, 0x003Eu, 0xABu);
+    CHECK_EQ_U64(m->mapper.ctrl, 0);
+    CHECK_EQ_U64(slot_bank(m, 2u), 2);
+    CHECK_EQ_HEX(cogmaster__bus_read(m, 0xFFFFu), 9);
+    CHECK_EQ_HEX(cogmaster__bus_read(m, 0xFFFCu), 0x08);
+    cogmaster__bus_write(m, 0xFFFCu, 0x08u);
+    cogmaster__bus_out(m, 0x003Eu, 0xEBu);
+    cogmaster__bus_write(m, 0x8000u, 0x33u);
+    cogmaster__bus_out(m, 0x003Eu, 0xABu);
+    CHECK_EQ_HEX(cogmaster__bus_read(m, 0x8000u), 0x11);
+    cogmaster_destroy(m);
+
+    codemasters_image();
+    m = load(128u * 1024u);
+    cogmaster__bus_write(m, 0x4000u, 0x81u);
+    cogmaster__bus_write(m, 0xA000u, 0x44u);
+    cogmaster__bus_out(m, 0x003Eu, 0xEBu);
+    cogmaster__bus_write(m, 0x0000u, 3u);
+    expect_fault(m, COGMASTER__DEVICE_CART, 0x0000u);
+    cogmaster__bus_write(m, 0x4000u, 5u);
+    cogmaster__bus_write(m, 0x8000u, 7u);
+    cogmaster__bus_write(m, 0xA000u, 0x55u);
+    cogmaster__bus_out(m, 0x003Eu, 0xABu);
+    CHECK_EQ_HEX(m->mapper.ctrl, 0x80);
+    CHECK_EQ_U64(slot_bank(m, 0u), 0);
+    CHECK_EQ_U64(slot_bank(m, 1u), 1);
+    CHECK_EQ_HEX(cogmaster__bus_read(m, 0xA000u), 0x44);
+    cogmaster_destroy(m);
+
+    sega_image(512u * 1024u);
+    m = load(512u * 1024u);
+    cogmaster__bus_write(m, 0xC010u, 0x66u);
+    cogmaster__bus_out(m, 0x003Eu, 0xBBu);
+    cogmaster__bus_write(m, 0xFFFFu, 5u);
+    CHECK_EQ_U64(fault_of(m).present, 0);
+    cogmaster__bus_write(m, 0xC010u, 0x77u);
+    expect_fault(m, COGMASTER__DEVICE_RAM, 0xC010u);
+    cogmaster__bus_out(m, 0x003Eu, 0xABu);
+    CHECK_EQ_U64(slot_bank(m, 2u), 5);
+    CHECK_EQ_HEX(cogmaster__bus_read(m, 0xC010u), 0x66);
+    cogmaster_destroy(m);
+
+    /* Both off: $FFFC-$FFFF reach nothing. */
+    m = load(512u * 1024u);
+    cogmaster__bus_out(m, 0x003Eu, 0xFBu);
+    cogmaster__bus_write(m, 0xFFFEu, 6u);
+    expect_fault(m, COGMASTER__DEVICE_RAM, 0xFFFEu);
+    cogmaster__bus_out(m, 0x003Eu, 0xABu);
+    CHECK_EQ_U64(slot_bank(m, 1u), 1);
+    cogmaster_destroy(m);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
@@ -426,6 +516,7 @@ static const struct {
     {"sega.ram", test_sega_ram},
     {"sega.shift", test_sega_shift},
     {"sega.wrap", test_sega_wrap},
+    {"slot_off", test_slot_off},
 };
 
 int main(int argc, char **argv)

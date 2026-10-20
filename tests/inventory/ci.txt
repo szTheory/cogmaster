@@ -100,6 +100,7 @@ mapper.sega.mirror	mapper,portable
 mapper.sega.ram	mapper,portable
 mapper.sega.shift	mapper,portable
 mapper.sega.wrap	mapper,portable
+mapper.slot_off	mapper,portable
 perf.gate.allowed	perf
 perf.gate.identical	perf
 perf.gate.missing	perf

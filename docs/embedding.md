@@ -268,7 +268,7 @@ The record is part of the instance's saved state.
 | `kind` | Constant | Recorded when |
 |---|---|---|
 | 1 | `COGMASTER_FAULT_KIND_UNMAPPED_READ` | a read nothing drives returns open bus: a port in `$00`–`$3F` other than the Game Gear's `$00`–`$06`, the cartridge slots with the cartridge disabled by port `$3E`, or work RAM disabled by port `$3E` |
-| 2 | `COGMASTER_FAULT_KIND_UNMAPPED_WRITE` | on the Japanese console or the Game Gear, which decode every port address, a write to a port in `$00`–`$3F` or `$80`–`$BF` that nothing latches, such as `$3E` on the Game Gear |
+| 2 | `COGMASTER_FAULT_KIND_UNMAPPED_WRITE` | a write nothing takes: on the Japanese console or the Game Gear, which decode every port address, a port in `$00`–`$3F` or `$80`–`$BF` that nothing latches, such as `$3E` on the Game Gear; the cartridge slots with the cartridge disabled by port `$3E`, which also hides `$FFFC`–`$FFFF` from its mapper; or work RAM disabled by port `$3E`, except a write to `$FFFC`–`$FFFF` the enabled cartridge takes |
 | 3 | `COGMASTER_FAULT_KIND_ROM_WRITE` | a write to `$0000`–`$BFFF` that is neither a register of the cartridge's mapper nor cartridge RAM |
 | 4 | `COGMASTER_FAULT_KIND_MAPPER_RANGE` | a bank number at or past the end of an image whose page count is not a power of two, or a write to `$FFFC` that sets bit 7, bit 4 or bits 1–0 |
 | 5 | `COGMASTER_FAULT_KIND_ED_UNDEFINED` | the CPU ran an opcode after `$ED` that the Z80 does not define, as an 8 T-state no-operation; `opcode` is that second byte and `pc` the address of the `$ED` |

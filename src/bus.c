@@ -169,17 +169,33 @@ uint8_t cogmaster__bus_read(cogmaster *m, uint16_t addr)
 
 /* A write to the Sega registers at $FFFC-$FFFF also lands in work RAM, the
    only place the CPU can read them back (SMS-CARTRIDGES section 2.1). With
-   work RAM off only the registers see it. */
+   work RAM off only the registers see it.
+
+   $3E gates writes as it gates reads: the cartridge and work RAM are
+   enabled by the slot selects it drives (SMS-SYSTEM sections 3 and 4). The
+   notes do not say whether a cartridge's mapper still latches $FFFC-$FFFF
+   with the cartridge off, so the disabled cartridge sees no write at all,
+   the mirror of the read side; a write that reaches nothing records
+   unmapped_write as the read records unmapped_read. */
 void cogmaster__bus_write(cogmaster *m, uint16_t addr, uint8_t v)
 {
     cogmaster__bus_sync(m);
+    int cart_on = (m->io.mem_ctrl & BUS_CART_OFF) == 0u;
     if (addr >= 0xC000u) {
-        if ((m->io.mem_ctrl & BUS_RAM_OFF) == 0u) {
+        int ram_on = (m->io.mem_ctrl & BUS_RAM_OFF) == 0u;
+        if (ram_on) {
             m->ram[addr & (COGMASTER__RAM_SIZE - 1u)] = v;
         }
-        if (addr < 0xFFFCu) {
-            return;
+        if (addr >= 0xFFFCu && cart_on) {
+            cogmaster__mapper_write(m, addr, v);
+        } else if (!ram_on) {
+            cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_RAM, COGMASTER__FAULT_UNMAPPED_WRITE);
         }
+        return;
+    }
+    if (!cart_on) {
+        cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_CART, COGMASTER__FAULT_UNMAPPED_WRITE);
+        return;
     }
     cogmaster__mapper_write(m, addr, v);
 }
