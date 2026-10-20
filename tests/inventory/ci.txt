@@ -101,6 +101,8 @@ libretro.host.rgb565	libretro,portable
 libretro.host.xrgb8888	libretro,portable
 libretro.info_claims	libretro
 libretro.info_claims.self_test	libretro
+libretro.screenshot.fixture	libretro,portable
+libretro.screenshot.oracle_control	libretro,portable
 libretro.vendored	libretro
 mapper.codemasters.banks	mapper,portable
 mapper.codemasters.ram	mapper,portable

@@ -9,6 +9,24 @@ cogmaster_add_test(NAME libretro.vendored
   LABELS libretro TIMEOUT 10)
 
 if(TARGET cogmaster_libretro)
+  add_executable(cogmaster-test-screenshot ${PROJECT_SOURCE_DIR}/tests/retroarch/compare.c
+    ${PROJECT_SOURCE_DIR}/tests/retroarch/bmp.c)
+  add_executable(cogmaster-test-screenshot-fixture ${PROJECT_SOURCE_DIR}/tests/retroarch/oracle.c)
+  cogmaster_warnings(cogmaster-test-screenshot)
+  cogmaster_warnings(cogmaster-test-screenshot-fixture)
+  set(screenshot ${PROJECT_BINARY_DIR}/tests/oracle.bmp)
+  cogmaster_add_test(NAME libretro.screenshot.fixture
+    COMMAND cogmaster-test-screenshot-fixture ${screenshot}
+    LABELS libretro portable TIMEOUT 10)
+  # Fault prevented: agreeing images hiding a wrong counter or scroll.
+  set(screenshot_cmd ${CMAKE_COMMAND} -E env EXPECT_SCROLL=2
+    ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:cogmaster-test-screenshot> ${screenshot} ${screenshot})
+  string(REPLACE ";" "$<SEMICOLON>" screenshot_cmd "${screenshot_cmd}")
+  cogmaster_add_test(NAME libretro.screenshot.oracle_control
+    COMMAND ${CMAKE_COMMAND} "-DCMD=${screenshot_cmd}" -DCODE=1 "-DREGEX=oracle.*difference"
+      -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+    LABELS libretro portable TIMEOUT 10)
+  set_tests_properties(libretro.screenshot.oracle_control PROPERTIES DEPENDS libretro.screenshot.fixture)
   # The in-process frontend. It hashes the delivered frame with the runner's
   # SHA-256 and compares it with the same pinned card hash the runner's test
   # uses.

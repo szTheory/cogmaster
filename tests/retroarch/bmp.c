@@ -12,6 +12,7 @@
 
 #define BMP_FILE_LIMIT (16ul * 1024ul * 1024ul)
 #define BMP_DIM_LIMIT 16384u
+int bmp_read(const char *path, uint32_t *w, uint32_t *h, uint8_t **rgb);
 
 static uint32_t bmp_get(const uint8_t *b, size_t off, unsigned bytes)
 {
