@@ -404,6 +404,14 @@ if(CMAKE_SCRIPT_MODE_FILE)
     set(hex "[0-9A-F]")
     expect_exit(0 "^fault frame=[0-9]+ line=[0-9]+ dot=[0-9]+ pc=[$]${hex}${hex}${hex}${hex} op=[$]DB addr=[$]0000 width=8 dev=ctrl kind=unmapped_read\n$"
       ${SEEDS}/in-a-00.sms --frames 10 --trace first-fault)
+    # Enable display without Mode 4: the VDP fault must keep its public names.
+    string(ASCII 243 62 64 211 191 62 129 211 191 118 code)
+    string(REPEAT "v" 1014 padding)
+    set(rom "${SEEDS}/../unsupported-video.sms")
+    file(WRITE "${rom}" "${code}${padding}")
+    expect_exit(0 "^fault frame=[0-9]+ [^\n]*dev=vdp kind=unsupported_video_mode\n$"
+      "${rom}" --frames 2 --trace first-fault)
+    file(REMOVE "${rom}")
   elseif(CASE STREQUAL "mailbox_stop")
     # The stop rule frame by frame, then an image that never writes a
     # mailbox: its status reads $00 from power-on, which is not done, so

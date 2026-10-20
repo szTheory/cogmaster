@@ -205,9 +205,21 @@ static int read_fault(const cogmaster *m, cogmaster_fault *fault)
    COGMASTER_FAULT_* constant. */
 static void print_fault(const cogmaster_fault *f)
 {
-    static const char *const kinds[] = {"none",      "unmapped_read", "unmapped_write",
-                                        "rom_write", "mapper_range",  "ed_undefined"};
-    static const char *const devices[] = {"none", "cpu", "cart", "ram", "mapper", "ctrl"};
+    static const char *const kinds[] = {
+        [0] = "none",
+        [COGMASTER_FAULT_KIND_UNMAPPED_READ] = "unmapped_read",
+        [COGMASTER_FAULT_KIND_UNMAPPED_WRITE] = "unmapped_write",
+        [COGMASTER_FAULT_KIND_ROM_WRITE] = "rom_write",
+        [COGMASTER_FAULT_KIND_MAPPER_RANGE] = "mapper_range",
+        [COGMASTER_FAULT_KIND_ED_UNDEFINED] = "ed_undefined",
+        [COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE] = "unsupported_video_mode",
+    };
+    static const char *const devices[] = {
+        [COGMASTER_FAULT_DEVICE_NONE] = "none",     [COGMASTER_FAULT_DEVICE_CPU] = "cpu",
+        [COGMASTER_FAULT_DEVICE_CART] = "cart",     [COGMASTER_FAULT_DEVICE_RAM] = "ram",
+        [COGMASTER_FAULT_DEVICE_MAPPER] = "mapper", [COGMASTER_FAULT_DEVICE_CTRL] = "ctrl",
+        [COGMASTER_FAULT_DEVICE_VDP] = "vdp",
+    };
     if (!f->present) {
         printf("fault none\n");
         return;

@@ -163,8 +163,8 @@ the guest, not a failure of the run. `--hash` and `--bench` output follows the l
 | `op` | the instruction's first byte after any prefix; for `ed_undefined`, the byte after `$ED` |
 | `addr` | the full 16-bit bus address; for `IN` and `OUT` with an immediate port, A × 256 + the port |
 | `width` | the access width in bits, 8 |
-| `dev` | `none`, `cpu`, `cart`, `ram`, `mapper` or `ctrl` (the memory and I/O control ports `$3E` and `$3F`) |
-| `kind` | `unmapped_read`, `unmapped_write`, `rom_write`, `mapper_range` or `ed_undefined` |
+| `dev` | `none`, `cpu`, `cart`, `ram`, `mapper`, `ctrl` (the memory and I/O control ports `$3E` and `$3F`) or `vdp` |
+| `kind` | `unmapped_read`, `unmapped_write`, `rom_write`, `mapper_range`, `ed_undefined` or `unsupported_video_mode` |
 
 [Embedding](embedding.md) says when each kind is recorded and which guest behaviour is never a fault. Later
 releases add kinds and devices; scripts should accept names they do not know.
