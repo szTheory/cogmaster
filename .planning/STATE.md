@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 02
 current_phase_name: The CPU matches the public vectors
 status: executing
-stopped_at: Completed 02-05-PLAN.md
-last_updated: "2026-10-20T02:40:16.960Z"
+stopped_at: Completed 02-06-PLAN.md
+last_updated: "2026-10-20T02:54:11.916Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 02 execution started
-state_head: d3ddf4f67b6ea11434b4e8443515cbebc8a0acd1
+state_head: f1835ae40c8818cdc8afb58fef9ad1d5bd8a63e5
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 29
-  completed_plans: 17
+  completed_plans: 18
   percent: 25
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 02 (The CPU matches the public vectors) — EXECUTING
-Plan: 6 of 17
+Plan: 7 of 17
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 02 execution started
 
@@ -75,6 +75,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P03 | 5min | 2 tasks | 6 files |
 | Phase 02 P04 | 10min | 3 tasks | 7 files |
 | Phase 02 P05 | 25min | 2 tasks | 9 files |
+| Phase 02 P06 | 9min | 3 tasks | 28 files |
 
 ## Accumulated Context
 
@@ -130,6 +131,9 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 02]: Index remapping is centralised in hx/r8/mem_hl/rp_hi; EX DE,HL and EXX use the true HL pair
 - [Phase 02]: NMI is not delayed by EI; only /INT waits one instruction after EI; both wait for a pending prefix
 - [Phase 02]: Block instructions are one iteration per step; ED holes (176) are 8-T NOPs reaching the ed_undefined seam
+- [Phase 02]: Beam starts at the frame origin (line 192, tick 607, ticks 0) after load and reset; origin constants live in bus.c apart from any interrupt tick
+- [Phase 02]: bus.at (the tick line/t describe) is saved state; a state needs at <= ticks <= at + 69 and deadline = (frame + 1) x 179,208
+- [Phase 02]: API version checks in v1.c, header and consumer tests accept any version from 1 up
 
 ### Pending Todos
 
@@ -165,6 +169,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T02:40:16.906Z
-Stopped at: Completed 02-05-PLAN.md
+Last session: 2026-10-20T02:54:11.821Z
+Stopped at: Completed 02-06-PLAN.md
 Resume file: None
