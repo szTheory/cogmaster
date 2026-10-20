@@ -45,3 +45,26 @@ cogmaster_status cogmaster_get_battery(const cogmaster *m, cogmaster_battery *ou
     cogmaster__write_out(out, &b, (uint32_t)sizeof b);
     return COGMASTER_STATUS_OK;
 }
+
+cogmaster_status cogmaster_import_battery(cogmaster *m, const void *data, size_t length)
+{
+    if (m == NULL)
+        return COGMASTER_STATUS_ERR_ARGUMENT;
+    if (!m->loaded)
+        return COGMASTER_STATUS_ERR_NO_CONTENT;
+    uint32_t span = cogmaster__battery_length(m);
+    if (span == 0u)
+        return m->cart.rom == NULL || m->cart.persistence == COGMASTER_PERSISTENCE_NONE
+                   ? COGMASTER_STATUS_ERR_NO_CONTENT
+                   : COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD;
+    if (length > span)
+        return COGMASTER_STATUS_ERR_SAVE_SIZE;
+    if (data == NULL && length != 0u)
+        return COGMASTER_STATUS_ERR_ARGUMENT;
+    /* Validate everything before applying; memmove also permits a host to
+       import from a view into the exposed memory. Import is generation-neutral. */
+    if (length != 0u)
+        memmove(m->cart.ram, data, length);
+    memset(m->cart.ram + length, 0xff, span - length);
+    return COGMASTER_STATUS_OK;
+}

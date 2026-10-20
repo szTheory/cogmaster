@@ -237,5 +237,18 @@ int main(int argc, char **argv)
     headers();
     boards();
     programs();
+    memset(image, 0x3c, 32769u);
+    write_image("save-empty.bin", 0u);
+    write_image("save-one.bin", 1u);
+    write_image("save-short.bin", 32767u);
+    write_image("save-exact.bin", 32768u);
+    write_image("save-long.bin", 32769u);
+    for (uint32_t i = 1u; i < 4u; i++) {
+        image[0] = (uint8_t)i;
+        write_image(i == 1u   ? "save-none.bin"
+                    : i == 2u ? "save-unknown.bin"
+                              : "save-unsupported.bin",
+                    32768u);
+    }
     return failures != 0 ? 1 : 0;
 }

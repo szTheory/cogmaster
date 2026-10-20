@@ -155,3 +155,9 @@ add_executable(cogmaster-test-api-v6 ${PROJECT_SOURCE_DIR}/tests/api/v6.c)
 target_link_libraries(cogmaster-test-api-v6 PRIVATE cogmaster::cogmaster)
 cogmaster_warnings(cogmaster-test-api-v6)
 cogmaster_add_test(NAME abi.api_v6 COMMAND cogmaster-test-api-v6 LABELS abi portable TIMEOUT 10)
+
+# Fault prevented: raw import disappearing or its argument contract changing.
+add_executable(cogmaster-test-api-v7 ${PROJECT_SOURCE_DIR}/tests/api/v7.c)
+target_link_libraries(cogmaster-test-api-v7 PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-api-v7)
+cogmaster_add_test(NAME abi.api_v7 COMMAND cogmaster-test-api-v7 LABELS abi portable TIMEOUT 10)

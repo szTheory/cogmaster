@@ -32,9 +32,10 @@ int main(void)
     cogmaster_battery b;
     memset(&b, 0x5a, sizeof b);
     b.size = sizeof b;
-    cogmaster_battery before = b;
+    uint8_t before[sizeof b];
+    memcpy(before, &b, sizeof b);
     CHECK_EQ_U64(cogmaster_get_battery(m, &b), COGMASTER_STATUS_ERR_NO_CONTENT);
-    CHECK(memcmp(&b, &before, sizeof b) == 0);
+    CHECK(memcmp(&b, before, sizeof b) == 0);
     CHECK_EQ_U64(cogmaster_get_battery(NULL, &b), COGMASTER_STATUS_ERR_ARGUMENT);
     CHECK_EQ_U64(cogmaster_get_battery(m, NULL), COGMASTER_STATUS_ERR_ARGUMENT);
     cogmaster_media media = {0};

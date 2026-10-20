@@ -46,7 +46,7 @@ Each lane is one workflow preset, `cmake --workflow --preset <name>`, building i
 | `hygiene` | The repository is clean: tree scan, formatting, the integer-only text scan, the analyzer, the pins file, and the tests of CI itself. | `hygiene` | `hygiene` |
 | `be32` | The same hashes on a big-endian, 32-bit target with unsigned `char`: 32-bit PowerPC (`cmake/toolchains/ppc-linux-gnu.cmake`) under `qemu-ppc`. | `ci` | `portable` |
 | `wasm32` | The same hashes in WebAssembly: clang-21 for `wasm32-wasi` (`cmake/toolchains/wasm32-wasi.cmake`) under the pinned wasmtime. WASI cannot load a libretro core, so this lane builds none. | `wasm32` | `portable` |
-| `fuzz` | The nightly libFuzzer runs of the loader and a two-frame run under clang-21's ASan and UBSan (see [Fuzzing](#fuzzing)). No fixtures, no libretro core. | `fuzz` | `fuzz` |
+| `fuzz` | The nightly libFuzzer runs of the loader, two-frame execution and raw save import under clang-21's ASan and UBSan (see [Fuzzing](#fuzzing)). No fixtures, no libretro core. | `fuzz` | `fuzz` |
 | `vectors-full` | The nightly run of all 1,604,000 Z80 vectors, and that the committed sample is what the converter writes from the pinned archive (see [conformance.md](conformance.md#the-nightly-full-run)). Fetch the archive first. | `vectors-full` | `vectors` |
 | `bench` | A Release runner for the bench and the instructions-per-frame job. Configure and build only, with no tests and no fixtures. | none | none |
 
@@ -91,7 +91,7 @@ labels comma-separated (`cmake/CogmasterTests.cmake`). Configure fails when the 
 file in either direction, so a test cannot be dropped, renamed or registered on one platform only without the file
 changing in the same commit. Every leg registers the same tests; a check only one platform can perform runs there
 as a CI step instead. Five lanes have their own list: `hygiene.txt`, `nofp.txt` (the `abi` tests plus the nofp
-fixture), `wasm32.txt` (the `ci` list without the `libretro` tests), `fuzz.txt` (the two timed libFuzzer runs) and
+fixture), `wasm32.txt` (the `ci` list without the `libretro` tests), `fuzz.txt` (the three timed libFuzzer runs) and
 `vectors-full.txt` (the seven full vector shards and the sample check).
 
 | Label | Tests |
@@ -295,17 +295,23 @@ request that changes the bench or the workflow runs the bench jobs but writes no
 
 ## Fuzzing
 
-Two fuzz targets each define `LLVMFuzzerTestOneInput`: `tests/fuzz/fuzz_loader.c` probes the bytes and loads them
+Three fuzz targets each define `LLVMFuzzerTestOneInput`: `tests/fuzz/fuzz_loader.c` probes the bytes and loads them
 on the profile the probe guesses, and fails when the probe and the load disagree on accepting them;
-`tests/fuzz/fuzz_run.c` loads them with fast boot and runs two frames. Their starting inputs are the images
+`tests/fuzz/fuzz_run.c` loads them with fast boot and runs two frames.
+`tests/fuzz/fuzz_save.c` imports the bytes against independently constructed physical RAM
+with known, none, unknown and unsupported persistence. It checks FF padding, exact bytes,
+generation-neutral repeated import and full-state equality after refusal, including SIZE_MAX
+without a large source buffer. `battery.continuation` separately runs production image
+classification and the owned guest: two same-size accepted inputs continue from different counters.
+Their starting inputs are the images
 `tests/fuzz/seeds.c` writes into `build/<preset>/tests/seeds` at build time; no corpus is committed.
 
-**Replay, every pull request.** `fuzz.regress.loader` and `fuzz.regress.run` link each entry with a plain `main`
+**Replay, every pull request.** `fuzz.regress.loader`, `fuzz.regress.run` and `fuzz.regress.save` link each entry with a plain `main`
 (`tests/fuzz/replay.c`) and replay every seed, and every file in `tests/fuzz/regress` when it exists, on every
 lane that runs the `portable` label. Each prints `replayed N` and fails when N is 0. No libFuzzer is needed.
 
 **libFuzzer, nightly.** The `fuzz` job in `nightly.yml` runs `cmake --workflow --preset fuzz` on `ubuntu-26.04`:
-clang-21 with `-fsanitize=fuzzer-no-link,address,undefined`, the two targets linked with `-fsanitize=fuzzer`, each
+clang-21 with `-fsanitize=fuzzer-no-link,address,undefined`, the three targets linked with `-fsanitize=fuzzer`, each
 run for 60 s over a fresh copy of the seeds with `-timeout=2 -max_len=1049089` (1 MiB, a copier header and one
 byte, so the size-reject path is reachable). A crashing input is uploaded as the `fuzz-artifacts` artifact. The
 job is `continue-on-error` until ten green nightly runs. A finding is a harness or core bug to triage, never a
@@ -449,3 +455,10 @@ The in-process presentation cases exercise RGB565 and XRGB8888, all active heigh
 native GG and SMS compatibility, default and square pixels, full field, rejected
 geometry notifications, content-load-only overrides and exact PAL audio totals.
 They compare each delivered pixel against a separate public-library instance.
+
+The save seeds include 0, 1, 32767, 32768 and 32769 bytes and each persistence refusal
+class. The ordinary CI and ASan replay runs include them. `battery.import` also covers
+0, 1, N-1, N, N+1 and SIZE_MAX for all supported 8/16/32 KiB spans, overlapping sources,
+NULL arguments and byte-identical whole-state refusal. `battery.spans`, `battery.generation`
+and `battery.excluded` cover physical aliases, same-value writes, reset/pointer stability
+and generation exclusions, with exact executed inventory entries on native and WASI lanes.

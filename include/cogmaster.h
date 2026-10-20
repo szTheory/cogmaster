@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#define COGMASTER_API_VERSION 6
+#define COGMASTER_API_VERSION 7
 #define COGMASTER_ABI_VERSION 1
 #define COGMASTER_BEHAVIOUR_REVISION 10
 #define COGMASTER_STATE_FORMAT_VERSION 10
@@ -204,6 +204,7 @@ cogmaster_status cogmaster_reset(cogmaster *m, uint32_t kind); /* COGMASTER_RESE
 cogmaster_status cogmaster_get_fault(const cogmaster *m, cogmaster_fault *out);
 cogmaster_status cogmaster_probe(const void *image, size_t n, cogmaster_cart_info *out);
 cogmaster_status cogmaster_get_battery(const cogmaster *m, cogmaster_battery *out);
+cogmaster_status cogmaster_import_battery(cogmaster *m, const void *data, size_t length);
 uint32_t cogmaster_peek(const cogmaster *m, uint32_t space, uint32_t addr); /* above 255: none */
 
 #ifdef __cplusplus

@@ -146,6 +146,20 @@ static void excluded(cogmaster *m)
     cogmaster__bus_write(m, 0xa001u, 1u);
     CHECK_EQ_U64(battery(m).generation, 0u);
     CHECK_EQ_HEX(cogmaster__bus_read(m, 0xa001u), 1u);
+    /* A persistent extent must never replace physical address decoding. */
+    classified(m, COGMASTER_BOARD_SEGA, COGMASTER_PERSISTENCE_BATTERY, 32768u,
+               COGMASTER_GEOMETRY_SUPPORTED);
+    m->cart.persistent_size = 8192u;
+    cogmaster_battery b = battery(m);
+    CHECK_EQ_U64(b.length, 8192u);
+    cogmaster__bus_write(m, 0xfffcu, 8u);
+    cogmaster__bus_write(m, 0xa000u, 0x77u);
+    cogmaster__bus_write(m, 0xfffcu, 12u);
+    cogmaster__bus_write(m, 0x8000u, 0x88u);
+    CHECK_EQ_HEX(m->cart.ram[8192], 0x77u);
+    CHECK_EQ_HEX(m->cart.ram[16384], 0x88u);
+    CHECK_EQ_HEX(b.data[0], 0xffu);
+    CHECK_EQ_U64(battery(m).generation, 0u);
 }
 static void fixture(cogmaster *m, const char *path)
 {
@@ -173,14 +187,7 @@ static void fixture(cogmaster *m, const char *path)
 
 static cogmaster_status import_save(cogmaster *m, const void *data, size_t n)
 {
-#if COGMASTER_API_VERSION >= 7
     return cogmaster_import_battery(m, data, n);
-#else
-    (void)m;
-    (void)data;
-    (void)n;
-    return COGMASTER_STATUS_ERR_ARGUMENT;
-#endif
 }
 static void rejected(cogmaster *m, const void *data, size_t n, cogmaster_status expected)
 {
@@ -228,13 +235,25 @@ static void imports(cogmaster *m)
         CHECK_EQ_U64(import_save(m, b.data + 1u, n - 1u), COGMASTER_STATUS_OK);
         CHECK_EQ_HEX(b.data[n - 1u], 0xffu);
     }
+    classified(m, COGMASTER_BOARD_SEGA, COGMASTER_PERSISTENCE_BATTERY, 32768u,
+               COGMASTER_GEOMETRY_SUPPORTED);
+    m->cart.persistent_size = 8192u;
+    memset(m->cart.ram, 0x77, m->cart.ram_size);
+    CHECK_EQ_U64(import_save(m, raw, 1u), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(m->cart.ram[0], 0x3cu);
+    CHECK_EQ_HEX(m->cart.ram[8191], 0xffu);
+    CHECK_EQ_HEX(m->cart.ram[8192], 0x77u);
+    CHECK_EQ_HEX(m->cart.ram[32767], 0x77u);
+    CHECK_EQ_U64(battery(m).generation, 0u);
     for (uint32_t knowledge = 0; knowledge < 3u; knowledge++) {
         classified(m, COGMASTER_BOARD_SEGA, knowledge, knowledge == 2u ? 24576u : 0u,
                    knowledge == 2u ? COGMASTER_GEOMETRY_UNSUPPORTED : COGMASTER_GEOMETRY_NONE);
-        rejected(m, raw, 0u, knowledge == 1u ? COGMASTER_STATUS_ERR_NO_CONTENT
-                                           : COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD);
-        rejected(m, raw, SIZE_MAX, knowledge == 1u ? COGMASTER_STATUS_ERR_NO_CONTENT
-                                                 : COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD);
+        rejected(m, raw, 0u,
+                 knowledge == 1u ? COGMASTER_STATUS_ERR_NO_CONTENT
+                                 : COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD);
+        rejected(m, raw, SIZE_MAX,
+                 knowledge == 1u ? COGMASTER_STATUS_ERR_NO_CONTENT
+                                 : COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD);
     }
 }
 static void continuation(cogmaster *m, const char *path)
@@ -260,6 +279,7 @@ static void continuation(cogmaster *m, const char *path)
 int main(int argc, char **argv)
 {
     cogmaster *m = machine();
+    CHECK_EQ_U64(cogmaster_import_battery(m, NULL, 0u), COGMASTER_STATUS_ERR_NO_CONTENT);
     if (argc == 3 && strcmp(argv[1], "continuation") == 0)
         continuation(m, argv[2]);
     else if (argc == 3)

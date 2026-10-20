@@ -498,3 +498,18 @@ volatile writes and direct host writes do not increment it. Both resets preserve
 generation. Internal states include and validate the generation, allowing only zero without
 supported persistence. Hosts compare generations with their last successful flush snapshot;
 acknowledge only after replacement succeeds. File persistence belongs to the host.
+
+API version 7 adds `cogmaster_import_battery(m, data, length)`. With supported media,
+lengths from zero through the exact span succeed: copy the supplied prefix and pad the
+suffix with FF. NULL is accepted only for an empty import. Overlapping sources inside
+the exposed span are supported. Import preserves generation, including repeated identical
+imports. Snapshot generation after loading a save, before running. Oversized input returns
+`COGMASTER_STATUS_ERR_SAVE_SIZE` before reading any source byte; NULL with a nonzero
+accepted length returns `COGMASTER_STATUS_ERR_ARGUMENT`. Before load, or for known-none
+media, import returns `COGMASTER_STATUS_ERR_NO_CONTENT`; unknown or unsupported persistence
+returns `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD`. Every refusal preserves all instance state.
+
+The core accepts exact-size wrong-game data: raw bytes carry no identity. Hosts must bound
+file reads to expected length plus one and keep save namespaces separate. For a missing
+file, leave the fresh FF bytes or import NULL with length zero. Neither operation marks
+the cartridge dirty.
