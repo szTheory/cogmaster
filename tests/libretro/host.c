@@ -182,9 +182,20 @@ static unsigned batch_nonzero;
 static unsigned content_frame, poll_calls;
 static int content_mode;
 static unsigned descriptors_calls, controllers_calls;
+static unsigned options_calls;
 
 static bool RETRO_CALLCONV env(unsigned cmd, void *data)
 {
+    if (cmd == RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION) {
+        *(unsigned *)data = 2u;
+        return true;
+    }
+    if (cmd == RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2) {
+        const struct retro_core_options_v2 *options = data;
+        CHECK(options->definitions != NULL);
+        options_calls++;
+        return true;
+    }
     if (cmd == RETRO_ENVIRONMENT_SET_CONTROLLER_INFO) {
         const struct retro_controller_info *ports = data;
         controllers_calls++;
@@ -529,6 +540,7 @@ int main(int argc, char **argv)
     CHECK_EQ_U64(p_api_version(), RETRO_API_VERSION);
     p_set_environment(env);
     CHECK_EQ_U64(no_game_calls, 1);
+    CHECK_EQ_U64(options_calls, 1u);
     CHECK_EQ_U64(no_game_value, 1);
     p_init();
 
