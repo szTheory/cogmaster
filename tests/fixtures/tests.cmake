@@ -26,10 +26,14 @@ if(CMAKE_SCRIPT_MODE_FILE)
   elseif(CASE STREQUAL "mailbox")
     # The runner prints the image's mailbox, at most FRAMES frames in, into
     # OUT; mailbox.cmake (JUDGE) then judges it against CSV for PROFILE.
-    # MACHINE, when set, is passed as --machine for an image with no header.
+    # MACHINE and REGION, when set, are passed as --machine and --region: an
+    # image with no header, or a profile other than the default.
     set(machine "")
     if(MACHINE)
       set(machine --machine ${MACHINE})
+    endif()
+    if(REGION)
+      list(APPEND machine --region ${REGION})
     endif()
     execute_process(COMMAND ${EMULATOR} ${RUN} ${machine} ${IMAGE} --frames ${FRAMES} --mailbox
       RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
@@ -37,7 +41,11 @@ if(CMAKE_SCRIPT_MODE_FILE)
       message(FATAL_ERROR "--mailbox ${IMAGE}: exit ${rc}\n${err}")
     endif()
     file(WRITE "${OUT}" "${out}")
-    set(ROM ${NAME})
+    # ROM, when set, names the CSV rows of an image built from another
+    # fixture's source.
+    if(NOT ROM)
+      set(ROM ${NAME})
+    endif()
     include(${JUDGE})
   else()
     message(FATAL_ERROR "unknown CASE '${CASE}'")
@@ -48,7 +56,7 @@ endif()
 set(COGMASTER_FIXTURES_DIR ${PROJECT_BINARY_DIR}/fixtures)
 set(fixtures_src ${PROJECT_SOURCE_DIR}/tests/roms/src)
 set(fixtures_images "")
-foreach(name IN ITEMS hello mapper_sega mapper_codemasters)
+foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports)
   set(image ${COGMASTER_FIXTURES_DIR}/${name}.sms)
   # The source directory is the assembler's working directory, so .INCLUDE
   # finds header.inc; the linker's is the build directory, so the link file
@@ -60,7 +68,7 @@ foreach(name IN ITEMS hello mapper_sega mapper_codemasters)
       ${COGMASTER_WLALINK} -r ${fixtures_src}/${name}.link ${image}
     WORKING_DIRECTORY ${fixtures_src}
     DEPENDS ${fixtures_src}/${name}.asm ${fixtures_src}/${name}.link ${fixtures_src}/header.inc
-      ${fixtures_src}/mailbox.inc
+      ${fixtures_src}/mailbox.inc ${fixtures_src}/ports.asm
     COMMENT "Assembling the ${name} fixture"
     VERBATIM)
   list(APPEND fixtures_images ${image})
@@ -99,6 +107,20 @@ cogmaster_add_test(NAME fixtures.mapper_codemasters
     -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/mapper_codemasters.txt
     -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS fixtures portable TIMEOUT 30)
+# The ports fixture once per profile: the I/O chip and the VDP answer by
+# machine, region and TV standard.
+foreach(profile IN ITEMS sms-export)
+  set(args "")
+  if(profile STREQUAL "sms-export")
+    set(args -DMACHINE=sms -DREGION=ntsc-u)
+  endif()
+  cogmaster_add_test(NAME fixtures.ports.${profile}
+    COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=ports ${args} -DPROFILE=${profile}
+      -DIMAGE=${COGMASTER_FIXTURES_DIR}/ports.sms -DFRAMES=120
+      -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/ports.${profile}.txt
+      -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures portable TIMEOUT 30)
+endforeach()
 
 # Fault prevented: a judge that passes what it should fail. Each control
 # runs the mapper_sega fixture through the judge and must fail with exit 1
