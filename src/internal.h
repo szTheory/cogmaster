@@ -93,15 +93,16 @@ struct cogmaster__bus {
 #define COGMASTER__CRAM_SIZE 32u
 
 struct cogmaster__vdp {
-    uint16_t addr;                     /* the 14-bit VRAM or CRAM address */
-    uint8_t reg[COGMASTER__VDP_REGS];  /* R0 to R10 */
-    uint8_t status;                    /* the flags: bit 7 frame interrupt pending */
-    uint8_t latch;                     /* 1 after the first control byte */
-    uint8_t first;                     /* the first control byte */
-    uint8_t code;                      /* the control code, 0 to 3 */
-    uint8_t buffer;                    /* the data port's read-ahead byte */
-    uint8_t pause;                     /* 1 while a Pause press waits for its NMI tick */
-    uint8_t hscroll, vscroll, display; /* line / frame / line latches, docs/hardware/video.md */
+    uint16_t addr;                      /* the 14-bit VRAM or CRAM address */
+    uint8_t reg[COGMASTER__VDP_REGS];   /* R0 to R10 */
+    uint8_t status;                     /* the flags: bit 7 frame interrupt pending */
+    uint8_t latch;                      /* 1 after the first control byte */
+    uint8_t first;                      /* the first control byte */
+    uint8_t code;                       /* the control code, 0 to 3 */
+    uint8_t buffer;                     /* the data port's read-ahead byte */
+    uint8_t pause;                      /* 1 while a Pause press waits for its NMI tick */
+    uint8_t line_counter, line_pending; /* R10 reload counter and independent IE1 source */
+    uint8_t hscroll, vscroll, display;  /* line / frame / line latches, docs/hardware/video.md */
     /* Selected line slots; pattern bytes remain live until each dot emits. */
     struct {
         uint8_t x, tile, row;

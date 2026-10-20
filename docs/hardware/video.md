@@ -66,10 +66,28 @@ Background priority hides sprite colour but does not suppress occupancy.
 These are tests of the selected active-area model, not hardware timing
 measurements. A status read catches up through the dot at `tick / 2`,
 observes flags, then clears all flags and the control latch and recomputes
-the frame IRQ level. Bits 4–0 still read as ones. Re-reading that same dot
+both IRQ sources. Bits 4–0 still read as ones. Re-reading that same dot
 cannot reassert; a later real overlap can. Sprite flags alone do not drive
 IRQ. Sources: SMS-VDP sections 2.6 and 3.5–3.8, and
 [SMS Power collision detection](https://www.smspower.org/Development/CollisionDetection).
+
+The selected frame/line IRQ edges remain ticks 607/608, the next-line latch
+600, and the CPU-visible V step 604, all relative to active dot zero.
+Frame pending is status bit 7; line pending is separate. Each pending source
+drives /INT immediately while its IE is enabled (R1 bit 5 / R0 bit 4).
+Disable releases that source without losing pending; a status read observes
+then clears both sources and the control latch. Events at the access stamp
+precede the access, including when a CPU step spans several events.
+R10 reloads on blank lines; active lines and the first postactive line test
+zero, reload and set pending, or decrement. A write to R10 affects the next
+reload. Thus n first fires on line n and repeats every n+1 lines; $FF never
+underflows within the active range. Frame pending rises on physical line H
+for H=192/224/240, without moving the host's fixed frame origin/deadline.
+SMS1 invalid extended modes retain 192-line timing with unsupported rendering.
+Sources: preparation SMS-VDP sections 2.5, 4.2, 4.5–4.6 and SMS-SYSTEM section 2.
+The 607 measurement and selected 608 placement have different confidence
+from the approximate latch/V positions; passing tests proves this chosen
+model, not a hardware measurement or agreement with a reference binary.
 
 The owned `boot_to_play` fixture writes a diamond in plane 0 and $55, $33,
 $0F in planes 1–3, with palette entry n containing n. Its independent oracle

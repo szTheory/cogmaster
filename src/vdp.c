@@ -1,7 +1,7 @@
 /* The VDP's timing half: the beam events it raises (the frame interrupt
    and the Pause NMI), the V and H counters, the control and data ports with
    VRAM, CRAM and R0-R10, the status byte and /INT. The companion renderer
-   consumes these stores; the mode is treated as 192 lines.
+   consumes these stores.
 
    Time is in ticks, one per VDP clock; t is the tick in a 684-tick line,
    with t 0 at the first active dot (SMS-VDP sections 2 and 4, SMS-SYSTEM
@@ -40,10 +40,11 @@
 /* The frame interrupt: the pending flag rises at tick 607 of line 192, the
    first line after the 192-line active display, 4 ticks before /HSYNC rises
    (Charles MacDonald's logic analyser, SMS-SYSTEM section 2; SMS-VDP
-   section 4.2). The 224- and 240-line modes and the unsettled later
-   estimate may move it; the frame origin in bus.c stays where it is. */
+   section 4.2). Extended modes select line H with the same named tick;
+   the fixed frame origin in bus.c stays where it is. */
 #define VDP_INT_TICK 607u
-#define VDP_INT_LINE 192u
+#define VDP_LINE_INT_TICK 608u
+#define VDP_LATCH_TICK 600u
 
 /* Status flags: bit 7 frame interrupt pending, 6 sprite overflow, 5 sprite
    collision. Bits 4-0 are undriven and read as 1s (SMS-VDP section 2.6,
@@ -53,6 +54,7 @@
 
 /* R1 bit 5, IE0: the frame interrupt reaches /INT (SMS-VDP section 2.4). */
 #define VDP_R1_IE0 0x20u
+#define VDP_R0_IE1 0x10u
 
 /* The 14-bit VRAM address (SMS-VDP section 2.2). */
 #define VDP_ADDR_MASK 0x3FFFu
@@ -77,6 +79,8 @@ void cogmaster__vdp_reset(cogmaster *m, int power)
     v->code = 0u;
     v->buffer = 0u;
     v->pause = 0u;
+    v->line_counter = 0xFFu;
+    v->line_pending = 0u;
     v->hscroll = 0u;
     v->vscroll = 0u;
     v->display = 0u;
@@ -95,13 +99,30 @@ void cogmaster__vdp_reset(cogmaster *m, int power)
     }
 }
 
-/* /INT is a level: the frame flag AND IE0, held until a status read
+/* /INT is a level: either pending source gated by its IE, held until a status read
    (SMS-VDP section 2.6 and section 4.6). */
 static void vdp_irq(cogmaster *m)
 {
     const struct cogmaster__vdp *v = &m->vdp;
     m->z80.int_line =
-        (uint8_t)((v->status & VDP_STATUS_FRAME) != 0u && (v->reg[1] & VDP_R1_IE0) != 0u);
+        (uint8_t)(((v->status & VDP_STATUS_FRAME) != 0u && (v->reg[1] & VDP_R1_IE0) != 0u) ||
+                  (v->line_pending != 0u && (v->reg[0] & VDP_R0_IE1) != 0u));
+}
+
+/* Mode 4 extended heights on SMS2/GG; SMS1 invalid text combinations
+   retain the 192-line timing fallback (SMS-VDP section 2.5). */
+static uint32_t vdp_height(const cogmaster *m)
+{
+    const uint8_t *r = m->vdp.reg;
+    if (!cogmaster__profile(m).vdp_masks && (r[0] & 6u) == 6u) {
+        if ((r[1] & 0x18u) == 0x10u) {
+            return 224u;
+        }
+        if ((r[1] & 0x18u) == 0x08u) {
+            return 240u;
+        }
+    }
+    return 192u;
 }
 
 /* The line /NMI is asserted on. The Game Gear has no Pause button: in its
@@ -119,11 +140,14 @@ uint32_t cogmaster__vdp_next_event(const cogmaster *m, uint32_t line, uint32_t t
     if (line < COGMASTER__FIELD_H && t < 512u) {
         return 512u;
     }
-    if (t < 600u) {
-        return 600u;
+    if (t < VDP_LATCH_TICK) {
+        return VDP_LATCH_TICK;
     }
-    if (line == VDP_INT_LINE && t < VDP_INT_TICK) {
+    if (line == vdp_height(m) && t < VDP_INT_TICK) {
         return VDP_INT_TICK;
+    }
+    if (t < VDP_LINE_INT_TICK) {
+        return VDP_LINE_INT_TICK;
     }
     if (line == vdp_nmi_line(m) && t < VDP_NMI_TICK) {
         return VDP_NMI_TICK;
@@ -138,7 +162,7 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t)
     }
     /* Selected tick-600 next-line latch; R9 latches before line zero
        once per field (docs/hardware/video.md). */
-    if (t == 600u) {
+    if (t == VDP_LATCH_TICK) {
         m->vdp.hscroll = m->vdp.reg[8];
         m->vdp.display = (uint8_t)((m->vdp.reg[1] >> 6) & 1u);
         if (line + 1u == cogmaster__frame_lines(m)) {
@@ -149,11 +173,27 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t)
             cogmaster__vdp_sprite_scan(m, next);
         }
     }
-    if (line == VDP_INT_LINE && t == VDP_INT_TICK) {
+    if (line == vdp_height(m) && t == VDP_INT_TICK) {
         cogmaster__vdp_finish_field(m);
         m->vdp.status = (uint8_t)(m->vdp.status | VDP_STATUS_FRAME);
         vdp_irq(m);
-    } else if (line == vdp_nmi_line(m) && t == VDP_NMI_TICK && m->vdp.pause) {
+    }
+    /* Active lines plus the first postactive line decrement/test; all
+       other lines reload without raising pending (SMS-VDP section 4.5).
+       R10 writes only affect the next reload. */
+    if (t == VDP_LINE_INT_TICK) {
+        struct cogmaster__vdp *v = &m->vdp;
+        if (line > vdp_height(m) || v->line_counter == 0u) {
+            if (line <= vdp_height(m)) {
+                v->line_pending = 1u;
+            }
+            v->line_counter = v->reg[10];
+        } else {
+            v->line_counter--;
+        }
+        vdp_irq(m);
+    }
+    if (line == vdp_nmi_line(m) && t == VDP_NMI_TICK && m->vdp.pause) {
         m->vdp.pause = 0u;
         m->z80.nmi_pending = 1u;
     }
@@ -192,6 +232,7 @@ static uint8_t vdp_status_read(cogmaster *m)
     struct cogmaster__vdp *v = &m->vdp;
     uint8_t s = (uint8_t)(v->status | VDP_STATUS_LOW);
     v->status = 0u;
+    v->line_pending = 0u;
     v->latch = 0u;
     vdp_irq(m);
     return s;

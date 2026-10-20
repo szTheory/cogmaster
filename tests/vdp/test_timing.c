@@ -144,6 +144,63 @@ static void irq_pending(void)
     CHECK_EQ_U64(m->z80.int_line, 0u);
     cogmaster_destroy(m);
 }
+static void irq_cpu(void)
+{
+    cogmaster *m = make();
+    /* Owned EI/HALT loop and IM1 handler: two RAM counts, frame vs line. */
+    static const uint8_t loop[] = {0xF3u, 0x31u, 0xF0u, 0xDFu, 0xEDu,
+                                   0x56u, 0xFBu, 0x76u, 0x18u, 0xFDu};
+    static const uint8_t handler[] = {0xF5u, 0xDBu, 0xBFu, 0x21u, 0x00u, 0xC1u, 0xCBu, 0x7Fu,
+                                      0x20u, 0x01u, 0x23u, 0x34u, 0xF1u, 0xFBu, 0xEDu, 0x4Du};
+    memcpy(m->cart.rom, loop, sizeof loop);
+    memcpy(m->cart.rom + 0x38u, handler, sizeof handler);
+    reg(m, 0u, 0x14u);
+    reg(m, 1u, 0x20u);
+    reg(m, 10u, 31u);
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    CHECK(m->ticks >= 179208u && m->ticks < 179208u + 69u);
+    for (uint32_t i = 0u; i < 40u; i++) {
+        cogmaster__z80_step(m);
+        cogmaster__bus_sync(m);
+    }
+    CHECK_EQ_U64(m->ram[0x100], 1u);
+    CHECK_EQ_U64(m->ram[0x101], 6u);
+    cogmaster_destroy(m);
+}
+static void irq_state(void)
+{
+    cogmaster *m = make();
+    reg(m, 0u, 0x14u);
+    reg(m, 10u, 0u);
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(m->z80.int_line, 1u);
+    size_t n = cogmaster__state_size(m);
+    uint8_t *bytes = malloc(n);
+    size_t count = cogmaster__state_record(m, NULL, 0u);
+    struct cogmaster__state_field *fields = malloc(count * sizeof *fields);
+    CHECK(bytes != NULL && fields != NULL);
+    if (bytes != NULL && fields != NULL) {
+        CHECK_EQ_U64(cogmaster__state_save(m, bytes, n), COGMASTER_STATUS_OK);
+        (void)status(m);
+        CHECK_EQ_U64(cogmaster__state_load(m, bytes, n), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(m->z80.int_line, 1u);
+        CHECK_EQ_U64(m->vdp.line_pending, 1u);
+        CHECK_EQ_U64(m->vdp.line_counter, 0u);
+        CHECK_EQ_U64(cogmaster__state_record(m, fields, count), count);
+        for (size_t i = 0u; i < count; i++) {
+            if (strcmp(fields[i].name, "vdp_line_pending") == 0) {
+                bytes[fields[i].offset] = 0u;
+                cogmaster__state_seal(bytes, n);
+                CHECK_EQ_U64(cogmaster__state_load(m, bytes, n), COGMASTER_STATUS_ERR_ARGUMENT);
+                CHECK_EQ_U64(m->vdp.line_pending, 1u);
+                CHECK_EQ_U64(m->z80.int_line, 1u);
+            }
+        }
+    }
+    free(fields);
+    free(bytes);
+    cogmaster_destroy(m);
+}
 int main(int argc, char **argv)
 {
     if (argc != 2)
@@ -154,6 +211,10 @@ int main(int argc, char **argv)
         irq_reload();
     else if (strcmp(argv[1], "irq_pending") == 0)
         irq_pending();
+    else if (strcmp(argv[1], "irq_cpu") == 0)
+        irq_cpu();
+    else if (strcmp(argv[1], "irq_state") == 0)
+        irq_state();
     else
         return 2;
     CHECK_DONE();

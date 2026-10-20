@@ -47,7 +47,7 @@ static const uint8_t state_magic[8] = {0x8Au, 0x43u, 0x47u, 0x4Du, 0x0Du, 0x0Au,
 _Static_assert(sizeof(struct cogmaster__counters) == 40u, "counters changed: update counters_io");
 _Static_assert(sizeof(struct cogmaster__z80) == 38u, "z80 changed: update z80_io");
 _Static_assert(sizeof(struct cogmaster__bus) == 40u, "bus changed: update bus_io");
-_Static_assert(sizeof(struct cogmaster__vdp) == 16468u, "vdp changed: update vdp_io");
+_Static_assert(sizeof(struct cogmaster__vdp) == 16470u, "vdp changed: update vdp_io");
 _Static_assert(sizeof(struct cogmaster__mapper) == 4u, "mapper changed: update mapper_io");
 _Static_assert(sizeof(struct cogmaster__io) == 8u, "io changed: update io_io");
 
@@ -204,17 +204,18 @@ static void bus_io(struct cogmaster__sio *io, cogmaster *m, struct state_time ti
 }
 
 /* Status flags are bits 7-5; the 14-bit address; codes 0 to 3 (SMS-VDP
-   section 2). Only the frame flag drives /INT yet, gated by R1 bit 5. */
+   section 2). Each independent pending source is gated by its enable. */
 #define STATE_VDP_FLAGS 0xE0u
 #define STATE_VDP_ADDR_MAX 0x3FFFu
 #define STATE_VDP_CODE_MAX 3u
 
 static void vdp_io(struct cogmaster__sio *io, struct cogmaster__vdp *v, uint8_t int_line)
 {
-    uint8_t r1 = 0u;
+    uint8_t r0 = 0u, r1 = 0u;
     for (uint32_t i = 0; i < COGMASTER__VDP_REGS; i++) {
         uint8_t r = cogmaster__sio_u8(io, "vdp_reg", &v->reg[i], 0u, UINT8_MAX);
         r1 = i == 1u ? r : r1;
+        r0 = i == 0u ? r : r0;
     }
     uint8_t status = cogmaster__sio_u8(io, "vdp_status", &v->status, 0u, STATE_VDP_FLAGS);
     cogmaster__sio_u8(io, "vdp_latch", &v->latch, 0u, 1u);
@@ -223,6 +224,8 @@ static void vdp_io(struct cogmaster__sio *io, struct cogmaster__vdp *v, uint8_t 
     cogmaster__sio_u16(io, "vdp_addr", &v->addr, 0u, STATE_VDP_ADDR_MAX);
     cogmaster__sio_u8(io, "vdp_buffer", &v->buffer, 0u, UINT8_MAX);
     cogmaster__sio_u8(io, "vdp_pause", &v->pause, 0u, 1u);
+    cogmaster__sio_u8(io, "vdp_line_counter", &v->line_counter, 0u, UINT8_MAX);
+    uint8_t pending = cogmaster__sio_u8(io, "vdp_line_pending", &v->line_pending, 0u, 1u);
     cogmaster__sio_u8(io, "vdp_hscroll", &v->hscroll, 0u, UINT8_MAX);
     cogmaster__sio_u8(io, "vdp_vscroll", &v->vscroll, 0u, UINT8_MAX);
     cogmaster__sio_u8(io, "vdp_display", &v->display, 0u, 1u);
@@ -246,7 +249,8 @@ static void vdp_io(struct cogmaster__sio *io, struct cogmaster__vdp *v, uint8_t 
         cogmaster__sio_u8(io, "vdp_vram", &v->vram[i], 0u, UINT8_MAX);
     }
     cogmaster__sio_check(io, (status & ~STATE_VDP_FLAGS) == 0u);
-    cogmaster__sio_check(io, int_line == ((status >> 7) & (r1 >> 5) & 1u));
+    cogmaster__sio_check(io, int_line ==
+                                 (((status >> 7) & (r1 >> 5) & 1u) | (pending & (r0 >> 4) & 1u)));
 }
 
 static void ram_io(struct cogmaster__sio *io, cogmaster *m)

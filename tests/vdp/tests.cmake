@@ -19,7 +19,7 @@ target_link_libraries(cogmaster-test-timing PRIVATE cogmaster::cogmaster)
 set_target_properties(cogmaster-test-timing PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
 cogmaster_warnings(cogmaster-test-timing)
-foreach(case IN ITEMS irq_edges irq_reload irq_pending)
+foreach(case IN ITEMS irq_edges irq_reload irq_pending irq_cpu irq_state)
   cogmaster_add_test(NAME vdp.timing.${case} COMMAND cogmaster-test-timing ${case}
     LABELS portable vdp TIMEOUT 10)
 endforeach()
