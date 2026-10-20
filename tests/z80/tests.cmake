@@ -24,7 +24,8 @@ endif()
 # an object library with the core's own compile options.
 get_target_property(z80_options cogmaster COMPILE_OPTIONS)
 add_library(cogmaster-z80-sst OBJECT ${PROJECT_SOURCE_DIR}/src/z80.c
-  ${PROJECT_SOURCE_DIR}/src/z80_cb.c ${PROJECT_SOURCE_DIR}/src/z80_ed.c)
+  ${PROJECT_SOURCE_DIR}/src/z80_cb.c ${PROJECT_SOURCE_DIR}/src/z80_ed.c
+  ${PROJECT_SOURCE_DIR}/src/z80_x3.c)
 target_include_directories(cogmaster-z80-sst PRIVATE
   ${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR}/generated ${PROJECT_SOURCE_DIR}/src)
 target_compile_options(cogmaster-z80-sst PRIVATE ${z80_options})

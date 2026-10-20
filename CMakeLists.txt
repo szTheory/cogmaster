@@ -56,7 +56,8 @@ add_library(cogmaster STATIC
   src/vdp.c
   src/z80.c
   src/z80_cb.c
-  src/z80_ed.c)
+  src/z80_ed.c
+  src/z80_x3.c)
 add_library(cogmaster::cogmaster ALIAS cogmaster)
 target_include_directories(cogmaster PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

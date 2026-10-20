@@ -1,7 +1,8 @@
-/* The Z80 step and the main opcode page. Instruction-granular, with every
-   bus cycle stamped at its data T-state (z80_cycle.h). Opcode decoding and
-   M-cycle layouts: Zilog UM0080; Cristian Dinu, "Decoding Z80 opcodes". WZ
-   follows Sean Young, "The Undocumented Z80 Documented", section on MEMPTR. */
+/* The Z80 step and the main opcode page to 0xBF; z80_x3.c runs 0xC0-0xFF.
+   Instruction-granular, with every bus cycle stamped at its data T-state
+   (z80_cycle.h). Opcode decoding and M-cycle layouts: Zilog UM0080;
+   Cristian Dinu, "Decoding Z80 opcodes". WZ follows Sean Young, "The
+   Undocumented Z80 Documented", section on MEMPTR. */
 #include "z80_cycle.h"
 
 enum {
@@ -19,41 +20,10 @@ enum {
 /* Flags S, Z and P/V are kept by the rotates on A, SCF, CCF and CPL. */
 #define KEEP_SZP (COGMASTER__Z80_SF | COGMASTER__Z80_ZF | COGMASTER__Z80_PF)
 
-/* Under a DD or FD prefix, H, L and HL name IXH, IXL and IX, or IYH, IYL
-   and IY (Sean Young section 6). hx is the high byte's index. */
-static unsigned hx(const struct cogmaster__z80 *z)
-{
-    if (z->idx == COGMASTER__Z80_IDX_NONE) {
-        return RH;
-    }
-    return z->idx == COGMASTER__Z80_IDX_IX ? COGMASTER__Z80_IXH : COGMASTER__Z80_IYH;
-}
-
-static uint16_t hl(const struct cogmaster__z80 *z)
-{
-    return cogmaster__z80_pair(z, hx(z));
-}
-
 /* Register field r, with H and L remapped under a prefix. */
 static unsigned r8(const struct cogmaster__z80 *z, unsigned r)
 {
-    return r == RH || r == RL ? hx(z) + (r - RH) : r;
-}
-
-/* The address on the bus during internal T-states after an opcode fetch:
-   the refresh address (UM0080, "Instruction Fetch"). */
-static uint16_t ir(const struct cogmaster__z80 *z)
-{
-    return (uint16_t)(z->i << 8 | z->r);
-}
-
-/* The byte at PC, which then moves past it. */
-static uint8_t imm8(cogmaster *m)
-{
-    struct cogmaster__z80 *z = &m->z80;
-    uint8_t v = cogmaster__z80_mread(m, z->pc);
-    z->pc = (uint16_t)(z->pc + 1u);
-    return v;
+    return r == RH || r == RL ? cogmaster__z80_hx(z) + (r - RH) : r;
 }
 
 /* The address of a (HL) operand. Under a prefix it is (IX+d) or (IY+d):
@@ -65,65 +35,11 @@ static uint16_t mem_hl(cogmaster *m, uint32_t n)
     if (z->idx == COGMASTER__Z80_IDX_NONE) {
         return cogmaster__z80_pair(z, RH);
     }
-    uint8_t d = imm8(m);
-    uint16_t a = (uint16_t)(hl(z) + (uint16_t)(int8_t)d);
+    uint8_t d = cogmaster__z80_imm8(m);
+    uint16_t a = (uint16_t)(cogmaster__z80_hl(z) + (uint16_t)(int8_t)d);
     cogmaster__z80_idle(m, (uint16_t)(z->pc - 1u), n);
     z->wz = a;
     return a;
-}
-
-/* A little-endian word at PC. */
-static uint16_t imm16(cogmaster *m)
-{
-    uint8_t lo = imm8(m);
-    return (uint16_t)(imm8(m) << 8 | lo);
-}
-
-/* Register pair p of the opcode's p field: BC, DE, HL (or IX, IY), SP. */
-static unsigned rp_hi(const struct cogmaster__z80 *z, unsigned p)
-{
-    return p == 2 ? hx(z) : 2u * p;
-}
-
-static uint16_t rp(const struct cogmaster__z80 *z, unsigned p)
-{
-    return p == 3 ? z->sp : cogmaster__z80_pair(z, rp_hi(z, p));
-}
-
-static void set_rp(struct cogmaster__z80 *z, unsigned p, uint16_t v)
-{
-    if (p == 3) {
-        z->sp = v;
-    } else {
-        cogmaster__z80_set_pair(z, rp_hi(z, p), v);
-    }
-}
-
-/* Condition y: NZ, Z, NC, C, PO, PE, P, M. */
-static int cc(const struct cogmaster__z80 *z, unsigned y)
-{
-    static const uint8_t bit[4] = {COGMASTER__Z80_ZF, COGMASTER__Z80_CF, COGMASTER__Z80_PF,
-                                   COGMASTER__Z80_SF};
-    return ((z->reg[RF] & bit[y >> 1]) != 0) == ((y & 1u) != 0);
-}
-
-static void push(cogmaster *m, uint16_t v)
-{
-    struct cogmaster__z80 *z = &m->z80;
-    z->sp = (uint16_t)(z->sp - 1u);
-    cogmaster__z80_mwrite(m, z->sp, (uint8_t)(v >> 8));
-    z->sp = (uint16_t)(z->sp - 1u);
-    cogmaster__z80_mwrite(m, z->sp, (uint8_t)v);
-}
-
-static uint16_t pop(cogmaster *m)
-{
-    struct cogmaster__z80 *z = &m->z80;
-    uint8_t lo = cogmaster__z80_mread(m, z->sp);
-    z->sp = (uint16_t)(z->sp + 1u);
-    uint8_t hi = cogmaster__z80_mread(m, z->sp);
-    z->sp = (uint16_t)(z->sp + 1u);
-    return (uint16_t)(hi << 8 | lo);
 }
 
 /* Opcodes 0x40-0xBF by their fields x = op >> 6, y = op >> 3 & 7 and
@@ -178,8 +94,8 @@ static void ld_a_ind(cogmaster *m, unsigned hi)
 static void inc_rp(cogmaster *m, unsigned p, uint16_t delta)
 {
     struct cogmaster__z80 *z = &m->z80;
-    cogmaster__z80_idle(m, ir(z), 2);
-    set_rp(z, p, (uint16_t)(rp(z, p) + delta));
+    cogmaster__z80_idle(m, cogmaster__z80_ir(z), 2);
+    cogmaster__z80_set_rp(z, p, (uint16_t)(cogmaster__z80_rp(z, p) + delta));
 }
 
 /* INC r and DEC r; on (HL) the read takes one extra T-state. */
@@ -202,11 +118,11 @@ static void ld_r_n(cogmaster *m, unsigned r)
 {
     struct cogmaster__z80 *z = &m->z80;
     if (r != 6) {
-        z->reg[r8(z, r)] = imm8(m);
+        z->reg[r8(z, r)] = cogmaster__z80_imm8(m);
         return;
     }
     uint16_t a = mem_hl(m, 0);
-    uint8_t n = imm8(m);
+    uint8_t n = cogmaster__z80_imm8(m);
     if (z->idx != COGMASTER__Z80_IDX_NONE) {
         cogmaster__z80_idle(m, (uint16_t)(z->pc - 1u), 2);
     }
@@ -230,10 +146,10 @@ static void rot_a(struct cogmaster__z80 *z, unsigned y)
 static void add_hl(cogmaster *m, unsigned p)
 {
     struct cogmaster__z80 *z = &m->z80;
-    uint32_t a = hl(z), b = rp(z, p), r = a + b;
-    cogmaster__z80_idle(m, ir(z), 7);
+    uint32_t a = cogmaster__z80_hl(z), b = cogmaster__z80_rp(z, p), r = a + b;
+    cogmaster__z80_idle(m, cogmaster__z80_ir(z), 7);
     z->wz = (uint16_t)(a + 1u);
-    cogmaster__z80_set_pair(z, hx(z), (uint16_t)r);
+    cogmaster__z80_set_pair(z, cogmaster__z80_hx(z), (uint16_t)r);
     cogmaster__z80_setf(z, (uint8_t)((z->reg[RF] & KEEP_SZP) | ((r >> 8) & 0x28u) |
                                      (((a ^ b ^ r) >> 8) & 0x10u) | (r >> 16)));
 }
@@ -249,7 +165,7 @@ static void jump_rel(cogmaster *m, uint8_t d)
 
 static void jr(cogmaster *m, int taken)
 {
-    uint8_t d = imm8(m);
+    uint8_t d = cogmaster__z80_imm8(m);
     if (taken) {
         jump_rel(m, d);
     }
@@ -259,8 +175,8 @@ static void jr(cogmaster *m, int taken)
 static void djnz(cogmaster *m)
 {
     struct cogmaster__z80 *z = &m->z80;
-    cogmaster__z80_idle(m, ir(z), 1);
-    uint8_t d = imm8(m);
+    cogmaster__z80_idle(m, cogmaster__z80_ir(z), 1);
+    uint8_t d = cogmaster__z80_imm8(m);
     z->reg[RB] = (uint8_t)(z->reg[RB] - 1u);
     if (z->reg[RB] != 0) {
         jump_rel(m, d);
@@ -272,8 +188,8 @@ static void djnz(cogmaster *m)
 static void ld_nn_hl(cogmaster *m, int load)
 {
     struct cogmaster__z80 *z = &m->z80;
-    unsigned h = hx(z);
-    uint16_t a = imm16(m);
+    unsigned h = cogmaster__z80_hx(z);
+    uint16_t a = cogmaster__z80_imm16(m);
     if (load) {
         z->reg[h + 1u] = cogmaster__z80_mread(m, a);
         z->reg[h] = cogmaster__z80_mread(m, (uint16_t)(a + 1u));
@@ -287,7 +203,7 @@ static void ld_nn_hl(cogmaster *m, int load)
 static void ld_nn_a(cogmaster *m, int load)
 {
     struct cogmaster__z80 *z = &m->z80;
-    uint16_t a = imm16(m);
+    uint16_t a = cogmaster__z80_imm16(m);
     if (load) {
         z->reg[RA] = cogmaster__z80_mread(m, a);
         z->wz = (uint16_t)(a + 1u);
@@ -342,8 +258,7 @@ static void scf_ccf(struct cogmaster__z80 *z, uint8_t q_prev, int ccf)
     cogmaster__z80_setf(z, (uint8_t)((f & KEEP_SZP) | xy | nf));
 }
 
-/* EX AF,AF', EXX and EX DE,HL swap without writing Q; EXX and EX DE,HL
-   keep the true HL under a prefix. */
+/* EX AF,AF' swaps without writing Q. */
 static void ex_af(struct cogmaster__z80 *z)
 {
     for (unsigned k = RF; k <= RA; k++) {
@@ -351,138 +266,6 @@ static void ex_af(struct cogmaster__z80 *z)
         z->reg[k] = z->reg[ALT + k];
         z->reg[ALT + k] = t;
     }
-}
-
-static void exx(struct cogmaster__z80 *z)
-{
-    for (unsigned k = RB; k <= RL; k++) {
-        uint8_t t = z->reg[k];
-        z->reg[k] = z->reg[ALT + k];
-        z->reg[ALT + k] = t;
-    }
-}
-
-static void ex_de_hl(struct cogmaster__z80 *z)
-{
-    uint16_t t = cogmaster__z80_pair(z, RD);
-    cogmaster__z80_set_pair(z, RD, cogmaster__z80_pair(z, RH));
-    cogmaster__z80_set_pair(z, RH, t);
-}
-
-/* EX (SP),HL: read low then high (one extra T-state), write high then low
-   (two extra T-states). WZ = the new HL. */
-static void ex_sp_hl(cogmaster *m)
-{
-    struct cogmaster__z80 *z = &m->z80;
-    unsigned h = hx(z);
-    uint16_t s1 = (uint16_t)(z->sp + 1u);
-    uint8_t lo = cogmaster__z80_mread(m, z->sp);
-    uint8_t hi = cogmaster__z80_mread(m, s1);
-    cogmaster__z80_idle(m, s1, 1);
-    cogmaster__z80_mwrite(m, s1, z->reg[h]);
-    cogmaster__z80_mwrite(m, z->sp, z->reg[h + 1u]);
-    cogmaster__z80_idle(m, z->sp, 2);
-    z->reg[h] = hi;
-    z->reg[h + 1u] = lo;
-    z->wz = hl(z);
-}
-
-/* RET cc: the opcode fetch runs 5 T-states. RET and a taken RET cc set
-   PC and WZ to the popped address. */
-static void ret(cogmaster *m, int taken)
-{
-    struct cogmaster__z80 *z = &m->z80;
-    if (taken) {
-        z->pc = pop(m);
-        z->wz = z->pc;
-    }
-}
-
-static void ret_cc(cogmaster *m, unsigned y)
-{
-    cogmaster__z80_idle(m, ir(&m->z80), 1);
-    ret(m, cc(&m->z80, y));
-}
-
-/* POP rr and PUSH rr, p = 3 meaning AF. POP AF writes F without Q. PUSH's
-   opcode fetch runs 5 T-states. */
-static void pop_rp(cogmaster *m, unsigned p)
-{
-    struct cogmaster__z80 *z = &m->z80;
-    uint16_t v = pop(m);
-    if (p == 3) {
-        z->reg[RA] = (uint8_t)(v >> 8);
-        z->reg[RF] = (uint8_t)v;
-    } else {
-        set_rp(z, p, v);
-    }
-}
-
-static void push_rp(cogmaster *m, unsigned p)
-{
-    struct cogmaster__z80 *z = &m->z80;
-    cogmaster__z80_idle(m, ir(z), 1);
-    push(m, p == 3 ? (uint16_t)(z->reg[RA] << 8 | z->reg[RF]) : rp(z, p));
-}
-
-/* JP nn and JP cc,nn: WZ = nn whether or not the jump is taken. */
-static void jp(cogmaster *m, int taken)
-{
-    struct cogmaster__z80 *z = &m->z80;
-    z->wz = imm16(m);
-    if (taken) {
-        z->pc = z->wz;
-    }
-}
-
-/* CALL nn and CALL cc,nn: WZ = nn; a taken call reads the high byte in 4
-   T-states and pushes PC. */
-static void call(cogmaster *m, int taken)
-{
-    struct cogmaster__z80 *z = &m->z80;
-    z->wz = imm16(m);
-    if (taken) {
-        cogmaster__z80_idle(m, (uint16_t)(z->pc - 1u), 1);
-        push(m, z->pc);
-        z->pc = z->wz;
-    }
-}
-
-/* RST p: the opcode fetch runs 5 T-states. */
-static void rst(cogmaster *m, uint16_t addr)
-{
-    struct cogmaster__z80 *z = &m->z80;
-    cogmaster__z80_idle(m, ir(z), 1);
-    push(m, z->pc);
-    z->pc = addr;
-    z->wz = addr;
-}
-
-/* OUT (n),A and IN A,(n) address port A:n. OUT sets WZ to A:(n + 1)
-   with no carry into A, IN to A:n + 1. Flags are unaffected. */
-static void out_n(cogmaster *m)
-{
-    struct cogmaster__z80 *z = &m->z80;
-    uint8_t n = imm8(m), a = z->reg[RA];
-    cogmaster__z80_iowrite(m, (uint16_t)(a << 8 | n), a);
-    z->wz = (uint16_t)(a << 8 | (uint8_t)(n + 1u));
-}
-
-static void in_n(cogmaster *m)
-{
-    struct cogmaster__z80 *z = &m->z80;
-    uint16_t port = (uint16_t)(z->reg[RA] << 8 | imm8(m));
-    z->reg[RA] = cogmaster__z80_ioread(m, port);
-    z->wz = (uint16_t)(port + 1u);
-}
-
-/* DI and EI set both flip-flops. EI marks the step so that acceptance waits
-   one more instruction (UM0080, "EI"). */
-static void ei_di(struct cogmaster__z80 *z, uint8_t on)
-{
-    z->iff1 = on;
-    z->iff2 = on;
-    z->ei = on;
 }
 
 /* One opcode after its fetch; idx holds the prefix of the step before. */
@@ -493,11 +276,15 @@ static void exec(cogmaster *m, uint8_t op, uint8_t q_prev)
         block(m, op);
         return;
     }
+    if (op >= 0xC0) {
+        cogmaster__z80_x3(m, op);
+        return;
+    }
     switch (op) {
     case 0x00:
         break; /* NOP */
     case 0x01:
-        set_rp(z, 0, imm16(m));
+        cogmaster__z80_set_rp(z, 0, cogmaster__z80_imm16(m));
         break;
     case 0x02:
         ld_ind_a(m, RB);
@@ -545,7 +332,7 @@ static void exec(cogmaster *m, uint8_t op, uint8_t q_prev)
         djnz(m);
         break;
     case 0x11:
-        set_rp(z, 1, imm16(m));
+        cogmaster__z80_set_rp(z, 1, cogmaster__z80_imm16(m));
         break;
     case 0x12:
         ld_ind_a(m, RD);
@@ -590,10 +377,10 @@ static void exec(cogmaster *m, uint8_t op, uint8_t q_prev)
         rot_a(z, 3);
         break;
     case 0x20:
-        jr(m, cc(z, 0));
+        jr(m, cogmaster__z80_cc(z, 0));
         break;
     case 0x21:
-        set_rp(z, 2, imm16(m));
+        cogmaster__z80_set_rp(z, 2, cogmaster__z80_imm16(m));
         break;
     case 0x22:
         ld_nn_hl(m, 0);
@@ -614,7 +401,7 @@ static void exec(cogmaster *m, uint8_t op, uint8_t q_prev)
         daa(z);
         break;
     case 0x28:
-        jr(m, cc(z, 1));
+        jr(m, cogmaster__z80_cc(z, 1));
         break;
     case 0x29:
         add_hl(m, 2);
@@ -638,10 +425,10 @@ static void exec(cogmaster *m, uint8_t op, uint8_t q_prev)
         cpl(z);
         break;
     case 0x30:
-        jr(m, cc(z, 2));
+        jr(m, cogmaster__z80_cc(z, 2));
         break;
     case 0x31:
-        set_rp(z, 3, imm16(m));
+        cogmaster__z80_set_rp(z, 3, cogmaster__z80_imm16(m));
         break;
     case 0x32:
         ld_nn_a(m, 0);
@@ -662,7 +449,7 @@ static void exec(cogmaster *m, uint8_t op, uint8_t q_prev)
         scf_ccf(z, q_prev, 0);
         break;
     case 0x38:
-        jr(m, cc(z, 3));
+        jr(m, cogmaster__z80_cc(z, 3));
         break;
     case 0x39:
         add_hl(m, 3);
@@ -685,195 +472,6 @@ static void exec(cogmaster *m, uint8_t op, uint8_t q_prev)
     case 0x3F:
         scf_ccf(z, q_prev, 1);
         break;
-    case 0xC0:
-        ret_cc(m, 0);
-        break;
-    case 0xC1:
-        pop_rp(m, 0);
-        break;
-    case 0xC2:
-        jp(m, cc(z, 0));
-        break;
-    case 0xC3:
-        jp(m, 1);
-        break;
-    case 0xC4:
-        call(m, cc(z, 0));
-        break;
-    case 0xC5:
-        push_rp(m, 0);
-        break;
-    case 0xC6:
-        cogmaster__z80_alu(z, 0, imm8(m));
-        break;
-    case 0xC7:
-        rst(m, 0x00);
-        break;
-    case 0xC8:
-        ret_cc(m, 1);
-        break;
-    case 0xC9:
-        ret(m, 1);
-        break;
-    case 0xCA:
-        jp(m, cc(z, 1));
-        break;
-    case 0xCB:
-        cogmaster__z80_cb(m);
-        break;
-    case 0xCC:
-        call(m, cc(z, 1));
-        break;
-    case 0xCD:
-        call(m, 1);
-        break;
-    case 0xCE:
-        cogmaster__z80_alu(z, 1, imm8(m));
-        break;
-    case 0xCF:
-        rst(m, 0x08);
-        break;
-    case 0xD0:
-        ret_cc(m, 2);
-        break;
-    case 0xD1:
-        pop_rp(m, 1);
-        break;
-    case 0xD2:
-        jp(m, cc(z, 2));
-        break;
-    case 0xD3:
-        out_n(m);
-        break;
-    case 0xD4:
-        call(m, cc(z, 2));
-        break;
-    case 0xD5:
-        push_rp(m, 1);
-        break;
-    case 0xD6:
-        cogmaster__z80_alu(z, 2, imm8(m));
-        break;
-    case 0xD7:
-        rst(m, 0x10);
-        break;
-    case 0xD8:
-        ret_cc(m, 3);
-        break;
-    case 0xD9:
-        exx(z);
-        break;
-    case 0xDA:
-        jp(m, cc(z, 3));
-        break;
-    case 0xDB:
-        in_n(m);
-        break;
-    case 0xDC:
-        call(m, cc(z, 3));
-        break;
-    case 0xDE:
-        cogmaster__z80_alu(z, 3, imm8(m));
-        break;
-    case 0xDF:
-        rst(m, 0x18);
-        break;
-    case 0xE0:
-        ret_cc(m, 4);
-        break;
-    case 0xE1:
-        pop_rp(m, 2);
-        break;
-    case 0xE2:
-        jp(m, cc(z, 4));
-        break;
-    case 0xE3:
-        ex_sp_hl(m);
-        break;
-    case 0xE4:
-        call(m, cc(z, 4));
-        break;
-    case 0xE5:
-        push_rp(m, 2);
-        break;
-    case 0xE6:
-        cogmaster__z80_alu(z, 4, imm8(m));
-        break;
-    case 0xE7:
-        rst(m, 0x20);
-        break;
-    case 0xE8:
-        ret_cc(m, 5);
-        break;
-    case 0xE9:
-        z->pc = hl(z);
-        break; /* JP (HL) or (IX); WZ unchanged */
-    case 0xEA:
-        jp(m, cc(z, 5));
-        break;
-    case 0xEB:
-        ex_de_hl(z);
-        break;
-    case 0xEC:
-        call(m, cc(z, 5));
-        break;
-    case 0xED:
-        cogmaster__z80_ed(m);
-        break;
-    case 0xEE:
-        cogmaster__z80_alu(z, 5, imm8(m));
-        break;
-    case 0xEF:
-        rst(m, 0x28);
-        break;
-    case 0xF0:
-        ret_cc(m, 6);
-        break;
-    case 0xF1:
-        pop_rp(m, 3);
-        break;
-    case 0xF2:
-        jp(m, cc(z, 6));
-        break;
-    case 0xF3:
-        ei_di(z, 0);
-        break;
-    case 0xF4:
-        call(m, cc(z, 6));
-        break;
-    case 0xF5:
-        push_rp(m, 3);
-        break;
-    case 0xF6:
-        cogmaster__z80_alu(z, 6, imm8(m));
-        break;
-    case 0xF7:
-        rst(m, 0x30);
-        break;
-    case 0xF8:
-        ret_cc(m, 7);
-        break;
-    case 0xF9:
-        cogmaster__z80_idle(m, ir(z), 2);
-        z->sp = hl(z);
-        break; /* LD SP,HL */
-    case 0xFA:
-        jp(m, cc(z, 7));
-        break;
-    case 0xFB:
-        ei_di(z, 1);
-        break;
-    case 0xFC:
-        call(m, cc(z, 7));
-        break;
-    case 0xFE:
-        cogmaster__z80_alu(z, 7, imm8(m));
-        break;
-    case 0xFF:
-        rst(m, 0x38);
-        break;
-    default:
-        break; /* DD and FD never reach here */
     }
 }
 
@@ -900,8 +498,8 @@ static void nmi(cogmaster *m, uint8_t p_prev)
     accept(z, p_prev);
     (void)cogmaster__z80_m1(m);
     z->pc = (uint16_t)(z->pc - 1u);
-    cogmaster__z80_idle(m, ir(z), 1);
-    push(m, z->pc);
+    cogmaster__z80_idle(m, cogmaster__z80_ir(z), 1);
+    cogmaster__z80_push(m, z->pc);
     z->pc = 0x0066;
     z->wz = z->pc;
 }
@@ -920,8 +518,8 @@ static void irq(cogmaster *m, uint8_t p_prev)
     z->iff2 = 0;
     m->ticks += 3u * 6u;
     z->r = (uint8_t)((z->r & 0x80u) | ((z->r + 1u) & 0x7Fu));
-    cogmaster__z80_idle(m, ir(z), 1);
-    push(m, z->pc);
+    cogmaster__z80_idle(m, cogmaster__z80_ir(z), 1);
+    cogmaster__z80_push(m, z->pc);
     if (z->im == 2) {
         uint16_t v = (uint16_t)((unsigned)z->i << 8 | 0xFFu);
         uint8_t lo = cogmaster__z80_mread(m, v);

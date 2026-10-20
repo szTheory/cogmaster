@@ -178,4 +178,79 @@ static inline void cogmaster__z80_set_pair(struct cogmaster__z80 *z, unsigned hi
     z->reg[hi + 1u] = (uint8_t)v;
 }
 
+/* Under a DD or FD prefix, H, L and HL name IXH, IXL and IX, or IYH, IYL
+   and IY (Sean Young section 6). hx is the high byte's index. */
+static inline unsigned cogmaster__z80_hx(const struct cogmaster__z80 *z)
+{
+    if (z->idx == COGMASTER__Z80_IDX_NONE) {
+        return COGMASTER__Z80_H;
+    }
+    return z->idx == COGMASTER__Z80_IDX_IX ? COGMASTER__Z80_IXH : COGMASTER__Z80_IYH;
+}
+
+static inline uint16_t cogmaster__z80_hl(const struct cogmaster__z80 *z)
+{
+    return cogmaster__z80_pair(z, cogmaster__z80_hx(z));
+}
+
+/* The address on the bus during internal T-states after an opcode fetch:
+   the refresh address (UM0080, "Instruction Fetch"). */
+static inline uint16_t cogmaster__z80_ir(const struct cogmaster__z80 *z)
+{
+    return (uint16_t)(z->i << 8 | z->r);
+}
+
+/* The byte at PC, which then moves past it. */
+static inline uint8_t cogmaster__z80_imm8(cogmaster *m)
+{
+    struct cogmaster__z80 *z = &m->z80;
+    uint8_t v = cogmaster__z80_mread(m, z->pc);
+    z->pc = (uint16_t)(z->pc + 1u);
+    return v;
+}
+
+/* A little-endian word at PC. */
+static inline uint16_t cogmaster__z80_imm16(cogmaster *m)
+{
+    uint8_t lo = cogmaster__z80_imm8(m);
+    return (uint16_t)(cogmaster__z80_imm8(m) << 8 | lo);
+}
+
+/* Register pair p of the opcode's p field: BC, DE, HL (or IX, IY), SP. */
+static inline unsigned cogmaster__z80_rp_hi(const struct cogmaster__z80 *z, unsigned p)
+{
+    return p == 2 ? cogmaster__z80_hx(z) : 2u * p;
+}
+
+static inline uint16_t cogmaster__z80_rp(const struct cogmaster__z80 *z, unsigned p)
+{
+    return p == 3 ? z->sp : cogmaster__z80_pair(z, cogmaster__z80_rp_hi(z, p));
+}
+
+static inline void cogmaster__z80_set_rp(struct cogmaster__z80 *z, unsigned p, uint16_t v)
+{
+    if (p == 3) {
+        z->sp = v;
+    } else {
+        cogmaster__z80_set_pair(z, cogmaster__z80_rp_hi(z, p), v);
+    }
+}
+
+/* Condition y: NZ, Z, NC, C, PO, PE, P, M. */
+static inline int cogmaster__z80_cc(const struct cogmaster__z80 *z, unsigned y)
+{
+    static const uint8_t bit[4] = {COGMASTER__Z80_ZF, COGMASTER__Z80_CF, COGMASTER__Z80_PF,
+                                   COGMASTER__Z80_SF};
+    return ((z->reg[COGMASTER__Z80_F] & bit[y >> 1]) != 0) == ((y & 1u) != 0);
+}
+
+static inline void cogmaster__z80_push(cogmaster *m, uint16_t v)
+{
+    struct cogmaster__z80 *z = &m->z80;
+    z->sp = (uint16_t)(z->sp - 1u);
+    cogmaster__z80_mwrite(m, z->sp, (uint8_t)(v >> 8));
+    z->sp = (uint16_t)(z->sp - 1u);
+    cogmaster__z80_mwrite(m, z->sp, (uint8_t)v);
+}
+
 #endif /* COGMASTER_Z80_CYCLE_H */

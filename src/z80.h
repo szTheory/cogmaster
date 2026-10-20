@@ -50,6 +50,9 @@ struct cogmaster__z80 {
    one interrupt acceptance. */
 void cogmaster__z80_step(cogmaster *m);
 
+/* Main-page opcodes 0xC0-0xFF, after the step fetched op. */
+void cogmaster__z80_x3(cogmaster *m, uint8_t op);
+
 /* The CB page, after the step fetched 0xCB; with a pending prefix it runs
    DD CB or FD CB. */
 void cogmaster__z80_cb(cogmaster *m);
