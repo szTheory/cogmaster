@@ -68,6 +68,14 @@ int main(void)
     r.lagged = 0xABCDu;
     CHECK_EQ_U64(cogmaster_run_frame(m, &r), COGMASTER_STATUS_OK);
     CHECK_EQ_HEX(r.lagged, 0xABCDu);
+    /* Append the first-revision SMS profile without changing GG=2. */
+    CHECK_EQ_U64(COGMASTER_MACHINE_GG, 2u);
+    media.machine = 3u;
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    cogmaster_info info = {0};
+    info.size = sizeof info;
+    CHECK_EQ_U64(cogmaster_get_info(m, &info), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(info.machine, 3u);
     cogmaster_destroy(m);
 #endif
     CHECK_DONE();
