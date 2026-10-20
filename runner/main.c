@@ -177,6 +177,31 @@ static int write_png(const cogmaster *m, const char *path, uint16_t *pixels)
     return status;
 }
 
+/* The exit status for cogmaster_load's status, after a message: a refusal
+   for what the core does not support, a failure for anything else. */
+static int load_status(cogmaster_status st, size_t image_size)
+{
+    switch (st) {
+    case COGMASTER_STATUS_OK:
+        return COGMASTER__EXIT_OK;
+    case COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE:
+        fprintf(stderr, "cogmaster-run: unsupported: an image of %lu bytes; 1024 to 1049088 load\n",
+                (unsigned long)image_size);
+        return COGMASTER__EXIT_REFUSED;
+    case COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD:
+        fprintf(stderr, "cogmaster-run: unsupported: the cartridge's board\n");
+        return COGMASTER__EXIT_REFUSED;
+    case COGMASTER_STATUS_ERR_PROFILE_REJECTED:
+        fprintf(stderr, "cogmaster-run: unsupported: no such console was made for this machine "
+                        "and region\n");
+        return COGMASTER__EXIT_REFUSED;
+    default:
+        fprintf(stderr, "cogmaster-run: cogmaster_load failed with status %lu\n",
+                (unsigned long)st);
+        return COGMASTER__EXIT_FAILURE;
+    }
+}
+
 /* Runs the frames. The pixel buffer and the bench samples are on the heap:
    a field is too large for a small stack such as wasm32's, and the samples
    take 4 bytes per frame. Returns the exit status. */
@@ -217,12 +242,7 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     }
     media.region = opt->region;
     media.tv = opt->tv;
-    st = cogmaster_load(m, &media);
-    if (st != COGMASTER_STATUS_OK) {
-        fprintf(stderr, "cogmaster-run: cogmaster_load failed with status %lu\n",
-                (unsigned long)st);
-        status = COGMASTER__EXIT_FAILURE;
-    }
+    status = load_status(cogmaster_load(m, &media), image_size);
     /* A 64-bit count, so the loop ends when --frames is 4294967295. Only
        cogmaster_run_frame is timed, not hashing or writing files. */
     uint32_t ran = 0;
@@ -275,6 +295,12 @@ static int start(const cogmaster__run_options *opt)
 {
     if (opt->file == NULL) {
         return run(opt, NULL, 0u);
+    }
+    /* SG-1000 and SC-3000 images are named .sg and .sc; their support is
+       planned, so they are refused before they are read. */
+    if (cogmaster__has_extension(opt->file, ".sg") || cogmaster__has_extension(opt->file, ".sc")) {
+        fprintf(stderr, "cogmaster-run: unsupported: SG-1000 (planned)\n");
+        return COGMASTER__EXIT_REFUSED;
     }
     uint8_t *image = NULL;
     size_t n = 0;

@@ -2,15 +2,18 @@
 
 `cogmaster-run` is the headless runner. It runs the emulator for a fixed number of frames with no window, sound
 device or input device. It can print a frame hash, write PNG images and report frame times. Scripts and CI use it
-to check that a build produces the expected picture.
+to check that a build produces the expected picture. It can also describe a cartridge file without running it
+(see [Probe](#probe)).
 
-This release does not load cartridges. Every run shows the built-in test card (see [Test card](#test-card)).
+With no file, every run shows the built-in test card (see [Test card](#test-card)). This release has no input,
+sound or video chip drawing yet, so a cartridge runs but its picture stays black.
 
 ## Synopsis
 
 ```text
-cogmaster-run [--machine auto|sms|gg] --frames N [--hash] [--png N:FILE]...
-cogmaster-run [--machine auto|sms|gg] --bench N [--hash] [--png N:FILE]...
+cogmaster-run [--machine NAME] [--region NAME] --frames N [OPTION]... [FILE]
+cogmaster-run [--machine NAME] [--region NAME] --bench N [OPTION]... [FILE]
+cogmaster-run --probe FILE
 cogmaster-run --help | --version
 ```
 
@@ -18,16 +21,33 @@ cogmaster-run --help | --version
 
 | Option | Meaning |
 |---|---|
-| `--machine NAME` | `sms` for the Master System, `gg` for the Game Gear. `auto`, the default, is the Master System when no cartridge is loaded. |
+| `FILE`, `--rom FILE` | The cartridge image to run: a Master System or Game Gear ROM from 1,024 bytes to 1 MiB, optionally after a 512-byte copier header. Give one file. Without one, the test card shows. |
+| `--machine NAME` | `sms` for the Master System, `gg` for the Game Gear. `auto`, the default, reads the cartridge's header: region codes 5 to 7 are the Game Gear and 3 or 4 the Master System. With no header, a file name ending in `.gg` is the Game Gear and anything else the Master System. With no file, `auto` is the Master System. |
+| `--region NAME` | The console's region and TV standard together: `ntsc-u` is an export console on NTSC, `ntsc-j` a Japanese console on NTSC and `pal` an export console on PAL. `auto`, the default, is `ntsc-u`. |
 | `--frames N` | Run N frames, N from 1 to 4294967295. Give either `--frames` or `--bench`, once. |
 | `--bench N` | Run N frames, time each one and print the report described under [Bench report](#bench-report). N is from 1 to 1073741823. The runner keeps 4 bytes per frame, so a very large N can exit 1 because memory ran out. |
 | `--hash` | After the last frame, print the SHA-256 of its picture. |
 | `--png N:FILE` | After frame N, write its picture to FILE as a PNG. N is from 1 to the frame count. Repeat the option to write more frames or files. |
+| `--probe` | Print the file's header fields and digests, described under [Probe](#probe), and run nothing. Give it only with a file. |
 | `--help` | Print the usage text and the exit statuses. Give it alone. |
 | `--version` | Print `cogmaster-run` and the version, for example `cogmaster-run 1.2.3`. Give it alone. |
 
 You can give options in any order. Anything else on the command line is a usage error and nothing runs. That
-includes a file name and any option this release does not have.
+includes a second file and any option this release does not have.
+
+## Refusals
+
+The runner exits 77 and runs nothing when it cannot run what was asked:
+
+- a file larger than 64 MiB, refused before any of it is read;
+- an image smaller than 1,024 bytes or larger than 1 MiB plus a 512-byte copier header;
+- a cartridge whose board (its bank-switching hardware) is not supported: the core runs cartridges with no mapper,
+  the Sega mapper and the Codemasters mapper;
+- an 8 KiB image on the Game Gear, which is the X-Terminator cheat device rather than a game;
+- a machine and region no console had: PAL with the Game Gear or with `ntsc-j`'s Japanese console;
+- a file whose name ends in `.sg` or `.sc`, refused unread with `unsupported: SG-1000 (planned)`.
+
+A file that cannot be read exits 1.
 
 ## Frame hash
 
@@ -50,6 +70,36 @@ uncompressed and the file carries no aspect-ratio metadata. The runner builds th
 N and writes it in one call. If the file cannot be written in full, it is removed and the runner exits 1.
 
 This PNG is the reference for screenshot comparisons: it is the card exactly as the core produces it.
+
+## Probe
+
+`--probe FILE` prints one `key=value` line per key, always every key and always in this order. Later releases only
+add keys at the end. Integers are decimal and digests lowercase hexadecimal.
+
+| Key | Value |
+|---|---|
+| `size` | the file's size in bytes |
+| `copier_header` | 1 when the size is 512 past a multiple of 16 KiB, so a copier wrote a 512-byte header in front, else 0 |
+| `header_at` | where the ROM header sits in the image after any copier header: `$7FF0`, `$3FF0`, `$1FF0`, or `none` |
+| `header_magic` | 1 when a ROM header was found, else 0 |
+| `checksum` | the checksum word the header stores |
+| `checksum_ok` | 1 when it equals the sum the export console's BIOS computes over the range the size code names, else 0 |
+| `product_code` | the header's product code |
+| `version` | the header's version number |
+| `region_code` | 3 Master System Japan, 4 Master System export, 5 Game Gear Japan, 6 Game Gear export, 7 Game Gear international |
+| `rom_size_code` | the header's size code, 0 to 15 |
+| `machine_guess` | `sms` or `gg`: the machine `--machine auto` runs the file on |
+| `region_guess` | `ntsc-j` for a Japanese region code, else `ntsc-u` |
+| `mapper_guess` | `none` (no mapper, 48 KiB or less), `sega`, `codemasters`, or `unsupported` for an image the core will not load |
+| `sha1`, `sha256`, `crc32`, `md5` | digests of the whole file |
+| `sha1_headerless`, `sha256_headerless`, `crc32_headerless`, `md5_headerless` | the same digests of the file after its copier header, or `none` when it has none |
+
+Each header field from `checksum` to `rom_size_code` is `none` when the image has no ROM header. `md5` is the
+RetroAchievements hash for both machines: the MD5 of the whole file, copier header included. `crc32` is the value
+RetroArch's playlist scanner matches.
+
+`--probe` runs no emulation. It exits 0, or 77 after printing every key for an image the core will not load
+because of its size or its board.
 
 ## Bench report
 
