@@ -90,10 +90,34 @@ uint32_t cogmaster__bus_run_frame(cogmaster *m)
     return (uint32_t)(m->ticks - deadline);
 }
 
+/* $3E b6 and b4, active low, take the cartridge and work RAM off the bus
+   (SMS-SYSTEM section 4). */
+#define BUS_CART_OFF 0x40u
+#define BUS_RAM_OFF 0x10u
+
+/* A read nobody drives: the slot area with the cartridge off (the SMS2 and
+   the Game Gear have no card, expansion or BIOS to answer instead) or work
+   RAM off. */
+static uint8_t mem_off(cogmaster *m, uint16_t addr)
+{
+    uint8_t off = addr >= 0xC000u ? BUS_RAM_OFF : BUS_CART_OFF;
+    if ((m->io.mem_ctrl & off) == 0u) {
+        return addr >= 0xC000u ? m->ram[addr & (COGMASTER__RAM_SIZE - 1u)]
+                               : cogmaster__mapper_read(m, addr);
+    }
+    cogmaster__bus_fault(m, addr,
+                         addr >= 0xC000u ? COGMASTER__DEVICE_RAM : COGMASTER__DEVICE_CART,
+                         COGMASTER__FAULT_UNMAPPED_READ);
+    return cogmaster__io_open_bus(m);
+}
+
 /* Cartridge slots at $0000-$BFFF through the board's mapper, 8 KiB of work
    RAM at $C000 mirrored up to $FFFF (SMS-SYSTEM section 3). */
-static uint8_t mem_read(const cogmaster *m, uint16_t addr)
+static uint8_t mem_read(cogmaster *m, uint16_t addr)
 {
+    if ((m->io.mem_ctrl & (BUS_CART_OFF | BUS_RAM_OFF)) != 0u) {
+        return mem_off(m, addr);
+    }
     if (addr >= 0xC000u) {
         return m->ram[addr & (COGMASTER__RAM_SIZE - 1u)];
     }
@@ -114,12 +138,15 @@ uint8_t cogmaster__bus_read(cogmaster *m, uint16_t addr)
 }
 
 /* A write to the Sega registers at $FFFC-$FFFF also lands in work RAM, the
-   only place the CPU can read them back (SMS-CARTRIDGES section 2.1). */
+   only place the CPU can read them back (SMS-CARTRIDGES section 2.1). With
+   work RAM off only the registers see it. */
 void cogmaster__bus_write(cogmaster *m, uint16_t addr, uint8_t v)
 {
     cogmaster__bus_sync(m);
     if (addr >= 0xC000u) {
-        m->ram[addr & (COGMASTER__RAM_SIZE - 1u)] = v;
+        if ((m->io.mem_ctrl & BUS_RAM_OFF) == 0u) {
+            m->ram[addr & (COGMASTER__RAM_SIZE - 1u)] = v;
+        }
         if (addr < 0xFFFCu) {
             return;
         }

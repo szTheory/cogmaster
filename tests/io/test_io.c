@@ -184,7 +184,7 @@ static void test_gg_ports(void)
     cogmaster__bus_out(m, 0x0004u, 0x34u);
     cogmaster__bus_out(m, 0x0006u, 0x56u);
     CHECK_EQ_HEX(cogmaster__bus_in(m, 0x0002u), 0x12);
-    CHECK_EQ_HEX(cogmaster__bus_in(m, 0x0004u), 0x00);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0x0004u), 0xFF);
     CHECK_EQ_HEX(cogmaster__bus_in(m, 0x0006u), 0x56);
     CHECK_EQ_HEX(m->io.mem_ctrl, 0xA8);
     cogmaster__bus_out(m, 0x003Eu, 0xFFu);

@@ -250,7 +250,8 @@ static void sweep(cogmaster *src, cogmaster *target)
         "z80_halted", "z80_int_line", "z80_nmi_pending", "bus_deadline", "bus_at",
         "bus_line",   "bus_t",        "bus_vdp_at",      "vdp_reg",      "vdp_status",
         "vdp_latch",  "vdp_code",     "vdp_addr",        "vdp_buffer",   "vdp_pause",
-        "vdp_cram",   "vdp_vram",     "machine",         "region",       "tv"};
+        "vdp_cram",   "vdp_vram",     "machine",         "region",       "tv",
+        "io_mem_ctrl", "io_ctrl",     "io_gg",           "bus_op_pc",    "bus_op"};
     for (size_t i = 0; i < sizeof named / sizeof named[0]; i++) {
         (void)field(n, named[i]);
     }
@@ -389,6 +390,35 @@ static void test_state_mapper(void)
     mapper_round_trip(128u * 1024u, COGMASTER__BOARD_CODEMASTERS, 8192u, cm, 4u);
 }
 
+/* The ports a guest wrote survive a save and load: $3E and $3F on the
+   Master System, $3F and the link and stereo registers on the Game Gear. */
+static void io_round_trip(void)
+{
+    const uint32_t machines[] = {COGMASTER_MACHINE_SMS2, COGMASTER_MACHINE_GG};
+    for (size_t k = 0; k < 2u; k++) {
+        cogmaster *a = make(machines[k]);
+        cogmaster__bus_out(a, 0x003Fu, 0x55u);
+        if (k == 0u) {
+            cogmaster__bus_out(a, 0x003Eu, 0xAFu);
+        } else {
+            cogmaster__bus_out(a, 0x0002u, 0x12u);
+            cogmaster__bus_out(a, 0x0006u, 0x34u);
+            CHECK_EQ_HEX(a->io.gg[5], 0x34);
+        }
+        run_frames(a, 1u);
+        size_t size = save(a, good);
+        cogmaster *b = make(machines[k]);
+        if (size != 0u) {
+            CHECK_EQ_U64(cogmaster__state_load(b, good, size), COGMASTER_STATUS_OK);
+            CHECK(memcmp(&a->io, &b->io, sizeof a->io) == 0);
+            CHECK_EQ_HEX(b->io.io_ctrl, 0x55);
+            CHECK_EQ_HEX(b->io.mem_ctrl, k == 0u ? 0xAF : 0xA8);
+        }
+        cogmaster_destroy(a);
+        cogmaster_destroy(b);
+    }
+}
+
 /* save, load into a fresh instance of the same profile, save again: the two
    states are equal byte for byte, on NTSC and PAL and in both regions. */
 static void test_round_trip(void)
@@ -397,6 +427,7 @@ static void test_round_trip(void)
     round_trip_image(COGMASTER_REGION_EXPORT, COGMASTER_TV_PAL);
     round_trip_image(COGMASTER_REGION_JAPAN, COGMASTER_TV_NTSC);
     reject_other_profile();
+    io_round_trip();
     const uint32_t machines[] = {COGMASTER_MACHINE_SMS2, COGMASTER_MACHINE_GG};
     const uint32_t frames[] = {0u, 1u, 60u};
     for (size_t k = 0; k < 2u; k++) {

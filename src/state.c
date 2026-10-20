@@ -8,7 +8,8 @@
      body    the counters, the first-fault record, the Z80, the beam and the
              frame deadline, the VDP with its 16 KiB of VRAM, the 8 KiB of
              work RAM, then the board, the mapper registers and the
-             cartridge RAM (none, 8 KiB or 32 KiB, fixed by the image)
+             cartridge RAM (none, 8 KiB or 32 KiB, fixed by the image),
+             then the I/O ports
    One field list drives every pass (state.h), so they cannot drift apart. A
    struct is never copied as a whole: padding, pointers and the allocator
    never reach the bytes. The field buffer is not saved: every frame of the
@@ -48,6 +49,7 @@ _Static_assert(sizeof(struct cogmaster__z80) == 38u, "z80 changed: update z80_io
 _Static_assert(sizeof(struct cogmaster__bus) == 40u, "bus changed: update bus_io");
 _Static_assert(sizeof(struct cogmaster__vdp) == 16436u, "vdp changed: update vdp_io");
 _Static_assert(sizeof(struct cogmaster__mapper) == 4u, "mapper changed: update mapper_io");
+_Static_assert(sizeof(struct cogmaster__io) == 8u, "io changed: update io_io");
 
 /* A beam is at most one line short of the frame's lines down and 683 ticks
    into a line, and one Z80 step is at most 69 ticks, so the beam is at most
@@ -244,6 +246,20 @@ static void mapper_io(struct cogmaster__sio *io, cogmaster *m)
     cogmaster__sio_check(io, board != COGMASTER__BOARD_CODEMASTERS || (ctrl & 0x7Fu) == 0u);
 }
 
+/* The Game Gear decodes no $3E, so its enables stay as the hand-off left
+   them; its $05 keeps no status flag. */
+static void io_io(struct cogmaster__sio *io, cogmaster *m)
+{
+    struct cogmaster__io *p = &m->io;
+    int gg = m->machine == COGMASTER_MACHINE_GG;
+    cogmaster__sio_u8(io, "io_mem_ctrl", &p->mem_ctrl, gg ? 0xA8u : 0u, gg ? 0xA8u : UINT8_MAX);
+    cogmaster__sio_u8(io, "io_ctrl", &p->io_ctrl, 0u, UINT8_MAX);
+    for (uint32_t i = 0; i < 6u; i++) {
+        uint8_t v = cogmaster__sio_u8(io, "io_gg", &p->gg[i], 0u, UINT8_MAX);
+        cogmaster__sio_check(io, i != 4u || (v & 0x07u) == 0u);
+    }
+}
+
 /* The whole state, in the order the format fixes. */
 static void state_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
 {
@@ -255,6 +271,7 @@ static void state_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
     vdp_io(io, &m->vdp, int_line);
     ram_io(io, m);
     mapper_io(io, m);
+    io_io(io, m);
 }
 
 /* SIZE, WRITE and RECORD only read through the field pointers, and an

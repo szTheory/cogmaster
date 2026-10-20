@@ -1227,6 +1227,8 @@ static void test_boot_handoff(void)
     CHECK_EQ_U64(m->z80.halted, 0);
     CHECK_EQ_HEX(cogmaster__bus_read(m, 0xC000u), 0xAB);
     CHECK_EQ_HEX(cogmaster__bus_read(m, 0xE000u), 0xAB);
+    CHECK_EQ_HEX(m->io.mem_ctrl, 0xAB);
+    CHECK_EQ_HEX(m->io.io_ctrl, 0xFF);
     uint32_t written = 0;
     for (size_t i = 1; i < sizeof m->ram; i++) {
         if (m->ram[i] != 0u) {
@@ -1238,6 +1240,8 @@ static void test_boot_handoff(void)
     CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
     CHECK_EQ_HEX(m->z80.sp, 0xDFF0);
     CHECK_EQ_HEX(m->ram[0], 0x00);
+    CHECK_EQ_HEX(m->io.mem_ctrl, 0xA8);
+    CHECK_EQ_HEX(m->io.io_ctrl, 0xFF);
     cogmaster_destroy(m);
 }
 

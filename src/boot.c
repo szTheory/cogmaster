@@ -25,4 +25,7 @@ void cogmaster__boot_handoff(cogmaster *m, int power)
        the values it wrote to the RAM mirror are not documented, so the
        mirror is left alone (SMS-SYSTEM C7). */
     cogmaster__mapper_reset(m);
+    /* $3E as the BIOS leaves it ($AB, or $A8 on the Game Gear), $3F $FF and
+       the Game Gear's own ports at their power-on values (C7). */
+    cogmaster__io_reset(m);
 }

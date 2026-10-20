@@ -321,7 +321,8 @@ static void test_status(void)
 /* Each port's response everywhere in $00-$FF: the export Master System
    mirrors $7E/$7F over $40-$7F and $BE/$BF over $80-$BF by A0; the
    Japanese console and the Game Gear answer only at $7E, $7F, $BE and $BF.
-   Any other port reads $FF and a write to it changes nothing in the VDP. */
+   Any other port in $40-$BF reads $FF, and a write to any other port
+   changes nothing in the VDP. */
 static void port_decode(uint32_t machine, uint32_t region, int mirrors)
 {
     static const uint8_t prog[] = {0xF3u, 0x76u};
@@ -338,7 +339,10 @@ static void port_decode(uint32_t machine, uint32_t region, int mirrors)
         (void)in(m, 0xBFu);
         if (!vdp) {
             memcpy(&before, v, sizeof before);
-            CHECK_EQ_HEX(in(m, (uint16_t)p), 0xFF);
+            uint8_t r = in(m, (uint16_t)p);
+            if ((p & 0xC0u) == 0x40u || (p & 0xC0u) == 0x80u) {
+                CHECK_EQ_HEX(r, 0xFF);
+            }
             out(m, (uint16_t)p, 0x81u);
             out(m, (uint16_t)p, 0x81u);
             if (memcmp(&before, v, sizeof before) != 0) {
