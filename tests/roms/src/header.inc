@@ -3,6 +3,10 @@
 ; range a ROM size code of $C names (SMS-CARTRIDGES section 1.2). The size is
 ; set, never left to the assembler, so the image size is deliberate.
 
+; A Game Gear fixture defines FIXTURE_GG for region code 6, Game Gear
+; export (SMS-CARTRIDGES section 1.2); every other fixture gets code 4,
+; Master System export.
+
 ; A fixture with another map defines FIXTURE_MAP and its own map first.
 .IFNDEF FIXTURE_MAP
 .MEMORYMAP
@@ -20,7 +24,11 @@ BANKS 1
 .SMSHEADER
 PRODUCTCODE 0, 0, 0
 VERSION 0
+.IFDEF FIXTURE_GG
+REGIONCODE 6
+.ELSE
 REGIONCODE 4
+.ENDIF
 RESERVEDSPACE 0, 0
 ROMSIZE $C
 .ENDSMS

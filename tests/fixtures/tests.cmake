@@ -56,7 +56,7 @@ endif()
 set(COGMASTER_FIXTURES_DIR ${PROJECT_BINARY_DIR}/fixtures)
 set(fixtures_src ${PROJECT_SOURCE_DIR}/tests/roms/src)
 set(fixtures_images "")
-foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports)
+foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg)
   set(image ${COGMASTER_FIXTURES_DIR}/${name}.sms)
   # The source directory is the assembler's working directory, so .INCLUDE
   # finds header.inc; the linker's is the build directory, so the link file
@@ -108,15 +108,23 @@ cogmaster_add_test(NAME fixtures.mapper_codemasters
     -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS fixtures portable TIMEOUT 30)
 # The ports fixture once per profile: the I/O chip and the VDP answer by
-# machine, region and TV standard.
-foreach(profile IN ITEMS sms-export)
-  set(args "")
+# machine, region and TV standard. The Game Gear runs ports_gg, the same
+# source under a Game Gear header, judged against the ports rows.
+foreach(profile IN ITEMS sms-export sms-japan sms-pal gg)
+  set(name ports)
   if(profile STREQUAL "sms-export")
     set(args -DMACHINE=sms -DREGION=ntsc-u)
+  elseif(profile STREQUAL "sms-japan")
+    set(args -DMACHINE=sms -DREGION=ntsc-j)
+  elseif(profile STREQUAL "sms-pal")
+    set(args -DMACHINE=sms -DREGION=pal)
+  else()
+    set(name ports_gg)
+    set(args -DMACHINE=gg -DROM=ports)
   endif()
   cogmaster_add_test(NAME fixtures.ports.${profile}
-    COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=ports ${args} -DPROFILE=${profile}
-      -DIMAGE=${COGMASTER_FIXTURES_DIR}/ports.sms -DFRAMES=120
+    COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=${name} ${args} -DPROFILE=${profile}
+      -DIMAGE=${COGMASTER_FIXTURES_DIR}/${name}.sms -DFRAMES=120
       -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/ports.${profile}.txt
       -P ${CMAKE_CURRENT_LIST_FILE}
     LABELS fixtures portable TIMEOUT 30)

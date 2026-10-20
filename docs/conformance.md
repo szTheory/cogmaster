@@ -236,3 +236,26 @@ clear, the pattern again). The header's checksum word is not the true sum; the p
 `fixtures.judge.wrong_value`, `fixtures.judge.missing_row` and `fixtures.judge.hang` are the judge's negative
 controls: a CSV copy with one value changed, a copy missing one row, and a run cut after one frame, each of which
 must fail with its message.
+
+### The ports fixture
+
+`tests/roms/src/ports.asm` reads the I/O chip's and the VDP's ports, and runs once per machine profile:
+`fixtures.ports.sms-export` (`--machine sms --region ntsc-u`), `fixtures.ports.sms-japan` (`--region ntsc-j`),
+`fixtures.ports.sms-pal` (`--region pal`) and `fixtures.ports.gg` (`--machine gg`). The Game Gear runs
+`ports_gg.asm`, the same source under a Game Gear export header, and its records are judged against the `ports`
+rows with profile `gg`. The records:
+
+- the region echo: `$3F = $F5` then `$55`, reading `$DD` bits 7-6 each time; an export console reads back its
+  output TH levels, a Japanese one reads 0;
+- `$DD` bits 4-5, and `$DC` and `$DD` with every button up;
+- the open-bus forms: a read of `$3E`, a read of `$C0`, `$DC` and `$DD` with the I/O chip off through `$3E` bit 2,
+  and work RAM off through `$3E` bit 4 (the Game Gear has no `$3E`, so its RAM stays on);
+- the TV standard: the count of a 31-cycle loop polling `$BF` bit 7 for one frame, judged by a range (59,736 cycles
+  a frame on NTSC, 71,364 on PAL), and whether that count reaches 2,048, the PAL verdict games use;
+- the lines in a frame: the V counter's changes from one line-0 reading to the next, 262 on NTSC and 313 on PAL;
+- two bytes written to VRAM and read back through `$BE`, the status byte's low bits after the flags clear, and the
+  H counter's step between two `$7F` reads 15 cycles apart;
+- on the Game Gear, port `$00` (Start up, the region bit, the NTSC bit) and ports `$01`-`$06` at their power-on
+  values.
+
+The H counter latch, the Pause NMI counter and the Pause movies need input and are not in this fixture yet.

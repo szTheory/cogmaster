@@ -17,3 +17,33 @@ mapper_codemasters,05:bank_wrap,*,0703,doc,SMS-CARTRIDGES section 2.4
 mapper_codemasters,06:ram_a000_8k,*,3CA5,doc,SMS-CARTRIDGES section 2.2
 mapper_codemasters,07:ram_rom_ram,*,A55A,doc,SMS-CARTRIDGES section 2.2
 ports,01:region_echo,sms-export,00C0,doc,SMS-SYSTEM section 5
+ports,01:region_echo,sms-japan,0000,doc,SMS-SYSTEM section 5
+ports,01:region_echo,sms-pal,00C0,doc,SMS-SYSTEM section 5
+ports,01:region_echo,gg,C0C0,doc,SMS-SYSTEM section 4
+ports,02:dd_reset_b4_b5,*,0030,doc,SMS-SYSTEM section 4
+ports,03:dc_dd_idle,*,FFFF,doc,SMS-SYSTEM section 4
+ports,04:open_bus_3e_c0,*,FFFF,doc,SMS-SYSTEM section 4
+ports,05:io_chip_off,*,FFFF,doc,SMS-SYSTEM section 4
+ports,06:ram_off_open_bus,sms-export,5AFF,doc,SMS-SYSTEM section 4
+ports,06:ram_off_open_bus,sms-japan,5AFF,doc,SMS-SYSTEM section 4
+ports,06:ram_off_open_bus,sms-pal,5AFF,doc,SMS-SYSTEM section 4
+ports,06:ram_off_open_bus,gg,5A5A,doc,SMS-SYSTEM section 5
+ports,07:tv_loop,sms-export,0783-0788,doc,SMS-SYSTEM sections 1 and 5
+ports,07:tv_loop,sms-japan,0783-0788,doc,SMS-SYSTEM sections 1 and 5
+ports,07:tv_loop,sms-pal,08EF-08FF,doc,SMS-SYSTEM sections 1 and 5
+ports,07:tv_loop,gg,0783-0788,doc,SMS-SYSTEM sections 1 and 5
+ports,08:tv_verdict,sms-export,0000,doc,SMS-SYSTEM section 5
+ports,08:tv_verdict,sms-japan,0000,doc,SMS-SYSTEM section 5
+ports,08:tv_verdict,sms-pal,0001,doc,SMS-SYSTEM section 5
+ports,08:tv_verdict,gg,0000,doc,SMS-SYSTEM section 5
+ports,09:vc_lines,sms-export,0106,doc,SMS-SYSTEM section 5
+ports,09:vc_lines,sms-japan,0106,doc,SMS-SYSTEM section 5
+ports,09:vc_lines,sms-pal,0139,doc,SMS-SYSTEM section 5
+ports,09:vc_lines,gg,0106,doc,SMS-SYSTEM section 5
+ports,0A:vram_readback,*,5AA5,doc,SMS-VDP section 2.2
+ports,0B:status_low_bits,*,001F,doc,SMS-VDP section 2.6
+ports,0C:hcount_step,*,000B-000C,derived,SMS-VDP section 4.3 and SMS-SYSTEM section 1
+ports,0D:gg_port00,gg,00C0,doc,SMS-SYSTEM sections 4 and 8
+ports,0E:gg_ports_01_02,gg,FF7F,doc,SMS-SYSTEM section 8
+ports,0F:gg_ports_03_04,gg,FF00,doc,SMS-SYSTEM section 8
+ports,10:gg_ports_05_06,gg,FF00,doc,SMS-SYSTEM section 8

@@ -74,7 +74,7 @@ Pure WLA-DX assembly, MIT, committed as source under `tests/roms/src/`, assemble
 | `vdp_lines` | sms (gg variant for the window rows) | `frame@120`, `mailbox@120` (HC/VC records, wrap points) | `none` | P3 |
 | `mapper_sega` | sms | `mailbox@60` (sum, RAM pattern, mirror), `frame@60` | `none` | P2 (RAM predicate first), P3 (picture) |
 | `mapper_codemasters` | sms | `mailbox@60`, `frame@60`, `--probe mapper_guess=codemasters` | `none` | P2 |
-| `ports` | sms × {export-NTSC, Japan, PAL}, gg | `mailbox@200` per profile | `none`, `pause@100+200`, `pause-held@100` | P3 |
+| `ports` | sms × {export-NTSC, Japan, PAL}, gg | `mailbox@200` per profile | `none`, `pause@100+200`, `pause-held@100` | P2 (`none`; the Pause movies and the H latch wait for `--input`) |
 | `psg_sweep` | sms, gg | `audio@600` (transition), PCM digest per rate, `mailbox@600` | `none` | P4 |
 | `battery` | sms | run 1 `frame@120`, `.srm` bytes; run 2 `frame@120` differs | `none` | v1.0 phase 3 (GAME-05) |
 | `hello` | sms | SHA-256 of the image only (toolchain identity) | none | P1 |
