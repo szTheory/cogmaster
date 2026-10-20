@@ -57,7 +57,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
       if(NOT "${${case}_expected}" STREQUAL "")
         string(APPEND predicate "=${${case}_expected}")
       endif()
-      file(WRITE "${OUT}/${i}.expect" "${predicate}\n")
+      file(CONFIGURE OUTPUT "${OUT}/${i}.expect" CONTENT "${predicate}\n" NEWLINE_STYLE UNIX @ONLY)
       execute_process(COMMAND ${EMULATOR} "${RUN}" --machine "${${case}_machine}" --region "${${case}_region}"
         --video-mode "${video}" --port1 "${port1}" --port2 "${port2}" --frames "${${case}_cap}"
         --expect "${OUT}/${i}.expect" "${FIXTURES}/${name}.sms" RESULT_VARIABLE rc OUTPUT_VARIABLE text ERROR_VARIABLE err)

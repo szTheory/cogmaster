@@ -58,7 +58,7 @@ elseif(rc STREQUAL "0")
     if(NOT "${${case}_expected}" STREQUAL "")
       string(APPEND predicate "=${${case}_expected}")
     endif()
-    file(WRITE "${prefix}.${i}.expect" "${predicate}\n")
+    file(CONFIGURE OUTPUT "${prefix}.${i}.expect" CONTENT "${predicate}\n" NEWLINE_STYLE UNIX @ONLY)
     execute_process(COMMAND ${emulator} "${run}" --machine "${${case}_machine}" --region "${${case}_region}"
       --video-mode "${video}" --port1 "${port1}" --port2 "${port2}" --frames "${${case}_cap}"
       --expect "${prefix}.${i}.expect" "${image}" TIMEOUT 30

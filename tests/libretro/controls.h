@@ -146,14 +146,14 @@ static int controls_test(void)
         /* Native Start stays a level; SMS/GG SMS-mode Start is one NMI. */
         control_load(profile, 0xC203u, 0u);
         control_buttons[0] = 1u << RETRO_DEVICE_ID_JOYPAD_START;
-        control_frame(profile == 2u ? 0u : 1u);
-        control_frame(profile == 2u ? 0u : 1u);
+        control_frame((uint8_t)(profile == 2u ? 0u : 1u));
+        control_frame((uint8_t)(profile == 2u ? 0u : 1u));
         p_set_input_state(NULL);
-        control_frame(profile == 2u ? 0u : 1u);
+        control_frame((uint8_t)(profile == 2u ? 0u : 1u));
         p_set_input_state(control_input);
-        control_frame(profile == 2u ? 0u : 1u);
+        control_frame((uint8_t)(profile == 2u ? 0u : 1u));
         control_buttons[0] = 0u;
-        control_frame(profile == 2u ? 0u : 1u);
+        control_frame((uint8_t)(profile == 2u ? 0u : 1u));
         control_buttons[0] = 1u << RETRO_DEVICE_ID_JOYPAD_START;
         control_frame(profile == 2u ? 0u : 2u);
         p_set_controller_port_device(0u, RETRO_DEVICE_NONE);

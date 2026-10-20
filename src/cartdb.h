@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 struct cogmaster__cart_fact {
-    const char *sha1, *title;
+    char sha1[41], title[256];
     uint32_t bytes, board, machine, region, video, persistence, declared, geometry;
     uint32_t public_identity;
 };
