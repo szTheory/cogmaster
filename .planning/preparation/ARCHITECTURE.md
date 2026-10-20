@@ -179,7 +179,7 @@ Integer-only (`hygiene.no_float`, `nofp`, `abi.undefined`); no mutable globals (
 
 ## 7. State and saves
 - **Visitor.** One function per struct, run as SIZE, WRITE (save), VALIDATE then APPLY (load), plus RECORD, which tests use to emit every field's bounds for an automatic out-of-range rejection sweep; byte-wise LE; `_Static_assert` tripwires; VALIDATE walks everything, so APPLY cannot fail [ARCH.08]. The visitor exists from phase 1 (the test card's state round-trips); the public format freezes in v3.0.
-- **Header**, 64 B: 8-byte PNG-style magic; u16 format version; u16 header size; u32 total size; u32 behaviour revision; u32 API version; u32 packed profile (machine, vdp, region, tv, fm_unit, io_decode, open_bus, ram_fill kind); u32 ROM CRC-32 (headerless body); u32 state CRC-32 (body); u64 frame; u64 ticks; 12 reserved zero bytes. The size is constant from load to unload (libretro serialize); VRAM 16 KiB + RAM 8 KiB + cart RAM dominate [ARCH.05 §1].
+- **Header**, 64 B: 8-byte PNG-style magic; u16 format version; u16 header size; u32 total size; u32 behaviour revision; u32 API version; u32 profile (byte 0 machine, byte 1 region, byte 2 tv, each the resolved value 1 or 2; byte 3 zero until vdp, fm_unit, io_decode, open_bus and ram_fill kind need packing there); u32 ROM CRC-32 (headerless body); u32 state CRC-32 (body); u64 frame; u64 ticks; 12 reserved zero bytes. The size is constant from load to unload (libretro serialize); VRAM 16 KiB + RAM 8 KiB + cart RAM dominate [ARCH.05 §1].
 
 | Module | Contributes |
 |---|---|

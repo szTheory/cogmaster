@@ -2,7 +2,8 @@
 
    Layout. A 64-byte header, then the body:
      header  magic, format version, header size, total size, behaviour
-             revision, API version, packed profile, ROM CRC-32, body CRC-32,
+             revision, API version, profile (machine, region, TV and a zero
+             byte), ROM CRC-32, body CRC-32,
              frame, ticks, 12 reserved zero bytes
      body    the counters, the first-fault record, the Z80, the beam and the
              frame deadline, then the 8 KiB of work RAM
@@ -20,15 +21,16 @@
 
 /* Header offsets, in the order header_io visits them: magic 0, format
    version 8, header size 10, total size 12, behaviour revision 16, API
-   version 20, profile 24, ROM CRC-32 28, body CRC-32 32, frame 36, ticks 44,
-   reserved 52. */
+   version 20, machine 24, region 25, TV 26, profile reserved 27, ROM CRC-32
+   28, body CRC-32 32, frame 36, ticks 44, reserved 52. */
 #define H_BODY_CRC 32u
 #define H_RESERVED 52u
 #define H_RESERVED_SIZE 12u
 _Static_assert(H_RESERVED + H_RESERVED_SIZE == STATE_HEADER_SIZE, "the header is 64 bytes");
 
 /* A loaded state's ticks are capped at 2^62, far from 2^64 wrapping
-   (ARCHITECTURE section 2); the frame cap follows from it. */
+   (ARCHITECTURE section 2); the frame cap follows from it on the shorter
+   (NTSC) frame. */
 #define STATE_TICKS_MAX (UINT64_C(1) << 62)
 #define STATE_FRAME_MAX (STATE_TICKS_MAX / COGMASTER__TICKS_PER_FRAME_NTSC)
 
@@ -43,10 +45,9 @@ _Static_assert(sizeof(struct cogmaster__counters) == 40u, "counters changed: upd
 _Static_assert(sizeof(struct cogmaster__z80) == 38u, "z80 changed: update z80_io");
 _Static_assert(sizeof(struct cogmaster__bus) == 24u, "bus changed: update bus_io");
 
-/* A beam is at most 261 lines down and 683 ticks into a line (NTSC), and
-   one Z80 step is at most 69 ticks, so the beam is at most that far behind
-   ticks (bus.c). */
-#define STATE_LINE_MAX 261u
+/* A beam is at most one line short of the frame's lines down and 683 ticks
+   into a line, and one Z80 step is at most 69 ticks, so the beam is at most
+   that far behind ticks (bus.c). */
 #define STATE_T_MAX 683u
 #define STATE_STEP_TICKS_MAX 69u
 
@@ -71,10 +72,13 @@ static struct state_time header_io(struct cogmaster__sio *io, cogmaster *m, uint
     fixed(io, "total_size", total, 4u);
     fixed(io, "behaviour_revision", COGMASTER_BEHAVIOUR_REVISION, 4u);
     fixed(io, "api_version", COGMASTER_API_VERSION, 4u);
-    /* The packed profile holds the machine in its low byte; the other
-       profile fields are zero until they exist. A state loads only into an
-       instance of the same profile. */
-    fixed(io, "profile", m->machine, 4u);
+    /* The resolved profile, each field 1 or 2, then a zero byte. A state
+       loads only into an instance of the same profile, so the frame length
+       below is the instance's. */
+    fixed(io, "machine", m->machine, 1u);
+    fixed(io, "region", m->region, 1u);
+    fixed(io, "tv", m->tv, 1u);
+    fixed(io, "profile_reserved", 0u, 1u);
     /* The CRC-32 of the image after any copier header: 0 for the test
        card. */
     fixed(io, "rom_crc32", m->cart.crc32, 4u);
@@ -83,9 +87,9 @@ static struct state_time header_io(struct cogmaster__sio *io, cogmaster *m, uint
     struct state_time time;
     time.frame = cogmaster__sio_u64(io, "frame", &m->frame, 0u, STATE_FRAME_MAX);
     time.ticks = cogmaster__sio_u64(io, "ticks", &m->ticks, 0u, STATE_TICKS_MAX);
-    /* Every test-card frame is exactly one NTSC frame of ticks; an image's
-       frame starts at most one step late, its overshoot. */
-    uint64_t start = time.frame * COGMASTER__TICKS_PER_FRAME_NTSC;
+    /* Every test-card frame is exactly one frame of ticks; an image's frame
+       starts at most one step late, its overshoot. */
+    uint64_t start = time.frame * cogmaster__frame_ticks(m);
     if (m->cart.rom == NULL) {
         cogmaster__sio_check(io, time.ticks == start);
     } else {
@@ -161,13 +165,13 @@ static void z80_io(struct cogmaster__sio *io, struct cogmaster__z80 *z)
 static void bus_io(struct cogmaster__sio *io, cogmaster *m, struct state_time time)
 {
     struct cogmaster__bus *b = &m->bus;
-    uint64_t deadline = cogmaster__sio_u64(io, "bus_deadline", &b->deadline,
-                                           COGMASTER__TICKS_PER_FRAME_NTSC,
-                                           STATE_TICKS_MAX + COGMASTER__TICKS_PER_FRAME_NTSC);
+    uint64_t frame_ticks = cogmaster__frame_ticks(m);
+    uint64_t deadline = cogmaster__sio_u64(io, "bus_deadline", &b->deadline, frame_ticks,
+                                           STATE_TICKS_MAX + frame_ticks);
     uint64_t at = cogmaster__sio_u64(io, "bus_at", &b->at, 0u, STATE_TICKS_MAX);
-    cogmaster__sio_u32(io, "bus_line", &b->line, 0u, STATE_LINE_MAX);
+    cogmaster__sio_u32(io, "bus_line", &b->line, 0u, cogmaster__frame_lines(m) - 1u);
     cogmaster__sio_u32(io, "bus_t", &b->t, 0u, STATE_T_MAX);
-    cogmaster__sio_check(io, deadline == (time.frame + 1u) * COGMASTER__TICKS_PER_FRAME_NTSC);
+    cogmaster__sio_check(io, deadline == (time.frame + 1u) * frame_ticks);
     cogmaster__sio_check(io, time.ticks < deadline);
     cogmaster__sio_check(io, at <= time.ticks && time.ticks - at <= STATE_STEP_TICKS_MAX);
 }

@@ -154,6 +154,11 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     }
     region = region == COGMASTER_REGION_AUTO ? COGMASTER_REGION_EXPORT : region;
     tv = tv == COGMASTER_TV_AUTO ? COGMASTER_TV_NTSC : tv;
+    /* No Game Gear and no Japanese console was made for PAL (SMS-SYSTEM C6). */
+    if (tv == COGMASTER_TV_PAL &&
+        (machine == COGMASTER_MACHINE_GG || region == COGMASTER_REGION_JAPAN)) {
+        return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
+    }
     /* Every check is done; only the copy can still fail, and it touches
        nothing of the instance until it has succeeded. */
     struct cogmaster__cart cart;
