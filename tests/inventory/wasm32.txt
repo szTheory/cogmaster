@@ -80,4 +80,9 @@ runner.usage.png_syntax	portable,runner
 runner.usage.positional	portable,runner
 runner.usage.unknown	portable,runner
 runner.version	portable,runner
+vectors.allow.self_test	portable,vectors
 vectors.self_test	portable,vectors
+vectors.sst2bin.accept	portable,vectors
+vectors.sst2bin.bad_stream	portable,vectors
+vectors.sst2bin.missing_key	portable,vectors
+vectors.sst2bin.unknown_key	portable,vectors

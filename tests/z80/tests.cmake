@@ -1,6 +1,23 @@
 # The SingleStepTests z80 vector pipeline: the converter that writes the
 # committed sample and the harness that runs it through the Z80.
 #
+# Run as a script (cmake -DSST2BIN=... -DSST=... -DFIXTURE=... -DOUT=...
+# [-DEMULATOR=...] -P tests.cmake), this file converts one fixture and runs
+# the harness on the result, requiring exit 0 and one executed test.
+if(CMAKE_SCRIPT_MODE_FILE)
+  execute_process(COMMAND ${EMULATOR} ${SST2BIN} --dir ${FIXTURE} --count 1 --files 00 --out ${OUT}
+    RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE out)
+  if(NOT rc STREQUAL "0")
+    message(FATAL_ERROR "cogmaster-sst2bin on ${FIXTURE}: exit ${rc}\n${out}")
+  endif()
+  execute_process(COMMAND ${EMULATOR} ${SST} --sample ${OUT} --only 00 --expect-count 1
+    RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE out)
+  if(NOT rc STREQUAL "0" OR NOT out MATCHES "executed 1\n")
+    message(FATAL_ERROR "cogmaster-test-sst on ${OUT}: exit ${rc}\n${out}")
+  endif()
+  return()
+endif()
+
 # The harness compiles the z80 sources itself and never links the library:
 # it defines the bus seam functions, which the library's own bus defines too,
 # so linking both would give duplicate definitions. The z80 sources build as
@@ -57,3 +74,43 @@ cogmaster_add_test(NAME vectors.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=mismatch.*00.*0.*[^a-z]a([^a-z]|$)"
     -P ${z80_expect_fail}
   LABELS portable vectors TIMEOUT 30)
+
+# Fault prevented: an allow list that keeps excusing a failure after the core
+# is fixed. A line for a test that passes must fail the run.
+file(WRITE ${z80_out}/allow-unmatched.txt
+  "2026-01-01 \"00\" 5 a https://github.com/SingleStepTests/z80/issues/1 excuses a test that passes\n")
+set(cmd ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:cogmaster-test-sst>
+  --sample ${z80_sample} --only 00 --allow ${z80_out}/allow-unmatched.txt)
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+cogmaster_add_test(NAME vectors.allow.self_test
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=allow.*matches no failure"
+    -P ${z80_expect_fail}
+  LABELS portable vectors TIMEOUT 30)
+
+# The converter on hand-written fixtures in the upstream schema, one NOP
+# test each. Fault prevented: a converter that drops or misreads a test
+# silently instead of refusing it.
+set(z80_fixtures ${CMAKE_CURRENT_LIST_DIR}/fixtures)
+string(REPLACE ";" "$<SEMICOLON>" z80_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
+cogmaster_add_test(NAME vectors.sst2bin.accept
+  COMMAND ${CMAKE_COMMAND} -DSST2BIN=$<TARGET_FILE:cogmaster-sst2bin>
+    -DSST=$<TARGET_FILE:cogmaster-test-sst> "-DEMULATOR=${z80_emulator}"
+    -DFIXTURE=${z80_fixtures}/accept -DOUT=${z80_out}/accept.bin
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable vectors TIMEOUT 30)
+# An unknown key, such as one a later upstream release adds, is skipped.
+cogmaster_add_test(NAME vectors.sst2bin.unknown_key
+  COMMAND cogmaster-sst2bin --dir ${z80_fixtures}/unknown_key --count 1 --files 00
+    --out ${z80_out}/unknown_key.bin
+  LABELS portable vectors TIMEOUT 30)
+foreach(case IN ITEMS "missing_key;missing key: wz"
+    "bad_stream;00: test 0: cycles do not rebuild")
+  list(GET case 0 name)
+  list(GET case 1 regex)
+  set(cmd ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:cogmaster-sst2bin>
+    --dir ${z80_fixtures}/${name} --count 1 --files 00 --out ${z80_out}/${name}.bin)
+  string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+  cogmaster_add_test(NAME vectors.sst2bin.${name}
+    COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=${regex}" -P ${z80_expect_fail}
+    LABELS portable vectors TIMEOUT 30)
+endforeach()
