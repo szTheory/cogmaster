@@ -10,6 +10,8 @@
 
 #define MB_BASE 0xC100u
 #define MB_STATUS 0x05u
+#define MB_RUNNING 0x80u
+#define MB_DONE 0x00u
 #define MB_COUNT 0x06u
 #define MB_ROM 0x07u
 #define MB_CRC 0x08u
@@ -35,9 +37,26 @@ static uint8_t peek(const cogmaster *m, uint32_t addr)
     return (uint8_t)(cogmaster_peek(m, COGMASTER_SPACE_BUS, addr) & 0xFFu);
 }
 
-int cogmaster__mailbox_done(const cogmaster *m)
+int cogmaster__mailbox_stop(int *running, const uint8_t head[COGMASTER__MAILBOX_HEAD])
 {
-    return peek(m, MB_BASE + MB_STATUS) == 0u;
+    if (memcmp(head, "CMDG", 4u) != 0) {
+        *running = 0;
+        return 0;
+    }
+    if (head[MB_STATUS] == MB_RUNNING) {
+        *running = 1;
+        return 0;
+    }
+    return *running && head[MB_STATUS] == MB_DONE;
+}
+
+int cogmaster__mailbox_done(const cogmaster *m, int *running)
+{
+    uint8_t head[COGMASTER__MAILBOX_HEAD];
+    for (uint32_t i = 0; i < COGMASTER__MAILBOX_HEAD; i++) {
+        head[i] = peek(m, MB_BASE + i);
+    }
+    return cogmaster__mailbox_stop(running, head);
 }
 
 void cogmaster__mailbox_print(const cogmaster *m)

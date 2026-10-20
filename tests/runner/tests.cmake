@@ -174,6 +174,13 @@ if(CMAKE_SCRIPT_MODE_FILE)
     set(hex "[0-9A-F]")
     expect_exit(0 "^fault frame=[0-9]+ line=[0-9]+ dot=[0-9]+ pc=[$]${hex}${hex}${hex}${hex} op=[$]DB addr=[$]0000 width=8 dev=ctrl kind=unmapped_read\n$"
       ${SEEDS}/in-a-00.sms --frames 10 --trace first-fault)
+  elseif(CASE STREQUAL "mailbox_stop")
+    # The stop rule frame by frame, then an image that never writes a
+    # mailbox: its status reads $00 from power-on, which is not done, so
+    # every frame runs.
+    unit(mailbox_stop)
+    expect_exit(0 "^status=00\nrom=00\nmagic=bad\ncrc=bad\nframe 3 sha256 [0-9a-f]+\n$"
+      ${SEEDS}/di-halt.sms --frames 3 --mailbox --hash)
   elseif(CASE STREQUAL "trace_none")
     # DI; HALT touches nothing undriven; with --hash the hash line follows.
     expect_exit(0 "^fault none\n$" ${SEEDS}/di-halt.sms --frames 10 --trace first-fault)
@@ -447,6 +454,13 @@ set(bench_check ${runner_check} -DUNIT=$<TARGET_FILE:cogmaster-test-bench>)
 cogmaster_add_test(NAME runner.mailbox.crc
   COMMAND cogmaster-test-bench mailbox_crc
   LABELS portable runner TIMEOUT 10)
+
+# Fault prevented: --mailbox stopping on the $00 status work RAM holds from
+# power-on, or on a mailbox caught mid-initialisation, so the measurement is
+# taken before the ROM has run.
+cogmaster_add_test(NAME runner.mailbox.stop
+  COMMAND ${bench_check} -DCASE=mailbox_stop -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 30)
 
 # Fault prevented: a percentile that interpolates, picks the wrong rank or
 # reads unsorted samples, so the report names a time no frame took.

@@ -29,7 +29,7 @@ cogmaster-run --help | --version
 | `--hash` | After the last frame, print the SHA-256 of its picture. |
 | `--png N:FILE` | After frame N, write its picture to FILE as a PNG. N is from 1 to the frame count. Repeat the option to write more frames or files. |
 | `--trace first-fault` | After each frame, read the core's first-fault record; stop at the first fault and print it, described under [First fault](#first-fault). |
-| `--mailbox` | After each frame, read the RAM mailbox a diagnostic ROM fills; stop at the first frame whose status reads done and print the mailbox, described under [Mailbox](#mailbox). |
+| `--mailbox` | After each frame, read the RAM mailbox a diagnostic ROM fills; stop at the first frame whose status reads done after reading running, and print the mailbox, described under [Mailbox](#mailbox). |
 | `--probe` | Print the file's header fields and digests, described under [Probe](#probe), and run nothing. Give it only with a file. |
 | `--help` | Print the usage text and the exit statuses. Give it alone. |
 | `--version` | Print `cogmaster-run` and the version, for example `cogmaster-run 1.2.3`. Give it alone. |
@@ -147,8 +147,10 @@ The CRC-16 is CCITT's: polynomial `$1021`, initial value `$FFFF`, no reflection 
 bytes `123456789` give `$29B1`.
 
 `--mailbox` reads the mailbox after each frame without disturbing the run (the library's `cogmaster_peek`). The run
-stops after the first frame whose status reads `$00`, or after `--frames N` frames. Then the runner prints, in
-hexadecimal:
+stops after the first frame whose status reads `$00` with the magic in place, once an earlier frame has ended with
+the status reading `$80`; otherwise it runs all `--frames N` frames. Work RAM reads `$00` from power-on, so a ROM
+that has not yet set up its mailbox, or a ROM that has none, is not taken as done. A ROM that finishes within its
+first frame runs to the frame count. Then the runner prints, in hexadecimal:
 
 ```text
 status=00

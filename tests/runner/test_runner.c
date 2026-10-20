@@ -199,11 +199,34 @@ static void mailbox_crc(void)
     CHECK_EQ_HEX(cogmaster__crc16_ccitt((const uint8_t *)"", 0u), 0xFFFF);
 }
 
+/* The stop rule over a mailbox's first bytes, frame by frame: cleared work
+   RAM, the magic written with the status still $00, then $80 and $00. Only
+   the $00 after a running frame stops; a cleared magic forgets the running
+   status. */
+static void mailbox_stop(void)
+{
+    static const uint8_t cleared[6] = {0u, 0u, 0u, 0u, 0u, 0u};
+    static const uint8_t magic[6] = {'C', 'M', 'D', 'G', 1u, 0x00u};
+    static const uint8_t running[6] = {'C', 'M', 'D', 'G', 1u, 0x80u};
+    static const uint8_t other[6] = {'C', 'M', 'D', 'G', 1u, 0x01u};
+    int seen = 0;
+    CHECK_EQ_U64(cogmaster__mailbox_stop(&seen, cleared), 0);
+    CHECK_EQ_U64(cogmaster__mailbox_stop(&seen, magic), 0);
+    CHECK_EQ_U64(cogmaster__mailbox_stop(&seen, running), 0);
+    CHECK_EQ_U64(cogmaster__mailbox_stop(&seen, other), 0);
+    CHECK_EQ_U64(cogmaster__mailbox_stop(&seen, magic), 1);
+    seen = 0;
+    CHECK_EQ_U64(cogmaster__mailbox_stop(&seen, running), 0);
+    CHECK_EQ_U64(cogmaster__mailbox_stop(&seen, cleared), 0);
+    CHECK_EQ_U64(cogmaster__mailbox_stop(&seen, magic), 0);
+}
+
 int main(int argc, char **argv)
 {
     if (argc != 2) {
         fprintf(stderr,
-                "usage: cogmaster-test-bench percentile|bytes|format|stop|digests|mailbox_crc\n");
+                "usage: cogmaster-test-bench percentile|bytes|format|stop|digests|mailbox_crc|"
+                "mailbox_stop\n");
         return 2;
     }
     if (strcmp(argv[1], "percentile") == 0) {
@@ -218,6 +241,8 @@ int main(int argc, char **argv)
         digests();
     } else if (strcmp(argv[1], "mailbox_crc") == 0) {
         mailbox_crc();
+    } else if (strcmp(argv[1], "mailbox_stop") == 0) {
+        mailbox_stop();
     } else {
         fprintf(stderr, "unknown case %s\n", argv[1]);
         return 2;

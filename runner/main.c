@@ -285,6 +285,7 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     /* A 64-bit count, so the loop ends when --frames is 4294967295. Only
        cogmaster_run_frame is timed, not hashing or writing files. */
     uint32_t ran = 0;
+    int mailbox_running = 0;
     for (uint64_t n = 1; n <= opt->frames && status == COGMASTER__EXIT_OK; n++) {
         uint64_t start_ns = opt->bench ? cogmaster__clock_ns() : 0u;
         st = cogmaster_run_frame(m, NULL);
@@ -315,8 +316,10 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
                 break;
             }
         }
-        /* --mailbox stops after the frame whose status reads done. */
-        if (opt->mailbox && status == COGMASTER__EXIT_OK && cogmaster__mailbox_done(m)) {
+        /* --mailbox stops after the frame whose status reads done, once a
+           frame has ended with it running. */
+        if (opt->mailbox && status == COGMASTER__EXIT_OK &&
+            cogmaster__mailbox_done(m, &mailbox_running)) {
             break;
         }
         /* A stop request ends the run only between whole frames, after the
