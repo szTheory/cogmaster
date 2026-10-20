@@ -112,6 +112,6 @@ cogmaster_status cogmaster_get_frame(const cogmaster *m, cogmaster_frame *io)
     io->w = r.w;
     io->h = r.h;
     io->field_h = COGMASTER__FIELD_H;
-    io->backdrop_rgb444 = 0u;
+    io->backdrop_rgb444 = m->cart.rom != NULL ? cogmaster__vdp_backdrop(m) : 0u;
     return COGMASTER_STATUS_OK;
 }

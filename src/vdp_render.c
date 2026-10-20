@@ -8,10 +8,15 @@ static uint16_t vdp_colour(uint8_t c)
     return (uint16_t)(((c & 3u) * 5u) | (((c >> 2) & 3u) * 5u << 4) | (((c >> 4) & 3u) * 5u << 8));
 }
 
+uint16_t cogmaster__vdp_backdrop(const cogmaster *m)
+{
+    return vdp_colour(m->vdp.cram[16u + (m->vdp.reg[7] & 15u)]);
+}
+
 static void vdp_line(cogmaster *m, uint32_t y)
 {
     const struct cogmaster__vdp *v = &m->vdp;
-    uint16_t backdrop = vdp_colour(v->cram[16u + (v->reg[7] & 15u)]);
+    uint16_t backdrop = cogmaster__vdp_backdrop(m);
     for (uint32_t x = 0u; x < COGMASTER__FIELD_W; x++) {
         uint16_t pixel = backdrop;
         if ((v->reg[1] & 0x40u) != 0u && (v->reg[0] & 4u) != 0u) {

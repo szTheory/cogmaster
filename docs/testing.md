@@ -308,6 +308,26 @@ Everything under `tests/retroarch` stays within 300 lines in total; `policy.e2e_
 session the same steps run locally from the job's commands, with `-DRETROARCH` pointing at an installed
 `RetroArch.app/Contents/MacOS/RetroArch`.
 
+## Content rendering and input
+
+`fixtures.boot_to_play` compares every native crop coordinate with a hand-expanded
+diamond and bar construction, then compares its independently calculated digest with
+the runner. `fixtures.boot_to_play.wrong_hash` proves that a changed expected digest
+fails. The image digest is checked after assembly. The mailbox test checks eight
+released samples and their CRC. `fixtures.boot_to_play.input` checks press in frame 5,
+hold in 6, release in 7 and another press in 8, with independently expected counter,
+scroll and final pixels. `runner.input` exercises the bounded grammar, both newline
+forms, optional final newline, missing/surplus records and invalid fields.
+
+`libretro.host.content` loads those same bytes into the production module with
+`need_fullpath=false`. Its frontend supplies the same script, checks one poll before
+each frame, reconstructs every callback pixel as RGB444 and checks each coordinate
+from frame 4 against the independent oracle. Its final digest equals the runner's.
+It also checks descriptor and pad/none claims, disconnected pads and missing input
+callbacks. Existing no-content SMS/GG, RGB565, single-sample and batch silence tests
+remain registered. This is in-process integration evidence; the real RetroArch job
+described above remains the separate frontend check.
+
 ## Release archives
 
 `release.archive_contents` unpacks the three zips and requires the names `cogmaster-{library,runner,libretro}-

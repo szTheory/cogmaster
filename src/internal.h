@@ -33,7 +33,7 @@ cogmaster__rect cogmaster__crop(uint32_t machine);
 #define COGMASTER__PITCH_MAX 65536u
 
 /* The counters every instance keeps (ARCHITECTURE section 8). The test card
-   runs no CPU or VDP, so all of them stay zero until those exist. */
+   runs no CPU and therefore counts as a lag frame. */
 struct cogmaster__counters {
     uint32_t lag_frames;
     uint32_t frame_ints;
@@ -86,8 +86,7 @@ struct cogmaster__bus {
     uint8_t op;        /* the running instruction's first byte after any DD or FD */
 };
 
-/* The VDP's timing half: registers, ports, status and the stores the CPU
-   writes. No renderer reads them yet. */
+/* VDP registers, ports, status and the stores shared with the renderer. */
 #define COGMASTER__VDP_REGS 11u
 #define COGMASTER__VRAM_SIZE 16384u
 #define COGMASTER__CRAM_SIZE 32u
@@ -245,6 +244,11 @@ _Static_assert(offsetof(cogmaster_run_result, lagged) == 12, "run_result.lagged"
 _Static_assert(sizeof(cogmaster_run_result) == 16, "run_result size");
 _Static_assert(sizeof(cogmaster_input) == 32, "input size");
 _Static_assert(offsetof(cogmaster_input, p1) == 4, "input.p1");
+_Static_assert(offsetof(cogmaster_input, p2) == 8, "input.p2");
+_Static_assert(offsetof(cogmaster_input, pause) == 12, "input.pause");
+_Static_assert(offsetof(cogmaster_input, reset) == 16, "input.reset");
+_Static_assert(offsetof(cogmaster_input, start) == 20, "input.start");
+_Static_assert(offsetof(cogmaster_input, port1) == 24, "input.port1");
 _Static_assert(offsetof(cogmaster_input, port2) == 28, "input.port2");
 
 _Static_assert(offsetof(cogmaster_fault, size) == 0, "fault.size");
@@ -359,6 +363,7 @@ uint8_t cogmaster__vdp_read(cogmaster *m, uint32_t port);
 void cogmaster__vdp_write(cogmaster *m, uint32_t port, uint8_t v);
 void cogmaster__vdp_render_to(cogmaster *m, uint32_t end);
 void cogmaster__vdp_finish_field(cogmaster *m);
+uint16_t cogmaster__vdp_backdrop(const cogmaster *m);
 
 /* cogmaster_probe without the size tag: fills all of out (size 0) and
    returns OK, ERR_ARGUMENT for a NULL image, ERR_UNSUPPORTED_SIZE outside

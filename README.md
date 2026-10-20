@@ -4,8 +4,8 @@ A Sega Master System and Game Gear emulator core in C: a small library, a headle
 libretro core for RetroArch. One core covers the Mark III, both Master System revisions, the Japanese FM unit and
 the Game Gear.
 
-**Status: early.** This release shows a built-in test card in RetroArch and in the runner; it does not load games
-yet. Later releases add the CPU, the video chip, sound and cartridges, and each one is published automatically.
+**Status: experimental.** Cartridge code runs with Mode 4 background video and pad input in the runner and
+RetroArch. Video coverage is growing; audio is silent. With no content, the built-in test card still runs.
 
 ## Install in RetroArch (macOS, Apple Silicon)
 

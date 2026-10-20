@@ -12,6 +12,7 @@ endforeach()
 # Claim to the test that proves it. is_experimental is a warning label, not
 # a capability, so it needs no test.
 set(claim_supports_no_game libretro.host.xrgb8888)
+set(claim_input_descriptors libretro.host.content)
 set(exempt is_experimental)
 
 file(STRINGS "${INVENTORY}" inventory)

@@ -18,6 +18,15 @@ The appended `cogmaster_run_result.lagged` is one when no decoded controller rea
 Legacy 12-byte callers receive only their original fields. The runner submits input before each frame and
 receives this result. Host peeks never earn lag credit.
 
+The libretro adapter accepts `game.data` and `game.size` in memory, advertises
+`sms|gg|bin|rom`, and keeps `need_fullpath` false. One input poll precedes each
+frame; D-pad/B/A map to the six pad bits. Port-1 Start maps to SMS Pause or native
+GG Start, and Select drives SMS Reset. Pad/none and button descriptors are sent
+to the frontend. Missing callbacks and none devices submit released levels.
+The experimental flag remains enabled while the background tracer is expanded.
+Behaviour revision 2 identifies content video/input; state format 3 includes input,
+the rendering cursor and emitted field, so older state bytes are refused.
+
 ## Getting it
 
 **Source tree.** `add_subdirectory` or `FetchContent` gives the `cogmaster::cogmaster` target. Only the C compiler

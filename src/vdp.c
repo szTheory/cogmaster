@@ -1,7 +1,7 @@
 /* The VDP's timing half: the beam events it raises (the frame interrupt
    and the Pause NMI), the V and H counters, the control and data ports with
-   VRAM, CRAM and R0-R10, the status byte and /INT. There is no renderer yet; the mode bits in R0
-   and R1 are stored and the mode is treated as 192 lines.
+   VRAM, CRAM and R0-R10, the status byte and /INT. The companion renderer
+   consumes these stores; the mode is treated as 192 lines.
 
    Time is in ticks, one per VDP clock; t is the tick in a 684-tick line,
    with t 0 at the first active dot (SMS-VDP sections 2 and 4, SMS-SYSTEM

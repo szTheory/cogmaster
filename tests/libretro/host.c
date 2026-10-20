@@ -181,9 +181,32 @@ static size_t batch_frames;
 static unsigned batch_nonzero;
 static unsigned content_frame, poll_calls;
 static int content_mode;
+static unsigned descriptors_calls, controllers_calls;
 
 static bool RETRO_CALLCONV env(unsigned cmd, void *data)
 {
+    if (cmd == RETRO_ENVIRONMENT_SET_CONTROLLER_INFO) {
+        const struct retro_controller_info *ports = data;
+        controllers_calls++;
+        CHECK_EQ_U64(ports[0].num_types, 2u);
+        CHECK_EQ_U64(ports[1].num_types, 2u);
+        CHECK_EQ_U64(ports[0].types[0].id, RETRO_DEVICE_JOYPAD);
+        CHECK_EQ_U64(ports[0].types[1].id, RETRO_DEVICE_NONE);
+        CHECK_EQ_U64(ports[2].num_types, 0u);
+        return true;
+    }
+    if (cmd == RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS) {
+        const struct retro_input_descriptor *desc = data;
+        unsigned n = 0u;
+        descriptors_calls++;
+        while (n < 32u && desc[n].description != NULL) {
+            CHECK(desc[n].port < 2u);
+            CHECK_EQ_U64(desc[n].device, RETRO_DEVICE_JOYPAD);
+            n++;
+        }
+        CHECK_EQ_U64(n, 14u);
+        return true;
+    }
     if (cmd == RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME) {
         no_game_calls++;
         no_game_value = *(const bool *)data ? 1 : 0;
@@ -363,20 +386,29 @@ static int content_test(const char *path, const char *digest)
 {
     uint8_t image[32768];
     FILE *f = fopen(path, "rb");
-    if (f == NULL) { return 1; }
+    if (f == NULL) {
+        return 1;
+    }
     size_t n = fread(image, 1u, sizeof image, f);
     CHECK_EQ_U64(n, sizeof image);
     CHECK_EQ_U64(fclose(f), 0u);
-    want_w = 256u; want_h = 192u;
+    want_w = 256u;
+    want_h = 192u;
     content_mode = 1;
     p_set_environment(env);
     p_init();
     set_callbacks();
     struct retro_game_info game = {0};
-    game.data = image; game.size = n;
+    game.data = image;
+    game.size = n;
     bool loaded = p_load_game(&game);
     CHECK(loaded);
-    if (!loaded) { p_deinit(); return 1; }
+    if (!loaded) {
+        p_deinit();
+        return 1;
+    }
+    CHECK_EQ_U64(descriptors_calls, 1u);
+    CHECK_EQ_U64(controllers_calls, 1u);
     for (content_frame = 1u; content_frame <= 14u; content_frame++) {
         unsigned before = video_calls;
         (void)run_one();
@@ -389,16 +421,48 @@ static int content_test(const char *path, const char *digest)
                     uint16_t got;
                     if (!to_rgb444(y * 256u + x, &got) || got != play_pixel(x, y, scroll)) {
                         CHECK_EQ_HEX(got, play_pixel(x, y, scroll));
-                        p_deinit(); return 1;
+                        p_deinit();
+                        return 1;
                     }
                 }
             }
         }
     }
-    char hex[65]; hash_frame(hex);
+    char hex[65];
+    hash_frame(hex);
     check_string("content runner digest", hex, digest);
     CHECK_EQ_U64(video_bad, 0u);
-    p_unload_game(); p_deinit();
+    /* A disconnected device and absent state callback both submit released
+       levels, even while the frontend's scripted button would be held. */
+    for (unsigned mode = 0u; mode < 3u; mode++) {
+        CHECK(p_load_game(&game));
+        poll_calls = 0u;
+        p_set_input_poll(on_poll);
+        p_set_input_state(input);
+        p_set_controller_port_device(0u, mode == 0u ? RETRO_DEVICE_NONE : RETRO_DEVICE_JOYPAD);
+        if (mode == 1u) {
+            p_set_input_state(NULL);
+        }
+        if (mode == 2u) {
+            p_set_input_poll(NULL);
+        }
+        for (content_frame = 1u; content_frame <= 14u; content_frame++) {
+            (void)run_one();
+        }
+        for (uint32_t y = 0u; y < 192u; y++) {
+            for (uint32_t x = 0u; x < 256u; x++) {
+                uint16_t got;
+                CHECK(to_rgb444(y * 256u + x, &got));
+                if (got != play_pixel(x, y, 0u)) {
+                    CHECK_EQ_HEX(got, play_pixel(x, y, 0u));
+                    p_deinit();
+                    return 1;
+                }
+            }
+        }
+    }
+    p_unload_game();
+    p_deinit();
     return check_failures != 0 ? 1 : 0;
 }
 
@@ -416,11 +480,17 @@ int main(int argc, char **argv)
     size_t total = 0;
 
     if (argc == 5 && strcmp(argv[2], "content") == 0) {
-        if (!module_open(argv[1])) { return 1; }
+        if (!module_open(argv[1])) {
+            return 1;
+        }
         resolve_all();
-        if (missing != NULL) { module_close(); return 1; }
+        if (missing != NULL) {
+            module_close();
+            return 1;
+        }
         int rc = content_test(argv[3], argv[4]);
-        module_close(); return rc;
+        module_close();
+        return rc;
     }
     if (argc != 8 || (strcmp(argv[2], "xrgb8888") != 0 && strcmp(argv[2], "rgb565") != 0) ||
         strlen(argv[3]) != 64u) {
@@ -466,7 +536,7 @@ int main(int argc, char **argv)
     p_get_system_info(&sys);
     check_string("library_name", sys.library_name, "cogmaster");
     check_string("library_version", sys.library_version, version);
-    check_string("valid_extensions", sys.valid_extensions, "");
+    check_string("valid_extensions", sys.valid_extensions, "sms|gg|bin|rom");
     CHECK_EQ_U64(sys.need_fullpath, 0);
     set_callbacks();
 
