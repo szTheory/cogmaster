@@ -184,7 +184,9 @@ jobs:
           name: retroarch-owned-input
           path: |
             build/ci/fixtures/boot_to_play.sms
+            build/ci/fixtures/boot_to_play.gg
             build/ci/tests/play.input
+            build/ci/tests/play-gg.input
             build/ci/libretro/cogmaster_libretro_replay.dylib
           if-no-files-found: error
 
@@ -398,6 +400,31 @@ jobs:
           EXPECT_SCROLL=2 build/frames/compare build/frames/expected-input.bmp build/frames/input.bmp
           cmake -DCOMPARE=build/frames/compare -DEXPECTED=build/frames/expected-input.bmp \
             -DBMP=build/frames/input.bmp -P tests/retroarch/flip.cmake
+      - name: Game Gear native crop screenshot equality
+        run: |
+          for case in baseline input; do
+            replay="--record-replay=$PWD/build/gg-baseline.bsv"
+            if [ "$case" = input ]; then
+              build/replay build/gg-baseline.bsv build/gg-input.bsv gg
+              replay="--play-replay=$PWD/build/gg-input.bsv"
+            fi
+            cmake -DRETROARCH=build/RetroArch.app/Contents/MacOS/RetroArch \
+              -DCORE=build/owned/libretro/cogmaster_libretro_replay.dylib \
+              -DINFO=build/libretro/info/cogmaster_libretro.info -DTEMPLATE=tests/retroarch/test.cfg.in \
+              "-DRA_DIR=$PWD/build/ra-gg-$case" -DFRAMES=14 "-DSHOT=$PWD/build/frames/gg-$case.png" \
+              -DCONTENT=build/owned/fixtures/boot_to_play.gg "-DARGS=$replay" -P tests/retroarch/run_retroarch.cmake
+          done
+          build/runner/bin/cogmaster-run build/owned/fixtures/boot_to_play.gg --frames 14 --png 14:build/frames/gg-expected-baseline.png
+          build/runner/bin/cogmaster-run build/owned/fixtures/boot_to_play.gg --frames 14 \
+            --input build/owned/tests/play-gg.input --png 14:build/frames/gg-expected-input.png
+          for f in gg-baseline gg-input gg-expected-baseline gg-expected-input; do
+            sips --deleteColorManagementProperties "build/frames/$f.png" > /dev/null
+            sips -s format bmp "build/frames/$f.png" --out "build/frames/$f.bmp" > /dev/null
+          done
+          EXPECT_GG=1 EXPECT_SCROLL=0 build/frames/compare build/frames/gg-expected-baseline.bmp build/frames/gg-baseline.bmp
+          EXPECT_GG=1 EXPECT_SCROLL=2 build/frames/compare build/frames/gg-expected-input.bmp build/frames/gg-input.bmp
+          cmake -DCOMPARE=build/frames/compare -DEXPECTED=build/frames/gg-expected-input.bmp \
+            -DBMP=build/frames/gg-input.bmp -P tests/retroarch/flip.cmake
       - name: Owned screenshots
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

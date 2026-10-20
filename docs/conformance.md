@@ -345,3 +345,9 @@ committed regressions (`ctest -L fuzz`); the nightly `fuzz` preset runs libFuzze
 undefined-behaviour sanitizers. A finding is triaged as a harness or core bug: fix it, then commit the minimised
 input under `tests/fuzz/regress/` with its `tests/roms/manifest.txt` row so every lane replays it.
 [testing.md](testing.md#fuzzing) has the commands and limits.
+
+Game Gear hosted proof uses the native 160×144 LCD crop with the default 6:5 pixel
+aspect. Baseline and Start-scripted screenshots must equal the runner crop and
+the independent glyph oracle at field origin (48,24). Full-field and square-pixel
+options are presentation only, with in-process completed-geometry and PAL pacing
+coverage. Frontend agreement checks integration; it is not a hardware measurement.

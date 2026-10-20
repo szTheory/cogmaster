@@ -18,6 +18,7 @@ int main(int argc, char **argv)
     uint8_t *rgb[2] = {NULL, NULL};
     int rc = 0;
     const char *scroll = getenv("EXPECT_SCROLL");
+    int gg = getenv("EXPECT_GG") != NULL;
     for (int i = 0; i < 2 && rc == 0; i++) {
         if (bmp_read(argv[i + 1], &w[i], &h[i], &rgb[i]) != 0) {
             fprintf(stderr, "compare: cannot read %s as a BMP\n", argv[i + 1]);
@@ -36,11 +37,13 @@ int main(int argc, char **argv)
             const uint8_t *a = rgb[0] + ((size_t)y * w[0] + x) * 3u;
             const uint8_t *b = rgb[1] + ((size_t)y * w[0] + x) * 3u;
             if (scroll != NULL) {
-                uint16_t p = play_pixel(x, y, (uint32_t)strtoul(scroll, NULL, 10));
+                uint16_t p = play_pixel(x + (gg ? 48u : 0u), y + (gg ? 24u : 0u),
+                                        (uint32_t)strtoul(scroll, NULL, 10));
                 unsigned want =
                     ((unsigned)(p & 15u) << 16 | (unsigned)(p & 240u) << 4 | (unsigned)(p >> 8)) *
                     17u;
-                if (w[0] != 256u || h[0] != 192u || compare_hex(a) != want) {
+                if (w[0] != (gg ? 160u : 256u) || h[0] != (gg ? 144u : 192u) ||
+                    compare_hex(a) != want) {
                     printf("oracle pixel difference at %u,%u: expected %06X, actual %06X\n",
                            (unsigned)x, (unsigned)y, want, compare_hex(a));
                     rc = 1;

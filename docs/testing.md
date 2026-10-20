@@ -435,3 +435,17 @@ apart from the host's: `docker run --rm -v "$PWD:/src" -v /src/build -w /src ubu
 anything else happens; only then does it unpack an archive into `DEST` or copy the file there. `policy.pins`
 requires four fields per row, a unique name, an `https://` URL and a 64-digit digest. Packages installed with apt
 stay unpinned: they are signed, and drift fails loudly as a build failure or a hash change.
+
+The hosted Game Gear case uses the same driver and owned fixture schedule, with
+Start held on frames 5, 6 and 8. It compares both baseline and input screenshots
+with the runner native 160×144 crop and the shared coordinate oracle at field
+origin (48,24), retaining SMS input/scroll, no-content and one-pixel controls.
+Only owned fixture screenshots are uploaded. The implementation commit is pushed
+before dispatching CI; accepted evidence is a successful workflow_dispatch run for
+that exact SHA, with all four named RetroArch screenshot/control steps successful.
+The hosted helper budget includes the shared oracle.
+
+The in-process presentation cases exercise RGB565 and XRGB8888, all active heights,
+native GG and SMS compatibility, default and square pixels, full field, rejected
+geometry notifications, content-load-only overrides and exact PAL audio totals.
+They compare each delivered pixel against a separate public-library instance.
