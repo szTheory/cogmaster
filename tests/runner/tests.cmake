@@ -168,6 +168,17 @@ if(CMAKE_SCRIPT_MODE_FILE)
       expect_exit(0 "^$" --frames 2 --region ${region} ${SEEDS}/di-halt.sms)
     endforeach()
     expect_exit(2 "usage" --frames 2 --region eu ${SEEDS}/di-halt.sms)
+  elseif(CASE STREQUAL "trace_fault")
+    # LD A,$00 then IN A,($00): port $00 is undriven on the export console,
+    # so the first fault is that read, with A * 256 + n on the bus.
+    set(hex "[0-9A-F]")
+    expect_exit(0 "^fault frame=[0-9]+ line=[0-9]+ dot=[0-9]+ pc=[$]${hex}${hex}${hex}${hex} op=[$]DB addr=[$]0000 width=8 dev=ctrl kind=unmapped_read\n$"
+      ${SEEDS}/in-a-00.sms --frames 10 --trace first-fault)
+  elseif(CASE STREQUAL "trace_none")
+    # DI; HALT touches nothing undriven; with --hash the hash line follows.
+    expect_exit(0 "^fault none\n$" ${SEEDS}/di-halt.sms --frames 10 --trace first-fault)
+    expect_exit(0 "^fault none\nframe 10 sha256 [0-9a-f]+\n$"
+      ${SEEDS}/di-halt.sms --frames 10 --trace first-fault --hash)
   elseif(CASE STREQUAL "png_file")
     # The decode check runs first, so the pinned digest is only ever
     # compared for a file whose IHDR and every pixel are already known good.
@@ -536,4 +547,16 @@ cogmaster_add_test(NAME runner.load.machine_auto
 # misspelling.
 cogmaster_add_test(NAME runner.load.region
   COMMAND ${runner_check} -DCASE=region -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 30)
+
+# Fault prevented: --trace first-fault missing a fault, printing a later
+# one, or printing it in a form a script cannot parse.
+cogmaster_add_test(NAME runner.trace.fault
+  COMMAND ${runner_check} -DCASE=trace_fault -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 30)
+
+# Fault prevented: --trace first-fault reporting a fault for a program that
+# makes none, or printing nothing when there is none.
+cogmaster_add_test(NAME runner.trace.none
+  COMMAND ${runner_check} -DCASE=trace_none -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS portable runner TIMEOUT 30)
