@@ -5,7 +5,7 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 3
 current_phase_name: Games play in RetroArch
 status: planning
-stopped_at: "Phase 02 executed and verified (passed); next: /gsd-ship 02"
+stopped_at: "Phase 02 shipping in PR #6; awaiting CI, merge and release"
 last_updated: "2026-10-20T06:14:56.763Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 02 complete, transitioned to Phase 3
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-20)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 02 — The CPU matches the public vectors: executed and verified (passed), not yet shipped. Every phase ends in a release (rule 10), so `/gsd-ship 02` comes next, then Phase 3 planning.
+**Current focus:** Phase 02 — shipping in PR #6: https://github.com/szTheory/cogmaster/pull/6. Await CI, squash auto-merge and the automated release before `/gsd-discuss-phase 03`.
 
 ## Current Position
 
 Phase: 3 — Games play in RetroArch
 Plan: Not started
-Status: Ready to plan after `/gsd-ship 02` merges and releases
-Last activity: 2026-10-20 — Phase 02 executed and verified (passed); PROJECT.md and STATE.md evolved
+Status: Phase 02 shipping — PR #6; phase 3 waits for merge and release
+Last activity: 2026-10-20 — Phase 02 ship: PR #6 opened; `cmake --workflow --preset ci` exit 0 (183 + 4 tests); hosted CI pending
 
 Progress: [█████░░░░░] 50%
 
@@ -209,6 +209,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-10-19 | Discuss phase 2 (gsd-discuss-phase) | Claude Code | claude-opus-5-5 |
 | 2026-10-19 | Plan phase 2 (gsd-plan-phase) | Claude Code | claude-opus-5-5 |
 | 2026-10-19 | Execute phase 2 (gsd-execute-phase) | Claude Code | claude-opus-5-5 |
+| 2026-10-20 | Ship phase 2 (gsd-ship) | Codex | GPT-6 |
 
 ## Deferred Items
 
@@ -221,5 +222,5 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-10-20
-Stopped at: Phase 02 executed and verified (passed); next: /gsd-ship 02
+Stopped at: Phase 02 shipping in PR #6; awaiting CI, merge and release
 Resume file: None
