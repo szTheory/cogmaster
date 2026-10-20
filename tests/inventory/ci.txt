@@ -59,6 +59,12 @@ install.consumer	install
 install.consumer.cxx	install
 install.consumer.dll_crt	install
 install.stage	install
+io.decode_mirrors	io,portable
+io.gg_ports	io,portable
+io.open_bus	io,portable
+io.port3e	io,portable
+io.port3f_region	io,portable
+io.port_dc_dd	io,portable
 libretro.host.gg	libretro,portable
 libretro.host.rgb565	libretro,portable
 libretro.host.xrgb8888	libretro,portable
