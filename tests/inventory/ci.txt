@@ -193,10 +193,14 @@ vdp.hcounter	portable,vdp
 vdp.pause_nmi	portable,vdp
 vdp.port_decode	portable,vdp
 vdp.sprites.bounds_state	portable,vdp
+vdp.sprites.collision	portable,vdp
 vdp.sprites.gg_slots	portable,vdp
+vdp.sprites.inactive	portable,vdp
 vdp.sprites.intervals	portable,vdp
+vdp.sprites.overflow	portable,vdp
 vdp.sprites.priority	portable,vdp
 vdp.sprites.shapes	portable,vdp
+vdp.sprites.sms1_collision	portable,vdp
 vdp.sprites.sms1_zoom	portable,vdp
 vdp.sprites.wrap_clip	portable,vdp
 vdp.sprites.zoom	portable,vdp

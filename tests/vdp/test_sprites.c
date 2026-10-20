@@ -269,6 +269,112 @@ static void bounds_state(void)
     CHECK_EQ_U64(m->render_x, 0u);
     cogmaster_destroy(m);
 }
+static uint8_t status_at(cogmaster *m, uint32_t line, uint32_t tick)
+{
+    m->bus.line = line;
+    m->bus.t = tick;
+    m->bus.at = m->ticks;
+    return cogmaster__bus_in(m, 0xBFu);
+}
+static void collision(void)
+{
+    for (uint32_t distance = 7u; distance <= 9u; distance++) {
+        cogmaster *m = make(COGMASTER_MACHINE_SMS2);
+        solid(m, 2u, 1u);
+        sprite(m, 0u, 0xFFu, 20u, 2u);
+        sprite(m, 1u, 0xFFu, (uint8_t)(20u + distance), 2u);
+        run(m);
+        (void)status_at(m, 192u, 608u);
+        /* Pixel 27 is the only shared dot for distance 7. */
+        CHECK_EQ_HEX(status_at(m, 0u, 53u), 0x1Fu);
+        CHECK_EQ_HEX(status_at(m, 0u, 54u), distance == 7u ? 0x3Fu : 0x1Fu);
+        CHECK_EQ_HEX(status_at(m, 0u, 55u), 0x1Fu);
+        CHECK_EQ_HEX(status_at(m, 0u, 56u), 0x1Fu);
+        cogmaster_destroy(m);
+    }
+    cogmaster *m = make(COGMASTER_MACHINE_SMS2);
+    solid(m, 2u, 1u);
+    solid(m, 3u, 2u);
+    sprite(m, 0u, 0xFFu, 20u, 2u);
+    sprite(m, 1u, 0xFFu, 20u, 3u);
+    run(m);
+    (void)status_at(m, 192u, 608u);
+    CHECK_EQ_HEX(status_at(m, 0u, 40u), 0x3Fu);
+    CHECK_EQ_HEX(status_at(m, 0u, 41u), 0x1Fu);
+    CHECK_EQ_HEX(status_at(m, 0u, 42u), 0x3Fu);
+    CHECK_EQ_HEX(m->field[0][20], 0x00Fu);
+    /* Priority conceals both sprites, but does not remove their collision. */
+    m->vdp.vram[0x3805] = 0x10u;
+    solid(m, 0u, 1u);
+    CHECK_EQ_HEX(status_at(m, 0u, 44u), 0x3Fu);
+    CHECK_EQ_HEX(m->field[0][22], 0xFFFu);
+    cogmaster_destroy(m);
+}
+static void overflow(void)
+{
+    for (uint32_t count = 8u; count <= 9u; count++) {
+        cogmaster *m = make(COGMASTER_MACHINE_SMS2);
+        /* Transparent and right-clipped still match Y and consume slots. */
+        for (uint32_t i = 0u; i < count; i++)
+            sprite(m, i, 0xFFu, 255u, 0u);
+        run(m);
+        (void)status_at(m, 192u, 608u);
+        CHECK_EQ_HEX(m->vdp.status, 0u);
+        CHECK_EQ_HEX(status_at(m, 0u, 0u), count == 9u ? 0x5Fu : 0x1Fu);
+        CHECK_EQ_HEX(status_at(m, 0u, 1u), 0x1Fu);
+        CHECK_EQ_HEX(status_at(m, 0u, 2u), 0x1Fu);
+        CHECK_EQ_U64(m->vdp.sprite_count, 8u);
+        CHECK_EQ_U64(m->vdp.sprite_scanned, count == 9u ? 9u : 9u);
+        CHECK_EQ_HEX(status_at(m, 1u, 0u), count == 9u ? 0x5Fu : 0x1Fu);
+        cogmaster_destroy(m);
+    }
+}
+static void inactive(void)
+{
+    for (uint32_t variant = 0u; variant < 5u; variant++) {
+        cogmaster *m = make(COGMASTER_MACHINE_SMS2);
+        solid(m, 2u, 1u);
+        for (uint32_t i = 0u; i < 9u; i++)
+            sprite(m, i, 0xFFu, 0u, 2u);
+        if (variant == 0u)
+            m->vdp.reg[1] &= (uint8_t)~0x40u;
+        if (variant == 1u)
+            m->vdp.reg[0] |= 0x20u;
+        if (variant == 2u) {
+            m->vdp.reg[0] |= 8u;
+            /* X=0 shifted fully left; no horizontal wrap/collision. */
+        }
+        if (variant == 3u)
+            solid(m, 2u, 0u);
+        run(m);
+        (void)status_at(m, 192u, 608u);
+        if (variant == 4u) {
+            /* No active-dot work in either blanking line or HBlank. */
+            CHECK_EQ_HEX(status_at(m, 200u, 20u), 0x1Fu);
+            cogmaster__vdp_render_to(m, 1u);
+            (void)status_at(m, 0u, 510u);
+            CHECK_EQ_HEX(status_at(m, 0u, 512u), 0x1Fu);
+        } else {
+            CHECK_EQ_HEX(status_at(m, 0u, 16u), variant == 0u ? 0x1Fu : 0x5Fu);
+            CHECK_EQ_HEX(status_at(m, 0u, 20u), 0x1Fu);
+        }
+        cogmaster_destroy(m);
+    }
+}
+static void sms1_collision(void)
+{
+    for (uint32_t machine = 1u; machine <= 3u; machine += 2u) {
+        cogmaster *m = make(machine);
+        solid(m, 2u, 1u);
+        m->vdp.reg[1] |= 1u;
+        sprite(m, 0u, 0xFFu, 20u, 2u);
+        sprite(m, 1u, 0xFFu, 35u, 2u);
+        run(m);
+        (void)status_at(m, 192u, 608u);
+        CHECK_EQ_HEX(status_at(m, 0u, 70u), machine == 3u ? 0x1Fu : 0x3Fu);
+        cogmaster_destroy(m);
+    }
+}
 int main(int argc, char **argv)
 {
     if (argc != 2)
@@ -289,6 +395,14 @@ int main(int argc, char **argv)
         intervals();
     else if (strcmp(argv[1], "bounds_state") == 0)
         bounds_state();
+    else if (strcmp(argv[1], "collision") == 0)
+        collision();
+    else if (strcmp(argv[1], "overflow") == 0)
+        overflow();
+    else if (strcmp(argv[1], "inactive") == 0)
+        inactive();
+    else if (strcmp(argv[1], "sms1_collision") == 0)
+        sms1_collision();
     else
         return 2;
     CHECK_DONE();
