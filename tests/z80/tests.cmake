@@ -124,13 +124,11 @@ cogmaster_add_test(NAME vectors.base
   COMMAND cogmaster-test-sst --sample ${z80_sample} --group base
     --allow ${PROJECT_SOURCE_DIR}/tests/vectors/z80/allow.txt --expect-count 25200
   LABELS portable vectors TIMEOUT 60)
-cogmaster_add_test(NAME vectors.cb
-  COMMAND cogmaster-test-sst --sample ${z80_sample} --group cb
-    --allow ${PROJECT_SOURCE_DIR}/tests/vectors/z80/allow.txt --expect-count 25600
-  LABELS portable vectors TIMEOUT 60)
-foreach(group IN ITEMS dd fd)
+foreach(shard IN ITEMS "cb;25600" "dd;25200" "fd;25200" "ddcb;25600" "fdcb;25600")
+  list(GET shard 0 group)
+  list(GET shard 1 count)
   cogmaster_add_test(NAME vectors.${group}
     COMMAND cogmaster-test-sst --sample ${z80_sample} --group ${group}
-      --allow ${PROJECT_SOURCE_DIR}/tests/vectors/z80/allow.txt --expect-count 25200
+      --allow ${PROJECT_SOURCE_DIR}/tests/vectors/z80/allow.txt --expect-count ${count}
     LABELS portable vectors TIMEOUT 60)
 endforeach()

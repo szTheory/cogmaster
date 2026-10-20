@@ -102,5 +102,7 @@ checks that rule. The list is empty today.
 ### The shards
 
 `ctest -L vectors` runs the sample in shards, one per prefix group, each with `--allow` and the group's exact
-test count. `vectors.base` runs the main page (252 files, 25,200 tests). The remaining groups get a shard when
-their page is complete.
+test count. `vectors.base` runs the main page (252 files, 25,200 tests), `vectors.cb` the CB page (256 files),
+`vectors.dd` and `vectors.fd` the indexed pages (252 files each) and `vectors.ddcb` and `vectors.fdcb` the indexed
+bit operations (256 files each). A DD or FD byte is a step of its own, so the harness steps until no prefix is
+pending and compares the whole instruction. The ED group gets a shard when its page is complete.
