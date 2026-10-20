@@ -59,6 +59,7 @@ fault.rom_write	bus,portable
 fault.unmapped_read	bus,portable
 fault.unmapped_write	bus,portable
 fixtures.hello	fixtures,portable
+fixtures.wla_pin.self_test	fixtures
 host.palette	host,portable
 install.consumer	install
 install.consumer.cxx	install

@@ -344,13 +344,19 @@ cogmaster_add_test(NAME runner.hash.self_test
   LABELS runner TIMEOUT 30)
 
 # Fault prevented: a lane whose hashes are never compared with the others.
-# Writes build/<preset>/hashes.txt with the SMS and Game Gear hash lines,
-# the file CI collects from every lane and compares byte for byte.
+# Writes build/<preset>/hashes.txt with the SMS and Game Gear hash lines and
+# the fixture image digests, the file CI collects from every lane and
+# compares byte for byte.
 string(REPLACE ";" "$<SEMICOLON>" runner_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
 set(runner_hashes ${PROJECT_SOURCE_DIR}/tests/cmake/hashes.cmake)
+# With the fixtures built, their image digests join the file.
+set(runner_fixtures "")
+if(COGMASTER_FIXTURES)
+  set(runner_fixtures -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures)
+endif()
 cogmaster_add_test(NAME runner.hashes_file
   COMMAND ${CMAKE_COMMAND} -DMODE=write -DRUN=$<TARGET_FILE:cogmaster-run>
-    "-DEMULATOR=${runner_emulator}" -DOUT=${PROJECT_BINARY_DIR} -P ${runner_hashes}
+    "-DEMULATOR=${runner_emulator}" -DOUT=${PROJECT_BINARY_DIR} ${runner_fixtures} -P ${runner_hashes}
   LABELS runner portable TIMEOUT 30)
 
 # Fault prevented: a comparison that passes lanes which differ, or a lane

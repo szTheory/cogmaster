@@ -60,3 +60,23 @@ cogmaster_add_test(NAME fixtures.hello
     -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt -DRUN=$<TARGET_FILE:cogmaster-run>
     "-DEMULATOR=${fixtures_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS fixtures portable TIMEOUT 30)
+
+# Fault prevented: an assembler pin that accepts a tarball other than the
+# pinned one. A local tarball checked against the wla-dx row's digest must
+# fail the download step with a hash mismatch; file:// needs no network.
+set(fixtures_tamper ${PROJECT_BINARY_DIR}/tests/wla-pin)
+file(MAKE_DIRECTORY ${fixtures_tamper})
+file(WRITE ${fixtures_tamper}/payload.txt "not the pinned WLA-DX tarball\n")
+file(ARCHIVE_CREATE OUTPUT ${fixtures_tamper}/tampered.tar.gz PATHS ${fixtures_tamper}/payload.txt
+  FORMAT gnutar COMPRESSION GZip)
+set(fixtures_url "file://${fixtures_tamper}/tampered.tar.gz")
+if(NOT fixtures_tamper MATCHES "^/")
+  set(fixtures_url "file:///${fixtures_tamper}/tampered.tar.gz")
+endif()
+set(cmd ${CMAKE_COMMAND} -DURL=${fixtures_url} -DSHA256=${COGMASTER_WLA_SHA256}
+  -DOUT=${fixtures_tamper}/download.tar.gz -P ${PROJECT_SOURCE_DIR}/cmake/WlaDx.cmake)
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+cogmaster_add_test(NAME fixtures.wla_pin.self_test
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=[Hh]ash|EXPECTED_HASH|mismatch"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+  LABELS fixtures TIMEOUT 30)
