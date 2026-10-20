@@ -120,6 +120,49 @@ if(CMAKE_SCRIPT_MODE_FILE)
         message(FATAL_ERROR "writer touched another process's temporary")
       endif()
     endforeach()
+  elseif(CASE STREQUAL "save_continuation")
+    file(MAKE_DIRECTORY "${OUT}")
+    file(REMOVE "${OUT}/battery.srm")
+    # Each execute_process starts a new runner; the second always uses the
+    # installed production path, including after a signalled first child.
+    function(continue_save runner old next prefix)
+      execute_process(COMMAND ${EMULATOR} ${runner} --frames 60 --hash --mailbox
+        --save-dir "${OUT}" "${BATTERY}" RESULT_VARIABLE rc
+        OUTPUT_VARIABLE out ERROR_VARIABLE err)
+      if(NOT rc STREQUAL "0" OR NOT out MATCHES "status=00\nrom=07\nmagic=ok\ncrc=ok\n"
+          OR NOT out MATCHES "01=${next}${old} flags=1\n"
+          OR NOT out MATCHES "frame 3 sha256 [0-9a-f]+")
+        message(FATAL_ERROR "fresh-process continuation: exit ${rc}\n${out}${err}")
+      endif()
+      file(READ "${OUT}/battery.srm" data HEX)
+      string(REPEAT ff 32765 tail)
+      if(NOT data STREQUAL "a55a${prefix}${tail}")
+        message(FATAL_ERROR "fresh-process save bytes or exact length differ")
+      endif()
+      file(GLOB temps "${OUT}/battery.srm.tmp-*")
+      if(temps)
+        message(FATAL_ERROR "fresh-process writer leaked temporary files")
+      endif()
+    endfunction()
+    continue_save("${RUN}" 00 01 01)
+    continue_save("${CONTINUE}" 01 02 02)
+    file(REMOVE "${OUT}/battery.srm")
+    continue_save("${CONTINUE}" 00 01 01)
+    # Wrong save keeps the signature but supplies counter 41, so the guest
+    # must report 41 -> 42 rather than either 0 -> 1 or 1 -> 2.
+    string(ASCII 165 90 41 signature)
+    string(ASCII 255 erased)
+    string(REPEAT "${erased}" 32765 tail)
+    file(WRITE "${OUT}/battery.srm" "${signature}${tail}")
+    continue_save("${CONTINUE}" 29 2A 2a)
+    file(APPEND "${OUT}/battery.srm" x)
+    file(SHA256 "${OUT}/battery.srm" before)
+    execute_process(COMMAND ${EMULATOR} ${CONTINUE} --frames 60 --save-dir "${OUT}" "${BATTERY}"
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    file(SHA256 "${OUT}/battery.srm" after)
+    if(NOT rc STREQUAL "4" OR NOT err MATCHES "oversized" OR NOT before STREQUAL after)
+      message(FATAL_ERROR "oversize control: exit ${rc}; target changed or refusal missing: ${err}")
+    endif()
   elseif(CASE STREQUAL "save_import")
     file(MAKE_DIRECTORY "${OUT}")
     file(REMOVE "${OUT}/battery.srm")
@@ -709,7 +752,23 @@ if(COGMASTER_FIXTURES)
         -DOUT=${PROJECT_BINARY_DIR}/tests/save-process-${case}
         -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
       LABELS runner portable TIMEOUT 10)
+    if(case STREQUAL "term" OR case STREQUAL "int")
+      # Fault prevented: signal flush writes bytes that a fresh process cannot continue.
+      cogmaster_add_test(NAME runner.save.continuation.${case}
+        COMMAND ${runner_check} -DRUN=${run} -DCONTINUE=$<TARGET_FILE:cogmaster-run>
+          -DCASE=save_continuation
+          -DOUT=${PROJECT_BINARY_DIR}/tests/save-continuation-${case}
+          -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
+        LABELS runner portable TIMEOUT 10)
+    endif()
   endforeach()
+  # Fault prevented: successful normal exit loses the numeric guest continuation.
+  cogmaster_add_test(NAME runner.save.continuation.normal
+    COMMAND ${runner_check} -DCONTINUE=$<TARGET_FILE:cogmaster-run>
+      -DCASE=save_continuation
+      -DOUT=${PROJECT_BINARY_DIR}/tests/save-continuation-normal
+      -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS runner portable TIMEOUT 10)
 endif()
 
 set(bench_check ${runner_check} -DUNIT=$<TARGET_FILE:cogmaster-test-bench>)

@@ -199,6 +199,9 @@ runner.refuse.sg1000	portable,runner
 runner.refuse.size	portable,runner
 runner.save.clean_sigint	portable,runner
 runner.save.clean_sigterm	portable,runner
+runner.save.continuation.int	portable,runner
+runner.save.continuation.normal	portable,runner
+runner.save.continuation.term	portable,runner
 runner.save.excluded	portable,runner
 runner.save.failures	portable,runner
 runner.save.import	portable,runner

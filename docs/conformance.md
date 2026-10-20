@@ -8,6 +8,16 @@ without changing classification. Assembly independently checks the fixed SHA-1 f
 `cart.fixture_wrong_hash` must fail with the identity diagnostic. Physical 24 KiB wiring remains explicitly
 unsupported as described in [Cartridge identity and RAM](hardware/cartridges.md).
 
+`runner.save.continuation.normal`, `.term` and `.int` launch separate runner processes with the classified
+`battery` image. Erased FF RAM becomes `A5 5A 01`; the mailbox's low byte is the previous counter and its
+high byte the incremented counter. The next production child must report `0201` and write `A5 5A 02`.
+Missing saves instead report `0100`; a same-size save with signature and counter 41 reports `2A29`.
+Every successful save is exactly 32 KiB with FF beyond the three counter bytes and no leaked temporary.
+An extra byte causes exit 4 with the target digest unchanged. Signal cases use the existing deterministic
+SIGTERM/SIGINT hook before frame 3, finish that frame, then continue in an uninstrumented production child;
+these exercise the portable C signal handlers, including WASI's synchronous `raise`, rather than requiring
+external asynchronous process signals on every platform.
+
 How the core is checked against public test data, assembled test programs and generated inputs. This page covers
 the Z80 vectors, the assembled fixtures and their mailbox, and fuzzing; testing in general is in
 [testing.md](testing.md).
