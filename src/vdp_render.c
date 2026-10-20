@@ -5,8 +5,8 @@
 
 static uint16_t vdp_colour(uint8_t c)
 {
-    return (uint16_t)(((c & 3u) * 5u << 8) | (((c >> 2) & 3u) * 5u << 4) |
-                      (((c >> 4) & 3u) * 5u));
+    return (uint16_t)(((c & 3u) * 5u) | (((c >> 2) & 3u) * 5u << 4) |
+                      (((c >> 4) & 3u) * 5u << 8));
 }
 
 static void vdp_line(cogmaster *m, uint32_t y)

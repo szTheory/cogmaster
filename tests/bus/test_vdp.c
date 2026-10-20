@@ -489,7 +489,7 @@ static void test_background(void)
         m->vdp.vram[y * 4u + 3u] = 0x10u;
     }
     CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
-    static const uint16_t row[] = {0xF00u, 0x0F0u, 0x00Fu, 0xFFFu, 0u, 0u, 0u, 0u};
+    static const uint16_t row[] = {0x00Fu, 0x0F0u, 0xF00u, 0xFFFu, 0u, 0u, 0u, 0u};
     for (uint32_t y = 0; y < 192u; y++) {
         for (uint32_t x = 0; x < 256u; x++) {
             if (m->field[y][x] != row[x & 7u]) {

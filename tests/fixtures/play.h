@@ -14,6 +14,6 @@ static uint16_t play_pixel(uint32_t x, uint32_t y, uint32_t scroll)
     uint32_t col = (x + 256u - scroll) & 7u;
     uint32_t index = diamond[y & 7u][col] + (col & 1u) * 2u +
                      ((col / 2u) & 1u) * 4u + (col / 4u) * 8u;
-    return (uint16_t)(((index & 3u) * 5u << 8) | ((index / 4u) * 5u << 4));
+    return (uint16_t)(((index & 3u) * 5u) | ((index / 4u) * 5u << 4));
 }
 #endif
