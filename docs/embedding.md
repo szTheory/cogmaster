@@ -171,15 +171,18 @@ those bytes, not the `uint16_t` array, or a big-endian host gets a different dig
 
 ## Reset
 
-`cogmaster_reset(m, kind)` restarts the loaded content without loading it again. Both kinds set the frame count,
-the tick count and the beam position to zero and clear the fault record:
+`cogmaster_reset(m, kind)` restarts the loaded content without loading it again. Both kinds set the frame count
+and the tick count to zero, put the beam at the frame origin (line 192, tick 607, where a frame ends) as `load`
+does, start the CPU again from the fast-boot hand-off and clear the fault record. Every frame, the first after a
+load or reset included, is then exactly 179,208 ticks on NTSC:
 
-- `COGMASTER_RESET_SOFT` (0) is the console's reset: memory the machine keeps across a reset stays as it was.
+- `COGMASTER_RESET_SOFT` (0) is the console's reset: memory the machine keeps across a reset, such as work RAM,
+  stays as it was.
 - `COGMASTER_RESET_POWER` (1) is a power cycle: it also zeroes the internal counters and, on machines that have
   them, work RAM, video RAM and colour RAM.
 
 The test card has no RAM, video RAM or colour RAM and its counters stay zero, so the two kinds have the same effect
-on it today. Any other `kind` returns `COGMASTER_STATUS_ERR_ARGUMENT`; a reset before a successful
+on it. Any other `kind` returns `COGMASTER_STATUS_ERR_ARGUMENT`; a reset before a successful
 `cogmaster_load` returns `COGMASTER_STATUS_ERR_NO_CONTENT`.
 
 ## Faults

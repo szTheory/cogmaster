@@ -85,8 +85,9 @@ fixture) and `wasm32.txt` (the `ci` list without the `libretro` tests).
 | Label | Tests |
 |---|---|
 | `core` | The library's behaviour: the API contract, sizes, allocation, faults, state, the frame and the test card. |
+| `bus` | Images run through the bus: the frame deadline and overshoot bound, the frame origin and the CPU's first fault. |
 | `portable` | Tests that hold on every platform, including the frame hashes; the emulated lanes run these. |
-| `abi` | The public header compiled alone as C17 and C++17, the API test, and the core library's symbols. |
+| `abi` | The public header compiled alone as C17 and C++17, the API tests, and the core library's symbols. |
 | `host` | The palette helper shared by the runner and the core. |
 | `runner` | `cogmaster-run` options, output, exit statuses, signals and the PNG writer. |
 | `bench` | The runner's bench report. |

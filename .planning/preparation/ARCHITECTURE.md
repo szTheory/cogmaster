@@ -163,7 +163,7 @@ Integer-only (`hygiene.no_float`, `nofp`, `abi.undefined`); no mutable globals (
 | `io_decode`, `open_bus` | partial (A7/A6/A0) on export SMS; full on JAPAN, GG; open bus = last data-bus byte on SMS1/Mark III, $FF on SMS2/GG | [ARCH.01 C5, C6] |
 | `fm_unit` | none; smsj (built in, full $F2 table); mark3_unit (bit 1 forced 0) | [ARCH.03 FM-CTRL] |
 | `ram_fill` | ZERO; SEEDED(u64) by splitmix64; JAPAN preset may choose $F0 | [ARCH.01 §8] |
-| Power-on values | mapper 0/0/1/2; $3E $AB (GG $A8); $3F $FF; $F2 %00; GG $00–$06 = $C0 $7F $FF $00 $FF $00 $FF; PSG volumes $F, tones 0, LFSR $8000, latch register 3 [ARCH.03 §2.1]; VDP regs zero except R2 $0E, R10 $FF; beam line 0 tick 0 | [ARCH.01 §8][ARCH.03 §2] |
+| Power-on values | mapper 0/0/1/2; $3E $AB (GG $A8); $3F $FF; $F2 %00; GG $00–$06 = $C0 $7F $FF $00 $FF $00 $FF; PSG volumes $F, tones 0, LFSR $8000, latch register 3 [ARCH.03 §2.1]; VDP regs zero except R2 $0E, R10 $FF; beam at the frame origin, line 192 tick 607, ticks 0 (so every frame, the first included, is exactly one frame long) | [ARCH.01 §8][ARCH.03 §2] |
 | `gg_mode` | per image from the hash table (pin 42), host override | [ARCH.04 §3.2] |
 | `sms2_clip`, OPLL table | off; ymfm (emu2413 selectable) | [ARCH.03 PSG-VOL, FM-CORE] |
 
@@ -214,7 +214,7 @@ Integer-only (`hygiene.no_float`, `nofp`, `abi.undefined`); no mutable globals (
 | $3E, RAM | $AB to the port and to $C000 (GG: $A8 to the port only); `ram_fill` first | whatever the BIOS leaves |
 | $3F, mapper | $FF; $FFFC $00, $FFFD 0, $FFFE 1, $FFFF 2 | BIOS writes none (v1.3) |
 | VDP, PSG, $F2 | regs zero except R2 $0E, R10 $FF; VRAM, CRAM zero; status clear; PSG silent; $F2 %00; GG $06 $FF | set by the BIOS |
-| Beam | line 0, tick 0, frame 0 | same |
+| Beam | frame origin: line 192, tick 607, frame 0, ticks 0; a frame runs from frame-interrupt tick to frame-interrupt tick, so starting there makes every frame exactly one frame long | same |
 
 - **BIOS** bytes are user-supplied only, recognised by the MAME digests in [ARCH.01 §6] (v1.3 `0072ed54`, Japanese v2.1 `48d44a13`, GG `0ebea9d4` …); any other 8 KiB / 1 KiB image is accepted with a warning; the BIOS checks the header, region nibble and checksum itself, so a rejected cartridge shows SOFTWARE ERROR as on hardware, never a core status. Lands v2.0; `load` with `boot = BIOS` and no BIOS falls back to fast boot with a warning flag [ARCH.05 §1].
 - **Reset.** `reset(SOFT)` re-applies the hand-off table and keeps work RAM, cart RAM, VRAM and CRAM (no model has a CPU reset line a user can reach; the SMS1 Reset button is an input on $DD b4, not a reset); `reset(POWER)` also applies `ram_fill` and zeroes VRAM and CRAM. The adapter's `retro_reset` is the Reset button on SMS1 and `POWER` elsewhere [ARCH.01 §7][ARCH.05 §1].

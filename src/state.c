@@ -1,15 +1,17 @@
-/* The internal state visitor over the test-card instance (ARCHITECTURE
-   section 7).
+/* The internal state visitor over the instance (ARCHITECTURE section 7).
 
    Layout. A 64-byte header, then the body:
      header  magic, format version, header size, total size, behaviour
              revision, API version, packed profile, ROM CRC-32, body CRC-32,
              frame, ticks, 12 reserved zero bytes
-     body    the counters, then the first-fault record
+     body    the counters, the first-fault record, the Z80, the beam and the
+             frame deadline, then the 8 KiB of work RAM
    One field list drives every pass (state.h), so they cannot drift apart. A
    struct is never copied as a whole: padding, pointers and the allocator
    never reach the bytes. The field buffer is not saved: every frame of the
-   test card redraws it. The body CRC-32 covers every byte after the header. */
+   test card redraws it, and a loaded image draws nothing yet. The cartridge
+   image is the media, not state; its CRC-32 ties a state to it. The body
+   CRC-32 covers every byte after the header. */
 #include <string.h>
 
 #include "state.h"
@@ -35,9 +37,23 @@ _Static_assert(H_RESERVED + H_RESERVED_SIZE == STATE_HEADER_SIZE, "the header is
    it. */
 static const uint8_t state_magic[8] = {0x8Au, 0x43u, 0x47u, 0x4Du, 0x0Du, 0x0Au, 0x1Au, 0x0Au};
 
-/* Tripwire: a counter added to the struct fails the build until
-   counters_io visits it. */
+/* Tripwires: a field added to one of these structs fails the build until
+   its visitor visits it. */
 _Static_assert(sizeof(struct cogmaster__counters) == 40u, "counters changed: update counters_io");
+_Static_assert(sizeof(struct cogmaster__z80) == 38u, "z80 changed: update z80_io");
+_Static_assert(sizeof(struct cogmaster__bus) == 24u, "bus changed: update bus_io");
+
+/* A beam is at most 261 lines down and 683 ticks into a line (NTSC), and
+   one Z80 step is at most 69 ticks, so the beam is at most that far behind
+   ticks (bus.c). */
+#define STATE_LINE_MAX 261u
+#define STATE_T_MAX 683u
+#define STATE_STEP_TICKS_MAX 69u
+
+/* The frame and ticks read from the header, for the body's cross checks. */
+struct state_time {
+    uint64_t frame, ticks;
+};
 
 /* One header field whose only valid value is v. */
 static void fixed(struct cogmaster__sio *io, const char *name, uint64_t v, uint32_t width)
@@ -45,7 +61,7 @@ static void fixed(struct cogmaster__sio *io, const char *name, uint64_t v, uint3
     (void)cogmaster__sio_field(io, name, v, width, v, v);
 }
 
-static void header_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
+static struct state_time header_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
 {
     for (uint32_t i = 0; i < sizeof state_magic; i++) {
         fixed(io, "magic", state_magic[i], 1u);
@@ -59,17 +75,26 @@ static void header_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
        profile fields are zero until they exist. A state loads only into an
        instance of the same profile. */
     fixed(io, "profile", m->machine, 4u);
-    /* The CRC-32 of the ROM image: 0 with no content. */
-    fixed(io, "rom_crc32", 0u, 4u);
+    /* The CRC-32 of the image after any copier header: 0 for the test
+       card. */
+    fixed(io, "rom_crc32", m->cart.crc32, 4u);
     /* Checked against the body before VALIDATE runs; any value passes here. */
     (void)cogmaster__sio_field(io, "body_crc32", 0u, 4u, 0u, UINT32_MAX);
-    uint64_t frame = cogmaster__sio_u64(io, "frame", &m->frame, 0u, STATE_FRAME_MAX);
-    uint64_t ticks = cogmaster__sio_u64(io, "ticks", &m->ticks, 0u, STATE_TICKS_MAX);
-    /* Every test-card frame is exactly one NTSC frame of ticks. */
-    cogmaster__sio_check(io, ticks == frame * COGMASTER__TICKS_PER_FRAME_NTSC);
+    struct state_time time;
+    time.frame = cogmaster__sio_u64(io, "frame", &m->frame, 0u, STATE_FRAME_MAX);
+    time.ticks = cogmaster__sio_u64(io, "ticks", &m->ticks, 0u, STATE_TICKS_MAX);
+    /* Every test-card frame is exactly one NTSC frame of ticks; an image's
+       frame starts at most one step late, its overshoot. */
+    uint64_t start = time.frame * COGMASTER__TICKS_PER_FRAME_NTSC;
+    if (m->cart.rom == NULL) {
+        cogmaster__sio_check(io, time.ticks == start);
+    } else {
+        cogmaster__sio_check(io, time.ticks >= start);
+    }
     for (uint32_t i = 0; i < H_RESERVED_SIZE; i++) {
         fixed(io, "reserved", 0u, 1u);
     }
+    return time;
 }
 
 static void counters_io(struct cogmaster__sio *io, struct cogmaster__counters *c)
@@ -109,12 +134,60 @@ static void fault_io(struct cogmaster__sio *io, cogmaster *m)
                                                device | kind) == 0u);
 }
 
+static void z80_io(struct cogmaster__sio *io, struct cogmaster__z80 *z)
+{
+    for (uint32_t i = 0; i < COGMASTER__Z80_REGS; i++) {
+        cogmaster__sio_u8(io, "z80_reg", &z->reg[i], 0u, UINT8_MAX);
+    }
+    cogmaster__sio_u16(io, "z80_pc", &z->pc, 0u, UINT16_MAX);
+    cogmaster__sio_u16(io, "z80_sp", &z->sp, 0u, UINT16_MAX);
+    cogmaster__sio_u16(io, "z80_wz", &z->wz, 0u, UINT16_MAX);
+    cogmaster__sio_u8(io, "z80_i", &z->i, 0u, UINT8_MAX);
+    cogmaster__sio_u8(io, "z80_r", &z->r, 0u, UINT8_MAX);
+    cogmaster__sio_u8(io, "z80_iff1", &z->iff1, 0u, 1u);
+    cogmaster__sio_u8(io, "z80_iff2", &z->iff2, 0u, 1u);
+    cogmaster__sio_u8(io, "z80_im", &z->im, 0u, 2u);
+    cogmaster__sio_u8(io, "z80_q", &z->q, 0u, UINT8_MAX);
+    cogmaster__sio_u8(io, "z80_p", &z->p, 0u, 1u);
+    cogmaster__sio_u8(io, "z80_ei", &z->ei, 0u, 1u);
+    cogmaster__sio_u8(io, "z80_idx", &z->idx, 0u, COGMASTER__Z80_IDX_IY);
+    cogmaster__sio_u8(io, "z80_halted", &z->halted, 0u, 1u);
+    cogmaster__sio_u8(io, "z80_int_line", &z->int_line, 0u, 1u);
+    cogmaster__sio_u8(io, "z80_nmi_pending", &z->nmi_pending, 0u, 1u);
+}
+
+/* The deadline is the end of the frame the header's frame count is in, the
+   ticks have not passed it, and the beam is at most one step behind them. */
+static void bus_io(struct cogmaster__sio *io, cogmaster *m, struct state_time time)
+{
+    struct cogmaster__bus *b = &m->bus;
+    uint64_t deadline = cogmaster__sio_u64(io, "bus_deadline", &b->deadline,
+                                           COGMASTER__TICKS_PER_FRAME_NTSC,
+                                           STATE_TICKS_MAX + COGMASTER__TICKS_PER_FRAME_NTSC);
+    uint64_t at = cogmaster__sio_u64(io, "bus_at", &b->at, 0u, STATE_TICKS_MAX);
+    cogmaster__sio_u32(io, "bus_line", &b->line, 0u, STATE_LINE_MAX);
+    cogmaster__sio_u32(io, "bus_t", &b->t, 0u, STATE_T_MAX);
+    cogmaster__sio_check(io, deadline == (time.frame + 1u) * COGMASTER__TICKS_PER_FRAME_NTSC);
+    cogmaster__sio_check(io, time.ticks < deadline);
+    cogmaster__sio_check(io, at <= time.ticks && time.ticks - at <= STATE_STEP_TICKS_MAX);
+}
+
+static void ram_io(struct cogmaster__sio *io, cogmaster *m)
+{
+    for (uint32_t i = 0; i < COGMASTER__RAM_SIZE; i++) {
+        cogmaster__sio_u8(io, "ram", &m->ram[i], 0u, UINT8_MAX);
+    }
+}
+
 /* The whole state, in the order the format fixes. */
 static void state_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
 {
-    header_io(io, m, total);
+    struct state_time time = header_io(io, m, total);
     counters_io(io, &m->counters);
     fault_io(io, m);
+    z80_io(io, &m->z80);
+    bus_io(io, m, time);
+    ram_io(io, m);
 }
 
 /* SIZE, WRITE and RECORD only read through the field pointers, and an

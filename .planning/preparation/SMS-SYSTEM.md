@@ -224,7 +224,7 @@ repository (AGENTS.md rule 3). MAME's `hash/sms.xml` was not needed and was not 
 | Mapper | $FFFC $00, $FFFD 0, $FFFE 1, $FFFF 2 (C4) | same | same |
 | VDP | registers as SMS-VDP.md's "after BIOS" table (MAME reset: all 0 except R2 = $0E, R10 = $FF [SYS.27]); VRAM, CRAM zero; status flags clear | GG mode unless the cartridge sets SMS mode | same |
 | PSG, $F2 | all channels silent; $F2 = %00 (PSG on, FM muted) [SYS.19] | $06 = $FF [SYS.09] | $F2 %00 |
-| Beam | tick 0 of line 0, frame 0 | same | same |
+| Beam | the frame origin: tick 607 of line 192, frame 0, ticks 0, so every frame, the first included, is exactly one frame long | same | same |
 | RAM | `ram_fill` (C8), then the two bytes above | `ram_fill` | `ram_fill` |
 
 Strongest alternative: boot from the Z80 reset state alone (SP $FFFF, $3E untouched) as ares does. Would change if: a title boots on
@@ -262,7 +262,7 @@ hardware only with the BIOS's VDP residue (the "after BIOS" table) or RAM residu
 | PSG | undefined | all four attenuations $F, tone 0, noise reset (SMS-AUDIO.md) | | |
 | Z80 | PC, I, R, IFF 0, IM 0; AF = SP = $FFFF (unverified) | as C7, SP $DFF0 | | [SYS.23][SYS.24] |
 | Open-bus byte | | $FF | C5 | [SYS.28] |
-| Beam | undefined phase vs. CPU is fixed by the clock ratio | line 0, tick 0 | C1 | derived |
+| Beam | undefined phase vs. CPU is fixed by the clock ratio | line 192, tick 607 (the frame origin; every frame is then exactly one frame long) | C1 | derived |
 
 Every field lives in the instance, the save state and the movie header; BIOS bytes are an input, never a default.
 
