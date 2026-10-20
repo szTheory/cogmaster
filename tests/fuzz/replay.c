@@ -79,6 +79,7 @@ static void replay_dir(const char *dir)
     char pattern[4096];
     join(pattern, sizeof pattern, dir, "*");
     WIN32_FIND_DATAA fd;
+    memset(&fd, 0, sizeof fd);
     HANDLE h = pattern[0] != '\0' ? FindFirstFileA(pattern, &fd) : INVALID_HANDLE_VALUE;
     if (h == INVALID_HANDLE_VALUE) {
         fprintf(stderr, "replay: cannot list %s\n", dir);
