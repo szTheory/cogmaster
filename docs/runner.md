@@ -28,6 +28,7 @@ cogmaster-run --help | --version
 | `--bench N` | Run N frames, time each one and print the report described under [Bench report](#bench-report). N is from 1 to 1073741823. The runner keeps 4 bytes per frame, so a very large N can exit 1 because memory ran out. |
 | `--hash` | After the last frame, print the SHA-256 of its picture. |
 | `--png N:FILE` | After frame N, write its picture to FILE as a PNG. N is from 1 to the frame count. Repeat the option to write more frames or files. |
+| `--trace first-fault` | After each frame, read the core's first-fault record; stop at the first fault and print it, described under [First fault](#first-fault). |
 | `--probe` | Print the file's header fields and digests, described under [Probe](#probe), and run nothing. Give it only with a file. |
 | `--help` | Print the usage text and the exit statuses. Give it alone. |
 | `--version` | Print `cogmaster-run` and the version, for example `cogmaster-run 1.2.3`. Give it alone. |
@@ -100,6 +101,32 @@ RetroArch's playlist scanner matches.
 
 `--probe` runs no emulation. It exits 0, or 77 after printing every key for an image the core will not load
 because of its size or its board.
+
+## First fault
+
+`--trace first-fault` checks after each frame whether the guest has done something no hardware answers. At the
+first such fault the run stops after that frame and prints one line:
+
+```text
+fault frame=0 line=192 dot=329 pc=$0002 op=$DB addr=$0000 width=8 dev=ctrl kind=unmapped_read
+```
+
+With no fault by the last frame it prints `fault none`. Either way the exit status is 0: the fault is data about
+the guest, not a failure of the run. `--hash` and `--bench` output follows the line, for the frames that ran.
+
+| Field | Value |
+|---|---|
+| `frame` | the frame the fault happened in, counted from 0 at load |
+| `line`, `dot` | the beam position: line and dot within the frame |
+| `pc` | the address of the instruction, including its first `$DD` or `$FD` prefix |
+| `op` | the instruction's first byte after any prefix; for `ed_undefined`, the byte after `$ED` |
+| `addr` | the full 16-bit bus address; for `IN` and `OUT` with an immediate port, A × 256 + the port |
+| `width` | the access width in bits, 8 |
+| `dev` | `none`, `cpu`, `cart`, `ram`, `mapper` or `ctrl` (the memory and I/O control ports `$3E` and `$3F`) |
+| `kind` | `unmapped_read`, `unmapped_write`, `rom_write`, `mapper_range` or `ed_undefined` |
+
+[Embedding](embedding.md) says when each kind is recorded and which guest behaviour is never a fault. Later
+releases add kinds and devices; scripts should accept names they do not know.
 
 ## Bench report
 

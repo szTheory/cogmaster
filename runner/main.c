@@ -177,6 +177,39 @@ static int write_png(const cogmaster *m, const char *path, uint16_t *pixels)
     return status;
 }
 
+/* Reads the first-fault record into fault. Returns the exit status. */
+static int read_fault(const cogmaster *m, cogmaster_fault *fault)
+{
+    cogmaster_status st = cogmaster_get_fault(m, fault);
+    if (st != COGMASTER_STATUS_OK) {
+        fprintf(stderr, "cogmaster-run: cogmaster_get_fault failed with status %lu\n",
+                (unsigned long)st);
+        return COGMASTER__EXIT_FAILURE;
+    }
+    return COGMASTER__EXIT_OK;
+}
+
+/* Prints the first fault as one line of key=value fields, or "fault none".
+   The kind and device names are the ones docs/embedding.md gives each
+   COGMASTER_FAULT_* constant. */
+static void print_fault(const cogmaster_fault *f)
+{
+    static const char *const kinds[] = {"none",      "unmapped_read", "unmapped_write",
+                                        "rom_write", "mapper_range",  "ed_undefined"};
+    static const char *const devices[] = {"none", "cpu", "cart", "ram", "mapper", "ctrl"};
+    if (!f->present) {
+        printf("fault none\n");
+        return;
+    }
+    const char *kind = f->kind < sizeof kinds / sizeof kinds[0] ? kinds[f->kind] : "unknown";
+    const char *dev =
+        f->device < sizeof devices / sizeof devices[0] ? devices[f->device] : "unknown";
+    printf("fault frame=%llu line=%lu dot=%lu pc=$%04X op=$%02X addr=$%04X width=%u dev=%s "
+           "kind=%s\n",
+           (unsigned long long)f->frame, (unsigned long)f->line, (unsigned long)f->dot,
+           (unsigned)f->pc, (unsigned)f->opcode, (unsigned)f->addr, (unsigned)f->width, dev, kind);
+}
+
 /* The exit status for cogmaster_load's status, after a message: a refusal
    for what the core does not support, a failure for anything else. */
 static int load_status(cogmaster_status st, size_t image_size)
@@ -230,7 +263,6 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
         return COGMASTER__EXIT_FAILURE;
     }
 
-    int status = COGMASTER__EXIT_OK;
     cogmaster_media media;
     memset(&media, 0, sizeof media);
     media.size = (uint32_t)sizeof media;
@@ -242,7 +274,10 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     }
     media.region = opt->region;
     media.tv = opt->tv;
-    status = load_status(cogmaster_load(m, &media), image_size);
+    int status = load_status(cogmaster_load(m, &media), image_size);
+    cogmaster_fault fault;
+    memset(&fault, 0, sizeof fault);
+    fault.size = (uint32_t)sizeof fault;
     /* A 64-bit count, so the loop ends when --frames is 4294967295. Only
        cogmaster_run_frame is timed, not hashing or writing files. */
     uint32_t ran = 0;
@@ -268,11 +303,22 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
                 status = write_png(m, opt->pngs[k].path, pixels);
             }
         }
+        /* --trace first-fault stops after the frame that recorded the
+           first fault. */
+        if (opt->trace && status == COGMASTER__EXIT_OK) {
+            status = read_fault(m, &fault);
+            if (fault.present) {
+                break;
+            }
+        }
         /* A stop request ends the run only between whole frames, after the
            frame's outputs are written. */
         if (cogmaster__stop_requested()) {
             break;
         }
+    }
+    if (status == COGMASTER__EXIT_OK && opt->trace) {
+        print_fault(&fault);
     }
     if (status == COGMASTER__EXIT_OK && opt->hash) {
         status = print_hash(m, ran, pixels);
