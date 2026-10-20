@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include "cogmaster.h"
+#include "z80.h"
 
 /* The field buffer is 256 dots wide and up to 240 lines tall; the test card
    and the 192-line mode use the first 192 lines (ARCHITECTURE section 5). */
@@ -57,8 +58,9 @@ struct cogmaster {
     uint32_t machine;              /* resolved machine: SMS2 or GG; valid while loaded */
     uint32_t loaded;               /* 1 after a successful load */
     struct cogmaster__counters counters;
-    uint32_t fault_present;                                     /* 1 once a fault is recorded */
-    struct cogmaster__fault fault;                              /* valid while fault_present */
+    uint32_t fault_present;        /* 1 once a fault is recorded */
+    struct cogmaster__fault fault; /* valid while fault_present */
+    struct cogmaster__z80 z80;
     uint16_t field[COGMASTER__FIELD_MAX_H][COGMASTER__FIELD_W]; /* RGB444 per dot */
 };
 

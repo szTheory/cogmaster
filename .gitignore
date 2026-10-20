@@ -13,6 +13,7 @@
 *.state
 *.eeprom
 !/tests/roms/**
+!/tests/vectors/z80/sst-sample.bin
 /roms/
 /bios/
 /private/

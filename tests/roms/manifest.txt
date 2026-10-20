@@ -1,0 +1,5 @@
+# Every fixture file this repository holds that is not text, and every
+# third-party data file: one line each, tab-separated fields
+# path source pin licence sha256 notice (ASSET_POLICY.md section 2).
+# scripts/hygiene.sh rejects a binary or image file that is not listed here.
+tests/vectors/z80/sst-sample.bin	https://github.com/SingleStepTests/z80	ebe1875d48f374bcfd4b505d8eb8ee751568b5f7	MIT	189a33d4396f13b2cb93acbcc5da42fb7d5da0176f2558aaf09ae10d23f26bda	SingleStepTests z80 vectors

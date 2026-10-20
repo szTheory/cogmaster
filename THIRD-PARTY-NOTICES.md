@@ -32,3 +32,37 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMA
 WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
+
+## SingleStepTests z80 vectors
+
+- **Applies to:** `tests/vectors/z80/sst-sample.bin`
+- **Upstream:** https://github.com/SingleStepTests/z80, directory `v1` at commit
+  `ebe1875d48f374bcfd4b505d8eb8ee751568b5f7`. The repository's `LICENSE` is MIT.
+- **Changes:** the first 100 tests of each of the 1,604 files, converted from JSON to a compact binary form
+  by `tests/z80/sst2bin.c` (`cogmaster-sst2bin --dir v1 --count 100`); the per-T-state cycle lists are stored
+  as the bus cycles they are built from, which rebuild them exactly.
+- **Licence:** MIT
+
+```
+MIT License
+
+Copyright (c) 2024 SingleStepTests
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
