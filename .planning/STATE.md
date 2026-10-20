@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 02
 current_phase_name: The CPU matches the public vectors
 status: executing
-stopped_at: Completed 02-08-PLAN.md
-last_updated: "2026-10-20T03:17:15.228Z"
+stopped_at: Completed 02-09-PLAN.md
+last_updated: "2026-10-20T03:32:47.555Z"
 last_activity: 2026-10-19
 last_activity_desc: Phase 02 execution started
-state_head: 946ecf25226a861c0990f48bb9a0cf7e5e87bcd2
+state_head: b7da844adf566a3a5b3894878546023486b43d24
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 29
-  completed_plans: 20
+  completed_plans: 21
   percent: 25
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-18)
 ## Current Position
 
 Phase: 02 (The CPU matches the public vectors) — EXECUTING
-Plan: 9 of 17
+Plan: 10 of 17
 Status: Ready to execute
 Last activity: 2026-10-19 — Phase 02 execution started
 
@@ -78,6 +78,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P06 | 9min | 3 tasks | 28 files |
 | Phase 02 P07 | 5min | 2 tasks | 16 files |
 | Phase 02 P08 | 9min | 2 tasks | 16 files |
+| Phase 02 P09 | 40min | 3 tasks | 21 files |
 
 ## Accumulated Context
 
@@ -142,6 +143,11 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 02]: The VDP access tick is m->bus.vdp_at, keeping the VDP struct free of 64-bit fields
 - [Phase 02]: The Game Gear profile raises no Pause NMI
 - [Phase 02]: VDP port decode: A7/A6/A0 mirrors on the export SMS, full decode on the Japanese SMS and Game Gear
+- [Phase 02]: 02-09: The opcode scan refuses only when stores to another board's registers outnumber stores to the Sega registers $FFFC-$FFFF; Codemasters $8000 stores count for neither
+- [Phase 02]: 02-09: Bank numbers are reduced modulo the page count at write time; the $FFFC shift is added before the reduction
+- [Phase 02]: 02-09: Cartridge RAM lives after the padded ROM in one allocation (32 KiB Sega, 8 KiB Codemasters) and is state; format version stays 2
+- [Phase 02]: 02-09: cogmaster_cart_info first size is 52; machine_guess and region_guess are 0 when no header names them
+- [Phase 02]: 02-09: Load refuses any 8 KiB body loaded as a Game Gear with ERR_UNSUPPORTED_BOARD (8)
 
 ### Pending Todos
 
@@ -177,6 +183,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T03:17:15.150Z
-Stopped at: Completed 02-08-PLAN.md
+Last session: 2026-10-20T03:32:47.498Z
+Stopped at: Completed 02-09-PLAN.md
 Resume file: None
