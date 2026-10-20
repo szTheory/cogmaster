@@ -42,7 +42,10 @@ ports,09:vc_lines,sms-pal,0139,doc,SMS-SYSTEM section 5
 ports,09:vc_lines,gg,0106,doc,SMS-SYSTEM section 5
 ports,0A:vram_readback,*,5AA5,doc,SMS-VDP section 2.2
 ports,0B:status_low_bits,*,001F,doc,SMS-VDP section 2.6
-ports,0C:hcount_step,*,000B-000C,derived,SMS-VDP section 4.3 and SMS-SYSTEM section 1
+ports,0C:hcount_step,sms-export,0000,derived,SMS-SYSTEM section 4 TH capture held after region probe
+ports,0C:hcount_step,sms-japan,0000,derived,SMS-SYSTEM section 4 TH capture held after region probe
+ports,0C:hcount_step,sms-pal,0000,derived,SMS-SYSTEM section 4 TH capture held after region probe
+ports,0C:hcount_step,gg,000B-000C,derived,SMS-VDP section 4.3 and SMS-SYSTEM section 1
 ports,0D:gg_port00,gg,00C0,doc,SMS-SYSTEM sections 4 and 8
 ports,0E:gg_ports_01_02,gg,FF7F,doc,SMS-SYSTEM section 8
 ports,0F:gg_ports_03_04,gg,FF00,doc,SMS-SYSTEM section 8

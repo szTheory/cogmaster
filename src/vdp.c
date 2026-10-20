@@ -17,19 +17,14 @@
    after 599"). */
 #define VDP_VCOUNT_TICK 604u
 
-/* The 192-line V counter reads lines 0-218 as $00-$DA and the rest from $D5
-   on NTSC, lines 0-242 as $00-$F2 and the rest from $BA on PAL, so both
-   end at $FF (SMS-VDP section 4.4). */
-#define VDP_VCOUNT_JUMP_NTSC 0xDAu
-#define VDP_VCOUNT_BACK_NTSC 6u
-#define VDP_VCOUNT_JUMP_PAL 0xF2u
-#define VDP_VCOUNT_BACK_PAL 57u
-
 /* The H counter reads the upper 8 bits of the 9-bit pixel counter, which
-   jumps from pixel 295 to 466 at tick 592: $00-$93, then $E9-$FF (SMS-VDP
-   section 4.3, the formula of ares). */
+   runs $00-$93, then $E9-$FF (SMS-VDP section 4.3). Translate our active
+   origin by 32 ticks before looking it up: SMS dot 0 = HC08 and GG dot 48
+   = HC20. This sub-dot phase is a coordinate inference, not a measurement
+   (video.md and the final SMS Display Timing forum posts). */
 #define VDP_HCOUNT_JUMP 592u
 #define VDP_HCOUNT_SKIP 340u
+#define VDP_HCOUNT_ORIGIN 32u
 
 /* Pause: the console latches a press and the VDP asserts /NMI as /HSYNC
    rises at tick 611 of the next-to-last line, which starts the frame's
@@ -69,6 +64,7 @@ void cogmaster__vdp_reset(cogmaster *m, int power)
 {
     struct cogmaster__vdp *v = &m->vdp;
     v->addr = 0u;
+    v->vline = 193u; /* bus origin line 192, after the 604 V step */
     memset(v->reg, 0, sizeof v->reg);
     /* The registers as the BIOS leaves them (ARCHITECTURE section 9). */
     v->reg[2] = 0x0Eu;
@@ -81,6 +77,8 @@ void cogmaster__vdp_reset(cogmaster *m, int power)
     v->pause = 0u;
     v->line_counter = 0xFFu;
     v->line_pending = 0u;
+    v->hcounter = 0u;
+    v->hheld = 0u;
     v->hscroll = 0u;
     v->vscroll = 0u;
     v->display = 0u;
@@ -125,6 +123,11 @@ static uint32_t vdp_height(const cogmaster *m)
     return 192u;
 }
 
+static int vdp_rolling(const cogmaster *m)
+{
+    return m->tv == COGMASTER_TV_NTSC && vdp_height(m) == 240u;
+}
+
 /* The line /NMI is asserted on. The Game Gear has no Pause button: in its
    own mode Start is a port bit (SMS-SYSTEM section 7), so it has none. */
 static uint32_t vdp_nmi_line(const cogmaster *m)
@@ -143,6 +146,9 @@ uint32_t cogmaster__vdp_next_event(const cogmaster *m, uint32_t line, uint32_t t
     if (t < VDP_LATCH_TICK) {
         return VDP_LATCH_TICK;
     }
+    if (vdp_rolling(m) && t < VDP_VCOUNT_TICK) {
+        return VDP_VCOUNT_TICK;
+    }
     if (line == vdp_height(m) && t < VDP_INT_TICK) {
         return VDP_INT_TICK;
     }
@@ -157,6 +163,12 @@ uint32_t cogmaster__vdp_next_event(const cogmaster *m, uint32_t line, uint32_t t
 
 void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t)
 {
+    /* The documented NTSC-240 counter rolls through 263 values while the
+       host keeps a 262-line frame. This state never changes bus deadlines
+       (SMS-VDP section 4.4; selected separation in video.md). */
+    if (t == VDP_VCOUNT_TICK && vdp_rolling(m)) {
+        m->vdp.vline = m->vdp.vline == 262u ? 0u : (uint16_t)(m->vdp.vline + 1u);
+    }
     if (line < COGMASTER__FIELD_H && t == 512u) {
         cogmaster__vdp_render_to(m, line + 1u);
     }
@@ -199,24 +211,35 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t)
     }
 }
 
-/* The V counter at the beam: the line's value until tick 604, then the next
-   line's. The mode is treated as 192 lines. */
+/* Literal interval boundaries from SMS-VDP section 4.4; uint8 conversion
+   supplies the initial 00 wrap in the extended PAL modes. */
 static uint8_t vdp_vcount(const cogmaster *m)
 {
+    uint32_t height = vdp_height(m);
+    if (vdp_rolling(m)) {
+        return (uint8_t)m->vdp.vline;
+    }
     uint32_t line = m->bus.line;
     if (m->bus.t >= VDP_VCOUNT_TICK) {
         line = line + 1u == cogmaster__frame_lines(m) ? 0u : line + 1u;
     }
     if (m->tv == COGMASTER_TV_PAL) {
-        return (uint8_t)(line > VDP_VCOUNT_JUMP_PAL ? line - VDP_VCOUNT_BACK_PAL : line);
+        uint32_t jump = height == 224u ? 258u : height == 240u ? 266u : 242u;
+        return (uint8_t)(line > jump ? line - 57u : line);
     }
-    return (uint8_t)(line > VDP_VCOUNT_JUMP_NTSC ? line - VDP_VCOUNT_BACK_NTSC : line);
+    return (uint8_t)(line > (height == 224u ? 234u : 218u) ? line - 6u : line);
 }
 
 static uint8_t vdp_hcount(const cogmaster *m)
 {
-    uint32_t t = m->bus.t;
+    uint32_t t = (m->bus.t + VDP_HCOUNT_ORIGIN) % VDP_LINE_TICKS;
     return (uint8_t)((t >= VDP_HCOUNT_JUMP ? t + VDP_HCOUNT_SKIP : t) >> 2);
+}
+
+void cogmaster__vdp_latch_h(cogmaster *m)
+{
+    m->vdp.hcounter = vdp_hcount(m);
+    m->vdp.hheld = 1u;
 }
 
 /* A status read returns the flags with the low bits set, then clears the
@@ -261,7 +284,14 @@ static void vdp_control_write(cogmaster *m, uint8_t b)
     } else if (v->code == VDP_CODE_REGISTER) {
         uint32_t r = b & 0x0Fu;
         if (r < COGMASTER__VDP_REGS) {
+            int rolling = vdp_rolling(m);
             v->reg[r] = v->first;
+            /* On entry seed the rolling counter from the current visible
+               beam, then advance independently at 604. Mode-change phase
+               is a selected model, not a chip measurement (video.md). */
+            if (!rolling && vdp_rolling(m)) {
+                v->vline = (uint16_t)(m->bus.line + (m->bus.t >= VDP_VCOUNT_TICK ? 1u : 0u));
+            }
             vdp_irq(m);
         }
     }
@@ -301,7 +331,7 @@ uint8_t cogmaster__vdp_read(cogmaster *m, uint32_t port)
     case COGMASTER__VDP_VCOUNT:
         return vdp_vcount(m);
     case COGMASTER__VDP_HCOUNT:
-        return vdp_hcount(m);
+        return m->vdp.hheld ? m->vdp.hcounter : vdp_hcount(m);
     case COGMASTER__VDP_DATA:
         return vdp_data_read(m);
     default:

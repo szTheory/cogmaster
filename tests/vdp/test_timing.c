@@ -89,6 +89,20 @@ static void irq_edges(void)
 }
 static void irq_reload(void)
 {
+    for (uint32_t offset = 0u; offset < 3u; offset++) {
+        cogmaster *m = make();
+        reg(m, 0u, 0x14u);
+        reg(m, 10u, 0u);
+        beam(m, 261u, 607u);
+        m->ticks += offset;
+        reg(m, 10u, 1u); /* 607/608/609: only before the edge changes this reload */
+        if (offset == 0u)
+            pass(m, 1u);
+        beam(m, 0u, 607u);
+        pass(m, 1u);
+        CHECK_EQ_U64(m->z80.int_line, offset == 0u ? 0u : 1u);
+        cogmaster_destroy(m);
+    }
     static const uint8_t reloads[] = {0u, 1u, 255u};
     for (uint32_t r = 0u; r < 3u; r++) {
         cogmaster *m = make();
@@ -278,6 +292,146 @@ static void th_capture(void)
     CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Fu), 0xE9u);
     cogmaster_destroy(m);
 }
+static void mode_edges(void)
+{
+    static const uint32_t heights[] = {192u, 224u, 240u};
+    for (uint32_t tv = COGMASTER_TV_NTSC; tv <= COGMASTER_TV_PAL; tv++) {
+        for (uint32_t i = 0u; i < 3u; i++) {
+            cogmaster *m = make_profile(COGMASTER_MACHINE_SMS2, tv);
+            reg(m, 0u, 0x16u);
+            reg(m, 1u, (uint8_t)(0x20u | (i == 1u ? 0x10u : i == 2u ? 8u : 0u)));
+            reg(m, 10u, 0u);
+            beam(m, tv == COGMASTER_TV_PAL ? 312u : 261u, 607u);
+            pass(m, 1u);
+            beam(m, heights[i], 606u);
+            CHECK_EQ_HEX(status(m), 0x1Fu);
+            pass(m, 1u);
+            CHECK_EQ_HEX(status(m), 0x9Fu);
+            CHECK_EQ_U64(m->z80.int_line, 0u);
+            pass(m, 1u);
+            CHECK_EQ_U64(m->z80.int_line, 1u);
+            CHECK_EQ_HEX(status(m), 0x1Fu);
+            pass(m, 1u);
+            CHECK_EQ_U64(m->z80.int_line, 0u);
+            beam(m, heights[i] + 1u, 607u);
+            pass(m, 1u);
+            CHECK_EQ_U64(m->z80.int_line, 0u);
+            cogmaster_destroy(m);
+        }
+    }
+    /* SMS1's invalid extended text mode retains the explicit timing fallback. */
+    cogmaster *m = make_profile(COGMASTER_MACHINE_SMS1, COGMASTER_TV_NTSC);
+    reg(m, 0u, 6u);
+    reg(m, 1u, 0x30u);
+    beam(m, 218u, 603u);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Eu), 0xDAu);
+    pass(m, 1u);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Eu), 0xD5u);
+    beam(m, 192u, 606u);
+    pass(m, 1u);
+    CHECK_EQ_HEX(status(m), 0x9Fu);
+    cogmaster_destroy(m);
+}
+static void deadlines(void)
+{
+    for (uint32_t tv = COGMASTER_TV_NTSC; tv <= COGMASTER_TV_PAL; tv++) {
+        cogmaster *m = make_profile(COGMASTER_MACHINE_SMS2, tv);
+        reg(m, 0u, 6u);
+        reg(m, 1u, 8u);
+        static const uint8_t ntsc_counts[] = {0xC0u, 0xBFu, 0xBEu, 0xBDu};
+        uint32_t ft = tv == COGMASTER_TV_PAL ? 214092u : 179208u;
+        for (uint32_t frame = 1u; frame <= 4u; frame++) {
+            CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+            CHECK(m->ticks >= frame * ft && m->ticks < frame * ft + 69u);
+            CHECK_EQ_U64(m->bus.deadline, (frame + 1u) * ft);
+            CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Eu),
+                         tv == COGMASTER_TV_PAL ? 0xC1u : ntsc_counts[frame - 1u]);
+        }
+        cogmaster_destroy(m);
+    }
+}
+static void counter_state(void)
+{
+    cogmaster *m = make();
+    reg(m, 0u, 6u);
+    reg(m, 1u, 8u);
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    cogmaster__bus_out(m, 0x3Fu, 0xDDu);
+    cogmaster__bus_out(m, 0x3Fu, 0xFDu);
+    uint8_t captured = cogmaster__bus_in(m, 0x7Fu);
+    size_t n = cogmaster__state_size(m);
+    uint8_t *bytes = malloc(n);
+    size_t count = cogmaster__state_record(m, NULL, 0u);
+    struct cogmaster__state_field *fields = malloc(count * sizeof *fields);
+    CHECK(bytes != NULL && fields != NULL);
+    if (bytes != NULL && fields != NULL) {
+        CHECK_EQ_U64(cogmaster__state_save(m, bytes, n), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+        CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Eu), 0xBFu);
+        CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Fu), captured);
+        CHECK_EQ_U64(cogmaster__state_load(m, bytes, n), COGMASTER_STATUS_OK);
+        CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Eu), 0xC0u);
+        CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Fu), captured);
+        CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+        CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Eu), 0xBFu);
+        CHECK_EQ_U64(cogmaster__state_record(m, fields, count), count);
+        for (size_t i = 0u; i < count; i++) {
+            if (strcmp(fields[i].name, "vdp_hcounter") == 0) {
+                bytes[fields[i].offset] = 0x94u; /* impossible gap in H sequence */
+                cogmaster__state_seal(bytes, n);
+                CHECK_EQ_U64(cogmaster__state_load(m, bytes, n), COGMASTER_STATUS_ERR_ARGUMENT);
+                CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Fu), captured);
+                CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Eu), 0xBFu);
+            }
+        }
+    }
+    free(fields);
+    free(bytes);
+    CHECK_EQ_U64(cogmaster_reset(m, COGMASTER_RESET_POWER), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(m->vdp.hheld, 0u);
+    CHECK_EQ_U64(m->vdp.vline, 193u);
+    cogmaster_destroy(m);
+}
+static void th_edges(void)
+{
+    cogmaster *m = make();
+    reg(m, 5u, 0x7Eu);
+    m->vdp.vram[0x3F00] = 0xD0u;
+    reg(m, 0u, 0x14u);
+    reg(m, 1u, 0x60u);
+    reg(m, 10u, 0u);
+    reg(m, 8u, 9u);
+    beam(m, 261u, 607u);
+    pass(m, 1u);
+    beam(m, 192u, 599u);
+    cogmaster__bus_out(m, 0x3Fu, 0xDDu);
+    m->ticks++;
+    cogmaster__bus_out(m, 0x3Fu, 0xFDu);
+    CHECK_EQ_U64(m->bus.t, 600u);
+    CHECK_EQ_U64(m->vdp.hscroll, 9u);
+    CHECK_EQ_U64(m->vdp.display, 1u);
+    CHECK_EQ_U64(m->z80.int_line, 0u);
+    pass(m, 3u);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Eu), 0xC0u);
+    pass(m, 1u);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Eu), 0xC1u);
+    pass(m, 2u);
+    cogmaster__bus_out(m, 0x3Fu, 0xDDu);
+    m->ticks++;
+    cogmaster__bus_out(m, 0x3Fu, 0xFDu);
+    CHECK_EQ_U64(m->bus.t, 607u);
+    CHECK_EQ_U64(m->z80.int_line, 1u);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Fu), 0xF4u);
+    CHECK_EQ_HEX(status(m), 0x9Fu);
+    CHECK_EQ_U64(m->z80.int_line, 0u);
+    pass(m, 1u);
+    CHECK_EQ_U64(m->z80.int_line, 1u);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Fu), 0xF4u);
+    (void)status(m);
+    pass(m, 1u);
+    CHECK_EQ_U64(m->z80.int_line, 0u);
+    cogmaster_destroy(m);
+}
 int main(int argc, char **argv)
 {
     if (argc != 2)
@@ -296,6 +450,14 @@ int main(int argc, char **argv)
         hcounter();
     else if (strcmp(argv[1], "th_capture") == 0)
         th_capture();
+    else if (strcmp(argv[1], "mode_edges") == 0)
+        mode_edges();
+    else if (strcmp(argv[1], "deadlines") == 0)
+        deadlines();
+    else if (strcmp(argv[1], "counter_state") == 0)
+        counter_state();
+    else if (strcmp(argv[1], "th_edges") == 0)
+        th_edges();
     else if (strcmp(argv[1], "v_ntsc_192") == 0) {
         static const uint8_t ranges[][2] = {{0u, 0xDAu}, {0xD5u, 0xFFu}};
         vtable(COGMASTER_TV_NTSC, 192u, ranges, 2u);

@@ -89,6 +89,48 @@ The 607 measurement and selected 608 placement have different confidence
 from the approximate latch/V positions; passing tests proves this chosen
 model, not a hardware measurement or agreement with a reference binary.
 
+V-counter sequences are listed independently below. Each value lasts one
+line; the next value becomes CPU-visible at tick 604, including jump/wrap.
+
+| TV / height | V-counter intervals |
+|---|---|
+| NTSC / 192 | $00–$DA, $D5–$FF |
+| NTSC / 224 | $00–$EA, $E5–$FF |
+| NTSC / 240 | $00–$FF, $00–$06 |
+| PAL / 192 | $00–$F2, $BA–$FF |
+| PAL / 224 | $00–$FF, $00–$02, $CA–$FF |
+| PAL / 240 | $00–$FF, $00–$0A, $D2–$FF |
+
+The NTSC-240 sequence rolls every 263 counts, independently of the host's
+262-line / 179208-tick deadline. Its saved phase advances across host frame
+boundaries. On entry into that mode, the selected model seeds phase from
+the current physical line (plus one at/after 604). This entry phase is an
+explicit inference. Other modes use the physical 262/313-line beam; PAL
+keeps its 214092-tick deadline. Extended counter timing does not imply the
+extended renderer or GG LCD behavior has been implemented yet.
+
+The selected H coordinate translates active-origin ticks by 32 modulo 684,
+then reads $00–$93 followed by $E9–$FF, four ticks per value. In active
+coordinates the intervals are ticks 0–559 = $08–$93, 560–651 = $E9–$FF,
+652–683 = $00–$07. Thus active dot zero is $08 and GG left dot 48 is $20;
+607 reads $F4 and 608 reads $F5. These anchors reconcile the final 2008
+[Display Timing discussion](https://www.smspower.org/forums/8161-SMSDisplayTiming)
+with the [official counter sequence](https://www.smspower.org/Development/GGOfficialDocs).
+The 32-tick translation and its sub-dot phase are coordinate inferences;
+they do not move the IRQ or latch events or establish chip-level accuracy.
+
+Before the first capture H reads live. A low-to-high effective TH transition
+on either SMS port captures H, which remains held until another capture or
+reset. Readback and edge detection share pin mixing: input TH pulls high,
+export outputs use their written levels, Japanese outputs read low, and
+native GG has no TH transition. Releasing low output to input captures;
+falling edges and unchanged effective levels do not. Capture value, held
+flag and rolling V phase participate in state, validated before applying;
+H values in the sequence gap are refused. Peripheral timing remains a
+selected model; future hardware evidence may refine latch phase/edges.
+Sources: SMS-SYSTEM section 4 and
+[peripheral port directions](https://www.smspower.org/Development/PeripheralPorts).
+
 The owned `boot_to_play` fixture writes a diamond in plane 0 and $55, $33,
 $0F in planes 1–3, with palette entry n containing n. Its independent oracle
 expands the diamond into eight explicit bit rows, adds 2 for odd columns,

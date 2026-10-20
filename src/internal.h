@@ -94,6 +94,7 @@ struct cogmaster__bus {
 
 struct cogmaster__vdp {
     uint16_t addr;                      /* the 14-bit VRAM or CRAM address */
+    uint16_t vline;                     /* independent 0..262 rolling NTSC-240 counter */
     uint8_t reg[COGMASTER__VDP_REGS];   /* R0 to R10 */
     uint8_t status;                     /* the flags: bit 7 frame interrupt pending */
     uint8_t latch;                      /* 1 after the first control byte */
@@ -102,6 +103,7 @@ struct cogmaster__vdp {
     uint8_t buffer;                     /* the data port's read-ahead byte */
     uint8_t pause;                      /* 1 while a Pause press waits for its NMI tick */
     uint8_t line_counter, line_pending; /* R10 reload counter and independent IE1 source */
+    uint8_t hcounter, hheld;            /* captured TH count; live until first capture */
     uint8_t hscroll, vscroll, display;  /* line / frame / line latches, docs/hardware/video.md */
     /* Selected line slots; pattern bytes remain live until each dot emits. */
     struct {
@@ -384,6 +386,7 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t);
 /* A CPU access to a decoded VDP port at the beam position. */
 uint8_t cogmaster__vdp_read(cogmaster *m, uint32_t port);
 void cogmaster__vdp_write(cogmaster *m, uint32_t port, uint8_t v);
+void cogmaster__vdp_latch_h(cogmaster *m);
 void cogmaster__vdp_render_to(cogmaster *m, uint32_t end);
 void cogmaster__vdp_sprite_scan(cogmaster *m, uint32_t line);
 void cogmaster__vdp_render_until(cogmaster *m, uint32_t line, uint32_t x);

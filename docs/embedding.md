@@ -25,10 +25,12 @@ GG Start, and Select drives SMS Reset. Pad/none and button descriptors are sent
 to the frontend. Missing callbacks and none devices submit released levels.
 The experimental flag remains enabled while the background tracer is expanded.
 API version 4 appends SMS1 and unsupported-video fault constants; all earlier
-values and struct layouts are retained. Behaviour revision 4 adds sprite rendering
-and active-dot status flags to the background/scroll semantics. State format 5
-adds selected sprite slots and their line/zoom state to the dot cursor, scroll/display
-latches and last driven bus byte, so older state bytes are refused.
+values and struct layouts are retained. Behaviour revision 6 adds independent line
+IRQs, six mode/TV V-counter sequences, the translated H coordinate and TH capture
+to the sprite/background semantics. State format 7 also saves the line counter
+and pending source, rolling NTSC-240 phase and held H value alongside the sprite
+slots, dot cursor, scroll/display latches and last driven bus byte, so older state
+bytes are refused. The API and ABI layouts are unchanged.
 
 ## Getting it
 

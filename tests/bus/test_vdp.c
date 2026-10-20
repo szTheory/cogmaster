@@ -150,24 +150,13 @@ static void test_vcounter_pal(void)
     vcounter(COGMASTER_TV_PAL, ranges, 2u, LINES_PAL);
 }
 
-/* $7F is the upper 8 bits of the 9-bit pixel counter, which jumps from
-   pixel 295 to 466 at tick 592: $00-$93, then $E9-$FF (SMS-VDP section
-   4.3). */
+/* Selected active-origin anchors (video.md); the timing suite checks
+   every literal counter interval without duplicating the production formula. */
 static void test_hcounter(void)
 {
     cogmaster *m = load_sms();
-    for (uint32_t t = 0; t < LINE_TICKS; t++) {
-        put_beam(m, 10u, t);
-        uint32_t want = (t >= 592u ? t + 340u : t) >> 2;
-        uint8_t got = in(m, 0x7Fu);
-        if (got != want) {
-            fprintf(stderr, "t %lu: $%02X, expected $%02lX\n", (unsigned long)t, got,
-                    (unsigned long)want);
-            check_failures++;
-        }
-    }
-    const uint32_t ticks[] = {0u, 591u, 592u, 683u};
-    const uint8_t values[] = {0x00u, 0x93u, 0xE9u, 0xFFu};
+    const uint32_t ticks[] = {0u, 559u, 560u, 683u};
+    const uint8_t values[] = {0x08u, 0x93u, 0xE9u, 0x07u};
     for (size_t i = 0; i < 4u; i++) {
         put_beam(m, 10u, ticks[i]);
         CHECK_EQ_HEX(in(m, 0x7Fu), values[i]);
@@ -334,7 +323,7 @@ static void port_decode(uint32_t machine, uint32_t region, int mirrors)
         if (!mirrors) {
             vdp = p == 0x7Eu || p == 0x7Fu || p == 0xBEu || p == 0xBFu;
         }
-        /* Line 50, tick 400: V counter $32, H counter $64. */
+        /* Line 50, tick 400: V counter $32, H counter $6C. */
         put_beam(m, 50u, 400u);
         (void)in(m, 0xBFu);
         if (!vdp) {
@@ -352,7 +341,7 @@ static void port_decode(uint32_t machine, uint32_t region, int mirrors)
             continue;
         }
         if ((p & 0xC0u) == 0x40u) {
-            CHECK_EQ_HEX(in(m, (uint16_t)p), (p & 1u) ? 0x64 : 0x32);
+            CHECK_EQ_HEX(in(m, (uint16_t)p), (p & 1u) ? 0x6C : 0x32);
         } else if (p & 1u) {
             out(m, (uint16_t)p, 0x00u);
             CHECK_EQ_U64(v->latch, 1);

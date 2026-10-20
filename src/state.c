@@ -47,7 +47,7 @@ static const uint8_t state_magic[8] = {0x8Au, 0x43u, 0x47u, 0x4Du, 0x0Du, 0x0Au,
 _Static_assert(sizeof(struct cogmaster__counters) == 40u, "counters changed: update counters_io");
 _Static_assert(sizeof(struct cogmaster__z80) == 38u, "z80 changed: update z80_io");
 _Static_assert(sizeof(struct cogmaster__bus) == 40u, "bus changed: update bus_io");
-_Static_assert(sizeof(struct cogmaster__vdp) == 16470u, "vdp changed: update vdp_io");
+_Static_assert(sizeof(struct cogmaster__vdp) == 16474u, "vdp changed: update vdp_io");
 _Static_assert(sizeof(struct cogmaster__mapper) == 4u, "mapper changed: update mapper_io");
 _Static_assert(sizeof(struct cogmaster__io) == 8u, "io changed: update io_io");
 
@@ -222,10 +222,14 @@ static void vdp_io(struct cogmaster__sio *io, struct cogmaster__vdp *v, uint8_t 
     cogmaster__sio_u8(io, "vdp_first", &v->first, 0u, UINT8_MAX);
     cogmaster__sio_u8(io, "vdp_code", &v->code, 0u, STATE_VDP_CODE_MAX);
     cogmaster__sio_u16(io, "vdp_addr", &v->addr, 0u, STATE_VDP_ADDR_MAX);
+    cogmaster__sio_u16(io, "vdp_vline", &v->vline, 0u, 262u);
     cogmaster__sio_u8(io, "vdp_buffer", &v->buffer, 0u, UINT8_MAX);
     cogmaster__sio_u8(io, "vdp_pause", &v->pause, 0u, 1u);
     cogmaster__sio_u8(io, "vdp_line_counter", &v->line_counter, 0u, UINT8_MAX);
     uint8_t pending = cogmaster__sio_u8(io, "vdp_line_pending", &v->line_pending, 0u, 1u);
+    uint8_t h = cogmaster__sio_u8(io, "vdp_hcounter", &v->hcounter, 0u, UINT8_MAX);
+    uint8_t held = cogmaster__sio_u8(io, "vdp_hheld", &v->hheld, 0u, 1u);
+    cogmaster__sio_check(io, (!held && h == 0u) || (held && (h <= 0x93u || h >= 0xE9u)));
     cogmaster__sio_u8(io, "vdp_hscroll", &v->hscroll, 0u, UINT8_MAX);
     cogmaster__sio_u8(io, "vdp_vscroll", &v->vscroll, 0u, UINT8_MAX);
     cogmaster__sio_u8(io, "vdp_display", &v->display, 0u, 1u);

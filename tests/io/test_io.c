@@ -134,12 +134,23 @@ static void test_port3f_region(void)
     for (size_t k = 0; k < 2u; k++) {
         cogmaster *m = load(COGMASTER_MACHINE_SMS2, regions[k], COGMASTER_TV_NTSC);
         CHECK_EQ_HEX(m->io.io_ctrl, 0xFF);
+        m->bus.line = 20u;
+        m->bus.t = 0u;
+        m->bus.at = m->ticks;
         cogmaster__bus_out(m, 0x003Fu, 0xF5u);
         CHECK_EQ_HEX(cogmaster__bus_in(m, 0x00DDu) & 0xC0u, k == 0u ? 0xC0 : 0x00);
+        CHECK_EQ_U64(m->vdp.hheld, 0u);
         cogmaster__bus_out(m, 0x003Fu, 0x55u);
         CHECK_EQ_HEX(cogmaster__bus_in(m, 0x00DDu) & 0xC0u, 0x00);
+        m->bus.t = 96u;
+        cogmaster__bus_out(m, 0x003Fu, 0xF5u);
+        /* The Japanese output remains low despite the level-bit write. */
+        CHECK_EQ_U64(m->vdp.hheld, k == 0u ? 1u : 0u);
+        m->bus.t = 560u;
+        cogmaster__bus_out(m, 0x003Fu, 0x55u);
         cogmaster__bus_out(m, 0x003Fu, 0xFFu);
         CHECK_EQ_HEX(cogmaster__bus_in(m, 0x00DDu) & 0xC0u, 0xC0);
+        CHECK_EQ_HEX(cogmaster__bus_in(m, 0x7Fu), 0xE9u);
         CHECK_EQ_U64(fault_of(m).present, 0);
         cogmaster_destroy(m);
     }
@@ -189,6 +200,9 @@ static void test_gg_ports(void)
     CHECK_EQ_HEX(m->io.mem_ctrl, 0xA8);
     cogmaster__bus_out(m, 0x003Eu, 0xFFu);
     CHECK_EQ_HEX(m->io.mem_ctrl, 0xA8);
+    cogmaster__bus_out(m, 0x3Fu, 0x55u);
+    cogmaster__bus_out(m, 0x3Fu, 0xFFu);
+    CHECK_EQ_U64(m->vdp.hheld, 0u);
     CHECK_EQ_HEX(cogmaster__bus_read(m, STAMP_AT), STAMP);
     cogmaster_destroy(m);
 

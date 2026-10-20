@@ -86,6 +86,35 @@ static uint8_t port_dc(const cogmaster *m)
     return (uint8_t)~(p1 | ((p2 & 3u) << 6));
 }
 
+/* Effective TH pins, shared by readback and the rising-edge H latch.
+   Unconnected pad inputs pull high; Japanese output TH reads low; native
+   GG has no TH pins (SMS-SYSTEM section 4, PeripheralPorts). */
+static uint8_t th_pins(const cogmaster *m, uint8_t ctrl)
+{
+    uint8_t pins = 0xC0u;
+    uint8_t echo = m->region == COGMASTER_REGION_JAPAN ? 0u : ctrl;
+    if (!is_gg(m)) {
+        if ((ctrl & 2u) == 0u) {
+            pins = (uint8_t)((pins & ~0x40u) | ((echo & 0x20u) << 1));
+        }
+        if ((ctrl & 8u) == 0u) {
+            pins = (uint8_t)((pins & ~0x80u) | (echo & 0x80u));
+        }
+    }
+    return pins;
+}
+
+static void io_control(cogmaster *m, uint8_t ctrl)
+{
+    uint8_t old = th_pins(m, m->io.io_ctrl);
+    m->io.io_ctrl = ctrl;
+    /* Low-to-high on either effective TH captures, including release to
+       the input pull-up (SMS-SYSTEM section 4). */
+    if (((uint8_t)~old & th_pins(m, ctrl) & 0xC0u) != 0u) {
+        cogmaster__vdp_latch_h(m);
+    }
+}
+
 /* $DD: b3-0 port B left, right, TL, TR; b4 the reset button, 1 where there
    is none; b5 1 on the SMS and the Game Gear; b7-6 port B and port A TH
    (section 4). A TH set as an output ($3F b3 or b1 clear) reads back its
@@ -96,18 +125,7 @@ static uint8_t port_dd(const cogmaster *m)
 {
     uint32_t p2 = m->input.port2 == COGMASTER_DEVICE_NONE || is_gg(m) ? 0u : m->input.p2;
     uint8_t v = (uint8_t)~((p2 >> 2) | (is_gg(m) ? 0u : m->input.reset << 4));
-    uint8_t c = m->io.io_ctrl;
-    if (is_gg(m)) {
-        return v;
-    }
-    uint8_t echo = m->region == COGMASTER_REGION_JAPAN ? 0x00u : c;
-    if ((c & 0x02u) == 0u) {
-        v = (uint8_t)((v & ~0x40u) | ((echo & 0x20u) << 1));
-    }
-    if ((c & 0x08u) == 0u) {
-        v = (uint8_t)((v & ~0x80u) | (echo & 0x80u));
-    }
-    return v;
+    return (uint8_t)((v & 0x3Fu) | th_pins(m, m->io.io_ctrl));
 }
 
 /* $C0-$FF: the I/O chip, unless $3E b2 has turned it off; then the bus is
@@ -163,12 +181,12 @@ void cogmaster__io_out(cogmaster *m, uint16_t port, uint8_t v)
             return;
         }
         if (p == 0x3Fu) {
-            io->io_ctrl = v;
+            io_control(m, v);
             return;
         }
     } else if (p < 0x40u && (!full_decode(m) || p >= 0x3Eu)) {
         if ((p & 1u) != 0u) {
-            io->io_ctrl = v;
+            io_control(m, v);
         } else {
             io->mem_ctrl = v;
         }
