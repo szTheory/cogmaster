@@ -319,6 +319,11 @@ uint32_t cogmaster__crc32(uint32_t crc, const uint8_t *p, size_t n);
    one frame away. Load and both resets call it. */
 void cogmaster__bus_origin(cogmaster *m);
 
+/* Where the beam is, as line x 684 + tick, when the bus was last synced at
+   tick at in frame frame; at must lie within one frame of the frame's
+   start. */
+uint32_t cogmaster__bus_beam_at(const cogmaster *m, uint64_t frame, uint64_t at);
+
 /* The loaded TV's frame length in ticks and in lines. */
 uint32_t cogmaster__frame_ticks(const cogmaster *m);
 uint32_t cogmaster__frame_lines(const cogmaster *m);

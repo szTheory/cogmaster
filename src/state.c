@@ -176,7 +176,8 @@ static uint8_t z80_io(struct cogmaster__sio *io, struct cogmaster__z80 *z)
 }
 
 /* The deadline is the end of the frame the header's frame count is in, the
-   ticks have not passed it, and the beam is at most one step behind them. */
+   ticks have not passed it, the beam's stamp is at most one step behind
+   them, and the beam is where that stamp puts it. */
 static void bus_io(struct cogmaster__sio *io, cogmaster *m, struct state_time time)
 {
     struct cogmaster__bus *b = &m->bus;
@@ -185,14 +186,20 @@ static void bus_io(struct cogmaster__sio *io, cogmaster *m, struct state_time ti
                                            STATE_TICKS_MAX + frame_ticks);
     uint64_t at = cogmaster__sio_u64(io, "bus_at", &b->at, 0u, STATE_TICKS_MAX);
     uint64_t vdp_at = cogmaster__sio_u64(io, "bus_vdp_at", &b->vdp_at, 0u, STATE_TICKS_MAX);
-    cogmaster__sio_u32(io, "bus_line", &b->line, 0u, cogmaster__frame_lines(m) - 1u);
-    cogmaster__sio_u32(io, "bus_t", &b->t, 0u, STATE_T_MAX);
+    uint32_t line =
+        cogmaster__sio_u32(io, "bus_line", &b->line, 0u, cogmaster__frame_lines(m) - 1u);
+    uint32_t t = cogmaster__sio_u32(io, "bus_t", &b->t, 0u, STATE_T_MAX);
     cogmaster__sio_u16(io, "bus_op_pc", &b->op_pc, 0u, UINT16_MAX);
     cogmaster__sio_u8(io, "bus_op", &b->op, 0u, UINT8_MAX);
     cogmaster__sio_check(io, deadline == (time.frame + 1u) * frame_ticks);
     cogmaster__sio_check(io, time.ticks < deadline);
     cogmaster__sio_check(io, at <= time.ticks && time.ticks - at <= STATE_STEP_TICKS_MAX);
     cogmaster__sio_check(io, vdp_at <= time.ticks);
+    /* The beam is where at puts it, so the frame interrupt stays on the
+       frame deadline and the counters agree with ticks. Any at that passes
+       the checks above lies within one frame of the frame's start. */
+    cogmaster__sio_check(io, line * (STATE_T_MAX + 1u) + t ==
+                                 cogmaster__bus_beam_at(m, time.frame, at));
 }
 
 /* Status flags are bits 7-5; the 14-bit address; codes 0 to 3 (SMS-VDP

@@ -584,6 +584,19 @@ static void reject_image_states(void)
     refuse_with("bus_at", n, t + 1u, target, size, target_size);
     refuse_with("bus_at", n, t - 70u, target, size, target_size);
     refuse_with("bus_vdp_at", n, t + 1u, target, size, target_size);
+    /* A beam one tick or one line off where bus_at puts it, inside its own
+       bounds, would move the frame interrupt off the frame deadline. */
+    const struct cogmaster__state_field *line = field(n, "bus_line");
+    const struct cogmaster__state_field *tick = field(n, "bus_t");
+    if (line != NULL && tick != NULL) {
+        uint64_t l = get_le(good + line->offset, line->width);
+        uint64_t x = get_le(good + tick->offset, tick->width);
+        CHECK(l > 0u && l < 261u && x > 0u && x < 683u);
+        refuse_with("bus_line", n, l + 1u, target, size, target_size);
+        refuse_with("bus_line", n, l - 1u, target, size, target_size);
+        refuse_with("bus_t", n, x + 1u, target, size, target_size);
+        refuse_with("bus_t", n, x - 1u, target, size, target_size);
+    }
     /* /INT must be the VDP's frame flag AND IE0; this image leaves both
        clear, so a raised /INT is refused. */
     refuse_with("z80_int_line", n, 1u, target, size, target_size);

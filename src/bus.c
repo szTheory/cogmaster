@@ -46,6 +46,18 @@ void cogmaster__bus_origin(cogmaster *m)
     m->bus.deadline = cogmaster__frame_ticks(m);
 }
 
+/* The beam only ever moves by the ticks it is synced over, and the test card
+   adds a whole frame to both, so it is the origin advanced by at, modulo the
+   frame. The offset into the frame is reduced first, so nothing here divides
+   a 64-bit count. */
+uint32_t cogmaster__bus_beam_at(const cogmaster *m, uint64_t frame, uint64_t at)
+{
+    uint32_t ft = cogmaster__frame_ticks(m);
+    uint64_t start = frame * ft;
+    uint32_t into = at >= start ? (uint32_t)(at - start) : ft - (uint32_t)(start - at);
+    return (BUS_ORIGIN_LINE * BUS_LINE_TICKS + BUS_ORIGIN_TICK + into) % ft;
+}
+
 /* Brings the beam up to m->ticks, firing each VDP event the beam reaches
    on the way, so an access sees every event at or before its stamp. A Z80
    step is at most 23 T-states (69 ticks), so the loop runs a few times per
