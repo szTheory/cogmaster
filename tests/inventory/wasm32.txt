@@ -55,6 +55,7 @@ docs.api_names.self_test	policy
 docs.budgets	policy
 embed.subdirectory	install
 fault.ed_undefined	bus,portable
+fault.unmapped_read	bus,portable
 host.palette	host,portable
 install.consumer	install
 install.consumer.cxx	install

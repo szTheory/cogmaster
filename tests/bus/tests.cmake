@@ -35,6 +35,12 @@ cogmaster_add_test(NAME bus.hostile_vdp_loop COMMAND cogmaster-test-bus hostile_
 cogmaster_add_test(NAME fault.ed_undefined COMMAND cogmaster-test-bus fault.ed_undefined
   LABELS bus portable TIMEOUT 10)
 
+# Fault prevented: a read of a port nothing drives that returns a value
+# silently, so a host tracing a broken image learns nothing about where it
+# went wrong.
+cogmaster_add_test(NAME fault.unmapped_read COMMAND cogmaster-test-bus fault.unmapped_read
+  LABELS bus portable TIMEOUT 10)
+
 # The VDP's timing half: counters, ports, status and the Pause NMI tick.
 add_executable(cogmaster-test-vdp ${CMAKE_CURRENT_LIST_DIR}/test_vdp.c)
 target_include_directories(cogmaster-test-vdp PRIVATE ${PROJECT_SOURCE_DIR}/src)

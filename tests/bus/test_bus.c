@@ -225,6 +225,42 @@ static void test_fault_ed_undefined(void)
     cogmaster_destroy(m);
 }
 
+/* The fault record a run of prog leaves, through the public API. */
+static cogmaster_fault fault_of(const cogmaster *m)
+{
+    cogmaster_fault f;
+    memset(&f, 0, sizeof f);
+    f.size = (uint32_t)sizeof f;
+    CHECK_EQ_U64(cogmaster_get_fault(m, &f), COGMASTER_STATUS_OK);
+    return f;
+}
+
+/* LD A,0; IN A,($00); HALT on the export console: nothing drives a read of
+   $00-$3F, so the read returns open bus, is counted, and records the first
+   fault: kind unmapped_read (1), device ctrl (5), the bus address A<<8|n,
+   the IN's own address and opcode, and the beam at the I/O cycle's data
+   T-state, 7 + 10 T-states after the origin. */
+static void test_fault_unmapped_read(void)
+{
+    static const uint8_t prog[] = {0x3Eu, 0x00u, 0xDBu, 0x00u, 0x76u};
+    cogmaster *m = load(prog, sizeof prog);
+    (void)run(m);
+    cogmaster_fault f = fault_of(m);
+    CHECK_EQ_U64(f.present, 1);
+    CHECK_EQ_U64(f.kind, 1);
+    CHECK_EQ_U64(f.device, 5);
+    CHECK_EQ_HEX(f.addr, 0x0000);
+    CHECK_EQ_HEX(f.pc, 0x0002);
+    CHECK_EQ_HEX(f.opcode, 0xDB);
+    CHECK_EQ_U64(f.width, 8);
+    CHECK_EQ_U64(f.frame, 0);
+    CHECK_EQ_U64(f.line, ORIGIN_LINE);
+    CHECK_EQ_U64(f.dot, (ORIGIN_TICK + 3u * 17u) / 2u);
+    CHECK_EQ_HEX(m->z80.reg[COGMASTER__Z80_A], 0xFF);
+    CHECK_EQ_U64(m->counters.open_bus_reads, 1);
+    cogmaster_destroy(m);
+}
+
 /* Every access is stamped at its data T-state: T3 of a memory cycle, T4 of
    an I/O cycle (the automatic wait state included). For each instruction,
    the VDP access tick is the start tick plus 3 x the zero-based index of
@@ -306,6 +342,7 @@ static const struct {
     void (*run)(void);
 } cases[] = {
     {"fault.ed_undefined", test_fault_ed_undefined},
+    {"fault.unmapped_read", test_fault_unmapped_read},
     {"frame_origin", test_frame_origin},
     {"halt_bound.di", test_halt_bound_di},
     {"halt_bound.di_pal", test_halt_bound_di_pal},

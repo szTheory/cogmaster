@@ -82,6 +82,8 @@ struct cogmaster__bus {
     uint64_t vdp_at;   /* the tick of the last VDP port access, 0 before one */
     uint32_t line;     /* 0 to 261 (NTSC) or 312 (PAL) */
     uint32_t t;        /* tick in the line, 0 to 683 */
+    uint16_t op_pc;    /* the running instruction's address, its first prefix included */
+    uint8_t op;        /* the running instruction's first byte after any DD or FD */
 };
 
 /* The VDP's timing half: registers, ports, status and the stores the CPU
@@ -140,6 +142,13 @@ struct cogmaster__mapper {
     uint8_t bank[3]; /* the bank in each 16 KiB slot, each below the page count */
 };
 
+/* The I/O chip's ports as the CPU last wrote them (SMS-SYSTEM section 4). */
+struct cogmaster__io {
+    uint8_t mem_ctrl; /* $3E: active-low enables, b6 cartridge, b4 work RAM, b2 I/O chip */
+    uint8_t io_ctrl;  /* $3F: b3-0 TR/TH directions (1 = input), b7-4 their output levels */
+    uint8_t gg[6];    /* Game Gear $01-$06 */
+};
+
 /* The Master System's work RAM, mirrored over $C000-$FFFF. */
 #define COGMASTER__RAM_SIZE 8192u
 
@@ -159,6 +168,7 @@ struct cogmaster {
     struct cogmaster__vdp vdp;
     struct cogmaster__cart cart;
     struct cogmaster__mapper mapper;
+    struct cogmaster__io io;
     uint8_t ram[COGMASTER__RAM_SIZE];
     uint16_t field[COGMASTER__FIELD_MAX_H][COGMASTER__FIELD_W]; /* RGB444 per dot */
 };
@@ -296,6 +306,10 @@ void cogmaster__write_out(void *out, const void *full, uint32_t ours);
    load or reset: the first fault wins. */
 void cogmaster__fault_record(cogmaster *m, const struct cogmaster__fault *f);
 
+/* Records a fault of kind on device at the bus address addr, stamped with
+   the beam and the running instruction. Call sites are cold arms only. */
+void cogmaster__bus_fault(cogmaster *m, uint16_t addr, uint8_t device, uint8_t kind);
+
 /* CRC-32 as in Ethernet and PNG: reflected polynomial 0xEDB88320, initial
    value and final XOR 0xFFFFFFFF. Continue a running CRC by passing it back
    as crc; start from 0. */
@@ -354,6 +368,14 @@ void cogmaster__cart_install(cogmaster *m, const struct cogmaster__cart *c);
 uint8_t cogmaster__mapper_read(const cogmaster *m, uint16_t addr);
 void cogmaster__mapper_write(cogmaster *m, uint16_t addr, uint8_t v);
 void cogmaster__mapper_reset(cogmaster *m);
+
+/* The I/O ports outside the VDP's: the bus calls these for every other
+   port address (the full 16-bit address). open_bus returns what an undriven
+   read sees and counts it. reset sets the power-on port values. */
+uint8_t cogmaster__io_in(cogmaster *m, uint16_t port);
+void cogmaster__io_out(cogmaster *m, uint16_t port, uint8_t v);
+uint8_t cogmaster__io_open_bus(cogmaster *m);
+void cogmaster__io_reset(cogmaster *m);
 
 /* The fast-boot hand-off: the CPU and RAM as the BIOS leaves them. power
    also clears work RAM first. */

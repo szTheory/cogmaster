@@ -49,6 +49,7 @@ add_library(cogmaster STATIC
   src/crc32.c
   src/fault.c
   src/instance.c
+  src/io.c
   src/frame.c
   src/mapper.c
   src/state.c

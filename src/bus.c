@@ -41,6 +41,8 @@ void cogmaster__bus_origin(cogmaster *m)
     m->bus.vdp_at = 0u;
     m->bus.line = BUS_ORIGIN_LINE;
     m->bus.t = BUS_ORIGIN_TICK;
+    m->bus.op_pc = 0u;
+    m->bus.op = 0u;
     m->bus.deadline = cogmaster__frame_ticks(m);
 }
 
@@ -151,7 +153,7 @@ static int vdp_port(const cogmaster *m, uint16_t port)
     }
 }
 
-/* Ports the bus does not decode read $FF, the idle data bus. */
+/* Every port the VDP does not answer belongs to the I/O chip. */
 uint8_t cogmaster__bus_in(cogmaster *m, uint16_t port)
 {
     cogmaster__bus_sync(m);
@@ -160,7 +162,7 @@ uint8_t cogmaster__bus_in(cogmaster *m, uint16_t port)
         m->bus.vdp_at = m->ticks;
         return cogmaster__vdp_read(m, (uint32_t)vp);
     }
-    return 0xFFu;
+    return cogmaster__io_in(m, port);
 }
 
 /* Writes to $40-$7F go to the sound chip, which is not modelled yet. */
@@ -171,24 +173,39 @@ void cogmaster__bus_out(cogmaster *m, uint16_t port, uint8_t v)
     if (vp == COGMASTER__VDP_DATA || vp == COGMASTER__VDP_CONTROL) {
         m->bus.vdp_at = m->ticks;
         cogmaster__vdp_write(m, (uint32_t)vp, v);
+    } else if ((port & 0xC0u) != 0x40u) {
+        cogmaster__io_out(m, port, v);
     }
 }
 
-/* The step has fetched ED and op, so the instruction started two bytes
-   back. A dot is two ticks (SMS-SYSTEM section 1). */
-void cogmaster__bus_ed_undefined(cogmaster *m, uint8_t op)
+/* A dot is two ticks (SMS-SYSTEM section 1). */
+static void fault_at(cogmaster *m, uint16_t pc, uint16_t addr, uint8_t op, uint8_t device,
+                     uint8_t kind)
 {
-    cogmaster__bus_sync(m);
     struct cogmaster__fault f;
     memset(&f, 0, sizeof f);
     f.frame = m->frame;
     f.line = m->bus.line;
     f.dot = m->bus.t >> 1;
-    f.pc = (uint16_t)(m->z80.pc - 2u);
-    f.addr = (uint16_t)(m->z80.pc - 1u);
+    f.pc = pc;
+    f.addr = addr;
     f.opcode = op;
     f.width = 8u;
-    f.device = COGMASTER__DEVICE_CPU;
-    f.kind = COGMASTER__FAULT_ED_UNDEFINED;
+    f.device = device;
+    f.kind = kind;
     cogmaster__fault_record(m, &f);
+}
+
+void cogmaster__bus_fault(cogmaster *m, uint16_t addr, uint8_t device, uint8_t kind)
+{
+    fault_at(m, m->bus.op_pc, addr, m->bus.op, device, kind);
+}
+
+/* The step has fetched ED and op, so the instruction started two bytes
+   back. */
+void cogmaster__bus_ed_undefined(cogmaster *m, uint8_t op)
+{
+    cogmaster__bus_sync(m);
+    fault_at(m, (uint16_t)(m->z80.pc - 2u), (uint16_t)(m->z80.pc - 1u), op, COGMASTER__DEVICE_CPU,
+             COGMASTER__FAULT_ED_UNDEFINED);
 }

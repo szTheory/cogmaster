@@ -561,7 +561,13 @@ void cogmaster__z80_step(cogmaster *m)
         z->pc = (uint16_t)(z->pc - 1u);
         return;
     }
+    /* The fault record names the instruction: its address, the first
+       prefix's when one is pending, and its first byte after the prefixes. */
+    if (z->idx == COGMASTER__Z80_IDX_NONE) {
+        m->bus.op_pc = z->pc;
+    }
     uint8_t op = cogmaster__z80_m1(m);
+    m->bus.op = op;
     /* A DD or FD byte is a step of its own: a 4 T-state M1 that only sets
        the prefix for the next step and leaves Q at 0. A second prefix
        replaces the first; any other opcode consumes it. */
