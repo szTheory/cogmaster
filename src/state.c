@@ -43,7 +43,7 @@ static const uint8_t state_magic[8] = {0x8Au, 0x43u, 0x47u, 0x4Du, 0x0Du, 0x0Au,
    its visitor visits it. */
 _Static_assert(sizeof(struct cogmaster__counters) == 40u, "counters changed: update counters_io");
 _Static_assert(sizeof(struct cogmaster__z80) == 38u, "z80 changed: update z80_io");
-_Static_assert(sizeof(struct cogmaster__bus) == 24u, "bus changed: update bus_io");
+_Static_assert(sizeof(struct cogmaster__bus) == 32u, "bus changed: update bus_io");
 
 /* A beam is at most one line short of the frame's lines down and 683 ticks
    into a line, and one Z80 step is at most 69 ticks, so the beam is at most
@@ -169,11 +169,13 @@ static void bus_io(struct cogmaster__sio *io, cogmaster *m, struct state_time ti
     uint64_t deadline = cogmaster__sio_u64(io, "bus_deadline", &b->deadline, frame_ticks,
                                            STATE_TICKS_MAX + frame_ticks);
     uint64_t at = cogmaster__sio_u64(io, "bus_at", &b->at, 0u, STATE_TICKS_MAX);
+    uint64_t vdp_at = cogmaster__sio_u64(io, "bus_vdp_at", &b->vdp_at, 0u, STATE_TICKS_MAX);
     cogmaster__sio_u32(io, "bus_line", &b->line, 0u, cogmaster__frame_lines(m) - 1u);
     cogmaster__sio_u32(io, "bus_t", &b->t, 0u, STATE_T_MAX);
     cogmaster__sio_check(io, deadline == (time.frame + 1u) * frame_ticks);
     cogmaster__sio_check(io, time.ticks < deadline);
     cogmaster__sio_check(io, at <= time.ticks && time.ticks - at <= STATE_STEP_TICKS_MAX);
+    cogmaster__sio_check(io, vdp_at <= time.ticks);
 }
 
 static void ram_io(struct cogmaster__sio *io, cogmaster *m)

@@ -228,6 +228,82 @@ static void test_fault_ed_undefined(void)
     cogmaster_destroy(m);
 }
 
+/* Every access is stamped at its data T-state: T3 of a memory cycle, T4 of
+   an I/O cycle (the automatic wait state included). For each instruction,
+   the VDP access tick is the start tick plus 3 x the zero-based index of
+   that T-state, as the cycle templates the vectors check lay it out; a
+   memory instruction ends 3 x its T-states after it starts.
+     $0000  OUT ($BF),A       T-state 10 of 11
+     $0002  LD C,$BE
+     $0004  OUT (C),A         T-state 11 of 12
+     $0006  LD HL,$C000; LD B,1
+     $000B  OUTI              T-state 15 of 16
+     $000D  IN A,($7E)        T-state 10 of 11
+     $000F  LD ($C100),A      13 T-states
+     $0012  LD A,($C100)      13 T-states
+     $0015  HALT */
+static void test_stamps(void)
+{
+    static const uint8_t prog[] = {0xD3u, 0xBFu, 0x0Eu, 0xBEu, 0xEDu, 0x79u, 0x21u, 0x00u,
+                                   0xC0u, 0x06u, 0x01u, 0xEDu, 0xA3u, 0xDBu, 0x7Eu, 0x32u,
+                                   0x00u, 0xC1u, 0x3Au, 0x00u, 0xC1u, 0x76u};
+    static const struct {
+        uint16_t pc;
+        uint32_t data_t; /* the VDP access T-state, or 0 for none */
+        uint32_t length; /* T-states, or 0 when not checked */
+    } steps[] = {
+        {0x0000u, 10u, 11u}, {0x0002u, 0u, 7u},  {0x0004u, 11u, 12u}, {0x0006u, 0u, 10u},
+        {0x0009u, 0u, 7u},   {0x000Bu, 15u, 16u}, {0x000Du, 10u, 11u}, {0x000Fu, 0u, 13u},
+        {0x0012u, 0u, 13u},
+    };
+    cogmaster *m = load(prog, sizeof prog);
+    for (size_t i = 0; i < sizeof steps / sizeof steps[0]; i++) {
+        CHECK_EQ_HEX(m->z80.pc, steps[i].pc);
+        uint64_t start = m->ticks;
+        uint64_t vdp_at = m->bus.vdp_at;
+        cogmaster__z80_step(m);
+        if (steps[i].data_t != 0u) {
+            CHECK_EQ_U64(m->bus.vdp_at, start + 3u * steps[i].data_t);
+        } else {
+            CHECK_EQ_U64(m->bus.vdp_at, vdp_at);
+        }
+        CHECK_EQ_U64(m->ticks, start + 3u * steps[i].length);
+    }
+    /* The bytes went where the stamps say: the first control byte set the
+       address's low byte, OUT (C),A wrote A there and OUTI wrote the byte
+       at $C000 after it. */
+    CHECK_EQ_HEX(m->vdp.vram[0x00FF], 0xFF);
+    CHECK_EQ_HEX(m->vdp.vram[0x0100], 0xAB);
+    cogmaster_destroy(m);
+}
+
+/* A jammed image hammering the VDP ports, with no HALT and interrupts
+   disabled, still returns every frame:
+     $0000  OUT ($BF),A; OUT ($BE),A; INC A; JP $0000 */
+static void hostile_vdp_loop(uint32_t tv, uint64_t frame_ticks)
+{
+    static const uint8_t prog[] = {0xD3u, 0xBFu, 0xD3u, 0xBEu, 0x3Cu, 0xC3u, 0x00u, 0x00u};
+    cogmaster *m = load_tv(prog, sizeof prog, tv);
+    uint32_t overshoot = 0u;
+    for (uint32_t i = 0; i < 10u; i++) {
+        cogmaster_run_result r = run(m);
+        CHECK_EQ_U64(r.stop, COGMASTER_STOP_FRAME);
+        CHECK(r.overshoot_ticks <= MAX_OVERSHOOT);
+        overshoot = r.overshoot_ticks;
+    }
+    CHECK_EQ_U64(m->ticks, 10u * frame_ticks + overshoot);
+    CHECK_EQ_U64(m->frame, 10);
+    CHECK_EQ_U64(m->z80.halted, 0);
+    CHECK(m->bus.vdp_at > 9u * frame_ticks);
+    cogmaster_destroy(m);
+}
+
+static void test_hostile_vdp_loop(void)
+{
+    hostile_vdp_loop(COGMASTER_TV_NTSC, TICKS_PER_FRAME);
+    hostile_vdp_loop(COGMASTER_TV_PAL, TICKS_PER_FRAME_PAL);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
@@ -238,6 +314,8 @@ static const struct {
     {"halt_bound.di_pal", test_halt_bound_di_pal},
     {"halt_bound.ei_masked", test_halt_bound_ei_masked},
     {"halt_bound.ie_positive", test_halt_bound_ie_positive},
+    {"hostile_vdp_loop", test_hostile_vdp_loop},
+    {"stamps", test_stamps},
 };
 
 int main(int argc, char **argv)

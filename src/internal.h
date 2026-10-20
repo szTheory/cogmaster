@@ -79,6 +79,7 @@ enum {
 struct cogmaster__bus {
     uint64_t deadline; /* the tick the current frame ends at */
     uint64_t at;       /* the tick line and t describe */
+    uint64_t vdp_at;   /* the tick of the last VDP port access, 0 before one */
     uint32_t line;     /* 0 to 261 (NTSC) or 312 (PAL) */
     uint32_t t;        /* tick in the line, 0 to 683 */
 };

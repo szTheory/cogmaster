@@ -20,7 +20,34 @@ endforeach()
 cogmaster_add_test(NAME bus.halt_bound.ie_positive COMMAND cogmaster-test-bus
   halt_bound.ie_positive LABELS bus portable TIMEOUT 10)
 
+# Fault prevented: an access stamped off its data T-state, so a VDP event
+# lands on the wrong side of a port access.
+cogmaster_add_test(NAME bus.stamps COMMAND cogmaster-test-bus stamps
+  LABELS bus portable TIMEOUT 10)
+
+# Fault prevented: a jammed image hammering the VDP ports holding the host
+# past its frame time.
+cogmaster_add_test(NAME bus.hostile_vdp_loop COMMAND cogmaster-test-bus hostile_vdp_loop
+  LABELS bus portable TIMEOUT 10)
+
 # Fault prevented: an undefined ED opcode that runs silently, so the first
 # fault a host reads names nothing.
 cogmaster_add_test(NAME fault.ed_undefined COMMAND cogmaster-test-bus fault.ed_undefined
   LABELS bus portable TIMEOUT 10)
+
+# The VDP's timing half: counters, ports, status and the Pause NMI tick.
+add_executable(cogmaster-test-vdp ${CMAKE_CURRENT_LIST_DIR}/test_vdp.c)
+target_include_directories(cogmaster-test-vdp PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-vdp PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-vdp PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-vdp)
+
+# Fault prevented: a counter read, port, status flag or decode that differs
+# from the documented hardware, or a Pause NMI a line early or late, which
+# moves every raster effect and pause handler that reads the counters.
+foreach(case IN ITEMS vcounter.ntsc vcounter.pal hcounter control_port data_port status
+                      port_decode pause_nmi)
+  cogmaster_add_test(NAME vdp.${case} COMMAND cogmaster-test-vdp ${case}
+    LABELS portable vdp TIMEOUT 10)
+endforeach()

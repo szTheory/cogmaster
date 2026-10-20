@@ -11,8 +11,8 @@
 #include "state.h"
 #include "../check.h"
 
-#define BUF 16384u /* bytes in each state buffer; a state is about 8.4 KiB */
-#define MAX_FIELDS 9000u /* 8,192 of them are work RAM bytes */
+#define BUF 32768u /* bytes in each state buffer; a state is about 25 KiB */
+#define MAX_FIELDS 25000u /* 8,192 work RAM and 16,384 VRAM bytes among them */
 #define IMAGE_SIZE 1024u
 #define TICKS_PER_FRAME 179208u
 #define POISON 0xA5u
@@ -249,7 +249,11 @@ static void sweep(cogmaster *src, cogmaster *target)
                                         "z80_im",       "z80_idx",         "z80_halted",
                                         "z80_int_line", "z80_nmi_pending", "bus_deadline",
                                         "bus_at",       "bus_line",        "bus_t",
-                                        "machine",      "region",          "tv"};
+                                        "bus_vdp_at",   "vdp_reg",         "vdp_status",
+                                        "vdp_latch",    "vdp_code",        "vdp_addr",
+                                        "vdp_buffer",   "vdp_pause",       "vdp_cram",
+                                        "vdp_vram",     "machine",         "region",
+                                        "tv"};
     for (size_t i = 0; i < sizeof named / sizeof named[0]; i++) {
         (void)field(n, named[i]);
     }
@@ -408,6 +412,10 @@ static void reject_image_states(void)
     refuse_with("ticks", n, 5u * TICKS_PER_FRAME, target, size, target_size);
     refuse_with("bus_at", n, t + 1u, target, size, target_size);
     refuse_with("bus_at", n, t - 70u, target, size, target_size);
+    refuse_with("bus_vdp_at", n, t + 1u, target, size, target_size);
+    /* /INT must be the VDP's frame flag AND IE0; this image leaves both
+       clear, so a raised /INT is refused. */
+    refuse_with("z80_int_line", n, 1u, target, size, target_size);
     cogmaster *other = make_image(img_halt);
     if (save(other, bad) == size) {
         memcpy(bad, good, size);
