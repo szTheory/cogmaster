@@ -41,6 +41,8 @@ core.load.profiles	core,portable
 core.load.rejected_unchanged	core,portable
 core.load.sizes	core,portable
 core.no_alloc_after_load	perf,portable
+core.peek.args	core,portable
+core.peek.no_side_effects	core,portable
 core.state.frame_counter	core,portable
 core.state.mapper	core,portable
 core.state.record_sweep	core,portable
@@ -61,6 +63,9 @@ fault.rom_write	bus,portable
 fault.unmapped_read	bus,portable
 fault.unmapped_write	bus,portable
 fixtures.hello	fixtures,portable
+fixtures.judge.hang	fixtures,portable
+fixtures.judge.missing_row	fixtures,portable
+fixtures.judge.wrong_value	fixtures,portable
 fixtures.mapper_sega	fixtures,portable
 fixtures.wla_pin.self_test	fixtures
 host.palette	host,portable
@@ -115,6 +120,7 @@ runner.hashes_compare.count.self_test	runner
 runner.hashes_file	portable,runner
 runner.load.machine_auto	portable,runner
 runner.load.region	portable,runner
+runner.mailbox.crc	portable,runner
 runner.png	portable,runner
 runner.png_file	portable,runner
 runner.probe.digests	portable,runner

@@ -18,6 +18,16 @@ foreach(case IN ITEMS testcard.static testcard.boundaries testcard.all_colours t
     LABELS core portable TIMEOUT 10)
 endforeach()
 
+# Fault prevented: a peek that changes what it reads (a status clear, a
+# read-buffer refill, an open-bus count, a fault record), so the runner's
+# mailbox reading changes the run it measures; or a peek that returns a
+# byte the CPU would not read.
+foreach(case IN ITEMS peek.no_side_effects peek.args)
+  cogmaster_add_test(NAME core.${case}
+    COMMAND cogmaster-test-core ${case}
+    LABELS core portable TIMEOUT 10)
+endforeach()
+
 # Fault prevented: a frame, frame copy or state save and load that calls the
 # allocator after load, which a host running a frame from an audio callback
 # or a fixed-memory target cannot accept.

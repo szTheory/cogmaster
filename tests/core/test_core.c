@@ -1245,6 +1245,144 @@ static void test_boot_handoff(void)
     cogmaster_destroy(m);
 }
 
+/* The addresses the peek program reads with LD A,(nn): slot 0 inside and
+   past its fixed first 1 KiB, slots 1 and 2, work RAM and its mirror, and
+   the mapper register's mirror at $FFFF. */
+static const uint16_t peek_at[] = {0x0000u, 0x03FFu, 0x0400u, 0x4123u, 0x7FFFu,
+                                   0x8456u, 0xBFFFu, 0xC000u, 0xE000u, 0xFFFFu};
+#define PEEK_COPY 0xC800u /* where the program stores what it read */
+
+/* A 128 KiB Sega image: each byte is a function of its page and offset, and
+   at $0000 a program that selects bank 3 in slot 2, copies each peek_at
+   byte to PEEK_COPY, writes $5A to VRAM $0000, sets a VRAM read (which fills
+   the read-ahead buffer) and spins with interrupts off. */
+static size_t peek_image(void)
+{
+    size_t n = 8u * PAGE;
+    for (size_t i = 0; i < n; i++) {
+        big[i] = (uint8_t)((i >> 14) * 0x11u + (i & 0xFFu) * 7u);
+    }
+    uint8_t *p = big;
+    static const uint8_t head[] = {0xF3u, 0x3Eu, 0x03u, 0x32u, 0xFFu, 0xFFu};
+    memcpy(p, head, sizeof head);
+    p += sizeof head;
+    for (size_t k = 0; k < sizeof peek_at / sizeof peek_at[0]; k++) {
+        uint16_t to = (uint16_t)(PEEK_COPY + k);
+        const uint8_t copy[] = {0x3Au, (uint8_t)(peek_at[k] & 0xFFu), (uint8_t)(peek_at[k] >> 8),
+                                0x32u, (uint8_t)(to & 0xFFu),         (uint8_t)(to >> 8)};
+        memcpy(p, copy, sizeof copy);
+        p += sizeof copy;
+    }
+    static const uint8_t tail[] = {0x3Eu, 0x00u, 0xD3u, 0xBFu, 0x3Eu, 0x40u, 0xD3u, 0xBFu,
+                                   0x3Eu, 0x5Au, 0xD3u, 0xBEu, 0x3Eu, 0x00u, 0xD3u, 0xBFu,
+                                   0x3Eu, 0x00u, 0xD3u, 0xBFu, 0x18u, 0xFEu};
+    memcpy(p, tail, sizeof tail);
+    return n;
+}
+
+/* Saves m's state into a new buffer of *n bytes; NULL on failure. */
+static uint8_t *peek_save(const cogmaster *m, size_t *n)
+{
+    *n = cogmaster__state_size(m);
+    uint8_t *buf = (uint8_t *)malloc(*n != 0u ? *n : 1u);
+    if (buf == NULL || cogmaster__state_save(m, buf, *n) != COGMASTER_STATUS_OK) {
+        free(buf);
+        return NULL;
+    }
+    return buf;
+}
+
+/* Peeks all 64 KiB and checks the saved state is byte for byte the same. */
+static void expect_peek_pure(const char *what, cogmaster *m)
+{
+    size_t na = 0;
+    size_t nb = 0;
+    uint8_t *a = peek_save(m, &na);
+    struct cogmaster__counters before = m->counters;
+    for (uint32_t addr = 0; addr <= 0xFFFFu; addr++) {
+        (void)cogmaster_peek(m, COGMASTER_SPACE_BUS, addr);
+    }
+    uint8_t *b = peek_save(m, &nb);
+    CHECK(a != NULL && b != NULL);
+    if (a != NULL && b != NULL && (na != nb || memcmp(a, b, na) != 0)) {
+        fprintf(stderr, "%s: peeking changed the saved state\n", what);
+        check_failures++;
+    }
+    CHECK(memcmp(&before, &m->counters, sizeof before) == 0);
+    free(a);
+    free(b);
+}
+
+/* Mid-frame, with the frame flag pending and the read-ahead buffer filled,
+   peeking every address changes no state, and each peek equals the byte the
+   guest's LD A,(nn) read. With $3E taking the cartridge or work RAM off the
+   bus, the peek reads $FF and records no fault and counts no open bus. */
+static void test_peek_no_side_effects(void)
+{
+    size_t n = peek_image();
+    cogmaster_config cfg = make_config();
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    if (m == NULL) {
+        return;
+    }
+    cogmaster_media media = image_media(big, n, COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(m->cart.board, COGMASTER_BOARD_SEGA);
+    run_frames(m, 1u);
+    for (uint32_t i = 0; i < 101u; i++) {
+        cogmaster__z80_step(m);
+    }
+    CHECK((m->vdp.status & 0x80u) != 0u);
+    CHECK_EQ_HEX(m->vdp.buffer, 0x5A);
+    CHECK_EQ_U64(m->fault_present, 0);
+    for (size_t k = 0; k < sizeof peek_at / sizeof peek_at[0]; k++) {
+        uint32_t got = cogmaster_peek(m, COGMASTER_SPACE_BUS, peek_at[k]);
+        if (got != m->ram[(PEEK_COPY + k) & (COGMASTER__RAM_SIZE - 1u)]) {
+            fprintf(stderr, "peek $%04X is $%02lX, the guest read $%02X\n", (unsigned)peek_at[k],
+                    (unsigned long)got, (unsigned)m->ram[(PEEK_COPY + k) & 0x1FFFu]);
+            check_failures++;
+        }
+    }
+    CHECK_EQ_HEX(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0x8000u), big[3u * PAGE]);
+    expect_peek_pure("mid-frame", m);
+
+    m->io.mem_ctrl = (uint8_t)(m->io.mem_ctrl | 0x50u);
+    CHECK_EQ_HEX(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0x0400u), 0xFF);
+    CHECK_EQ_HEX(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC000u), 0xFF);
+    expect_peek_pure("cartridge and work RAM off", m);
+    CHECK_EQ_U64(m->fault_present, 0);
+    cogmaster_destroy(m);
+}
+
+/* A NULL instance, an instance with nothing loaded, a space other than the
+   bus and an address above $FFFF each peek a value above 255. */
+static void test_peek_args(void)
+{
+    CHECK(cogmaster_peek(NULL, COGMASTER_SPACE_BUS, 0u) > 255u);
+    cogmaster_config cfg = make_config();
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    if (m == NULL) {
+        return;
+    }
+    CHECK(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0u) > 255u);
+    size_t n = peek_image();
+    cogmaster_media media = image_media(big, n, COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0u), 0xF3);
+    CHECK_EQ_HEX(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xFFFFu), m->ram[0x1FFFu]);
+    CHECK(cogmaster_peek(m, COGMASTER_SPACE_BUS + 1u, 0u) > 255u);
+    CHECK(cogmaster_peek(m, 0xFFFFFFFFu, 0u) > 255u);
+    CHECK(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0x10000u) > 255u);
+    CHECK(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xFFFFFFFFu) > 255u);
+    /* The test card has no cartridge: its slots read $FF. */
+    cogmaster_media card = make_media(COGMASTER_MACHINE_SMS2);
+    CHECK_EQ_U64(cogmaster_load(m, &card), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0u), 0xFF);
+    cogmaster_destroy(m);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
@@ -1262,6 +1400,8 @@ static const struct {
     {"load.rejected_unchanged", test_load_rejected_unchanged},
     {"load.sizes", test_load_sizes},
     {"no_alloc_after_load", test_no_alloc_after_load},
+    {"peek.args", test_peek_args},
+    {"peek.no_side_effects", test_peek_no_side_effects},
     {"testcard.all_colours", test_all_colours},
     {"testcard.boundaries", test_boundaries},
     {"testcard.full_field", test_full_field},

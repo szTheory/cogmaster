@@ -1,10 +1,12 @@
-/* The runner's bench statistics, stop flag and probe digests, one case per
-   argv[1]: percentile, bytes, format, stop or digests. */
+/* The runner's bench statistics, stop flag, probe digests and mailbox
+   CRC, one case per argv[1]: percentile, bytes, format, stop, digests or
+   mailbox_crc. */
 #include <signal.h>
 #include <stdint.h>
 #include <string.h>
 
 #include "../../runner/bench.h"
+#include "../../runner/mailbox.h"
 #include "../../runner/md5.h"
 #include "../../runner/sha1.h"
 #include "../../runner/stop.h"
@@ -189,10 +191,19 @@ static void digests(void)
     md5_of("1234567890", 8u, "57edf4a22be3c955ac49da2e2107b67a");
 }
 
+/* The mailbox CRC-16 against the CCITT check value, and the empty input,
+   which leaves the initial value. */
+static void mailbox_crc(void)
+{
+    CHECK_EQ_HEX(cogmaster__crc16_ccitt((const uint8_t *)"123456789", 9u), 0x29B1);
+    CHECK_EQ_HEX(cogmaster__crc16_ccitt((const uint8_t *)"", 0u), 0xFFFF);
+}
+
 int main(int argc, char **argv)
 {
     if (argc != 2) {
-        fprintf(stderr, "usage: cogmaster-test-bench percentile|bytes|format|stop|digests\n");
+        fprintf(stderr,
+                "usage: cogmaster-test-bench percentile|bytes|format|stop|digests|mailbox_crc\n");
         return 2;
     }
     if (strcmp(argv[1], "percentile") == 0) {
@@ -205,6 +216,8 @@ int main(int argc, char **argv)
         stop();
     } else if (strcmp(argv[1], "digests") == 0) {
         digests();
+    } else if (strcmp(argv[1], "mailbox_crc") == 0) {
+        mailbox_crc();
     } else {
         fprintf(stderr, "unknown case %s\n", argv[1]);
         return 2;

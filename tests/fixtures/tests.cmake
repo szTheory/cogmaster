@@ -88,6 +88,43 @@ cogmaster_add_test(NAME fixtures.mapper_sega
     -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS fixtures portable TIMEOUT 30)
 
+# Fault prevented: a judge that passes what it should fail. Each control
+# runs the mapper_sega fixture through the judge and must fail with exit 1
+# and its own message: a CSV copy with one value changed, a copy missing one
+# row, and a run cut after one frame, before the ROM reports done.
+set_property(DIRECTORY ${PROJECT_SOURCE_DIR} APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+  ${PROJECT_SOURCE_DIR}/tests/diag/expected.csv)
+file(READ ${PROJECT_SOURCE_DIR}/tests/diag/expected.csv fixtures_csv)
+string(REGEX REPLACE "(\nmapper_sega,03:[^,]*,[^,]*,)5AF3," "\\15AF4," fixtures_wrong
+  "${fixtures_csv}")
+string(REGEX REPLACE "\nmapper_sega,02:[^\n]*" "" fixtures_missing "${fixtures_csv}")
+file(WRITE ${fixtures_out}/wrong_value.csv "${fixtures_wrong}")
+file(WRITE ${fixtures_out}/missing_row.csv "${fixtures_missing}")
+string(REPLACE ";" "\;" fixtures_inner_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
+foreach(control IN ITEMS wrong_value missing_row hang)
+  set(csv ${fixtures_out}/${control}.csv)
+  set(frames 120)
+  if(control STREQUAL "wrong_value")
+    set(regex "outside its row")
+  elseif(control STREQUAL "missing_row")
+    set(regex "has no row")
+  else()
+    set(csv ${PROJECT_SOURCE_DIR}/tests/diag/expected.csv)
+    set(frames 1)
+    set(regex "[(]hang[)]")
+  endif()
+  set(cmd ${CMAKE_COMMAND} -DCASE=mailbox -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+    -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${fixtures_inner_emulator}"
+    -DJUDGE=${PROJECT_SOURCE_DIR}/tests/cmake/mailbox.cmake -DPROFILE=sms-export
+    -DNAME=mapper_sega -DIMAGE=${COGMASTER_FIXTURES_DIR}/mapper_sega.sms -DFRAMES=${frames}
+    -DCSV=${csv} -DOUT=${fixtures_out}/${control}.txt -P ${CMAKE_CURRENT_LIST_FILE})
+  string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+  cogmaster_add_test(NAME fixtures.judge.${control}
+    COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=${regex}"
+      -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+    LABELS fixtures portable TIMEOUT 30)
+endforeach()
+
 # Fault prevented: an assembler pin that accepts a tarball other than the
 # pinned one. A local tarball checked against the wla-dx row's digest must
 # fail the download step with a hash mismatch; file:// needs no network.

@@ -421,9 +421,11 @@ cogmaster_add_test(NAME runner.usage.png_syntax
 add_executable(cogmaster-test-bench
   ${CMAKE_CURRENT_LIST_DIR}/test_runner.c
   ${PROJECT_SOURCE_DIR}/runner/bench.c
+  ${PROJECT_SOURCE_DIR}/runner/mailbox.c
   ${PROJECT_SOURCE_DIR}/runner/md5.c
   ${PROJECT_SOURCE_DIR}/runner/sha1.c
   ${PROJECT_SOURCE_DIR}/runner/stop.c)
+target_link_libraries(cogmaster-test-bench PRIVATE cogmaster::cogmaster)
 set_target_properties(cogmaster-test-bench PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
 cogmaster_warnings(cogmaster-test-bench)
@@ -437,6 +439,13 @@ set_target_properties(cogmaster-test-run-stop PROPERTIES
 cogmaster_warnings(cogmaster-test-run-stop)
 
 set(bench_check ${runner_check} -DUNIT=$<TARGET_FILE:cogmaster-test-bench>)
+
+# Fault prevented: a mailbox CRC that differs from the ROM's CRC-16 CCITT,
+# so every fixture reports crc=bad, or a wrong one that agrees with a wrong
+# ROM routine.
+cogmaster_add_test(NAME runner.mailbox.crc
+  COMMAND cogmaster-test-bench mailbox_crc
+  LABELS portable runner TIMEOUT 10)
 
 # Fault prevented: a percentile that interpolates, picks the wrong rank or
 # reads unsorted samples, so the report names a time no frame took.
