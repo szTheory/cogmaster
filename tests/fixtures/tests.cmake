@@ -139,11 +139,12 @@ cogmaster_add_test(NAME fixtures.boot_to_play.input
     "-DEMULATOR=${fixtures_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS fixtures portable TIMEOUT 10)
 
+string(REPLACE ";" "\\;" fixtures_inner_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
 set(cmd ${CMAKE_COMMAND} -DCASE=play -DNAME=boot_to_play -DWRONG=1
   -DIMAGE=${COGMASTER_FIXTURES_DIR}/boot_to_play.sms
   -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
   -DORACLE=$<TARGET_FILE:cogmaster-test-play> -DRUN=$<TARGET_FILE:cogmaster-run>
-  "-DEMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}" -P ${CMAKE_CURRENT_LIST_FILE})
+  "-DEMULATOR=${fixtures_inner_emulator}" -P ${CMAKE_CURRENT_LIST_FILE})
 string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
 # Fault prevented: a digest comparator accepting one changed expected pixel.
 cogmaster_add_test(NAME fixtures.boot_to_play.wrong_hash

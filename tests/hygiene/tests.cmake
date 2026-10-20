@@ -31,6 +31,33 @@ cogmaster_add_test(NAME hygiene.tree.self_test
     -P ${hygiene_scripts}/expect_fail.cmake
   LABELS hygiene TIMEOUT 60)
 
+# Fault prevented: arbitrary licensed binary bytes mistaken for private text,
+# while an unlisted binary must still fail before any text scanning.
+set(hygiene_address "binary")
+string(APPEND hygiene_address "@" "invalid.test")
+foreach(case manifest unlisted)
+  set(tree ${CMAKE_BINARY_DIR}/hygiene/binary_${case})
+  file(REMOVE_RECURSE ${tree})
+  file(MAKE_DIRECTORY ${tree}/scripts ${tree}/tests/roms)
+  file(COPY ${CMAKE_SOURCE_DIR}/scripts/hygiene.sh DESTINATION ${tree}/scripts)
+  execute_process(COMMAND ${GIT_EXECUTABLE} init -q ${tree} COMMAND_ERROR_IS_FATAL ANY)
+  execute_process(COMMAND ${COGMASTER_SH} -c "printf '\\000%s\\n' \"$1\" > \"$2\""
+    sh "${hygiene_address}" ${tree}/tests/roms/synthetic.bin COMMAND_ERROR_IS_FATAL ANY)
+  if(case STREQUAL "manifest")
+    file(WRITE ${tree}/tests/roms/manifest.txt "tests/roms/synthetic.bin MIT synthetic fixture\n")
+  endif()
+  set(command ${COGMASTER_SH} -c "cd \"$1\" && sh scripts/hygiene.sh --tree" sh ${tree})
+  if(case STREQUAL "manifest")
+    cogmaster_add_test(NAME hygiene.tree.binary_manifest COMMAND ${command} LABELS hygiene TIMEOUT 60)
+  else()
+    string(REPLACE ";" "$<SEMICOLON>" command "${command}")
+    cogmaster_add_test(NAME hygiene.tree.binary_unlisted
+      COMMAND ${CMAKE_COMMAND} "-DCMD=${command}" -DCODE=1 "-DREGEX=binary file not in manifest"
+        -P ${hygiene_scripts}/expect_fail.cmake
+      LABELS hygiene TIMEOUT 60)
+  endif()
+endforeach()
+
 # Fault prevented: code that drifts from .clang-format. Every tracked C file
 # but the vendored libretro.h, which is never edited.
 cogmaster_add_test(NAME hygiene.format

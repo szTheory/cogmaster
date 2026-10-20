@@ -36,8 +36,8 @@ check_file() {
     if [ "$got" = 544d522053454741 ] && ! in_manifest "$1"; then found 'game image by content' "$1"; break; fi
   done
   size=$($2 "$1" | head -c 1 | wc -c | tr -d ' ')
-  if [ "$size" != 0 ] && ! $2 "$1" | grep -Iq '' && ! in_manifest "$1"; then found 'binary file not in manifest' "$1"; fi
-  $2 "$1" | check_text "$1" "$1"
+  if [ "$size" != 0 ] && ! $2 "$1" | grep -Iq ''; then in_manifest "$1" || found 'binary file not in manifest' "$1"
+  else $2 "$1" | check_text "$1" "$1"; fi
 }
 check_files() {
   old_ifs=$IFS; IFS='

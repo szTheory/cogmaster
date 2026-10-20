@@ -27,6 +27,11 @@ required` fixture copies `ci.yml`). A new file is seen only once git tracks it, 
 as fresh as the last configure. After adding or committing files, rerun the whole workflow preset, which
 reconfigures, rather than `ctest` alone.
 
+Tree hygiene scans text for private paths, addresses and forbidden licences. Binary images still need a
+manifest entry and pass the image-name/content checks; their arbitrary bytes are not interpreted as text.
+`hygiene.tree.binary_manifest` and `hygiene.tree.binary_unlisted` prove both sides with synthetic binary data.
+MSVC builds retain ISO C stdio through `_CRT_SECURE_NO_WARNINGS`, with all other selected warnings still fatal.
+
 ## Lanes
 
 Each lane is one workflow preset, `cmake --workflow --preset <name>`, building into `build/<name>`.

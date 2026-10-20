@@ -14,6 +14,8 @@ hygiene.no_float.self_test	hygiene
 hygiene.timeout_comments	hygiene
 hygiene.timeout_comments.self_test	hygiene
 hygiene.tree	hygiene
+hygiene.tree.binary_manifest	hygiene
+hygiene.tree.binary_unlisted	hygiene
 hygiene.tree.self_test	hygiene
 policy.action_pins	hygiene,policy
 policy.action_pins.self_test	hygiene,policy

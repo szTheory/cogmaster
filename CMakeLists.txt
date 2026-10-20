@@ -32,6 +32,8 @@ option(COGMASTER_BUILD_LIBRETRO "Build the libretro core" ${cogmaster_libretro_d
 # make warnings fatal through CMAKE_COMPILE_WARNING_AS_ERROR.
 function(cogmaster_warnings target)
   if(PROJECT_IS_TOP_LEVEL)
+    # Keep ISO C stdio on MSVC; its optional *_s alternatives are not portable.
+    target_compile_definitions(${target} PRIVATE $<$<C_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>)
     target_compile_options(${target} PRIVATE
       $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion -Wstrict-prototypes -Wmissing-prototypes -Wvla -Wundef -Wcast-qual -Wimplicit-fallthrough -Wmissing-variable-declarations>
       $<$<C_COMPILER_ID:GNU>:-Wduplicated-cond -Wlogical-op>
