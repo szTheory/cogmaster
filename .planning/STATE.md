@@ -4,11 +4,11 @@ milestone: v1.0
 milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 03
 current_phase_name: Games play in RetroArch
-status: ready_to_ship
-stopped_at: Phase 03 verification passed; ready for ship; runtime Codex; model GPT-6
-last_updated: "2026-10-20T23:27:29Z"
+status: shipped
+stopped_at: Phase 03 shipped in PR #8; merge and release tracked at ship; runtime Codex; model GPT-6
+last_updated: "2026-10-20T23:34:42Z"
 last_activity: 2026-10-20
-last_activity_desc: Phase 03 verified with fresh hosted CI and agent screenshot inspection; runtime Codex; model GPT-6
+last_activity_desc: Phase 03 shipped in PR #8 with fresh local CI; runtime Codex; model GPT-6
 state_head: 5e7afdcbbda9dfad6b65a34410838a448573e313
 progress:
   total_phases: 4
@@ -29,12 +29,14 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 
 ## Current Position
 
-Phase: 03 (Games play in RetroArch) — VERIFIED; READY FOR SHIP
+Phase: 03 (Games play in RetroArch) — SHIPPED IN PR #8
 Plan: 18 of 18
-Status: Canonical verification passed; 88 UAT checks passed; no open acceptance gaps; phase 04 not started
-Last activity: 2026-10-20 — Verified all seven requirements, all native/portable lanes and RetroArch in run 39514577638; runtime Codex; model GPT-6
+Status: Phase 03 shipped — PR #8; 88 UAT checks passed; phase 04 not started
+Last activity: 2026-10-20 — Shipped phase 03 as PR #8; fresh local CI exited 0 (342 tests and 4 package checks); runtime Codex; model GPT-6
 
-Next command: `$gsd-ship 03`. Ship and confirm the phase release before starting phase 04, per AGENTS rules 9/10.
+Next command: `$gsd-discuss-phase 04`, after PR #8 merges and its automated release is confirmed at ship, per AGENTS rules 9/10.
+
+Ship: https://github.com/szTheory/cogmaster/pull/8. `cmake --workflow --preset ci` exited 0 during ship. Hosted verification: https://github.com/szTheory/cogmaster/actions/runs/39514577638 (`gh run view 39514577638 --exit-status`, exit 0).
 
 Progress: [████████░░] 75%
 
@@ -274,6 +276,8 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-10-20 | Code review fixes phase 3 (gsd-code-review 03 --fix); both findings fixed, round 1 | Codex | GPT-6 |
 | 2026-10-20 | Verify phase 3 (gsd-verify-work 03); 64 plan truths, 7 requirements and 88 UAT checks passed; hosted run 39514577638 | Codex | GPT-6 |
 
+| 2026-10-20 | Ship phase 3 (gsd-ship 03); PR #8, fresh local CI exit 0 | Codex | GPT-6 |
+
 ## Deferred Items
 
 Items acknowledged and deferred at milestone close, most recent first:
@@ -284,6 +288,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T23:27:29Z
-Stopped at: Phase 03 verified, ready for ship; phase 04 not started; runtime Codex; model GPT-6
+Last session: 2026-10-20T23:34:42Z
+Stopped at: Phase 03 shipped in PR #8; phase 04 not started; runtime Codex; model GPT-6
 Resume file: None
