@@ -88,7 +88,7 @@ jobs:
           ref: ${{ inputs.ref || '' }}
       - run: cmake --workflow --preset hygiene
       - name: Every test ran
-        run: cmake -DJUNIT=build/hygiene/junit.xml -DINVENTORY=tests/inventory/hygiene.txt -P tests/cmake/check_junit.cmake
+        run: cmake -DJUNIT=build/hygiene/junit.xml -DINVENTORY=tests/inventory/hygiene.txt -DCHECK=check_junit -P tests/cmake/repository.cmake
 
   # The squash commit takes the pull request's title and body, so the check
   # reads them live: an edit reruns it (the edited trigger) without a commit.
@@ -149,11 +149,11 @@ jobs:
       - name: Every test ran
         run: >-
           cmake -DJUNIT=build/${{ matrix.preset }}/junit.xml -DINVENTORY=tests/inventory/ci.txt
-          -DEXCLUDE=release -P tests/cmake/check_junit.cmake
+          -DEXCLUDE=release -DCHECK=check_junit -P tests/cmake/repository.cmake
       - name: Every release test ran
         run: >-
           cmake -DJUNIT=build/${{ matrix.preset }}/junit-release.xml -DINVENTORY=tests/inventory/ci.txt
-          -DLABELS=release -P tests/cmake/check_junit.cmake
+          -DLABELS=release -DCHECK=check_junit -P tests/cmake/repository.cmake
       # The README line installs this leg's own libretro zip after checking
       # its checksum, and refuses a copy with one byte flipped.
       - name: README install line
@@ -196,7 +196,7 @@ jobs:
       - name: Every test ran
         run: >-
           cmake -DJUNIT=build/asan/junit.xml -DINVENTORY=tests/inventory/ci.txt
-          "-DEXCLUDE=abi|release" -P tests/cmake/check_junit.cmake
+          "-DEXCLUDE=abi|release" -DCHECK=check_junit -P tests/cmake/repository.cmake
 
   nofp:
     needs: changes
@@ -215,7 +215,7 @@ jobs:
           ref: ${{ inputs.ref || '' }}
       - run: cmake --workflow --preset nofp
       - name: Every test ran
-        run: cmake -DJUNIT=build/nofp/junit.xml -DINVENTORY=tests/inventory/nofp.txt -P tests/cmake/check_junit.cmake
+        run: cmake -DJUNIT=build/nofp/junit.xml -DINVENTORY=tests/inventory/nofp.txt -DCHECK=check_junit -P tests/cmake/repository.cmake
 
   # 32-bit big-endian PowerPC under qemu-ppc: label portable, and its
   # hashes.txt joins the comparison.
@@ -235,7 +235,7 @@ jobs:
       - name: Every test ran
         run: >-
           cmake -DJUNIT=build/be32/junit.xml -DINVENTORY=tests/inventory/ci.txt
-          -DLABELS=portable -P tests/cmake/check_junit.cmake
+          -DLABELS=portable -DCHECK=check_junit -P tests/cmake/repository.cmake
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: hashes-be32
@@ -284,7 +284,7 @@ jobs:
       - name: Every test ran
         run: >-
           cmake -DJUNIT=build/wasm32/junit.xml -DINVENTORY=tests/inventory/wasm32.txt
-          -DLABELS=portable -P tests/cmake/check_junit.cmake
+          -DLABELS=portable -DCHECK=check_junit -P tests/cmake/repository.cmake
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: hashes-wasm32

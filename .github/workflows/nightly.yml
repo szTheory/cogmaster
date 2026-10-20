@@ -121,7 +121,7 @@ jobs:
         run: dpkg -s libclang-rt-21-dev > /dev/null 2>&1 || { sudo apt-get update && sudo apt-get install -y libclang-rt-21-dev; }
       - run: cmake --workflow --preset fuzz
       - name: Every test ran
-        run: cmake -DJUNIT=build/fuzz/junit.xml -DINVENTORY=tests/inventory/fuzz.txt -P tests/cmake/check_junit.cmake
+        run: cmake -DJUNIT=build/fuzz/junit.xml -DINVENTORY=tests/inventory/fuzz.txt -DCHECK=check_junit -P tests/cmake/repository.cmake
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
@@ -142,7 +142,7 @@ jobs:
       - run: scripts/fetch-pin.sh sst-z80 build/pins/sst-z80
       - run: cmake --workflow --preset vectors-full
       - name: Every test ran
-        run: cmake -DJUNIT=build/vectors-full/junit.xml -DINVENTORY=tests/inventory/vectors-full.txt -P tests/cmake/check_junit.cmake
+        run: cmake -DJUNIT=build/vectors-full/junit.xml -DINVENTORY=tests/inventory/vectors-full.txt -DCHECK=check_junit -P tests/cmake/repository.cmake
 
   # Decides from the jobs' results, never from a piped exit status: the
   # default shell has no pipefail.

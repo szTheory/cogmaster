@@ -1,106 +1,51 @@
-# Roll-up check, run as
-#   cmake -DCI_YML=<ci.yml> -DJQ=<jq> [-DREPORT_ONLY=<jobs>] -P ci_required.cmake
-# Fault prevented: a CI required roll-up that passes a failed or wrongly
-# skipped job, or a job missing from its needs. It runs the jq program of the
-# CI required step, with the step's own arguments, on synthetic needs, and
-# requires every job but the report-only ones among those needs.
+# Fault prevented: a failed, skipped or omitted required job accepted by the actual workflow predicate.
 cmake_minimum_required(VERSION 3.25)
-foreach(var CI_YML JQ)
-  if("${${var}}" STREQUAL "")
-    message(FATAL_ERROR "ci_required: -D${var} is required")
-  endif()
-endforeach()
 file(READ "${CI_YML}" yml)
-string(FIND "${yml}" "\njobs:\n" at)
-string(FIND "${yml}" "name: CI required" job_at)
-if(at EQUAL -1 OR job_at EQUAL -1)
-  message(FATAL_ERROR "ci_required: ${CI_YML} has no jobs or no CI required job")
+if(NOT yml MATCHES "\njobs:\n" OR NOT yml MATCHES "name: CI required")
+  message(FATAL_ERROR "ci_required: missing jobs or CI required job")
 endif()
-string(SUBSTRING "${yml}" ${at} -1 jobs)
-string(SUBSTRING "${yml}" ${job_at} -1 job)
-if(NOT job MATCHES "needs: \\[([^]]*)\\]")
-  message(FATAL_ERROR "ci_required: CI required has no needs list")
-endif()
+string(REGEX REPLACE "^.*name: CI required" "" job "${yml}")
+string(REGEX MATCH "needs: \\[([^]]*)\\]" unused "${job}")
 string(REPLACE " " "" needs "${CMAKE_MATCH_1}")
 string(REPLACE "," ";" needs "${needs}")
-if(NOT job MATCHES "jq -e ([^']*)'([^']*)'")
-  message(FATAL_ERROR "ci_required: CI required runs no jq -e program")
-endif()
+string(REGEX MATCH "jq -e ([^']*)'([^']*)'" unused "${job}")
 set(program "${CMAKE_MATCH_2}")
 string(REGEX MATCHALL "--arg [a-z_]+" args "${CMAKE_MATCH_1}")
-if(NOT args STREQUAL "--arg event;--arg heavy;--arg called;--arg release_inputs")
-  message(FATAL_ERROR "ci_required: the step passes '${args}', not event, heavy, called and release_inputs")
+if(NOT needs OR NOT program OR NOT args STREQUAL "--arg event;--arg heavy;--arg called;--arg release_inputs")
+  message(FATAL_ERROR "ci_required: missing needs or jq -e program and its expected arguments")
 endif()
-
-set(bad "")
+string(REGEX REPLACE "^.*\njobs:\n" "\n" jobs "${yml}")
 string(REGEX MATCHALL "\n  [a-z0-9-]+:\n" names "${jobs}")
 foreach(name IN LISTS names)
-  string(STRIP "${name}" name)
-  string(REPLACE ":" "" name "${name}")
+  string(REGEX REPLACE "[ \n:]" "" name "${name}")
   if(NOT name STREQUAL "ci-required" AND NOT name IN_LIST needs AND NOT name IN_LIST REPORT_ONLY)
-    list(APPEND bad "job ${name} is not in CI required's needs")
+    message(FATAL_ERROR "ci_required: job ${name} is not in CI required's needs")
   endif()
 endforeach()
-
-# name|event|heavy|called|release_inputs|job=result,...|want. Unlisted jobs
-# succeeded. The synthetic needs hold every job in CI required's needs; a
-# light pull request skips every one but changes, hygiene and title.
-set(all ${needs})
-set(light "")
-foreach(j IN LISTS all)
+foreach(j IN LISTS needs)
   if(NOT j MATCHES "^(changes|hygiene|title)$")
-    string(APPEND light ",${j}=skipped")
+    list(APPEND light "${j}=skipped")
   endif()
 endforeach()
-string(SUBSTRING "${light}" 1 -1 light)
-set(rehearsal_skipped "rehearsal=skipped,cleanup=skipped")
-set(cases
-  "all succeeded|pull_request|true|false|true||pass"
-  "light pull request|pull_request|false|false|false|${light}|pass"
-  "build skipped when heavy=true|pull_request|true|false|true|build=skipped|fail"
-  "build skipped when changes failed|pull_request||false||changes=failure,${light}|fail"
-  "hygiene skipped when heavy=false|pull_request|false|false|false|hygiene=skipped|fail"
-  "title skipped on push|push|true|false|true|title=skipped|pass"
-  "title skipped on a pull request|pull_request|true|false|true|title=skipped|fail"
-  "perf skipped on push|push|true|false|true|perf=skipped|pass"
-  "perf skipped in a nested call|pull_request|true|true|true|perf=skipped|pass"
-  "perf skipped on a pull request|pull_request|true|false|true|perf=skipped|fail"
-  "asan failed|pull_request|true|false|true|asan=failure|fail"
-  "build cancelled|push|true|false|true|build=cancelled|fail"
-  "rehearsal skipped when no release input changed|pull_request|true|false|false|${rehearsal_skipped}|pass"
-  "rehearsal skipped when a release input changed|pull_request|true|false|true|${rehearsal_skipped}|fail"
-  "rehearsal skipped on push|push|true|false|true|${rehearsal_skipped},title=skipped,perf=skipped|pass"
-  "rehearsal skipped in a nested call|pull_request|true|true|true|${rehearsal_skipped},perf=skipped|pass"
-  "rehearsal failed|pull_request|true|false|true|rehearsal=failure|fail"
-  "cleanup failed|pull_request|true|false|true|cleanup=failure|fail")
+list(JOIN light "," light)
+file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/../hygiene/fixtures/needs.txt" cases)
 foreach(case IN LISTS cases)
-  string(REPLACE "|" ";" f "${case}")
-  list(GET f 0 name)
-  list(GET f 1 event)
-  list(GET f 2 heavy)
-  list(GET f 3 called)
-  list(GET f 4 release_inputs)
-  list(GET f 5 results)
-  list(GET f 6 want)
+  string(REPLACE "@LIGHT@" "${light}" case "${case}")
+  string(REPLACE "|" ";" fields "${case}")
+  list(POP_FRONT fields name event heavy called release_inputs results want)
   set(json "")
-  foreach(j IN LISTS all)
+  foreach(j IN LISTS needs)
     set(result success)
     if(",${results}," MATCHES ",${j}=([a-z]+),")
       set(result ${CMAKE_MATCH_1})
     endif()
-    string(APPEND json ",\"${j}\":{\"result\":\"${result}\"}")
+    list(APPEND json "\"${j}\":{\"result\":\"${result}\"}")
   endforeach()
-  string(SUBSTRING "${json}" 1 -1 json)
+  list(JOIN json "," json)
   execute_process(COMMAND ${JQ} -n -e --arg event "${event}" --arg heavy "${heavy}"
-      --arg called "${called}" --arg release_inputs "${release_inputs}" --argjson needs "{${json}}" "$needs | ${program}"
+    --arg called "${called}" --arg release_inputs "${release_inputs}" --argjson needs "{${json}}" "$needs | ${program}"
     RESULT_VARIABLE rc OUTPUT_QUIET ERROR_VARIABLE err)
   if(NOT (want STREQUAL "pass" AND rc STREQUAL "0") AND NOT (want STREQUAL "fail" AND rc STREQUAL "1"))
-    list(APPEND bad "${name}: want ${want}, got exit ${rc} ${err}")
+    message(FATAL_ERROR "ci_required: ${name}: want ${want}, got exit ${rc} ${err}")
   endif()
 endforeach()
-list(LENGTH cases n)
-if(bad)
-  list(JOIN bad "\n  " bad)
-  message(FATAL_ERROR "ci_required:\n  ${bad}")
-endif()
-message(STATUS "ci_required: ${n} cases")

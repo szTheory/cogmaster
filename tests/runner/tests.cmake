@@ -547,7 +547,7 @@ cogmaster_add_test(NAME runner.stop
 # --help prints.
 cogmaster_add_test(NAME runner.exit.table
   COMMAND ${runner_check} -DDOC=${PROJECT_SOURCE_DIR}/docs/runner.md
-    -P ${PROJECT_SOURCE_DIR}/tests/cmake/exit_table.cmake
+    -DCHECK=exit_table -P ${PROJECT_SOURCE_DIR}/tests/cmake/repository.cmake
   LABELS runner TIMEOUT 30)
 
 # Fault prevented: a runner that exits 0 after failing to write a file, or

@@ -119,9 +119,9 @@ A zero exit from CTest does not prove that each test ran. After each test step C
 
 ```sh
 cmake -DJUNIT=build/ci/junit.xml -DINVENTORY=tests/inventory/ci.txt -DEXCLUDE=release \
-  -P tests/cmake/check_junit.cmake
+  -DCHECK=check_junit -P tests/cmake/repository.cmake
 cmake -DJUNIT=build/ci/junit-release.xml -DINVENTORY=tests/inventory/ci.txt -DLABELS=release \
-  -P tests/cmake/check_junit.cmake
+  -DCHECK=check_junit -P tests/cmake/repository.cmake
 ```
 
 Each fails unless every selected inventory test appears exactly once, ran, and did not fail, error or skip, with at
@@ -173,7 +173,7 @@ behaviour it describes, and the new values come from the same independent comput
 
 ## The core library's symbols
 
-`tests/cmake/abi.cmake` reads the built `cogmaster` library with `nm -P` (`llvm-nm` for MSVC's archives):
+`tests/cmake/repository.cmake` with `CHECK=abi` reads the built `cogmaster` library with `nm -P` (`llvm-nm` for MSVC's archives):
 
 - `abi.undefined`: every symbol the library needs and does not define is a C memory function or a compiler helper
   listed in the script for that system;
@@ -348,7 +348,7 @@ library's version numbers, the core's `display_version` and `cogmaster-run --ver
 `release.single_version_source` fails, naming the file, when that version appears in any other tracked file;
 `.next` checks the next minor and patch versions, which a release pull request writes. Out of scope are
 `version.txt`, the release-please files, `CHANGELOG.md` and `.planning/`. To check one version by hand:
-`cmake -DVERSION=<x.y.z> -P tests/cmake/single_version.cmake`.
+`cmake -DCHECK=single_version -DVERSION=<x.y.z> -P tests/cmake/repository.cmake`.
 
 ## Budgets
 

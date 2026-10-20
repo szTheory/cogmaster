@@ -1,0 +1,30 @@
+# Responsibility inventory: classification|path|reason. Physical implementation lines include shared helpers in full.
+behavior|tests/cmake/archive_contents.cmake|Extracts packaged deliverables and compares their installed output and notices against the packaging contract
+check|tests/cmake/budgets.cmake|Document and repository source budgets
+check|tests/cmake/ci_required.cmake|Workflow required-job policy and its negative cases
+check|tests/cmake/expect_fail.cmake|Shared exact exit status and tolerant diagnostic negative-control helper
+behavior|tests/cmake/floor.cmake|Examines packaged deliverables for loader compatibility on supported operating systems
+check|tests/cmake/repository.cmake|Shared check dispatch and environment forwarding
+check|tests/cmake/repository.sh|Shared scanners and repository policy predicate implementations
+check|cmake/CogmasterTests.cmake|Shared test registration and exact inventory checker, counted in full
+check|scripts/hygiene.sh|Tree, commit and history privacy, licence, identity and branch policy
+check|scripts/check-title.sh|Conventional title, release classification and CI skip policy
+operation|scripts/classify-changes.sh|Routes CI jobs for changed input rather than asserting repository content
+check|.githooks/pre-commit|Shared staged-tree policy entry point
+check|.githooks/pre-push|Shared history policy entry point
+build|cmake/WlaDx.cmake|Pinned external assembler bootstrap and fixture assembly operations
+build|cmake/packaging.cmake|Creates deliverable component archives rather than judging source policy
+build|cmake/toolchains/ppc-linux-gnu.cmake|Selects cross compiler and execution emulator
+build|cmake/toolchains/wasm32-wasi.cmake|Selects cross compiler and execution emulator
+build|cmake/cogmaster.pc.in|Installed pkg-config metadata template
+build|cmake/cogmasterConfig.cmake.in|Installed library CMake discovery template
+build|cmake/version.h.in|Generated public version metadata template
+build|scripts/fetch-pin.sh|Downloads and verifies external build input before extraction
+operation|scripts/apply-repo-settings.sh|Identity-bound remote repository settings administration
+operation|scripts/setup-release-app.sh|Identity-bound remote application authentication setup
+operation|scripts/publish.sh|Assembles, publishes and verifies remote release assets
+behavior|tests/cmake/check_hash.cmake|Runs executable and compares emulated video output
+behavior|tests/cmake/hashes.cmake|Runs executable fixture behavior and emits machine comparison hashes
+behavior|tests/cmake/mailbox.cmake|Runs fixture and compares emulated RAM output
+behavior|tests/cmake/perf_compare.cmake|Compares measured executable performance observations
+behavior|tests/cmake/install_line.cmake|Executes the published installation command against packaged binaries

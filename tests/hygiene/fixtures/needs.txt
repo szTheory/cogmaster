@@ -1,0 +1,18 @@
+all succeeded|pull_request|true|false|true||pass
+light pull request|pull_request|false|false|false|@LIGHT@|pass
+build skipped when heavy=true|pull_request|true|false|true|build=skipped|fail
+build skipped when changes failed|pull_request||false||changes=failure,@LIGHT@|fail
+hygiene skipped when heavy=false|pull_request|false|false|false|hygiene=skipped|fail
+title skipped on push|push|true|false|true|title=skipped|pass
+title skipped on a pull request|pull_request|true|false|true|title=skipped|fail
+perf skipped on push|push|true|false|true|perf=skipped|pass
+perf skipped in a nested call|pull_request|true|true|true|perf=skipped|pass
+perf skipped on a pull request|pull_request|true|false|true|perf=skipped|fail
+asan failed|pull_request|true|false|true|asan=failure|fail
+build cancelled|push|true|false|true|build=cancelled|fail
+rehearsal skipped when no release input changed|pull_request|true|false|false|rehearsal=skipped,cleanup=skipped|pass
+rehearsal skipped when a release input changed|pull_request|true|false|true|rehearsal=skipped,cleanup=skipped|fail
+rehearsal skipped on push|push|true|false|true|rehearsal=skipped,cleanup=skipped,title=skipped,perf=skipped|pass
+rehearsal skipped in a nested call|pull_request|true|true|true|rehearsal=skipped,cleanup=skipped,perf=skipped|pass
+rehearsal failed|pull_request|true|false|true|rehearsal=failure|fail
+cleanup failed|pull_request|true|false|true|cleanup=failure|fail
