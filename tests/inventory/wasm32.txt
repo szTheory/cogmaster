@@ -140,6 +140,7 @@ io.pause_history	io,portable
 io.port3e	io,portable
 io.port3f_region	io,portable
 io.port_dc_dd	io,portable
+library.synthetic	library
 mapper.codemasters.banks	mapper,portable
 mapper.codemasters.ram	mapper,portable
 mapper.codemasters.wrap	mapper,portable

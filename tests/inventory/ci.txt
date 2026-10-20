@@ -140,6 +140,7 @@ io.pause_history	io,portable
 io.port3e	io,portable
 io.port3f_region	io,portable
 io.port_dc_dd	io,portable
+library.synthetic	library
 libretro.battery.gg	libretro,portable
 libretro.battery.sms2	libretro,portable
 libretro.controls.rgb565	libretro,portable
