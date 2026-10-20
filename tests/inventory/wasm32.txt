@@ -40,6 +40,7 @@ cart.generator	cart,portable
 cart.probe.branches	cart,portable
 cart.probe.pure	cart,portable
 cart.probe.sizes	cart,portable
+compat.csv	compat
 core.api.error_changes_nothing	core,portable
 core.api.first_released_sizes	core,portable
 core.api.size_tags	core,portable

@@ -34,6 +34,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/fuzz/tests.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/runner/tests.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/perf/tests.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/policy/tests.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/compat/tests.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/release/tests.cmake)
 # After the hygiene and nofp returns, so those lanes never download WLA-DX.
 if(COGMASTER_FIXTURES)
