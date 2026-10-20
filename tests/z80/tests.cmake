@@ -114,3 +114,12 @@ foreach(case IN ITEMS "missing_key;missing key: wz"
     COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=${regex}" -P ${z80_expect_fail}
     LABELS portable vectors TIMEOUT 30)
 endforeach()
+
+# The prefix-group shards of the committed sample: every sampled test of the
+# group must match final state, RAM and every T-state, with only the allow
+# list's lines excused. Fault prevented: a Z80 opcode that drifts from the
+# vectors. Timeouts are provisional until the emulated lanes are measured.
+cogmaster_add_test(NAME vectors.base
+  COMMAND cogmaster-test-sst --sample ${z80_sample} --group base
+    --allow ${PROJECT_SOURCE_DIR}/tests/vectors/z80/allow.txt --expect-count 25200
+  LABELS portable vectors TIMEOUT 60)
