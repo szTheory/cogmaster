@@ -6,8 +6,9 @@
              byte), ROM CRC-32, body CRC-32,
              frame, ticks, 12 reserved zero bytes
      body    the counters, the first-fault record, the Z80, the beam and the
-             frame deadline, the VDP with its 16 KiB of VRAM, then the 8 KiB
-             of work RAM
+             frame deadline, the VDP with its 16 KiB of VRAM, the 8 KiB of
+             work RAM, then the board, the mapper registers and the
+             cartridge RAM (none, 8 KiB or 32 KiB, fixed by the image)
    One field list drives every pass (state.h), so they cannot drift apart. A
    struct is never copied as a whole: padding, pointers and the allocator
    never reach the bytes. The field buffer is not saved: every frame of the
@@ -46,6 +47,7 @@ _Static_assert(sizeof(struct cogmaster__counters) == 40u, "counters changed: upd
 _Static_assert(sizeof(struct cogmaster__z80) == 38u, "z80 changed: update z80_io");
 _Static_assert(sizeof(struct cogmaster__bus) == 32u, "bus changed: update bus_io");
 _Static_assert(sizeof(struct cogmaster__vdp) == 16436u, "vdp changed: update vdp_io");
+_Static_assert(sizeof(struct cogmaster__mapper) == 4u, "mapper changed: update mapper_io");
 
 /* A beam is at most one line short of the frame's lines down and 683 ticks
    into a line, and one Z80 step is at most 69 ticks, so the beam is at most
@@ -219,6 +221,27 @@ static void ram_io(struct cogmaster__sio *io, cogmaster *m)
     }
 }
 
+/* The board is the image's, so only its own value loads. Each bank is below
+   the page count, and the Codemasters board keeps only its RAM bit. */
+static void mapper_io(struct cogmaster__sio *io, cogmaster *m)
+{
+    struct cogmaster__mapper *p = &m->mapper;
+    uint32_t board = m->cart.board;
+    fixed(io, "mapper_board", board, 1u);
+    uint8_t ctrl_max = board == COGMASTER__BOARD_SEGA          ? UINT8_MAX
+                       : board == COGMASTER__BOARD_CODEMASTERS ? 0x80u
+                                                               : 0u;
+    uint8_t ctrl = cogmaster__sio_u8(io, "mapper_ctrl", &p->ctrl, 0u, ctrl_max);
+    uint8_t bank_max = (uint8_t)(m->cart.pages != 0u ? m->cart.pages - 1u : 0u);
+    for (uint32_t i = 0; i < 3u; i++) {
+        cogmaster__sio_u8(io, "mapper_bank", &p->bank[i], 0u, bank_max);
+    }
+    for (uint32_t i = 0; i < m->cart.ram_size; i++) {
+        cogmaster__sio_u8(io, "cart_ram", &m->cart.ram[i], 0u, UINT8_MAX);
+    }
+    cogmaster__sio_check(io, board != COGMASTER__BOARD_CODEMASTERS || (ctrl & 0x7Fu) == 0u);
+}
+
 /* The whole state, in the order the format fixes. */
 static void state_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
 {
@@ -229,6 +252,7 @@ static void state_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
     bus_io(io, m, time);
     vdp_io(io, &m->vdp, int_line);
     ram_io(io, m);
+    mapper_io(io, m);
 }
 
 /* SIZE, WRITE and RECORD only read through the field pointers, and an
