@@ -113,6 +113,32 @@ int main(void)
     CHECK_EQ_U64(ci.region_guess, COGMASTER_REGION_AUTO);
     CHECK_EQ_U64(ci.board, COGMASTER_BOARD_ROM_ONLY);
 
+    /* The first fault: LD A,0; IN A,($00); HALT reads a port nothing
+       drives, on the memory and I/O control device. */
+    CHECK_EQ_U64(COGMASTER_FAULT_KIND_UNMAPPED_READ, 1);
+    CHECK_EQ_U64(COGMASTER_FAULT_KIND_UNMAPPED_WRITE, 2);
+    CHECK_EQ_U64(COGMASTER_FAULT_KIND_ROM_WRITE, 3);
+    CHECK_EQ_U64(COGMASTER_FAULT_KIND_MAPPER_RANGE, 4);
+    CHECK_EQ_U64(COGMASTER_FAULT_KIND_ED_UNDEFINED, 5);
+    CHECK_EQ_U64(COGMASTER_FAULT_DEVICE_NONE, 0);
+    CHECK_EQ_U64(COGMASTER_FAULT_DEVICE_CPU, 1);
+    CHECK_EQ_U64(COGMASTER_FAULT_DEVICE_CART, 2);
+    CHECK_EQ_U64(COGMASTER_FAULT_DEVICE_RAM, 3);
+    CHECK_EQ_U64(COGMASTER_FAULT_DEVICE_MAPPER, 4);
+    CHECK_EQ_U64(COGMASTER_FAULT_DEVICE_CTRL, 5);
+    static const uint8_t prog[] = {0x3Eu, 0x00u, 0xDBu, 0x00u, 0x76u};
+    memcpy(image, prog, sizeof prog);
+    media.machine = COGMASTER_MACHINE_SMS2;
+    media.region = COGMASTER_REGION_EXPORT;
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    cogmaster_fault f;
+    memset(&f, 0, sizeof f);
+    f.size = (uint32_t)sizeof f;
+    CHECK_EQ_U64(cogmaster_get_fault(m, &f), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(f.kind, COGMASTER_FAULT_KIND_UNMAPPED_READ);
+    CHECK_EQ_U64(f.device, COGMASTER_FAULT_DEVICE_CTRL);
+
     cogmaster_destroy(m);
     CHECK_DONE();
 }

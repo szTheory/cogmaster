@@ -50,6 +50,19 @@ typedef uint32_t cogmaster_status;
 #define COGMASTER_BOARD_SEGA 2u
 #define COGMASTER_BOARD_CODEMASTERS 3u
 
+#define COGMASTER_FAULT_KIND_UNMAPPED_READ 1u
+#define COGMASTER_FAULT_KIND_UNMAPPED_WRITE 2u
+#define COGMASTER_FAULT_KIND_ROM_WRITE 3u
+#define COGMASTER_FAULT_KIND_MAPPER_RANGE 4u
+#define COGMASTER_FAULT_KIND_ED_UNDEFINED 5u
+
+#define COGMASTER_FAULT_DEVICE_NONE 0u
+#define COGMASTER_FAULT_DEVICE_CPU 1u
+#define COGMASTER_FAULT_DEVICE_CART 2u
+#define COGMASTER_FAULT_DEVICE_RAM 3u
+#define COGMASTER_FAULT_DEVICE_MAPPER 4u
+#define COGMASTER_FAULT_DEVICE_CTRL 5u
+
 typedef struct cogmaster cogmaster;
 
 typedef struct cogmaster_allocator {
@@ -112,7 +125,7 @@ typedef struct cogmaster_fault {
     uint32_t line, dot;
     uint16_t pc, addr;
     uint8_t opcode, width;
-    uint8_t device, kind; /* opaque codes, see docs/embedding.md */
+    uint8_t device, kind; /* COGMASTER_FAULT_DEVICE_*, COGMASTER_FAULT_KIND_* */
 } cogmaster_fault;
 
 typedef struct cogmaster_cart_info {

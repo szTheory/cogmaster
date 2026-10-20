@@ -250,8 +250,8 @@ on it. Any other `kind` returns `COGMASTER_STATUS_ERR_ARGUMENT`; a reset before 
 ## Faults
 
 `cogmaster_get_fault` fills a `cogmaster_fault` with the first fault the core recorded since the last load or
-reset: an access to an unmapped address or port, an illegal opcode, a mapper write out of range, or a video write
-faster than the hardware accepts. Only the first is kept; later ones are ignored until the next load or reset.
+reset: an access to an unmapped address or port, a write to ROM, a mapper value out of range, or an undefined
+opcode. Only the first is kept; later ones are ignored until the next load or reset.
 The record is part of the instance's saved state.
 
 | Field | Meaning |
@@ -263,11 +263,35 @@ The record is part of the instance's saved state.
 | `opcode` | the opcode byte being executed |
 | `device`, `kind` | which device faulted and how, as the codes below |
 
-`kind`: 0 none, 1 unmapped read, 2 unmapped write, 3 ROM write, 4 mapper range, 5 undefined ED opcode. `device`:
-0 none, 1 CPU, 2 cartridge, 3 work RAM, 4 mapper, 5 memory and I/O control. Both lists only grow. This release
-records kind 5: the CPU ran an opcode after `$ED` that the Z80 does not define, as an 8 T-state no-operation;
-`opcode` is that second byte, `pc` the address of the `$ED`. The test card runs no CPU, so it never records a
-fault. The call works before a load too, and then reports `present` 0.
+`kind` and `device` take these values; both lists only grow, and 0 means none.
+
+| `kind` | Constant | Recorded when |
+|---|---|---|
+| 1 | `COGMASTER_FAULT_KIND_UNMAPPED_READ` | a read nothing drives returns open bus: a port in `$00`–`$3F` other than the Game Gear's `$00`–`$06`, the cartridge slots with the cartridge disabled by port `$3E`, or work RAM disabled by port `$3E` |
+| 2 | `COGMASTER_FAULT_KIND_UNMAPPED_WRITE` | on the Japanese console or the Game Gear, which decode every port address, a write to a port in `$00`–`$3F` or `$80`–`$BF` that nothing latches, such as `$3E` on the Game Gear |
+| 3 | `COGMASTER_FAULT_KIND_ROM_WRITE` | a write to `$0000`–`$BFFF` that is neither a register of the cartridge's mapper nor cartridge RAM |
+| 4 | `COGMASTER_FAULT_KIND_MAPPER_RANGE` | a bank number at or past the end of an image whose page count is not a power of two, or a write to `$FFFC` that sets bit 7, bit 4 or bits 1–0 |
+| 5 | `COGMASTER_FAULT_KIND_ED_UNDEFINED` | the CPU ran an opcode after `$ED` that the Z80 does not define, as an 8 T-state no-operation; `opcode` is that second byte and `pc` the address of the `$ED` |
+
+| `device` | Constant | Meaning |
+|---|---|---|
+| 0 | `COGMASTER_FAULT_DEVICE_NONE` | no device answers the address |
+| 1 | `COGMASTER_FAULT_DEVICE_CPU` | the CPU itself |
+| 2 | `COGMASTER_FAULT_DEVICE_CART` | the cartridge |
+| 3 | `COGMASTER_FAULT_DEVICE_RAM` | work RAM |
+| 4 | `COGMASTER_FAULT_DEVICE_MAPPER` | the cartridge's mapper |
+| 5 | `COGMASTER_FAULT_DEVICE_CTRL` | the memory and I/O control ports `$3E` and `$3F` |
+
+`addr` is the full 16-bit bus address; for `IN A,(n)` and `OUT (n),A` that is A × 256 + n. Outside kind 5, `pc`
+is the address of the instruction, its first `$DD` or `$FD` prefix included, and `opcode` its first byte after
+those prefixes.
+
+Things shipped games do are never faults, so the record stays free for the real one: reads of `$C0`–`$FF` while
+port `$3E` has the I/O chip disabled, ports `$F0`–`$F2`, `$DE` and `$DF`, writes to the I/O chip's ports, the Game
+Gear's link ports `$01`–`$05`, a bank number past the end of an image whose page count is a power of two (it
+wraps), toggling port `$3E`, and undocumented CPU instructions. An undriven read returns `$FF` and counts in the
+instance's open-bus counter instead. The test card runs no CPU, so it never records a fault. The call works before
+a load too, and then reports `present` 0.
 
 ## Information
 
@@ -352,6 +376,7 @@ Every public name, for reference: the opaque instance `cogmaster`; the types `co
 `cogmaster_get_info`, `cogmaster_reset`, `cogmaster_get_fault` and `cogmaster_probe`; the constants `COGMASTER_MACHINE_AUTO`,
 `COGMASTER_MACHINE_SMS2`, `COGMASTER_MACHINE_GG`, `COGMASTER_REGION_AUTO`, `COGMASTER_REGION_EXPORT`,
 `COGMASTER_REGION_JAPAN`, `COGMASTER_TV_AUTO`, `COGMASTER_TV_NTSC`, `COGMASTER_TV_PAL`, `COGMASTER_STOP_FRAME`, `COGMASTER_FRAME_FULL_FIELD`,
-`COGMASTER_RESET_SOFT`, `COGMASTER_RESET_POWER`, `COGMASTER_BOARD_ROM_ONLY`, `COGMASTER_BOARD_SEGA` and
-`COGMASTER_BOARD_CODEMASTERS`, the nine `COGMASTER_STATUS_*` values above and the
+`COGMASTER_RESET_SOFT`, `COGMASTER_RESET_POWER`, `COGMASTER_BOARD_ROM_ONLY`, `COGMASTER_BOARD_SEGA`,
+`COGMASTER_BOARD_CODEMASTERS`, the five `COGMASTER_FAULT_KIND_*` and six `COGMASTER_FAULT_DEVICE_*` values
+above, the nine `COGMASTER_STATUS_*` values above and the
 version macros above.

@@ -19,11 +19,28 @@
 #define CM_RAM_ON 0x80u
 #define CM_RAM_BASE 0xA000u
 
+/* $FFFC b7 (ROM write enable), b4 (RAM over work RAM) and the bank shift
+   b1-0: no shipped game uses them (section 2.1). */
+#define SEGA_UNUSED 0x93u
+
 /* The bank a written value selects: the value plus the Sega shift, modulo
    the page count. */
 static uint8_t bank_of(const cogmaster *m, uint32_t v)
 {
     return (uint8_t)(m->cart.pages != 0u ? v % m->cart.pages : 0u);
+}
+
+/* A bank register write: past the end of a power-of-two image the high
+   bits are not wired and the bank wraps, which games rely on; past the end
+   of any other image there is no ROM to wrap onto, so it is a fault
+   (section 2.4). */
+static uint8_t bank_write(cogmaster *m, uint16_t addr, uint32_t v)
+{
+    uint32_t pages = m->cart.pages;
+    if (v >= pages && (pages & (pages - 1u)) != 0u) {
+        cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_MAPPER, COGMASTER__FAULT_MAPPER_RANGE);
+    }
+    return bank_of(m, v);
 }
 
 static uint8_t rom_at(const cogmaster *m, uint32_t bank, uint16_t addr)
@@ -91,31 +108,43 @@ void cogmaster__mapper_write(cogmaster *m, uint16_t addr, uint8_t v)
     case COGMASTER__BOARD_SEGA:
         if (addr >= 0xFFFCu) {
             if (addr == 0xFFFCu) {
+                if ((v & SEGA_UNUSED) != 0u) {
+                    cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_MAPPER,
+                                         COGMASTER__FAULT_MAPPER_RANGE);
+                }
                 p->ctrl = v;
             } else {
                 /* Shift codes 1, 2 and 3 add $18, $10 and $08. */
                 static const uint8_t shift[4] = {0x00u, 0x18u, 0x10u, 0x08u};
-                p->bank[addr - 0xFFFDu] = bank_of(m, (uint32_t)v + shift[p->ctrl & SEGA_SHIFT]);
+                p->bank[addr - 0xFFFDu] =
+                    bank_write(m, addr, (uint32_t)v + shift[p->ctrl & SEGA_SHIFT]);
             }
         } else if (addr >= 0x8000u && (p->ctrl & SEGA_RAM_ON) != 0u) {
             uint32_t base = (p->ctrl & SEGA_RAM_BANK) != 0u ? 0x4000u : 0u;
             m->cart.ram[(base | (addr & SLOT_MASK)) & (m->cart.ram_size - 1u)] = v;
+        } else {
+            cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_CART, COGMASTER__FAULT_ROM_WRITE);
         }
         break;
     case COGMASTER__BOARD_CODEMASTERS:
         /* The registers sit at $0000, $4000 and $8000 exactly (section 2.2). */
         if ((addr & SLOT_MASK) == 0u && addr < 0xC000u) {
             uint32_t slot = (uint32_t)addr >> 14;
-            p->bank[slot] = bank_of(m, v);
             if (slot == 1u) {
                 p->ctrl = v & CM_RAM_ON;
             }
+            p->bank[slot] = bank_write(m, addr, slot == 1u ? v & 0x7Fu : v);
         } else if (addr >= CM_RAM_BASE && addr < 0xC000u && (p->ctrl & CM_RAM_ON) != 0u) {
             m->cart.ram[addr & (m->cart.ram_size - 1u)] = v;
+        } else if (addr < 0xC000u) {
+            cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_CART, COGMASTER__FAULT_ROM_WRITE);
         }
         break;
     default:
-        /* Writes to ROM change nothing. */
+        /* Writes to ROM change nothing. $FFFC-$FFFF are work RAM only. */
+        if (addr < 0xC000u) {
+            cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_CART, COGMASTER__FAULT_ROM_WRITE);
+        }
         break;
     }
 }

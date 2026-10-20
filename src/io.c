@@ -119,24 +119,35 @@ uint8_t cogmaster__io_in(cogmaster *m, uint16_t port)
     return cogmaster__io_open_bus(m);
 }
 
+/* The bus sends every port but the VDP's and the sound chip's here. Writes
+   to the I/O chip ($C0-$FF) latch nothing and are no fault; on a
+   full-decode console a write nothing else latches is unmapped_write. */
 void cogmaster__io_out(cogmaster *m, uint16_t port, uint8_t v)
 {
     struct cogmaster__io *io = &m->io;
     uint32_t p = port & 0xFFu;
     if (is_gg(m)) {
-        /* Game Gear mode has no $3E; $04 is the link's receive register. */
-        if (p >= 1u && p <= 6u && p != 4u) {
-            io->gg[p - 1u] = p == 5u ? (uint8_t)(v & ~GG_STATUS_FLAGS) : v;
-        } else if (p == 0x3Fu) {
-            io->io_ctrl = v;
+        /* Game Gear mode has no $3E; $04 is the link's receive register,
+           which a write leaves alone. */
+        if (p >= 1u && p <= 6u) {
+            if (p != 4u) {
+                io->gg[p - 1u] = p == 5u ? (uint8_t)(v & ~GG_STATUS_FLAGS) : v;
+            }
+            return;
         }
-        return;
-    }
-    if (p < 0x40u && (!full_decode(m) || p >= 0x3Eu)) {
+        if (p == 0x3Fu) {
+            io->io_ctrl = v;
+            return;
+        }
+    } else if (p < 0x40u && (!full_decode(m) || p >= 0x3Eu)) {
         if ((p & 1u) != 0u) {
             io->io_ctrl = v;
         } else {
             io->mem_ctrl = v;
         }
+        return;
+    }
+    if (p < 0xC0u) {
+        cogmaster__bus_fault(m, port, COGMASTER__DEVICE_NONE, COGMASTER__FAULT_UNMAPPED_WRITE);
     }
 }

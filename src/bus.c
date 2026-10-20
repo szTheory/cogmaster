@@ -105,8 +105,7 @@ static uint8_t mem_off(cogmaster *m, uint16_t addr)
         return addr >= 0xC000u ? m->ram[addr & (COGMASTER__RAM_SIZE - 1u)]
                                : cogmaster__mapper_read(m, addr);
     }
-    cogmaster__bus_fault(m, addr,
-                         addr >= 0xC000u ? COGMASTER__DEVICE_RAM : COGMASTER__DEVICE_CART,
+    cogmaster__bus_fault(m, addr, addr >= 0xC000u ? COGMASTER__DEVICE_RAM : COGMASTER__DEVICE_CART,
                          COGMASTER__FAULT_UNMAPPED_READ);
     return cogmaster__io_open_bus(m);
 }

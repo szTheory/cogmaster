@@ -273,9 +273,12 @@ static const struct {
     const char *name;
     void (*run)(void);
 } cases[] = {
-    {"decode_mirrors", test_decode_mirrors}, {"gg_ports", test_gg_ports},
-    {"open_bus", test_open_bus},             {"port3e", test_port3e},
-    {"port3f_region", test_port3f_region},   {"port_dc_dd", test_port_dc_dd},
+    {"decode_mirrors", test_decode_mirrors},
+    {"gg_ports", test_gg_ports},
+    {"open_bus", test_open_bus},
+    {"port3e", test_port3e},
+    {"port3f_region", test_port3f_region},
+    {"port_dc_dd", test_port_dc_dd},
 };
 
 int main(int argc, char **argv)

@@ -87,8 +87,8 @@ static cogmaster *load_sega(const uint8_t *prog, size_t n_prog, size_t n)
     memset(big, 0xFF, n);
     memcpy(big, prog, n_prog);
     memcpy(big + 0x7FF0u, magic, sizeof magic);
-    cogmaster *m = load_image(big, n, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO,
-                              COGMASTER_TV_AUTO);
+    cogmaster *m =
+        load_image(big, n, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO, COGMASTER_TV_AUTO);
     CHECK_EQ_U64(m->cart.board, COGMASTER__BOARD_SEGA);
     return m;
 }
@@ -320,8 +320,8 @@ static void expect_none(const char *what, cogmaster *m)
     (void)run(m);
     if (fault_of(m).present != 0u) {
         cogmaster_fault f = fault_of(m);
-        fprintf(stderr, "%s: fault kind %u device %u addr $%04X pc $%04X\n", what,
-                (unsigned)f.kind, (unsigned)f.device, (unsigned)f.addr, (unsigned)f.pc);
+        fprintf(stderr, "%s: fault kind %u device %u addr $%04X pc $%04X\n", what, (unsigned)f.kind,
+                (unsigned)f.device, (unsigned)f.addr, (unsigned)f.pc);
         check_failures++;
     }
     cogmaster_destroy(m);
@@ -352,14 +352,11 @@ static void test_fault_unmapped_write(void)
      $0000  LD A,$08; LD ($FFFC),A; LD ($8000),A; HALT */
 static void test_fault_rom_write(void)
 {
-    static const uint8_t sega[] = {0x3Eu, 0x12u, 0x32u, 0xFFu, 0xFFu,
-                                   0x32u, 0x00u, 0x20u, 0x76u};
+    static const uint8_t sega[] = {0x3Eu, 0x12u, 0x32u, 0xFFu, 0xFFu, 0x32u, 0x00u, 0x20u, 0x76u};
     expect_fault(load_sega(sega, sizeof sega, 128u * 1024u), 3u, 2u, 0x2000u, 0x0005u, 0x32u);
-    expect_fault(load_on(sega + 5, sizeof sega - 5u, COGMASTER_MACHINE_SMS2,
-                         COGMASTER_REGION_AUTO),
+    expect_fault(load_on(sega + 5, sizeof sega - 5u, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO),
                  3u, 2u, 0x2000u, 0x0000u, 0x32u);
-    static const uint8_t ram[] = {0x3Eu, 0x08u, 0x32u, 0xFCu, 0xFFu,
-                                  0x32u, 0x00u, 0x80u, 0x76u};
+    static const uint8_t ram[] = {0x3Eu, 0x08u, 0x32u, 0xFCu, 0xFFu, 0x32u, 0x00u, 0x80u, 0x76u};
     expect_none("cartridge RAM", load_sega(ram, sizeof ram, 128u * 1024u));
 }
 
@@ -410,18 +407,17 @@ static void test_fault_not_faults(void)
                     load_on(chip, sizeof chip, profiles[k].machine, profiles[k].region));
     }
     /* The Game Gear's link ports $01-$05, read and written. */
-    static const uint8_t link[] = {0xDBu, 0x01u, 0xD3u, 0x01u, 0xDBu, 0x02u, 0xD3u, 0x02u,
-                                   0xDBu, 0x03u, 0xD3u, 0x03u, 0xDBu, 0x04u, 0xD3u, 0x04u,
-                                   0xDBu, 0x05u, 0xD3u, 0x05u, 0x76u};
+    static const uint8_t link[] = {0xDBu, 0x01u, 0xD3u, 0x01u, 0xDBu, 0x02u, 0xD3u,
+                                   0x02u, 0xDBu, 0x03u, 0xD3u, 0x03u, 0xDBu, 0x04u,
+                                   0xD3u, 0x04u, 0xDBu, 0x05u, 0xD3u, 0x05u, 0x76u};
     expect_none("Game Gear link ports",
                 load_on(link, sizeof link, COGMASTER_MACHINE_GG, COGMASTER_REGION_AUTO));
     /* A bank past the end of a power-of-two image wraps. */
     static const uint8_t wrap[] = {0x3Eu, 0x23u, 0x32u, 0xFFu, 0xFFu, 0x32u, 0xFEu, 0xFFu, 0x76u};
     expect_none("bank wrap", load_sega(wrap, sizeof wrap, BIG_MAX));
     /* $3E toggled: work RAM and the I/O chip off and on again. */
-    static const uint8_t toggle[] = {0x3Eu, 0xBFu, 0xD3u, 0x3Eu, 0x3Eu, 0xABu, 0xD3u, 0x3Eu,
-                                     0x3Eu, 0xBFu, 0xD3u, 0x3Eu, 0x3Eu, 0xABu, 0xD3u, 0x3Eu,
-                                     0x76u};
+    static const uint8_t toggle[] = {0x3Eu, 0xBFu, 0xD3u, 0x3Eu, 0x3Eu, 0xABu, 0xD3u, 0x3Eu, 0x3Eu,
+                                     0xBFu, 0xD3u, 0x3Eu, 0x3Eu, 0xABu, 0xD3u, 0x3Eu, 0x76u};
     expect_none("$3E toggling",
                 load_on(toggle, sizeof toggle, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO));
     /* LD IX,$C000; LD A,IXH; LD IYL,5; DD NOP; FD DD NOP; SLL B;

@@ -246,12 +246,11 @@ static void sweep(cogmaster *src, cogmaster *target)
     CHECK(swept >= 30u);
     CHECK_EQ_U64(ram, 8192);
     static const char *const named[] = {
-        "z80_pc",     "z80_sp",       "z80_wz",          "z80_im",       "z80_idx",
-        "z80_halted", "z80_int_line", "z80_nmi_pending", "bus_deadline", "bus_at",
-        "bus_line",   "bus_t",        "bus_vdp_at",      "vdp_reg",      "vdp_status",
-        "vdp_latch",  "vdp_code",     "vdp_addr",        "vdp_buffer",   "vdp_pause",
-        "vdp_cram",   "vdp_vram",     "machine",         "region",       "tv",
-        "io_mem_ctrl", "io_ctrl",     "io_gg",           "bus_op_pc",    "bus_op"};
+        "z80_pc",       "z80_sp",          "z80_wz",       "z80_im",    "z80_idx",   "z80_halted",
+        "z80_int_line", "z80_nmi_pending", "bus_deadline", "bus_at",    "bus_line",  "bus_t",
+        "bus_vdp_at",   "vdp_reg",         "vdp_status",   "vdp_latch", "vdp_code",  "vdp_addr",
+        "vdp_buffer",   "vdp_pause",       "vdp_cram",     "vdp_vram",  "machine",   "region",
+        "tv",           "io_mem_ctrl",     "io_ctrl",      "io_gg",     "bus_op_pc", "bus_op"};
     for (size_t i = 0; i < sizeof named / sizeof named[0]; i++) {
         (void)field(n, named[i]);
     }
