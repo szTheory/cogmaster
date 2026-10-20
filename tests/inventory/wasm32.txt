@@ -197,6 +197,7 @@ runner.probe.unsupported	portable,runner
 runner.refuse.profile	portable,runner
 runner.refuse.sg1000	portable,runner
 runner.refuse.size	portable,runner
+runner.save.import	portable,runner
 runner.stop	portable,runner
 runner.trace.fault	portable,runner
 runner.trace.none	portable,runner

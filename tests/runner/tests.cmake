@@ -61,7 +61,13 @@ if(CMAKE_SCRIPT_MODE_FILE)
     endif()
   endfunction()
 
-  if(CASE STREQUAL "video_override")
+  if(CASE STREQUAL "save_import")
+    file(MAKE_DIRECTORY "${OUT}")
+    expect_exit(0 "^$" --frames 1 --save-dir "${OUT}" "${BATTERY}")
+    if(NOT EXISTS "${OUT}/battery.srm")
+      message(FATAL_ERROR "dirty battery was not persisted")
+    endif()
+  elseif(CASE STREQUAL "video_override")
     expect_exit(0 "^$" --frames 1 --machine sms1)
     expect_exit(0 "^$" --frames 1 --machine sms --video-mode sms)
     expect_exit(0 "^$" --frames 1 --machine gg --video-mode gg)
@@ -487,6 +493,15 @@ cogmaster_add_test(NAME runner.png
 
 set(runner_check ${CMAKE_COMMAND} -DRUN=$<TARGET_FILE:cogmaster-run>
   "-DEMULATOR=${runner_emulator}" -DSEEDS=${COGMASTER_SEEDS_DIR})
+
+if(COGMASTER_FIXTURES)
+  # Fault prevented: --save-dir silently dropping a guest battery write.
+  cogmaster_add_test(NAME runner.save.import
+    COMMAND ${runner_check} -DCASE=save_import
+      -DOUT=${PROJECT_BINARY_DIR}/tests/save-import
+      -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS runner portable TIMEOUT 10)
+endif()
 
 if(COGMASTER_FIXTURES)
   # Fault prevented: host polling credited as guest reads, or lag output omitted.
