@@ -262,17 +262,41 @@ static void continuation(cogmaster *m, const char *path)
     memset(raw, 0xff, sizeof raw);
     raw[0] = 0xa5u;
     raw[1] = 0x5au;
-    for (uint32_t previous = 7u; previous <= 19u; previous += 12u) {
-        raw[2] = (uint8_t)previous;
-        uint64_t generation = battery(m).generation;
-        CHECK_EQ_U64(import_save(m, raw, 32768u), COGMASTER_STATUS_OK);
-        CHECK_EQ_U64(import_save(m, raw, 32768u), COGMASTER_STATUS_OK);
-        CHECK_EQ_U64(battery(m).generation, generation);
-        CHECK_EQ_U64(cogmaster_reset(m, COGMASTER_RESET_SOFT), COGMASTER_STATUS_OK);
-        for (uint32_t frame = 0; frame < 8u; frame++)
-            CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
-        CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xc112u), previous);
-        CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xc113u), previous + 1u);
+    const uint32_t profiles[] = {COGMASTER_MACHINE_SMS2, COGMASTER_MACHINE_GG};
+    for (size_t i = 0; i < sizeof profiles / sizeof profiles[0]; i++) {
+        cogmaster_media media = {0};
+        media.size = sizeof media;
+        media.machine = profiles[i];
+        media.video_mode =
+            profiles[i] == COGMASTER_MACHINE_GG ? COGMASTER_VIDEO_GG : COGMASTER_VIDEO_SMS;
+        media.image = image;
+        media.image_size = sizeof image;
+        CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+        cogmaster_battery b = battery(m);
+        CHECK_EQ_U64(b.generation, 0u);
+        /* Frontend-style direct restoration is also generation-neutral. */
+        memcpy(b.data, raw, b.length);
+        CHECK_EQ_U64(battery(m).generation, 0u);
+        for (uint32_t reset = 0; reset < 2u; reset++) {
+            uint32_t previous = reset == COGMASTER_RESET_SOFT ? 7u : 19u;
+            raw[2] = (uint8_t)previous;
+            uint64_t generation = battery(m).generation;
+            CHECK_EQ_U64(import_save(m, raw, 32768u), COGMASTER_STATUS_OK);
+            CHECK_EQ_U64(import_save(m, raw, 32768u), COGMASTER_STATUS_OK);
+            CHECK_EQ_U64(battery(m).generation, generation);
+            CHECK_EQ_U64(cogmaster_reset(m, reset), COGMASTER_STATUS_OK);
+            cogmaster_battery again = battery(m);
+            CHECK(again.data == b.data);
+            CHECK_EQ_U64(again.length, b.length);
+            CHECK_EQ_U64(again.generation, generation);
+            CHECK(memcmp(again.data, raw, b.length) == 0);
+            for (uint32_t frame = 0; frame < 8u; frame++)
+                CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+            CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xc112u), previous);
+            CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xc113u), previous + 1u);
+            CHECK(battery(m).data == b.data);
+            CHECK_EQ_U64(battery(m).generation, generation + 1u);
+        }
     }
 }
 

@@ -9,9 +9,10 @@ static int battery_test(const char *path, const char *machine)
     CHECK_EQ_U64(fread(image, 1u, sizeof image, f), sizeof image);
     CHECK_EQ_U64(fclose(f), 0u);
     option_machine = machine;
-    option_mode = "sms";
-    want_w = 256u;
-    want_h = 192u;
+    bool gg = strcmp(machine, "gg") == 0;
+    option_mode = gg ? "gg" : "sms";
+    want_w = gg ? 160u : 256u;
+    want_h = gg ? 144u : 192u;
     p_set_environment(env);
     p_init();
     set_callbacks();

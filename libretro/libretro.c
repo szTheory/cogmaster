@@ -498,15 +498,23 @@ unsigned retro_get_region(void)
     return loaded && info.tv == COGMASTER_TV_PAL ? RETRO_REGION_PAL : RETRO_REGION_NTSC;
 }
 
-/* L7826: no memory regions are exposed in this release. */
+/* L7826: only the classified persistent span is SAVE_RAM. Its lifetime
+   follows load/unload, not mapper enable; the frontend owns file I/O. */
+static cogmaster_battery lr_battery(unsigned id)
+{
+    cogmaster_battery b = {0};
+    b.size = sizeof b;
+    if (loaded && id == RETRO_MEMORY_SAVE_RAM)
+        (void)cogmaster_get_battery(inst, &b);
+    return b;
+}
+
 void *retro_get_memory_data(unsigned id)
 {
-    (void)id;
-    return NULL;
+    return lr_battery(id).data;
 }
 
 size_t retro_get_memory_size(unsigned id)
 {
-    (void)id;
-    return 0u;
+    return lr_battery(id).length;
 }

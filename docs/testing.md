@@ -1,5 +1,20 @@
 # Testing
 
+`runner.save.continuation.normal`, `.term` and `.int` verify fresh-process numeric
+continuation, missing and exact-size wrong-save controls, full save bytes and unchanged
+oversize rejection; see [conformance](conformance.md). `libretro.battery.sms2` and
+`.gg` restore the real classified battery fixture through the frontend's SAVE_RAM
+pointer, continue 7 to 8, Restart to 9, unload/reload and restore again. They check
+pre-enable and post-frame span stability, fresh FF bytes, invalidation, unknown and
+no-content NULL/0 controls. `battery.continuation` independently checks both SOFT
+and POWER resets with real media on SMS2 and GG: pointer, size, all bytes and generation
+are unchanged, direct host writes and API imports are generation-neutral, and the
+next guest write increments generation once. `battery.excluded` covers known-none,
+unknown and unsupported geometry at the public battery-query boundary; mapper tests
+keep volatile RAM separate. In-process tests load the production module and do not
+count toward the hosted RetroArch code budget. They do not establish the deferred
+hosted save-file or cross-emulator interoperability claims.
+
 Every check CI runs, a contributor can run with one command. This page covers that command, the lanes, the test
 inventories, the negative controls, the pinned hashes, the hosted RetroArch check, the performance job and how to
 reproduce a CI failure. Releases and repository settings are in [maintaining.md](maintaining.md).

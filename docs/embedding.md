@@ -513,3 +513,18 @@ The core accepts exact-size wrong-game data: raw bytes carry no identity. Hosts 
 file reads to expected length plus one and keep save namespaces separate. For a missing
 file, leave the fresh FF bytes or import NULL with length zero. Neither operation marks
 the cartridge dirty.
+
+The libretro adapter exposes this same writable pointer and exact length through
+`retro_get_memory_data(RETRO_MEMORY_SAVE_RAM)` and `retro_get_memory_size` immediately
+after content load, before guest RAM enable. The frontend restores raw bytes through
+that pointer and owns file naming, reading and writing; direct restoration does not
+increment CPU-write generation. Frames and frontend Restart preserve the span; SMS
+Restart uses SOFT reset and Game Gear Restart uses POWER reset. Unload, failed reload
+and deinitialization make callbacks return NULL/0. A later successful load creates
+fresh FF storage; hosts must discard prior pointers even if the address is reused.
+Other memory IDs, known nonbattery, unknown persistence and unsupported geometry
+return NULL/0. The adapter performs no filesystem I/O.
+
+`libretro_saves` remains false and the core remains experimental in its `.info`:
+memory export and in-process continuation do not prove the deferred hosted save-file
+round trip or interoperability with another emulator.
