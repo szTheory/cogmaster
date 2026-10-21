@@ -1,0 +1,50 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-10-21T00:06:43.221Z",
+  "phase": "03",
+  "phase_name": "Games play in RetroArch",
+  "phase_dir": ".planning/phases/03-games-play-in-retroarch",
+  "plan": 18,
+  "task": 3,
+  "total_tasks": 3,
+  "status": "paused",
+  "completed_tasks": [
+    {
+      "id": 1,
+      "name": "Ship phase 03: PR #8 merged",
+      "status": "done",
+      "commit": "cb13189"
+    },
+    {
+      "id": 2,
+      "name": "Release v0.3.0: PR #9 merged, 19 assets, release workflow green",
+      "status": "done"
+    },
+    {
+      "id": 3,
+      "name": "Repair WASI nightly file paths: PR #10 merged, full nightly green",
+      "status": "done",
+      "commit": "dc3bf1e"
+    }
+  ],
+  "remaining_tasks": [
+    {
+      "id": 4,
+      "name": "Discuss phase 04; not started",
+      "status": "not_started"
+    }
+  ],
+  "blockers": [],
+  "async_jobs": [],
+  "human_actions_pending": [],
+  "decisions": [
+    {
+      "decision": "Use absolute guest paths for ROM and input under the existing WASI preopen.",
+      "rationale": "The relative paths failed to load; corrected 300,000-frame benchmark passed.",
+      "phase": "03"
+    }
+  ],
+  "uncommitted_files": [],
+  "next_action": "Run $gsd-discuss-phase 04 in a new session; stop after that one GSD step.",
+  "context_notes": "Paused at a completed phase boundary. Phase 03 and its release are finished. Handoff is committed on phase/03-handoff, not main. No phase 04 design or implementation has started."
+}
