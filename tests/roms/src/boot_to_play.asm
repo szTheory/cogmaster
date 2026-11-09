@@ -81,6 +81,30 @@ palette:
     in a,($BF)
     call wait_frame
     call wait_frame
+    ; Boot chime, written after the video set-up so no picture timing moves
+    ; (SMS-AUDIO section 2): all four channels silent, then tone 0 at period
+    ; $0FE (3,579,545 / (32 x 254), about 440 Hz) at attenuation 0 for 20
+    ; frames. Under Game Gear every channel first goes to both speakers.
+.IFDEF FIXTURE_GG
+    ld a,$FF
+    out ($06),a
+.ENDIF
+    ld a,$9F
+    out ($7F),a
+    ld a,$BF
+    out ($7F),a
+    ld a,$DF
+    out ($7F),a
+    ld a,$FF
+    out ($7F),a
+    ld a,$8E
+    out ($7F),a
+    ld a,$0F
+    out ($7F),a
+    ld a,$90
+    out ($7F),a
+    ld a,20
+    ld ($C210),a
 forever:
     ; One poll in VBlank per frame; bit 4 is active-low button 1.
 .IFDEF FIXTURE_GG
@@ -195,6 +219,16 @@ no_edge:
     jr nz,sampled
     call mb_done
 sampled:
+    ; Chime timer: silence tone 0 when the 20 frames are up.
+    ld a,($C210)
+    or a
+    jr z,chime_done
+    dec a
+    ld ($C210),a
+    jr nz,chime_done
+    ld a,$9F
+    out ($7F),a
+chime_done:
     call wait_frame
 .IFDEF FIXTURE_GG
     jr forever
