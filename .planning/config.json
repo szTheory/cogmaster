@@ -1,5 +1,5 @@
 {
-  "model_profile": "inherit",
+  "model_profile": "adaptive",
   "commit_docs": true,
   "parallelization": false,
   "search_gitignored": false,
@@ -78,11 +78,26 @@
   },
   "mode": "interactive",
   "granularity": "coarse",
-  "resolve_model_ids": "omit",
+  "resolve_model_ids": false,
   "intel": {
     "enabled": false
   },
   "graphify": {
     "enabled": false
+  },
+  "runtime": "claude",
+  "model_profile_overrides": {
+    "claude": {
+      "opus": "claude-opus-5-5",
+      "sonnet": "claude-sonnet-5-5",
+      "haiku": "claude-haiku-5-5"
+    }
+  },
+  "effort": {
+    "routing_tier_defaults": {
+      "light": "xhigh",
+      "standard": "high",
+      "heavy": "high"
+    }
   }
 }
