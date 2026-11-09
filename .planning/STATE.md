@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 04
 current_phase_name: Sound
 status: executing
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-11-09T19:56:22.110Z"
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-11-09T20:13:21.649Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 04 execution started
-state_head: 19552bc4374326782d507238cac282e8e8819ab2
+state_head: cf28a218c18f1ea462ac4736398f922e8fa054ba
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 62
-  completed_plans: 50
+  completed_plans: 51
   percent: 75
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 04 (Sound) — EXECUTING
-Plan: 4 of 15
+Plan: 5 of 15
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 04 execution started
 
@@ -114,6 +114,7 @@ Progress: [████████░░] 75%
 | Phase 04 P01 | 5min | 2 tasks | 8 files |
 | Phase 04 P02 | 13min | 3 tasks | 15 files |
 | Phase 04 P03 | 7min | 3 tasks | 14 files |
+| Phase 04 P04 | 15min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -252,6 +253,8 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 04]: 04-02: The libretro adapter drains cogmaster_get_audio right after the frame runs, widens mono to L = R, and keeps no pacing state; core state tests drain frames like a host until plan 04-03 saves the synth phase
 - [Phase 04]: 04-03: media.fm resolves the FM unit at load (AUTO only for Japan on a non-GG machine, ON on any Master System, refused on a Game Gear); fm_unit and fm_mask live on the instance and info reports the resolved unit with the audio channels
 - [Phase 04]: 04-03: state header byte 52 is fm_unit fixed to the instance (11 reserved bytes remain); synth_io saves only the cadence phase, bounded by the TV modulus, and a state load drops undrained PCM; cogmaster__sio_i64 carries signed fields by a 2^63 bias
+- [Phase 04]: 04-04: Synthesis is the nesturbator 16 x 32 Q15 kernel through one unsigned division per change (t = (frac << 21) / mod for the 32-row table), a 1,024-slot int64 ring per channel, level-gaining Q12 gains (PSG 840; 491 and 1402 beside the FM unit) and a leaky DC blocker; the state saves the ring slots at and after the head, integrator, DC estimate, levels and gained levels, bounded at 2^56 with the integrator clamped per sample
+- [Phase 04]: 04-04: The sibling kernel passed the integer spectral test (18.6 kHz tone 85.0 dB under the reference, 111.9 kHz tone below the 16-bit rounding), so no kernel generator was added; four PSG channels stepping together peak at 28,944 against 29,204, and a rise followed by a fall can ring higher but does not saturate
 
 ### Pending Todos
 
@@ -295,6 +298,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-11-09 | Execute phase 4 plan 04-01 (gsd-execute-phase 04); documents only, 2 tasks | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Execute phase 4 plan 04-02 (gsd-execute-phase 04); API 9 door, exact cadence, adapter drain, trace log; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Execute phase 4 plan 04-03 (gsd-execute-phase 04); fm profile field, info fields, state header byte, abi.api_v9, audio guide; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-04 (gsd-execute-phase 04); band-limited synthesis, mixer, DC blocker, synth state and seven integer proofs; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -306,6 +310,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-09T19:56:21.940Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-11-09T20:13:21.473Z
+Stopped at: Completed 04-04-PLAN.md
 Resume file: None
