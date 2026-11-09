@@ -448,6 +448,24 @@ static void test_free(void *user, void *ptr, size_t size)
     free(ptr);
 }
 
+/* Loads an image of HALTs into m as the profile and the unit as fm say. */
+static void load_profile(cogmaster *m, uint32_t machine, uint32_t region, uint32_t video,
+                         uint32_t fm)
+{
+    memset(image, 0x76, sizeof image);
+    cogmaster_media media;
+    memset(&media, 0, sizeof media);
+    media.size = (uint32_t)sizeof media;
+    media.image = image;
+    media.image_size = sizeof image;
+    media.machine = machine;
+    media.region = region;
+    media.tv = COGMASTER_TV_NTSC;
+    media.video_mode = video;
+    media.fm = fm;
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+}
+
 /* A new instance of the profile running an image of HALTs, with a trace log of TRACE records
    and the unit as fm says. */
 static cogmaster *make_profile(uint32_t machine, uint32_t region, uint32_t video, uint32_t fm)
@@ -463,18 +481,7 @@ static cogmaster *make_profile(uint32_t machine, uint32_t region, uint32_t video
     if (m == NULL) {
         exit(1);
     }
-    memset(image, 0x76, sizeof image);
-    cogmaster_media media;
-    memset(&media, 0, sizeof media);
-    media.size = (uint32_t)sizeof media;
-    media.image = image;
-    media.image_size = sizeof image;
-    media.machine = machine;
-    media.region = region;
-    media.tv = COGMASTER_TV_NTSC;
-    media.video_mode = video;
-    media.fm = fm;
-    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    load_profile(m, machine, region, video, fm);
     return m;
 }
 
@@ -1049,6 +1056,45 @@ static void reset_kinds(void)
     }
 }
 
+/* Loading content again, with a note sounding and its frame's audio not taken, leaves nothing
+   of the unit behind: the control, the chip, its sample tick and the pending audio are as at a
+   first load, and a load without the unit has no chip to hold any of it. */
+static void reload_zeroes(void)
+{
+    for (uint32_t fm = COGMASTER_FM_AUTO; fm <= COGMASTER_FM_OFF; fm += COGMASTER_FM_OFF) {
+        cogmaster *m = make_unit(COGMASTER_REGION_JAPAN, COGMASTER_FM_AUTO);
+        cogmaster_audio a;
+        uint32_t peak;
+
+        out_at(m, 100, PORT_CTRL, 3);
+        note_on(m, 200);
+        CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+        CHECK(m->opll.reg[0x20] != 0 && m->io.audio_ctrl == 3 && m->fm_next > 179208u);
+        load_profile(m, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_JAPAN, COGMASTER_VIDEO_SMS, fm);
+        CHECK_EQ_U64(m->fm_unit, fm == COGMASTER_FM_AUTO);
+        CHECK_EQ_U64(m->io.audio_ctrl, 0);
+        CHECK_EQ_U64(m->fm_next, 216);
+        CHECK_EQ_U64(m->opll.latch, 0);
+        for (uint32_t r = 0; r < 0x40u; r++) {
+            CHECK_EQ_U64(m->opll.reg[r], 0);
+        }
+        memset(&a, 0, sizeof a);
+        a.size = (uint32_t)sizeof a;
+        a.samples = pcm;
+        a.capacity = COGMASTER__AUDIO_MAX_FRAMES;
+        CHECK_EQ_U64(cogmaster_get_audio(m, &a), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(a.written, 0);
+        if (fm == COGMASTER_FM_AUTO) {
+            expect_unit_snapshot(m, "reload");
+        } else {
+            CHECK_EQ_U64(drain_trace(m), 4);
+        }
+        (void)take_frame(m, pcm, &peak);
+        CHECK_EQ_U64(peak, 0);
+        cogmaster_destroy(m);
+    }
+}
+
 static uint64_t get_le(const uint8_t *p, uint32_t width)
 {
     uint64_t v = 0;
@@ -1312,6 +1358,7 @@ static const struct {
     {"chip_off", chip_off},
     {"no_unit_ports", no_unit_ports},
     {"reset_kinds", reset_kinds},
+    {"reload_zeroes", reload_zeroes},
     {"state_round_trip", state_round_trip},
     {"cost", cost},
 };

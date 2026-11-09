@@ -149,6 +149,7 @@ fm.lfo	fm,portable
 fm.lockstep	fm,portable
 fm.no_unit_ports	fm,portable
 fm.noise	fm,portable
+fm.reload_zeroes	fm,portable
 fm.reset_kinds	fm,portable
 fm.rhythm	fm,portable
 fm.slot_count	fm,portable
