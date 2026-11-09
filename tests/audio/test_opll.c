@@ -306,6 +306,112 @@ static void slot_count(void)
     }
 }
 
+/* Every tone voice plays the user instrument at full level: a sustained carrier at volume
+   0, and a modulator at the least level so the carrier is nearly a sine. */
+static void nine_tones_at_full_level(struct cogmaster__opll *o)
+{
+    cogmaster__opll_reset(o);
+    put(o, 0x00, 0x21);
+    put(o, 0x01, 0x21);
+    put(o, 0x02, 0x3f);
+    put(o, 0x03, 0x00);
+    put(o, 0x04, 0xf0);
+    put(o, 0x05, 0xf0);
+    put(o, 0x06, 0x00);
+    put(o, 0x07, 0x00);
+    for (uint32_t ch = 0; ch < 9; ch++) {
+        put(o, 0x30 + ch, 0x00);
+        put(o, 0x10 + ch, 0x80);
+        put(o, 0x20 + ch, KEY_ON_B4);
+    }
+}
+
+/* The voices that sound together are nine tone voices, or six tone voices and five drums.
+   At full level a tone voice peaks at COGMASTER__OPLL_TONE_PEAK and a drum at
+   COGMASTER__OPLL_DRUM_PEAK, so the sum of the sounding voices fits 16 bits. The sum the chip
+   returns also adds the last outputs of the group that is not sounding, as the original
+   does; that total is bounded by all fourteen peaks. */
+static void sum_bound(void)
+{
+    int32_t tone_hi = 0;
+    int32_t tone_lo = 0;
+    int32_t drum_hi = 0;
+    int32_t drum_lo = 0;
+    int32_t sum_hi = 0;
+    int32_t sum_lo = 0;
+
+    CHECK_EQ_U64(COGMASTER__OPLL_SUM_MAX,
+                 6u * COGMASTER__OPLL_TONE_PEAK + 5u * COGMASTER__OPLL_DRUM_PEAK);
+    CHECK(COGMASTER__OPLL_SUM_MAX <= INT16_MAX);
+
+    /* Nine tone voices in phase. */
+    nine_tones_at_full_level(&chip);
+    run(&chip, 200);
+    for (uint32_t i = 0; i < 60000; i++) {
+        const int32_t sum = cogmaster__opll_sample(&chip);
+        sum_hi = sum > sum_hi ? sum : sum_hi;
+        sum_lo = sum < sum_lo ? sum : sum_lo;
+        for (uint32_t c = 0; c < 9; c++) {
+            tone_hi = chip.ch_out[c] > tone_hi ? chip.ch_out[c] : tone_hi;
+            tone_lo = chip.ch_out[c] < tone_lo ? chip.ch_out[c] : tone_lo;
+        }
+    }
+    CHECK_EQ_U64(tone_hi, COGMASTER__OPLL_TONE_PEAK);
+    CHECK(tone_lo >= -(int32_t)COGMASTER__OPLL_TONE_PEAK);
+    CHECK_EQ_U64(sum_hi, 9 * tone_hi);
+    CHECK_EQ_U64(sum_lo, 9 * tone_lo);
+    CHECK(sum_hi <= (int32_t)COGMASTER__OPLL_SUM_MAX);
+    CHECK(sum_lo >= -(int32_t)COGMASTER__OPLL_SUM_MAX);
+
+    /* The last outputs of the tone voices stay in the sum after rhythm mode takes three of
+       them: the three held values do not change and the sum is the total of all fourteen. */
+    const int16_t held[3] = {chip.ch_out[6], chip.ch_out[7], chip.ch_out[8]};
+    put(&chip, 0x0e, 0x20);
+    for (uint32_t i = 0; i < 50; i++) {
+        const int32_t sum = cogmaster__opll_sample(&chip);
+        int32_t all = 0;
+        for (uint32_t c = 0; c < COGMASTER__OPLL_CHANNELS; c++) {
+            all += chip.ch_out[c];
+        }
+        CHECK_EQ_U64(sum, all);
+        for (uint32_t c = 0; c < 3; c++) {
+            CHECK_EQ_U64(chip.ch_out[6 + c], held[c]);
+        }
+        CHECK(sum <= (int32_t)(9u * COGMASTER__OPLL_TONE_PEAK + 5u * COGMASTER__OPLL_DRUM_PEAK));
+    }
+
+    /* Six tone voices and all five drums at full level: the test register holds every
+       envelope at zero attenuation. */
+    nine_tones_at_full_level(&chip);
+    for (uint32_t ch = 6; ch < 9; ch++) {
+        put(&chip, 0x20 + ch, KEY_OFF_B4);
+    }
+    put(&chip, 0x0f, 0x01);
+    put(&chip, 0x0e, 0x3f);
+    run(&chip, 200);
+    sum_hi = 0;
+    sum_lo = 0;
+    for (uint32_t i = 0; i < 400000; i++) {
+        int32_t sounding = 0;
+
+        (void)cogmaster__opll_sample(&chip);
+        for (uint32_t c = 0; c < 6; c++) {
+            sounding += chip.ch_out[c];
+        }
+        for (uint32_t c = 9; c < COGMASTER__OPLL_CHANNELS; c++) {
+            sounding += chip.ch_out[c];
+            drum_hi = chip.ch_out[c] > drum_hi ? chip.ch_out[c] : drum_hi;
+            drum_lo = chip.ch_out[c] < drum_lo ? chip.ch_out[c] : drum_lo;
+        }
+        sum_hi = sounding > sum_hi ? sounding : sum_hi;
+        sum_lo = sounding < sum_lo ? sounding : sum_lo;
+    }
+    CHECK(drum_hi <= (int32_t)COGMASTER__OPLL_DRUM_PEAK);
+    CHECK_EQ_U64(-drum_lo, COGMASTER__OPLL_DRUM_PEAK);
+    CHECK(sum_hi <= (int32_t)COGMASTER__OPLL_SUM_MAX);
+    CHECK(sum_lo >= -(int32_t)COGMASTER__OPLL_SUM_MAX);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
@@ -316,6 +422,7 @@ static const struct {
     {"lfo", lfo},
     {"test_register", test_register},
     {"slot_count", slot_count},
+    {"sum_bound", sum_bound},
 };
 
 int main(int argc, char **argv)

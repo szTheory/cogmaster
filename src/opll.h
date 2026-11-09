@@ -16,6 +16,16 @@
 #define COGMASTER__OPLL_PATCHES 38u
 #define COGMASTER__OPLL_CHANNELS 14u
 
+/* Largest output of one voice at full level: a tone voice is the carrier's exponential
+   (-4086 to 4084) inverted and halved, a drum is that value as it is (SMS-AUDIO section 4).
+   The voices that sound together are nine tone voices or six tone voices and five drums, so
+   their sum stays within COGMASTER__OPLL_SUM_MAX, below 32,767. The sum the chip returns also
+   adds the last outputs of the group that is not sounding, as the original does before it
+   wraps the total to 16 bits, so all fourteen can reach 9 tone and 5 drum peaks (38,817). */
+#define COGMASTER__OPLL_TONE_PEAK 2043u
+#define COGMASTER__OPLL_DRUM_PEAK 4086u
+#define COGMASTER__OPLL_SUM_MAX (6u * COGMASTER__OPLL_TONE_PEAK + 5u * COGMASTER__OPLL_DRUM_PEAK)
+
 /* An instrument: the eight bytes of a patch dump, split into fields. */
 struct cogmaster__opll_patch {
     uint8_t tl, fb, eg, ml, ar, dr, sl, rr, kr, kl, am, pm, ws;
