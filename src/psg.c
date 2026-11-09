@@ -163,3 +163,16 @@ void cogmaster__psg_write(cogmaster *m, uint64_t tick, uint8_t v)
     }
     psg_emit(m, tick, before);
 }
+
+/* Every active source's current level, through the synthesiser, at the
+   current tick: the Game Gear's mask only in native mode. Load and both
+   resets call it, so the synthesiser's stored levels equal the chip's. */
+void cogmaster__psg_snapshot(cogmaster *m)
+{
+    for (uint32_t ch = 0u; ch < 4u; ch++) {
+        cogmaster__synth_level(m, m->ticks, ch, cogmaster__psg_level(m, ch));
+    }
+    if (cogmaster__native_gg(m)) {
+        cogmaster__synth_level(m, m->ticks, 4u, m->io.gg[5]);
+    }
+}

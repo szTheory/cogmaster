@@ -125,7 +125,9 @@ static uint32_t synth_channels(const cogmaster *m)
    to the head and an event is placed from its own frame's start, so nothing
    lands at a stale position when the tick count restarts. Only the trace log's
    counts, whose ticks restart, are cleared. The chips return to their power-on
-   values either way, their step origin included. */
+   values either way, their step origin included, and hand their levels to the
+   synthesiser at tick 0: its stored levels are then theirs, and a SOFT reset's
+   step to silence enters the ring at the first sample of the next frame. */
 void cogmaster__synth_reset(cogmaster *m, int power)
 {
     if (power) {
@@ -134,6 +136,7 @@ void cogmaster__synth_reset(cogmaster *m, int power)
     m->synth.trace_pending = 0u;
     m->synth.trace_dropped = 0u;
     cogmaster__psg_reset(m);
+    cogmaster__psg_snapshot(m);
 }
 
 /* Division of a signed value by d, truncating toward zero, built on unsigned

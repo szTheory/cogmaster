@@ -9,8 +9,10 @@
              frame deadline, the VDP with its 16 KiB of VRAM, the 8 KiB of
              work RAM, then the board, the mapper registers and the
              cartridge RAM (none, 8 KiB or 32 KiB, fixed by the image),
-             then the I/O ports and the synthesiser (cadence phase, ring
-             slots, integrator, DC estimate, levels)
+             then the I/O ports, the synthesiser (cadence phase, ring
+             slots, integrator, DC estimate, levels) and the PSG (step
+             origin, periods, counters, flip-flops, attenuations, noise
+             control, shift register, latch)
    One field list drives every pass (state.h), so they cannot drift apart. A
    struct is never copied as a whole: padding, pointers and the allocator
    never reach the bytes. The emitted field and render cursor are saved so a partially drawn
@@ -62,6 +64,10 @@ _Static_assert(sizeof(struct cogmaster__synth) ==
                            sizeof(uint32_t) +
                        sizeof(int16_t[COGMASTER__AUDIO_MAX_FRAMES * 2u]),
                "synth changed: update synth_io");
+
+/* The PSG's size is pinned the same way: a new field either joins psg_io or
+   changes this. */
+_Static_assert(sizeof(struct cogmaster__psg) == 40u, "psg changed: update psg_io");
 
 /* A beam is at most one line short of the frame's lines down and 683 ticks
    into a line, and one Z80 step is at most 69 ticks, so the beam is at most
@@ -371,6 +377,41 @@ static void synth_io(struct cogmaster__sio *io, cogmaster *m)
     }
 }
 
+/* The PSG. The step origin is a step tick, so a multiple of 48 and at most
+   the tick count; the chip runs lazily from it, so a loaded origin more than a
+   frame (plus the longest instruction and a step) behind the tick count would
+   make the next catch-up run far past one frame's steps and is refused. A tone
+   counter holds at most its period's 10 bits; the noise rate counter at most
+   64, the slowest reload. The shift register is never 0: it resets to $8000 and
+   feeds back from bit 0, so a zero register would stay silent for ever. The
+   latch names one of 8 registers (SMS-AUDIO section 2.1). */
+#define STATE_PSG_STEP 48u
+static void psg_io(struct cogmaster__sio *io, cogmaster *m, struct state_time time)
+{
+    struct cogmaster__psg *p = &m->psg;
+    uint64_t at = cogmaster__sio_u64(io, "psg_at", &p->at, 0u, STATE_TICKS_MAX);
+    for (uint32_t i = 0u; i < 3u; i++) {
+        cogmaster__sio_u16(io, "psg_period", &p->period[i], 0u, 1023u);
+    }
+    for (uint32_t i = 0u; i < 4u; i++) {
+        cogmaster__sio_u16(io, "psg_counter", &p->counter[i], 0u, i < 3u ? 1023u : 64u);
+    }
+    uint16_t lfsr = cogmaster__sio_u16(io, "psg_lfsr", &p->lfsr, 0u, UINT16_MAX);
+    for (uint32_t i = 0u; i < 4u; i++) {
+        cogmaster__sio_u8(io, "psg_out", &p->out[i], 0u, 1u);
+    }
+    for (uint32_t i = 0u; i < 4u; i++) {
+        cogmaster__sio_u8(io, "psg_att", &p->att[i], 0u, 15u);
+    }
+    cogmaster__sio_u8(io, "psg_noise", &p->noise, 0u, 7u);
+    cogmaster__sio_u8(io, "psg_noise_div", &p->noise_div, 0u, 1u);
+    cogmaster__sio_u8(io, "psg_latch", &p->latch, 0u, 7u);
+    cogmaster__sio_check(io, lfsr != 0u);
+    cogmaster__sio_check(io, at % STATE_PSG_STEP == 0u && at <= time.ticks);
+    cogmaster__sio_check(io, time.ticks - at <= (uint64_t)cogmaster__frame_ticks(m) +
+                                                    STATE_STEP_TICKS_MAX + STATE_PSG_STEP);
+}
+
 /* The whole state, in the order the format fixes. */
 static void state_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
 {
@@ -385,6 +426,7 @@ static void state_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
     mapper_io(io, m);
     io_io(io, m);
     synth_io(io, m);
+    psg_io(io, m, time);
     cogmaster_input *inputs[2] = {&m->pending_input, &m->input};
     for (uint32_t i = 0u; i < 2u; i++) {
         cogmaster_input *p = inputs[i];

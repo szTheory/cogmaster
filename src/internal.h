@@ -609,11 +609,13 @@ void cogmaster__synth_level(cogmaster *m, uint64_t tick, uint32_t source, uint32
    catch_up runs every step at a multiple of 48 ticks up to tick, inclusive;
    write catches up to tick, applies one byte and stamps the level changes at
    tick; level is what channel ch presents (bit 4 output, bits 3 to 0
-   attenuation). */
+   attenuation); snapshot hands every active source's level to the synthesiser
+   at the current tick. */
 void cogmaster__psg_reset(cogmaster *m);
 void cogmaster__psg_catch_up(cogmaster *m, uint64_t tick);
 void cogmaster__psg_write(cogmaster *m, uint64_t tick, uint8_t v);
 uint32_t cogmaster__psg_level(const cogmaster *m, uint32_t ch);
+void cogmaster__psg_snapshot(cogmaster *m);
 
 /* The largest gained level a source may hold in this profile, for the state
    bounds. */
