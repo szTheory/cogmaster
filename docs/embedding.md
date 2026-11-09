@@ -42,6 +42,8 @@ completed pixels/height/backdrop alongside the line counter
 and pending source, rolling NTSC-240 phase and held H value alongside the sprite
 slots, dot cursor, scroll/display latches and last driven bus byte, so older state
 bytes are refused. API version 6 appends the battery query; existing ABI layouts remain unchanged.
+API version 9 appends the audio drain `cogmaster_get_audio`. Behaviour revision 11 and state format 11
+cover the whole of the sound work, so older state bytes are refused. See [Audio](#audio).
 
 ## Getting it
 
@@ -108,7 +110,7 @@ program built against one header run with a library built from another.
   unbounded distance past your object.
 
 **Output structs** (`cogmaster_info`, `cogmaster_versions`, `cogmaster_run_result`, `cogmaster_fault`,
-`cogmaster_cart_info`):
+`cogmaster_cart_info`, `cogmaster_audio`):
 
 - A size below the struct's first released size returns `COGMASTER_STATUS_ERR_STRUCT_SIZE` and leaves the struct
   as it was.
@@ -127,6 +129,7 @@ First released sizes, where P is the pointer size (4 or 8):
 | `cogmaster_run_result` | 12 |
 | `cogmaster_fault` | 32 |
 | `cogmaster_cart_info` | 52 |
+| `cogmaster_audio` (output) | 2 × P + 16 |
 
 Fields are fixed-width integers and pointers; enumerations travel as `uint32_t` and zero is the default of every
 input field. Statuses, constants and fields are only ever appended.
@@ -301,6 +304,22 @@ above 65536 returns `COGMASTER_STATUS_ERR_ARGUMENT`, which keeps every row offse
 A frame hash is SHA-256 over the crop rows, top to bottom, each pixel as two bytes with the low byte first. Hash
 those bytes, not the `uint16_t` array, or a big-endian host gets a different digest.
 
+## Audio
+
+`cogmaster_run_frame` makes one frame's samples at 48 kHz and `cogmaster_get_audio(m, io)` hands them over:
+it copies the smaller of `capacity` and what is pending, in sample frames, into `samples` and sets `written`,
+`channels` and `dropped`. A sample frame is one `int16_t` when `channels` is 1 (the Master System) and a left
+and right pair when it is 2 (the Game Gear, in either video mode). Set `size` to `sizeof(cogmaster_audio)`.
+
+Every NTSC frame holds 801 or 802 sample frames and every PAL frame 965 or 966, never padded. After F frames the
+total is floor(F × 3,504,512 / 4,375) on NTSC and floor(F × 685,094,400 / 709,379) on PAL. Frames you do not
+take before the next `cogmaster_run_frame` are lost and counted in `dropped`, the total since load or POWER
+reset. Before the first frame after a load, `written` is 0.
+
+`capacity` 0 with a NULL `samples` is OK and reports `channels`; a NULL `samples` with `capacity` above 0
+returns `COGMASTER_STATUS_ERR_ARGUMENT`. A load and a POWER reset restart the cadence at 801; a SOFT reset keeps
+it and any samples not yet taken. The test card is silent but follows the same cadence.
+
 ## Reset
 
 `cogmaster_reset(m, kind)` restarts the loaded content without loading it again. Both kinds set the frame count
@@ -423,6 +442,7 @@ changes no state; a failed `cogmaster_load` keeps the content that was loaded be
 | `cogmaster_load(m, media)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_MEMORY, ERR_PROFILE_REJECTED, ERR_UNSUPPORTED_SIZE, ERR_UNSUPPORTED_BOARD |
 | `cogmaster_run_frame(m, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT |
 | `cogmaster_get_frame(m, io)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT, ERR_BUFFER_TOO_SMALL |
+| `cogmaster_get_audio(m, io)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT |
 | `cogmaster_get_info(m, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT |
 | `cogmaster_reset(m, kind)` | OK, ERR_ARGUMENT, ERR_NO_CONTENT |
 | `cogmaster_get_fault(m, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE |
@@ -455,14 +475,15 @@ Every public name, for reference: the opaque instance `cogmaster`; the types `co
 `cogmaster_media` (`size`, `image`, `image_size`, `machine`, `region`, `tv`), `cogmaster_info` (`size`, `machine`,
 `crop_w`, `crop_h`, `field_w`, `field_h`, `max_w`, `max_h`, `fps_num`, `fps_den`, `par_num`, `par_den`, `region`,
 `tv`), `cogmaster_frame`
-(`size`, `pixels`, `pitch_bytes`, `flags`, `x`, `y`, `w`, `h`, `field_h`, `backdrop_rgb444`) and
+(`size`, `pixels`, `pitch_bytes`, `flags`, `x`, `y`, `w`, `h`, `field_h`, `backdrop_rgb444`),
+`cogmaster_audio` (`size`, `samples`, `capacity`, `written`, `channels`, `dropped`) and
 `cogmaster_run_result` (`size`, `stop`, `overshoot_ticks`) and `cogmaster_fault` (`size`, `present`, `frame`,
 `line`, `dot`, `pc`, `addr`, `opcode`, `width`, `device`, `kind`) and `cogmaster_cart_info` (`size`,
 `image_size`, `body_offset`, `header_at`, `checksum`, `checksum_ok`, `product_code`, `version`, `region_code`,
 `rom_size_code`, `machine_guess`, `region_guess`, `board`, `identified`, `public_identity`, `persistence`,
 `persistent_size`, `persistence_geometry`, `video_mode`, `sha1`, `title`); the functions `cogmaster_get_versions`,
 `cogmaster_create`, `cogmaster_destroy`, `cogmaster_load`, `cogmaster_run_frame`, `cogmaster_get_frame`,
-`cogmaster_get_info`, `cogmaster_reset`, `cogmaster_get_fault`, `cogmaster_probe` and `cogmaster_peek`; the constants `COGMASTER_MACHINE_AUTO`,
+`cogmaster_get_info`, `cogmaster_get_audio`, `cogmaster_reset`, `cogmaster_get_fault`, `cogmaster_probe` and `cogmaster_peek`; the constants `COGMASTER_MACHINE_AUTO`,
 `COGMASTER_MACHINE_SMS2`, `COGMASTER_MACHINE_GG`, `COGMASTER_REGION_AUTO`, `COGMASTER_REGION_EXPORT`,
 `COGMASTER_REGION_JAPAN`, `COGMASTER_TV_AUTO`, `COGMASTER_TV_NTSC`, `COGMASTER_TV_PAL`, `COGMASTER_STOP_FRAME`, `COGMASTER_FRAME_FULL_FIELD`,
 `COGMASTER_RESET_SOFT`, `COGMASTER_RESET_POWER`, `COGMASTER_BOARD_ROM_ONLY`, `COGMASTER_BOARD_SEGA`,
@@ -484,8 +505,8 @@ crop with 6:5 pixels (4:3 display); the square-pixel option gives 10:9.
 The full-field option reveals normally hidden VDP content using the selected pixel
 aspect without changing native emulation or its hashes. These options take effect
 on the next frame. Machine, region/timing and Game Gear mode options require content
-reload. SMS PAL uses PAR 2950000:2128137 and exact rational silence pacing (965 or
-966 stereo frames at 48 kHz); NTSC delivers 801 or 802.
+reload. SMS PAL uses PAR 2950000:2128137. The adapter drains `cogmaster_get_audio`
+every frame before the video work and keeps no pacing state of its own.
 
 ## Battery media
 

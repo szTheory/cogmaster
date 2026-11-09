@@ -58,6 +58,7 @@ add_library(cogmaster STATIC
   src/frame.c
   src/mapper.c
   src/state.c
+  src/synth.c
   src/testcard.c
   src/vdp.c
   src/vdp_render.c

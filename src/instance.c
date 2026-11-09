@@ -212,6 +212,7 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     cogmaster__bus_origin(m);
     cogmaster__boot_handoff(m, 1);
     cogmaster__vdp_reset(m, 1);
+    cogmaster__synth_reset(m, 1);
     return COGMASTER_STATUS_OK;
 }
 
@@ -259,7 +260,9 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out)
 /* Both kinds return the beam to the frame origin with frame and ticks 0,
    apply the fast-boot hand-off again and clear the first fault (ARCHITECTURE
    section 9); POWER also clears work RAM, VRAM and CRAM and zeroes the
-   counters, which a power cycle resets (section 8). */
+   counters, which a power cycle resets (section 8). The synthesiser resets
+   last: POWER restarts the audio cadence, SOFT keeps its phase and any
+   samples the host has not taken. */
 cogmaster_status cogmaster_reset(cogmaster *m, uint32_t kind)
 {
     if (m == NULL || (kind != COGMASTER_RESET_SOFT && kind != COGMASTER_RESET_POWER)) {
@@ -276,5 +279,6 @@ cogmaster_status cogmaster_reset(cogmaster *m, uint32_t kind)
     if (kind == COGMASTER_RESET_POWER) {
         memset(&m->counters, 0, sizeof m->counters);
     }
+    cogmaster__synth_reset(m, kind == COGMASTER_RESET_POWER);
     return COGMASTER_STATUS_OK;
 }

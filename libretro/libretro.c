@@ -3,8 +3,8 @@
  * (RetroArch v1.22.2, see PROVENANCE.md).
  *
  * retro_load_game(NULL) loads the built-in test card; game.data loads a
- * cartridge through the public library API. Audio is silence of the exact
- * per-frame length, so a frontend that paces on audio runs at the core's
+ * cartridge through the public library API. Audio is whatever the library
+ * delivers each frame, so a frontend that paces on audio runs at the core's
  * rate. The av_info division is the only floating point in the shipped
  * code; the core itself is integer only. */
 #include <stdbool.h>
@@ -17,9 +17,9 @@
 #include "libretro.h"
 #include "palette.h"
 
-/* Fixed until the sound phase gives the core a configured output rate. */
+/* The library renders at 48 kHz only. */
 #define LR_SAMPLE_RATE 48000u
-/* PAL needs ceil(48000 * 267615 / 13300856) = 966 stereo frames. */
+/* The most sample frames one video frame holds: 966 on PAL. */
 #define LR_AUDIO_CAPACITY 966u
 
 #ifdef COGMASTER_LIBRETRO_RGB565
@@ -54,8 +54,7 @@ static int loaded;
 static cogmaster_info info;
 static uint16_t *native;
 static lr_pixel *pixels;
-static uint64_t audio_acc;
-static int16_t silence[LR_AUDIO_CAPACITY * 2u];
+static int16_t audio_pcm[LR_AUDIO_CAPACITY * 2u];
 static unsigned controllers[2] = {RETRO_DEVICE_JOYPAD, RETRO_DEVICE_JOYPAD};
 static int full_field, square_pixels;
 static struct retro_game_geometry geometry;
@@ -126,7 +125,6 @@ static void lr_unload(void)
     pixels = NULL;
     loaded = 0;
     memset(&info, 0, sizeof info);
-    audio_acc = 0u;
     full_field = square_pixels = 0;
     memset(&geometry, 0, sizeof geometry);
 }
@@ -291,30 +289,44 @@ void retro_reset(void)
     }
 }
 
-/* Sends this frame's silence. Each frame is 48000 x fps_den / fps_num stereo
-   frames, carried as a remainder so the total never drifts: over 4,375 frames
-   at the NTSC rate exactly 3,504,512, each frame 801 or 802. */
+/* Takes this frame's samples from the library and sends them: one batch call
+   when the frontend registered it, else one single-sample call each. A mono
+   machine is widened to equal left and right in place, last frame first. The
+   library paces the count (801 or 802 frames on NTSC, 965 or 966 on PAL) and
+   the adapter keeps no pacing state; it never calls with zero frames. */
 static void lr_audio(void)
 {
-    uint32_t n, i;
-    audio_acc += (uint64_t)LR_SAMPLE_RATE * info.fps_den;
-    n = (uint32_t)(audio_acc / info.fps_num);
-    audio_acc %= info.fps_num;
-    if (n > LR_AUDIO_CAPACITY) {
-        n = LR_AUDIO_CAPACITY;
+    cogmaster_audio a;
+    uint32_t i;
+
+    memset(&a, 0, sizeof a);
+    a.size = (uint32_t)sizeof a;
+    a.samples = audio_pcm;
+    a.capacity = LR_AUDIO_CAPACITY;
+    if (cogmaster_get_audio(inst, &a) != COGMASTER_STATUS_OK || a.written == 0u ||
+        a.written > LR_AUDIO_CAPACITY) {
+        return;
+    }
+    if (a.channels == 1u) {
+        for (i = a.written; i-- > 0u;) {
+            int16_t v = audio_pcm[i];
+            audio_pcm[2u * i] = v;
+            audio_pcm[2u * i + 1u] = v;
+        }
     }
     if (audio_batch_cb != NULL) {
-        (void)audio_batch_cb(silence, n);
+        (void)audio_batch_cb(audio_pcm, a.written);
     } else if (audio_cb != NULL) {
-        for (i = 0; i < n; i++) {
-            audio_cb(silence[2u * i], silence[2u * i + 1u]);
+        for (i = 0; i < a.written; i++) {
+            audio_cb(audio_pcm[2u * i], audio_pcm[2u * i + 1u]);
         }
     }
 }
 
-/* L7694: one frame. Input is polled once and not yet read; the crop is
-   converted into the frame buffer and sent with one video call. A failed
-   frame sends no video or audio. */
+/* L7694: one frame. Input is polled once and not yet read; the frame's audio
+   is drained before the video work, even with no callback registered, then the
+   crop is converted into the frame buffer and sent with one video call. A
+   frame the library refuses to run sends no video or audio. */
 void retro_run(void)
 {
     cogmaster_frame io;
@@ -334,6 +346,7 @@ void retro_run(void)
     if (!loaded || cogmaster_run_frame(inst, NULL) != COGMASTER_STATUS_OK) {
         return;
     }
+    lr_audio();
     memset(&io, 0, sizeof io);
     io.size = (uint32_t)sizeof io;
     io.pixels = native;
@@ -366,7 +379,6 @@ void retro_run(void)
     if (video_cb != NULL) {
         video_cb(pixels, io.w, io.h, (size_t)io.w * sizeof pixels[0]);
     }
-    lr_audio();
 }
 
 /* L7707: no save states in this release; the size is 0 and nothing loads. */

@@ -58,6 +58,7 @@ cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out)
     if (m->cart.rom != NULL) {
         /* Beam events and stamped writes advance the production renderer. */
         overshoot = cogmaster__bus_run_frame(m);
+        cogmaster__synth_frame_end(m);
     } else {
         for (uint32_t y = 0; y < COGMASTER__FIELD_H; y++) {
             for (uint32_t x = 0; x < COGMASTER__FIELD_W; x++) {
@@ -75,6 +76,7 @@ cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out)
         m->ticks += ticks;
         m->bus.at += ticks;
         m->bus.deadline += ticks;
+        cogmaster__synth_frame_end(m);
     }
     uint32_t lagged = m->input_read == 0u ? 1u : 0u;
     m->counters.lag_frames += lagged;

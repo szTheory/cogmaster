@@ -11,10 +11,10 @@
 extern "C" {
 #endif
 
-#define COGMASTER_API_VERSION 8
+#define COGMASTER_API_VERSION 9
 #define COGMASTER_ABI_VERSION 1
-#define COGMASTER_BEHAVIOUR_REVISION 10
-#define COGMASTER_STATE_FORMAT_VERSION 10
+#define COGMASTER_BEHAVIOUR_REVISION 11
+#define COGMASTER_STATE_FORMAT_VERSION 11
 
 typedef uint32_t cogmaster_status;
 #define COGMASTER_STATUS_OK 0u
@@ -98,6 +98,15 @@ typedef struct cogmaster_config {
     uint32_t size;
     cogmaster_allocator allocator; /* alloc and free required */
 } cogmaster_config;
+
+typedef struct cogmaster_audio {
+    uint32_t size;
+    int16_t *samples;  /* in: the caller's buffer */
+    uint32_t capacity; /* in: sample frames it holds */
+    uint32_t written;  /* out */
+    uint32_t channels; /* out: 1 or 2 */
+    uint32_t dropped;  /* out */
+} cogmaster_audio;
 
 typedef struct cogmaster_versions {
     uint32_t size;
@@ -200,6 +209,7 @@ void cogmaster_destroy(cogmaster *m); /* NULL-safe */
 cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media);
 cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out); /* out may be NULL */
 cogmaster_status cogmaster_get_frame(const cogmaster *m, cogmaster_frame *io);
+cogmaster_status cogmaster_get_audio(cogmaster *m, cogmaster_audio *io);
 cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out);
 cogmaster_status cogmaster_reset(cogmaster *m, uint32_t kind); /* COGMASTER_RESET_* */
 cogmaster_status cogmaster_get_fault(const cogmaster *m, cogmaster_fault *out);

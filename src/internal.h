@@ -166,6 +166,30 @@ struct cogmaster__io {
 /* The Master System's work RAM, mirrored over $C000-$FFFF. */
 #define COGMASTER__RAM_SIZE 8192u
 
+/* Audio leaves the core at 48 kHz. Per bus tick a frame's sample count grows
+   by inc / mod of a sample: the per-Z80-cycle rates 176 / 13,125 (NTSC) and
+   9,600 / 709,379 (PAL) with the modulus tripled for three ticks a cycle
+   (SMS-AUDIO section 1). Exact, so every frame is 801 or 802 samples (965 or
+   966 on PAL) and F frames total floor(F x 3,504,512 / 4,375) (PAL
+   floor(F x 685,094,400 / 709,379)). */
+#define COGMASTER__AUDIO_INC_NTSC 176u
+#define COGMASTER__AUDIO_MOD_NTSC 39375u
+#define COGMASTER__AUDIO_INC_PAL 9600u
+#define COGMASTER__AUDIO_MOD_PAL 2128137u
+
+/* The most sample frames one video frame produces: the PAL count. */
+#define COGMASTER__AUDIO_MAX_FRAMES 966u
+
+/* The synthesiser's saved and transient state. The phase is the fraction of
+   a sample carried between frames, in [0, mod); the PCM is the last frame's
+   output waiting for the host, channels interleaved. */
+struct cogmaster__synth {
+    uint32_t phase;
+    uint32_t pcm_frames; /* sample frames the last frame produced */
+    uint32_t pcm_read;   /* of those, the frames the host has taken */
+    int16_t pcm[COGMASTER__AUDIO_MAX_FRAMES * 2u];
+};
+
 struct cogmaster {
     cogmaster_allocator allocator; /* the caller's, copied at create */
     uint64_t frame;                /* frames run since load */
@@ -188,6 +212,7 @@ struct cogmaster {
     uint32_t render_x; /* next unrendered dot of render_line */
     cogmaster_input pending_input, input;
     uint8_t input_read;
+    struct cogmaster__synth synth;
     uint8_t ram[COGMASTER__RAM_SIZE];
     uint16_t field[COGMASTER__FIELD_MAX_H][COGMASTER__FIELD_W]; /* RGB444 per dot */
     struct {
@@ -323,6 +348,15 @@ _Static_assert(offsetof(cogmaster_cart_info, region_guess) == 44, "cart_info.reg
 _Static_assert(offsetof(cogmaster_cart_info, board) == 48, "cart_info.board");
 _Static_assert(offsetof(cogmaster_cart_info, identified) == 52, "cart_info extension");
 
+/* cogmaster_audio: the buffer pointer first, then four counters. */
+_Static_assert(offsetof(cogmaster_audio, size) == 0, "audio.size");
+_Static_assert(offsetof(cogmaster_audio, samples) == COGMASTER__P, "audio.samples");
+_Static_assert(offsetof(cogmaster_audio, capacity) == 2 * COGMASTER__P, "audio.capacity");
+_Static_assert(offsetof(cogmaster_audio, written) == 2 * COGMASTER__P + 4, "audio.written");
+_Static_assert(offsetof(cogmaster_audio, channels) == 2 * COGMASTER__P + 8, "audio.channels");
+_Static_assert(offsetof(cogmaster_audio, dropped) == 2 * COGMASTER__P + 12, "audio.dropped");
+_Static_assert(sizeof(cogmaster_audio) == 2 * COGMASTER__P + 16, "audio size");
+
 /* The size of each struct as first released. A caller's size tag below it
    is refused; each is pinned to the layout above, so appending a field later
    cannot move it. */
@@ -334,6 +368,7 @@ _Static_assert(offsetof(cogmaster_cart_info, identified) == 52, "cart_info exten
 #define COGMASTER__FIRST_SIZE_RUN_RESULT 12u
 #define COGMASTER__FIRST_SIZE_FAULT 32u
 #define COGMASTER__FIRST_SIZE_CART_INFO 52u
+#define COGMASTER__FIRST_SIZE_AUDIO ((uint32_t)(2 * COGMASTER__P + 16))
 _Static_assert(COGMASTER__FIRST_SIZE_CONFIG == sizeof(cogmaster_config), "config first size");
 _Static_assert(COGMASTER__FIRST_SIZE_MEDIA == 4 * COGMASTER__P, "media first size");
 _Static_assert(COGMASTER__FIRST_SIZE_FRAME == sizeof(cogmaster_frame), "frame first size");
@@ -344,6 +379,7 @@ _Static_assert(COGMASTER__FIRST_SIZE_RUN_RESULT == offsetof(cogmaster_run_result
 _Static_assert(COGMASTER__FIRST_SIZE_FAULT == sizeof(cogmaster_fault), "fault first size");
 _Static_assert(COGMASTER__FIRST_SIZE_CART_INFO == offsetof(cogmaster_cart_info, identified),
                "cart_info first size");
+_Static_assert(COGMASTER__FIRST_SIZE_AUDIO == sizeof(cogmaster_audio), "audio first size");
 
 /* Input structs: OK when the size tag at s is at least first and at most
    4096, and every byte past ours is zero; ERR_STRUCT_SIZE otherwise. */
@@ -453,6 +489,14 @@ void cogmaster__io_reset(cogmaster *m);
 /* The fast-boot hand-off: the CPU and RAM as the BIOS leaves them. power
    also clears work RAM first. */
 void cogmaster__boot_handoff(cogmaster *m, int power);
+
+/* The synthesiser. reset runs last in load and in both resets, after the bus,
+   hand-off, I/O and VDP resets: power zeroes everything, a soft reset keeps
+   the phase and the undrained PCM. frame_end runs when a frame's ticks are
+   final and replaces the pending PCM with the frame's samples, counting any
+   frames the host never took in the dropped counter. */
+void cogmaster__synth_reset(cogmaster *m, int power);
+void cogmaster__synth_frame_end(cogmaster *m);
 
 /* The test card's RGB444 colour at field dot (x, y) for a resolved machine. */
 uint16_t cogmaster__testcard_pixel(uint32_t x, uint32_t y, uint32_t machine);

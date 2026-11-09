@@ -107,10 +107,20 @@ static void fill_images(void)
     img_halt[1] = 0x76u;
 }
 
+/* Each frame's audio is taken, as a host does, so the dropped counter that
+   the state saves does not depend on the cadence phase two instances reached
+   by different routes. */
 static void run_frames(cogmaster *m, uint32_t n)
 {
+    static int16_t pcm[COGMASTER__AUDIO_MAX_FRAMES * 2u];
     for (uint32_t i = 0; i < n; i++) {
+        cogmaster_audio a;
+        memset(&a, 0, sizeof a);
+        a.size = (uint32_t)sizeof a;
+        a.samples = pcm;
+        a.capacity = COGMASTER__AUDIO_MAX_FRAMES;
         CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(cogmaster_get_audio(m, &a), COGMASTER_STATUS_OK);
     }
 }
 
