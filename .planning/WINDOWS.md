@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 0
+open_count: 1
 waived_count: 0
 fixed_count: 8
-total_count: 8
-last_updated: 2026-10-20T23:01:40.839Z
+total_count: 9
+last_updated: 2026-11-09T19:45:26.324Z
 ---
 
 # Broken Windows Ledger
@@ -23,6 +23,7 @@ last_updated: 2026-10-20T23:01:40.839Z
 | 6 | 03 | deviation | src/cartdb.h |  | Hosted phase integration required relocation-free immutable metadata, explicit harness byte casts and canonical LF expectation generation; fixed in 9b791f5 | fixed |  | 2026-10-20T22:42:47.454Z | 2026-10-20T22:44:58.785Z |
 | 7 | 03 | deviation | tests/compat/tests.cmake |  | Windows ARM64 shell-heavy compatibility ratchet exceeded the 30-second harness timeout; raise to 60 seconds without changing assertions | fixed |  | 2026-10-20T22:47:50.694Z | 2026-10-20T22:50:50.471Z |
 | 8 | 03 | deviation | runner/save.c |  | WASI libc omits mkstemp; use exclusive same-directory open with private native permissions and existing collision/failure/continuation controls | fixed |  | 2026-10-20T22:57:34.648Z | 2026-10-20T23:01:40.839Z |
+| 9 | 04 | stub | src/synth.c | 51 | cogmaster__synth_frame_end writes silence; synthesis lands with the PSG and FM plans of the same phase | open |  | 2026-11-09T19:45:26.324Z |  |
 
 ````json
 [
@@ -128,6 +129,19 @@ last_updated: 2026-10-20T23:01:40.839Z
     "reason": "",
     "recorded_at": "2026-10-20T22:57:34.648Z",
     "resolved_at": "2026-10-20T23:01:40.839Z",
+    "milestone": "v1.0"
+  },
+  {
+    "id": 9,
+    "kind": "stub",
+    "phase": "04",
+    "file": "src/synth.c",
+    "line": 51,
+    "description": "cogmaster__synth_frame_end writes silence; synthesis lands with the PSG and FM plans of the same phase",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-11-09T19:45:26.324Z",
+    "resolved_at": null,
     "milestone": "v1.0"
   }
 ]

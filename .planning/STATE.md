@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 04
 current_phase_name: Sound
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-11-09T19:33:29.003Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-11-09T19:46:47.054Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 04 execution started
-state_head: 2e996bec30199839415c7c531909e1e85402f949
+state_head: 34ad1e63e17f776472a711441bda202c626d41e5
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 62
-  completed_plans: 48
+  completed_plans: 49
   percent: 75
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 04 (Sound) — EXECUTING
-Plan: 2 of 15
+Plan: 3 of 15
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 04 execution started
 
@@ -112,6 +112,7 @@ Progress: [████████░░] 75%
 | Phase 03 P17 | 12min | 2 tasks | 24 files |
 | Phase 03 P18 | 31min | 2 tasks | 27 files |
 | Phase 04 P01 | 5min | 2 tasks | 8 files |
+| Phase 04 P02 | 13min | 3 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -245,6 +246,9 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 03]: Preserve every native and portable assertion while correcting actual inventories and measured host timeout bounds.
 - [Phase 04]: 04-01: Ticks and frames count from the last load or reset of either kind; one SOFT rule (synth keeps phase, ring, integrator, DC, levels, undrained PCM; chips return to power-on constants and step origin) is stated in D-01 and D-24
 - [Phase 04]: 04-01: Third-party SN76489 and YM2413 test ROM conformance is deferred; owned psg_sweep and fm_sweep fixtures, units and the lockstep test carry SND-01 and SND-02; SND-03 cadence is 801 or 802 per NTSC frame
+- [Phase 04]: 04-02: API 9, behaviour revision 11 and state format 11 are bumped once for the phase; the per-tick cadence is 176/39,375 NTSC and 9,600/2,128,137 PAL with a remainder in the synth, so every frame is 801 or 802 (965 or 966 PAL)
+- [Phase 04]: 04-02: The trace log is host-sized (trace_records, cap 1,048,576), allocated once at the first load before the cartridge copy, drained oldest first with overflow and uncopied records counted in dropped, and cleared by load and both resets
+- [Phase 04]: 04-02: The libretro adapter drains cogmaster_get_audio right after the frame runs, widens mono to L = R, and keeps no pacing state; core state tests drain frames like a host until plan 04-03 saves the synth phase
 
 ### Pending Todos
 
@@ -286,6 +290,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-11-09 | Discuss phase 4 (gsd-discuss-phase 4); six research agents plus adversarial cross-check; 35 decisions | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Plan phase 4 (gsd-plan-phase 4); research, 15 plans, checker passes after owner-approved revisions | Claude Code | claude-sonnet-5-5 (planner claude-opus-5-5) |
 | 2026-11-09 | Execute phase 4 plan 04-01 (gsd-execute-phase 04); documents only, 2 tasks | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-02 (gsd-execute-phase 04); API 9 door, exact cadence, adapter drain, trace log; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -297,6 +302,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-09T19:33:28.853Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-11-09T19:46:46.701Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
