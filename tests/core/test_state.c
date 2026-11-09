@@ -208,8 +208,11 @@ static void round_trip_image(uint32_t region, uint32_t tv)
         CHECK_EQ_U64(cogmaster__state_load(b, good, size), COGMASTER_STATUS_OK);
         CHECK_EQ_U64(save(b, after), size);
         CHECK(memcmp(good, after, size) == 0);
+        /* The cadence phase is state: the loaded instance resumes where a was. */
+        CHECK_EQ_U64(b->synth.phase, a->synth.phase);
         run_frames(a, 5u);
         run_frames(b, 5u);
+        CHECK_EQ_U64(b->synth.phase, a->synth.phase);
         CHECK_EQ_U64(save(a, good), size);
         CHECK_EQ_U64(save(b, after), size);
         CHECK(memcmp(good, after, size) == 0);
@@ -267,7 +270,8 @@ static void sweep(cogmaster *src, cogmaster *target)
         "z80_int_line", "z80_nmi_pending", "bus_deadline", "bus_at",    "bus_line",  "bus_t",
         "bus_vdp_at",   "vdp_reg",         "vdp_status",   "vdp_latch", "vdp_code",  "vdp_addr",
         "vdp_buffer",   "vdp_pause",       "vdp_cram",     "vdp_vram",  "machine",   "region",
-        "tv",           "io_mem_ctrl",     "io_ctrl",      "io_gg",     "bus_op_pc", "bus_op"};
+        "tv",           "io_mem_ctrl",     "io_ctrl",      "io_gg",     "bus_op_pc", "bus_op",
+        "fm_unit",      "synth_phase"};
     for (size_t i = 0; i < sizeof named / sizeof named[0]; i++) {
         (void)field(n, named[i]);
     }
@@ -277,6 +281,27 @@ static void sweep(cogmaster *src, cogmaster *target)
         const struct cogmaster__state_field *fd = field(n, profile[i]);
         if (fd != NULL) {
             CHECK(fd->min >= 1u && fd->max <= 2u);
+        }
+    }
+    /* The synth phase is below the cadence modulus of the instance's TV: both
+       edges load, the modulus itself is refused with nothing changed. */
+    const struct cogmaster__state_field *phase = field(n, "synth_phase");
+    if (phase != NULL && size != 0u) {
+        uint64_t mod =
+            src->tv == COGMASTER_TV_PAL ? COGMASTER__AUDIO_MOD_PAL : COGMASTER__AUDIO_MOD_NTSC;
+        CHECK_EQ_U64(phase->min, 0);
+        CHECK_EQ_U64(phase->max, mod - 1u);
+        memcpy(bad, good, size);
+        put_le(bad + phase->offset, mod, phase->width);
+        cogmaster__state_seal(bad, size);
+        expect_refused("synth phase at the modulus", target, size, target_size);
+        const uint64_t edges[2] = {0u, mod - 1u};
+        for (size_t j = 0; j < 2u; j++) {
+            memcpy(bad, good, size);
+            put_le(bad + phase->offset, edges[j], phase->width);
+            cogmaster__state_seal(bad, size);
+            CHECK_EQ_U64(cogmaster__state_load(target, bad, size), COGMASTER_STATUS_OK);
+            CHECK_EQ_U64(target->synth.phase, edges[j]);
         }
     }
     /* The control: the unchanged state, resealed, loads. */
@@ -313,6 +338,44 @@ static void reject_other_profile(void)
         cogmaster_destroy(src);
         cogmaster_destroy(target);
     }
+}
+
+/* A new export Master System test card with the FM unit attached or not. */
+static cogmaster *make_fm(uint32_t fm)
+{
+    cogmaster_config cfg = make_config();
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    cogmaster_media media;
+    memset(&media, 0, sizeof media);
+    media.size = (uint32_t)sizeof media;
+    media.machine = COGMASTER_MACHINE_SMS2;
+    media.region = COGMASTER_REGION_EXPORT;
+    media.fm = fm;
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    return m;
+}
+
+/* Two instances of one machine, region and TV that differ only in the FM
+   unit refuse each other's state, and each loads its own. */
+static void reject_other_fm(void)
+{
+    cogmaster *with = make_fm(COGMASTER_FM_ON);
+    cogmaster *without = make_fm(COGMASTER_FM_OFF);
+    run_frames(with, 3u);
+    run_frames(without, 3u);
+    size_t size = save(with, bad);
+    size_t target_size = save(without, before);
+    CHECK_EQ_U64(size, target_size);
+    if (size != 0u && size == target_size) {
+        expect_refused("state of the other fm unit", without, size, target_size);
+        CHECK_EQ_U64(cogmaster__state_save(without, after, target_size), COGMASTER_STATUS_OK);
+        cogmaster *same = make_fm(COGMASTER_FM_ON);
+        CHECK_EQ_U64(cogmaster__state_load(same, bad, size), COGMASTER_STATUS_OK);
+        cogmaster_destroy(same);
+    }
+    cogmaster_destroy(with);
+    cogmaster_destroy(without);
 }
 
 static uint8_t img_board[512u * 1024u];
@@ -652,12 +715,15 @@ static void test_rejects_header(void)
     const struct cogmaster__state_field *crc = field(n, "body_crc32");
     const struct cogmaster__state_field *reserved = field(n, "reserved");
     const struct cogmaster__state_field *ticks = field(n, "ticks");
+    const struct cogmaster__state_field *fm_unit = field(n, "fm_unit");
     if (size == 0u || magic == NULL || total == NULL || header == NULL || crc == NULL ||
-        reserved == NULL || ticks == NULL) {
+        reserved == NULL || ticks == NULL || fm_unit == NULL) {
         return;
     }
     CHECK_EQ_U64(magic->offset, 0);
-    CHECK_EQ_U64(reserved->offset, 52);
+    CHECK_EQ_U64(fm_unit->offset, 52);
+    CHECK_EQ_U64(fm_unit->width, 1);
+    CHECK_EQ_U64(reserved->offset, 53);
 
     for (uint32_t i = 0; i < 8u; i++) {
         memcpy(bad, good, size);
@@ -684,11 +750,16 @@ static void test_rejects_header(void)
     memcpy(bad, good, size);
     bad[size - 1u] ^= 1u;
     expect_refused("body byte", target, size, target_size);
-    for (uint32_t i = 0; i < 12u; i++) {
+    for (uint32_t i = 0; i < 11u; i++) {
         memcpy(bad, good, size);
         bad[reserved->offset + i] = 1u;
         expect_refused("reserved byte", target, size, target_size);
     }
+    /* The FM unit is fixed to the instance: a flipped byte is refused. */
+    memcpy(bad, good, size);
+    bad[fm_unit->offset] ^= 1u;
+    expect_refused("fm unit byte", target, size, target_size);
+    reject_other_fm();
     /* Ticks one away from frame x 179,208, both inside their own bounds. */
     memcpy(bad, good, size);
     put_le(bad + ticks->offset, get_le(good + ticks->offset, 8u) + 1u, 8u);
