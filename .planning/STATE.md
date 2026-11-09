@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 04
 current_phase_name: Sound
 status: executing
-stopped_at: Completed 04-07-PLAN.md
-last_updated: "2026-11-09T20:54:47.240Z"
+stopped_at: Completed 04-08-PLAN.md
+last_updated: "2026-11-09T20:59:54.376Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 04 execution started
-state_head: bab292142c14e241fcf3c12fb929030f63b98e43
+state_head: c87945f92868af87bee7c413b543dfb95328c775
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 62
-  completed_plans: 54
+  completed_plans: 55
   percent: 75
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 04 (Sound) — EXECUTING
-Plan: 8 of 15
+Plan: 9 of 15
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 04 execution started
 
@@ -118,6 +118,7 @@ Progress: [████████░░] 75%
 | Phase 04 P05 | 20min | 3 tasks | 12 files |
 | Phase 04 P06 | 8min | 2 tasks | 10 files |
 | Phase 04 P07 | 11min | 2 tasks | 16 files |
+| Phase 04 P08 | 4min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -266,6 +267,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 04]: 04-06: audio.cost bounds kernel additions by 16 x outputs x (4 x steps + 5 x writes) over a 33 tick OUT hammer on NTSC, PAL and native Game Gear; measured about 12 to 16 percent of the bound, ring reach 816, 981 and 816 against 992
 - [Phase 04]: 04-07: The runner's audio hashing is its own module (runner/audio.c); both drops, a count off 801 or 802 (965 or 966 PAL) and out-of-order source ticks fail the frame at once with exit 1, and levels are merged and serialised as 16 bits with a 0x10000 no-level sentinel
 - [Phase 04]: 04-07: psg_sweep is a 19-segment table player closing with 38 mailbox records (frames waited and PSG writes), with assemble-time guards on the segment count and the 60-record mailbox; the Game Gear $06 entries add no wait, record or count, so the SMS and GG images report identical records
+- [Phase 04]: 04-08: psg_sweep.gg is built through the fixtures loop with a second image special case (psg_sweep_gg to psg_sweep.gg) and judged by the same 38 rows under profile gg; the four psg_sweep sound rows in hashes.txt are tagged '<file> <profile> <region> baseline' after the keyword and frozen in tests/audio/transitions.txt and pcm.txt, compared inside runner.hashes_file; runner.hashes_file keeps TIMEOUT 30 (2.3 s inside the ci workflow) pending hosted be32 and wasm32 timings
 
 ### Pending Todos
 
@@ -313,6 +315,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-11-09 | Execute phase 4 plan 04-05 (gsd-execute-phase 04); SN76489 model, bus wiring, reset snapshot, PSG state and eleven closed-form psg cases; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Execute phase 4 plan 04-06 (gsd-execute-phase 04); Game Gear $06 stereo routing, native-mode port decode fix, audio.cost hammer bound; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Execute phase 4 plan 04-07 (gsd-execute-phase 04); cogmaster-run --hash-audio, runner.hash_audio, psg_sweep fixture with 38 judged records; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-08 (gsd-execute-phase 04); psg_sweep.gg, sound rows in hashes.txt, frozen tests/audio pins; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -324,6 +327,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-09T20:54:46.973Z
-Stopped at: Completed 04-07-PLAN.md
+Last session: 2026-11-09T20:59:54.156Z
+Stopped at: Completed 04-08-PLAN.md
 Resume file: None
