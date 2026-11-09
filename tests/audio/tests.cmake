@@ -11,8 +11,12 @@ cogmaster_warnings(cogmaster-test-audio)
 # frontend that paces on audio drifts, a drain that loses, repeats or overruns
 # the samples of a frame, or a level change that is not heard as a band-limited
 # step at its place in the stream.
-foreach(case IN ITEMS cadence drain step)
-  # Timeout: 10 s floor; 0.22 s slowest local run (no hosted run yet), provisional.
+foreach(case IN ITEMS cadence drain step spectral no_clip amplitude_bound ring_overshoot
+                  stereo_mask state_continue)
+  # Timeout: 10 s floor; 0.32 s slowest local run (audio.cadence; audio.spectral
+  # takes 0.05 s for its integer DFT), no hosted run yet, so provisional. be32 and
+  # wasm32 were not run locally; their 8 and 5 times scales leave 80 s and 50 s,
+  # over a thousand times the native cost of the slowest test.
   cogmaster_add_test(NAME audio.${case} COMMAND cogmaster-test-audio ${case}
     LABELS audio portable TIMEOUT 10)
 endforeach()

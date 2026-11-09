@@ -24,6 +24,28 @@ once after every frame, with a buffer of at least 966 sample frames: that holds 
 - **Types.** Samples are `int16_t` in the host's byte order. Hash the little-endian bytes if you compare digests
   across platforms.
 
+## Synthesis
+
+The library turns each change in a sound source's level into a band-limited step and sums the steps, so a
+square wave faster than the output rate leaves no audible alias. A host hears this; nothing in it is configurable.
+
+- **Kernel.** Each change adds a 16-tap kernel, in one of 32 sub-sample positions, to a ring of pending
+  impulses; the table is a Nyquist-sinc integral under a Kaiser window, credited in `PROVENANCE.md`. A change is
+  heard about 8 samples after it happens (the kernel's peak tap), with nothing earlier. The position costs one
+  integer division per change.
+- **Volume and mix.** The attenuation law is 2 dB a step from full scale (steps 0 to 14; 15 is off). The level
+  of each source is gained before it enters the ring, as a level rather than as a difference, so the gain cannot
+  drift. The Master System and Game Gear PSG gets a gain of 840 over 4096. With the FM unit the PSG gets 491 and
+  the FM 1402, which keeps their 4096 to 1434 ratio. Four PSG channels at full level stepping together peak at
+  about 28,900, under the -1 dBFS line at 29,204: the kernel overshoots a step by under 8 percent. A run of
+  quick changes can ring a little higher; the output saturates at the 16-bit limits and never wraps.
+- **DC.** One leaky estimator per channel follows the signal and is subtracted, so a held level fades to silence
+  with a time constant of 256 samples (a corner near 30 Hz). Nothing else filters the output.
+- **Game Gear stereo.** The mask byte sends PSG channel n to the left with bit n + 4 and to the right with bit n,
+  and changing it mid-tone is a band-limited step on the affected side only. The Master System has one channel.
+- **What a change moves.** The kernel, the volume law, the gains and the DC corner decide the samples, so a change
+  to any of them moves the PCM hash and no recorded transition. Sources, levels and ticks decide the transitions.
+
 ## The FM unit
 
 The Japanese Master System has a YM2413 FM sound unit beside the PSG; the export Master System and the Game Gear
@@ -68,8 +90,9 @@ The log is allocated once, by the first load, through your allocator. Nothing is
 
 - **Load and POWER reset** start from silence: no pending samples, the cadence restarts at 801 (or 965), the
   `dropped` count is 0 and every sound chip is in its power-on state.
-- **SOFT reset** keeps the output continuous: the cadence phase and any samples not yet taken carry over, so a
-  host sees no gap or repeat in the stream. The tick count restarts at 0 and the chips return to their power-on
-  values, as the console's reset leaves them; this is the model's choice and is not yet measured on hardware.
+- **SOFT reset** keeps the output continuous: the cadence phase, the pending impulses, the DC estimate, each
+  source's last level and any samples not yet taken carry over, so a host sees no gap or repeat in the stream.
+  The tick count restarts at 0 and the chips return to their power-on values, as the console's reset leaves them; this is the model's choice
+  and is not yet measured on hardware.
 
 The test card is silent and follows the same cadence.
