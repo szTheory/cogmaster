@@ -230,14 +230,13 @@ void cogmaster__synth_frame_end(cogmaster *m)
     /* The chips run to this frame's deadline, inclusive, the PSG first, before the frame is
        summed; a write that overshot the deadline has already taken them further.
        The frame has counted itself by now, so its events are placed from the
-       start it had while it ran. */
-    if (m->frame > 0u) {
-        m->frame--;
-        uint64_t deadline = (m->frame + 1u) * cogmaster__frame_ticks(m);
-        cogmaster__psg_catch_up(m, deadline);
-        cogmaster__fm_catch_up(m, deadline);
-        m->frame++;
-    }
+       start it had while it ran (both callers count the frame first, so it is
+       at least 1 here). */
+    m->frame--;
+    uint64_t deadline = (m->frame + 1u) * cogmaster__frame_ticks(m);
+    cogmaster__psg_catch_up(m, deadline);
+    cogmaster__fm_catch_up(m, deadline);
+    m->frame++;
 
     uint64_t total = (uint64_t)s->phase + (uint64_t)cogmaster__frame_ticks(m) * inc;
     uint32_t n = (uint32_t)(total / mod);
