@@ -81,6 +81,15 @@ if(CMAKE_SCRIPT_MODE_FILE)
         message(FATAL_ERROR "playing matrix missing ${row}")
       endif()
     endforeach()
+    # The playable fixture has all four sound rows, each with its two hashes.
+    foreach(row IN ITEMS "boot_to_play.sms sms ntsc-u baseline 60" "boot_to_play.sms sms ntsc-u input 14"
+        "boot_to_play.gg native ntsc-u baseline 60" "boot_to_play.gg native ntsc-u input 14")
+      foreach(kind IN ITEMS transitions pcm)
+        if(NOT hashes MATCHES "audio-${kind} ${row} ")
+          message(FATAL_ERROR "sound matrix missing audio-${kind} ${row}")
+        endif()
+      endforeach()
+    endforeach()
     # The sound rows equal the frozen pins, line for line; the first line that differs is named.
     foreach(kind IN ITEMS transitions pcm)
       file(STRINGS "${OUT}/hashes.txt" got REGEX "^audio-${kind} ")

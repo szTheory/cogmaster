@@ -105,6 +105,8 @@ palette:
     out ($7F),a
     ld a,20
     ld ($C210),a
+    ld a,$0F
+    ld ($C212),a
 forever:
     ; One poll in VBlank per frame; bit 4 is active-low button 1.
 .IFDEF FIXTURE_GG
@@ -185,6 +187,35 @@ p2_held:
     xor a
     out ($BE),a
 .ENDIF
+    ; A new press sounds tone 1: a period from an eight entry table indexed
+    ; by the counter's low three bits, attenuation 0, then decaying one step
+    ; a frame (SMS-AUDIO section 2). Under Game Gear the speakers alternate:
+    ; every channel left only on an even counter, right only on an odd one.
+    ld a,($C200)
+.IFDEF FIXTURE_GG
+    and 1
+    ld a,$F0
+    jr z,gg_side
+    ld a,$0F
+gg_side:
+    out ($06),a
+    ld a,($C200)
+.ENDIF
+    and 7
+    add a,a
+    ld e,a
+    ld d,0
+    ld hl,note_table
+    add hl,de
+    ld a,(hl)
+    out ($7F),a
+    inc hl
+    ld a,(hl)
+    out ($7F),a
+    xor a
+    ld ($C212),a
+    ld a,$B0
+    out ($7F),a
 no_edge:
     ; Record the first eight polls, then seal once. CRC calculation never
     ; delays any of the press/hold/release measurements.
@@ -229,17 +260,27 @@ sampled:
     ld a,$9F
     out ($7F),a
 chime_done:
+    ; Note decay: one attenuation step a frame until tone 1 is silent.
+    ld a,($C212)
+    cp $0F
+    jr nc,note_done
+    inc a
+    ld ($C212),a
+    or $B0
+    out ($7F),a
+note_done:
     call wait_frame
-.IFDEF FIXTURE_GG
-    jr forever
-.ELSE
     jp forever
-.ENDIF
 wait_frame:
     in a,($BF)
     or a
     jp p,wait_frame
     ret
+; Tone 1 latch byte with the low four period bits, then the high six bits:
+; periods $11C, $0FE, $0E1, $0D5, $0BE, $0A9, $08F, $07F (about 395 to 880 Hz).
+note_table:
+    .DB $AC,$11,$AE,$0F,$A1,$0E,$A5,$0D
+    .DB $AE,$0B,$A9,$0A,$AF,$08,$AF,$07
 glyph:
     .DB $81,$55,$33,$0F
     .DB $42,$55,$33,$0F

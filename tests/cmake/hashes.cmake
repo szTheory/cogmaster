@@ -84,28 +84,39 @@ if(MODE STREQUAL "write")
         endforeach()
       endif()
     endforeach()
-    # Fault prevented: a sound that differs between lanes. The sound fixture's
-    # two hash lines, each tagged "<file> <profile> <region> <variant>" after
-    # the keyword, for the Master System image on both machines and both TV
-    # standards and for the native Game Gear image. tests/audio/ pins them.
-    foreach(row IN ITEMS "psg_sweep.sms|sms|sms|sms|ntsc-u" "psg_sweep.sms|sms|sms|sms|pal"
-        "psg_sweep.sms|gg-sms|gg|sms|ntsc-u" "psg_sweep.gg|native|gg|gg|ntsc-u")
+    # Fault prevented: a sound that differs between lanes. The two hash lines of
+    # each sound run, tagged "<file> <profile> <region> <variant>" after the
+    # keyword: the sound fixture on both machines and both TV standards and the
+    # native Game Gear image, then the playable fixture without input (60
+    # frames) and with the play script (14 frames). tests/audio/ pins them.
+    foreach(row IN ITEMS "psg_sweep.sms|sms|sms|sms|ntsc-u|300|baseline|"
+        "psg_sweep.sms|sms|sms|sms|pal|300|baseline|" "psg_sweep.sms|gg-sms|gg|sms|ntsc-u|300|baseline|"
+        "psg_sweep.gg|native|gg|gg|ntsc-u|300|baseline|"
+        "boot_to_play.sms|sms|sms|sms|ntsc-u|60|baseline|" "boot_to_play.sms|sms|sms|sms|ntsc-u|14|input|play"
+        "boot_to_play.gg|native|gg|gg|ntsc-u|60|baseline|" "boot_to_play.gg|native|gg|gg|ntsc-u|14|input|play-gg")
       string(REPLACE "|" ";" row "${row}")
       list(GET row 0 filename)
       list(GET row 1 profile)
       list(GET row 2 machine)
       list(GET row 3 video)
       list(GET row 4 region)
+      list(GET row 5 frames)
+      list(GET row 6 variant)
+      list(GET row 7 script)
+      set(input "")
+      if(script)
+        set(input --input "${OUT}/tests/${script}.input")
+      endif()
       execute_process(COMMAND ${EMULATOR} "${RUN}" "${FIXTURES}/${filename}" --machine ${machine}
-        --video-mode ${video} --region ${region} --frames 300 --hash-audio
+        --video-mode ${video} --region ${region} --frames ${frames} --hash-audio ${input}
         OUTPUT_VARIABLE sound ERROR_VARIABLE err RESULT_VARIABLE rc)
       if(NOT rc STREQUAL "0")
-        message(FATAL_ERROR "sound ${filename}/${profile}/${region}: exit ${rc}: ${sound}${err}")
+        message(FATAL_ERROR "sound ${filename}/${profile}/${region}/${variant}: exit ${rc}: ${sound}${err}")
       endif()
       string(REPLACE "\n" ";" sound "${sound}")
       foreach(line IN LISTS sound)
         if(line MATCHES "^audio-(transitions|pcm) (.*)$")
-          string(APPEND lines "audio-${CMAKE_MATCH_1} ${filename} ${profile} ${region} baseline ${CMAKE_MATCH_2}\n")
+          string(APPEND lines "audio-${CMAKE_MATCH_1} ${filename} ${profile} ${region} ${variant} ${CMAKE_MATCH_2}\n")
         endif()
       endforeach()
     endforeach()

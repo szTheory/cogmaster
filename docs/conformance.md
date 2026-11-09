@@ -402,6 +402,13 @@ against `tests/diag/expected.csv`; every LCD coordinate and the runner hash
 are checked against the explicit diamond table and colour arithmetic.
 The same SMS source now polls button 1 on either pad, with separate p1/p2
 scripts proving the same first-boundary, held and repeated-edge sequence.
+The fixture also makes sound after its video set-up, so the picture, the mailbox rows and the
+ledger rows do not move: a 20 frame chime near 440 Hz on tone 0 at boot, and on each new press a
+note on tone 1 (a period from an eight entry table indexed by the counter) that decays over 16
+frames. The Game Gear image sets every channel to both speakers at boot, then sends all of them
+to the left speaker only on an even counter and the right only on an odd one. It is not judged
+by an oracle: its audio rows (no input for 60 frames, the play script for 14) are frozen in
+`tests/audio/` and compared on every lane, with no clipping and a peak under -1 dBFS.
 The image digests are in `tests/built/expected.txt`; no built ROM is committed.
 
 `vdp.gg` tests exhaust all 4096 native colours and 64 SMS colours, shared
