@@ -1,13 +1,18 @@
-/* The YM2413 chip module on its own: cogmaster-test-fm <case> [file]. The chip is driven
-   through its three entry points and read back through its public structure. */
+/* The YM2413 chip module on its own and on the Japanese console: cogmaster-test-fm <case>
+   [file]. The chip is driven through its three entry points and read back through its public
+   structure; the unit's ports, control, reset, state and cost go through the bus the Z80
+   uses and the instance's own accessors. */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "cogmaster.h"
+#include "internal.h"
 #include "opll.h"
 #include "opll_stream.h"
 #include "sha256.h"
+#include "state.h"
 #include "../check.h"
 
 #define LOCKSTEP_SAMPLES 2000000u
@@ -412,6 +417,264 @@ static void sum_bound(void)
     CHECK(sum_lo >= -(int32_t)COGMASTER__OPLL_SUM_MAX);
 }
 
+/* ---- The unit on the console: ports, control, reset, state and cost ---- */
+
+#define IMAGE_SIZE 1024u
+#define TRACE 32768u
+#define PORT_ADDRESS 0xF0u
+#define PORT_DATA 0xF1u
+#define PORT_CTRL 0xF2u
+#define SETTLE_FRAMES 12u
+
+static uint8_t image[IMAGE_SIZE];
+static int16_t pcm[COGMASTER__AUDIO_MAX_FRAMES * 2u];
+static cogmaster_audio_record log_record[TRACE];
+
+static void *test_alloc(void *user, size_t size)
+{
+    (void)user;
+    return malloc(size);
+}
+
+static void test_free(void *user, void *ptr, size_t size)
+{
+    (void)user;
+    (void)size;
+    free(ptr);
+}
+
+/* A new instance of the profile running an image of HALTs, with a trace log of TRACE records
+   and the unit as fm says. */
+static cogmaster *make_profile(uint32_t machine, uint32_t region, uint32_t video, uint32_t fm)
+{
+    cogmaster_config cfg;
+    memset(&cfg, 0, sizeof cfg);
+    cfg.size = (uint32_t)sizeof cfg;
+    cfg.allocator.alloc = test_alloc;
+    cfg.allocator.free = test_free;
+    cfg.trace_records = TRACE;
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    if (m == NULL) {
+        exit(1);
+    }
+    memset(image, 0x76, sizeof image);
+    cogmaster_media media;
+    memset(&media, 0, sizeof media);
+    media.size = (uint32_t)sizeof media;
+    media.image = image;
+    media.image_size = sizeof image;
+    media.machine = machine;
+    media.region = region;
+    media.tv = COGMASTER_TV_NTSC;
+    media.video_mode = video;
+    media.fm = fm;
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    return m;
+}
+
+static cogmaster *make_unit(uint32_t region, uint32_t fm)
+{
+    return make_profile(COGMASTER_MACHINE_SMS2, region, COGMASTER_VIDEO_SMS, fm);
+}
+
+/* A Z80 OUT of v to port at tick: the bus is the one the CPU drives. */
+static void out_at(cogmaster *m, uint64_t tick, uint16_t port, uint8_t v)
+{
+    m->ticks = tick;
+    cogmaster__bus_out(m, port, v);
+}
+
+/* The first tick of the frame about to run, plus an offset inside it. */
+static uint64_t in_frame(const cogmaster *m, uint64_t offset)
+{
+    return m->frame * cogmaster__frame_ticks(m) + offset;
+}
+
+/* Voice 0 plays instrument 1 at full volume, f-number $180 in block 4, keyed on, through $F0 and
+   $F1 at 33-tick spacing from tick. */
+static void note_on(cogmaster *m, uint64_t tick)
+{
+    static const uint8_t writes[6] = {0x30, 0x10, 0x10, 0x80, 0x20, (uint8_t)KEY_ON_B4};
+
+    for (uint32_t i = 0; i < 6; i += 2) {
+        out_at(m, tick + 33u * i, PORT_ADDRESS, writes[i]);
+        out_at(m, tick + 33u * i + 33u, PORT_DATA, writes[i + 1]);
+    }
+}
+
+/* The records waiting in the log, oldest first, copied to dst; empties the log. */
+static uint32_t drain_into(cogmaster *m, cogmaster_audio_record *dst)
+{
+    cogmaster_audio_trace t;
+    memset(&t, 0, sizeof t);
+    t.size = (uint32_t)sizeof t;
+    t.records = dst;
+    t.capacity = TRACE;
+    CHECK_EQ_U64(cogmaster_get_audio_trace(m, &t), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(t.dropped, 0u);
+    return t.written;
+}
+
+static uint32_t drain_trace(cogmaster *m)
+{
+    return drain_into(m, log_record);
+}
+
+/* Runs one frame and takes its audio into out, as a host does; returns the sample frames and
+   sets *peak to the largest magnitude among them. */
+static uint32_t take_frame(cogmaster *m, int16_t *out, uint32_t *peak)
+{
+    cogmaster_audio a;
+    memset(&a, 0, sizeof a);
+    a.size = (uint32_t)sizeof a;
+    a.samples = out;
+    a.capacity = COGMASTER__AUDIO_MAX_FRAMES;
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster_get_audio(m, &a), COGMASTER_STATUS_OK);
+    *peak = 0u;
+    for (uint32_t i = 0; i < a.written * a.channels; i++) {
+        const uint32_t mag = out[i] < 0 ? (uint32_t)-(int32_t)out[i] : (uint32_t)out[i];
+        *peak = mag > *peak ? mag : *peak;
+    }
+    return a.written;
+}
+
+/* The largest magnitude of n frames' audio. */
+static uint32_t run_peak(cogmaster *m, uint32_t n)
+{
+    uint32_t most = 0;
+
+    for (uint32_t i = 0; i < n; i++) {
+        uint32_t peak;
+        (void)take_frame(m, pcm, &peak);
+        most = peak > most ? peak : most;
+    }
+    return most;
+}
+
+static uint32_t count_source(uint32_t n, uint32_t source)
+{
+    uint32_t found = 0;
+
+    for (uint32_t i = 0; i < n; i++) {
+        found += log_record[i].source == source;
+    }
+    return found;
+}
+
+/* The chip as the original's own cadence says it runs: sample k completes at tick 216k, and a
+   write at a tick applies after every sample due at or before that tick and before the next.
+   The model takes the writes (tick, register, value) in order and gives the 16-bit level of each
+   sample from 1 to n. */
+struct model_write {
+    uint64_t tick;
+    uint32_t reg;
+    uint32_t value;
+};
+
+static void model_levels(const struct model_write *w, uint32_t writes, uint32_t n, uint16_t *out)
+{
+    uint32_t next = 0;
+
+    cogmaster__opll_reset(&twin);
+    for (uint32_t k = 1; k <= n; k++) {
+        while (next < writes && w[next].tick < 216u * k) {
+            cogmaster__opll_write(&twin, w[next].reg, w[next].value);
+            next++;
+        }
+        out[k - 1u] = (uint16_t)cogmaster__opll_sample(&twin);
+    }
+}
+
+/* The level of source 5 that the first n records of the log give at tick: the last record at or
+   before it, or 0, the level the chip starts at, before the first. *at is where to look from. */
+static uint32_t logged_level(uint32_t n, uint64_t tick, uint32_t *at)
+{
+    while (*at < n && log_record[*at].tick <= tick) {
+        (*at)++;
+    }
+    return *at == 0 ? 0u : log_record[*at - 1u].level;
+}
+
+/* A note written through $F0 and $F1 reaches the chip, is synthesised and mixed, and $F2 mutes
+   it at the mixer while the chip runs on: the registers hold what was written, the log holds a
+   record of source 5 at every change of the sum on the 216-tick grid and one of source 6 at the
+   write, and the level at every sample is what the chip gives when each write applies after the
+   samples due at its tick (one write lands just after a sample, so a catch-up that came after
+   the write would change that sample). The first frames carry the note, and after $F2 = 0 the
+   stream goes silent while the chip keeps evaluating 18 slots a sample and keeps reporting. */
+#define MODEL_SAMPLES 1659u
+
+static void through_bus(void)
+{
+    static const struct model_write plan[] = {{233, 0x30, 0x10},
+                                              {299, 0x10, 0x80},
+                                              {365, 0x20, KEY_ON_B4},
+                                              {216u * 300u + 10u, 0x30, 0x11}};
+    static uint16_t want[MODEL_SAMPLES];
+    cogmaster *m = make_unit(COGMASTER_REGION_JAPAN, COGMASTER_FM_AUTO);
+    uint32_t n;
+
+    CHECK_EQ_U64(m->fm_unit, 1);
+    (void)drain_trace(m);
+    out_at(m, 100, PORT_CTRL, 1);
+    note_on(m, 200);
+    out_at(m, plan[3].tick - 33u, PORT_ADDRESS, 0x30);
+    out_at(m, plan[3].tick, PORT_DATA, 0x11);
+    CHECK_EQ_U64(m->io.audio_ctrl, 1);
+    CHECK_EQ_U64(m->opll.reg[0x30], 0x11);
+    CHECK_EQ_U64(m->opll.reg[0x10], 0x80);
+    CHECK_EQ_U64(m->opll.reg[0x20], KEY_ON_B4);
+    CHECK_EQ_U64(m->opll.latch, 0x30);
+
+    CHECK(run_peak(m, 2) > 0);
+    n = drain_trace(m);
+    CHECK(count_source(n, 5) > 100);
+    uint32_t off_grid = 0;
+    uint32_t control = 0;
+    for (uint32_t i = 0; i < n; i++) {
+        off_grid += log_record[i].source == 5 && log_record[i].tick % 216u != 0u;
+        if (log_record[i].source == 6) {
+            control++;
+            CHECK_EQ_U64(log_record[i].tick, 100);
+            CHECK_EQ_U64(log_record[i].level, 1);
+        }
+    }
+    CHECK_EQ_U64(off_grid, 0);
+    CHECK_EQ_U64(control, 1);
+
+    /* The level at every sample against the model of the cadence. */
+    uint32_t sum_records = 0;
+    for (uint32_t i = 0; i < n; i++) {
+        if (log_record[i].source == 5) {
+            log_record[sum_records++] = log_record[i];
+        }
+    }
+    model_levels(plan, sizeof plan / sizeof plan[0], MODEL_SAMPLES, want);
+    uint32_t at = 0;
+    uint32_t differ = 0;
+    uint32_t moving = 0;
+    for (uint32_t k = 1; k <= MODEL_SAMPLES; k++) {
+        const uint32_t got = logged_level(sum_records, 216u * k, &at);
+        differ += got != want[k - 1u];
+        moving += want[k - 1u] != 0;
+    }
+    CHECK_EQ_U64(differ, 0);
+    CHECK(moving > 400);
+
+    /* $F2 = 0 mutes the FM: the stream settles to silence, the chip does not stop. */
+    out_at(m, in_frame(m, 500), PORT_CTRL, 0);
+    const uint64_t before = m->opll.slot_evals;
+    CHECK(run_peak(m, SETTLE_FRAMES) > 0);
+    CHECK_EQ_U64(run_peak(m, 1), 0);
+    CHECK(m->opll.slot_evals > before + 18u * 800u * SETTLE_FRAMES);
+    n = drain_trace(m);
+    CHECK(count_source(n, 5) > 100);
+    CHECK(m->opll.slot[1].eg_state != OPLL_RELEASE);
+    cogmaster_destroy(m);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
@@ -423,6 +686,7 @@ static const struct {
     {"test_register", test_register},
     {"slot_count", slot_count},
     {"sum_bound", sum_bound},
+    {"through_bus", through_bus},
 };
 
 int main(int argc, char **argv)

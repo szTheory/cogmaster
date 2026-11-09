@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include "cogmaster.h"
+#include "opll.h"
 #include "z80.h"
 
 /* The field buffer is 256 dots wide and up to 240 lines tall; the test card
@@ -161,6 +162,8 @@ struct cogmaster__io {
     uint8_t mem_ctrl; /* $3E: active-low enables, b6 cartridge, b4 work RAM, b2 I/O chip */
     uint8_t io_ctrl;  /* $3F: b3-0 TR/TH directions (1 = input), b7-4 their output levels */
     uint8_t gg[6];    /* Game Gear $01-$06 */
+    /* $F2 as written, below 4: 0 PSG, 1 FM, 2 neither, 3 both; 0 with no FM unit */
+    uint8_t audio_ctrl;
 };
 
 /* The Master System's work RAM, mirrored over $C000-$FFFF. */
@@ -274,6 +277,10 @@ struct cogmaster {
     uint8_t input_read;
     struct cogmaster__synth synth;
     struct cogmaster__psg psg;
+    /* The YM2413, reset at every load and reset and run only with fm_unit; fm_next is the tick
+       its next sample completes at, a multiple of 216. */
+    struct cogmaster__opll opll;
+    uint64_t fm_next;
     uint32_t trace_cap;                /* the host's trace_records, kept across loads */
     cogmaster_audio_record *trace_log; /* trace_cap records, allocated by the first load */
     uint8_t ram[COGMASTER__RAM_SIZE];
@@ -616,6 +623,14 @@ void cogmaster__psg_catch_up(cogmaster *m, uint64_t tick);
 void cogmaster__psg_write(cogmaster *m, uint64_t tick, uint8_t v);
 uint32_t cogmaster__psg_level(const cogmaster *m, uint32_t ch);
 void cogmaster__psg_snapshot(cogmaster *m);
+
+/* The YM2413 unit, attached when fm_unit is set. A sample completes every 216 ticks
+   (72 Z80 clocks) from tick 216 at a load or a reset, counted like the PSG's steps;
+   catch_up runs every sample at or before tick, in order, and hands the sum, as 16 bits,
+   to the synthesiser as source 5 when it changes; reset gives the power-on chip, the next
+   sample at tick 216 and $F2 at 0. */
+void cogmaster__fm_catch_up(cogmaster *m, uint64_t tick);
+void cogmaster__fm_reset(cogmaster *m);
 
 /* The largest gained level a source may hold in this profile, for the state
    bounds. */

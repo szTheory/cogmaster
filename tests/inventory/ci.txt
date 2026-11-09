@@ -144,6 +144,7 @@ fm.rhythm	fm,portable
 fm.slot_count	fm,portable
 fm.sum_bound	fm,portable
 fm.test_register	fm,portable
+fm.through_bus	fm,portable
 fuzz.regress.loader	fuzz,portable
 fuzz.regress.run	fuzz,portable
 fuzz.regress.save	fuzz,portable

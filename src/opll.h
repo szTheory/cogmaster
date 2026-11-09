@@ -21,10 +21,12 @@
    The voices that sound together are nine tone voices or six tone voices and five drums, so
    their sum stays within COGMASTER__OPLL_SUM_MAX, below 32,767. The sum the chip returns also
    adds the last outputs of the group that is not sounding, as the original does before it
-   wraps the total to 16 bits, so all fourteen can reach 9 tone and 5 drum peaks (38,817). */
+   wraps the total to 16 bits, so all fourteen can reach 9 tone and 5 drum peaks, which is
+   COGMASTER__OPLL_SUM_ALL (38,817). */
 #define COGMASTER__OPLL_TONE_PEAK 2043u
 #define COGMASTER__OPLL_DRUM_PEAK 4086u
 #define COGMASTER__OPLL_SUM_MAX (6u * COGMASTER__OPLL_TONE_PEAK + 5u * COGMASTER__OPLL_DRUM_PEAK)
+#define COGMASTER__OPLL_SUM_ALL (9u * COGMASTER__OPLL_TONE_PEAK + 5u * COGMASTER__OPLL_DRUM_PEAK)
 
 /* An instrument: the eight bytes of a patch dump, split into fields. */
 struct cogmaster__opll_patch {
@@ -62,6 +64,7 @@ struct cogmaster__opll {
     uint8_t rhythm_mode;
     uint8_t lfo_am;
     uint8_t short_noise;
+    uint8_t latch; /* the register address $F0 last latched */
     uint32_t slot_key_status;
     uint32_t eg_counter;
     uint32_t pm_phase;
@@ -78,13 +81,14 @@ struct cogmaster__opll {
 
 enum { OPLL_ATTACK, OPLL_DECAY, OPLL_SUSTAIN, OPLL_RELEASE, OPLL_DAMP };
 
-/* Derived values a write or a state change asks the next sample to recompute. */
+/* Derived values a write or a state change asks the next sample to recompute; the four
+   flags are the whole request, so ALL is the four together. */
 enum {
     OPLL_UPDATE_WS = 1,
     OPLL_UPDATE_TLL = 2,
     OPLL_UPDATE_RKS = 4,
     OPLL_UPDATE_EG = 8,
-    OPLL_UPDATE_ALL = 255
+    OPLL_UPDATE_ALL = 15
 };
 
 #define OPLL_EG_MUTE 127u

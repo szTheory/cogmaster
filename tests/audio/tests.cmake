@@ -93,3 +93,12 @@ foreach(case IN ITEMS key_on rhythm noise lfo test_register slot_count sum_bound
   cogmaster_add_test(NAME fm.${case} COMMAND cogmaster-test-fm ${case}
     LABELS fm portable TIMEOUT 10)
 endforeach()
+
+# Fault prevented: a note a Z80 writes to $F0 and $F1 that never sounds, or sounds late or off the
+# 216-tick grid, or that $F2 does not mute at the mixer.
+foreach(case IN ITEMS through_bus)
+  # Timeout: 10 s floor; 0.09 s slowest local run (fm.state_round_trip), no hosted run yet, so
+  # provisional. The be32 and wasm32 scales leave 80 s and 50 s.
+  cogmaster_add_test(NAME fm.${case} COMMAND cogmaster-test-fm ${case}
+    LABELS fm portable TIMEOUT 10)
+endforeach()

@@ -52,7 +52,7 @@ _Static_assert(sizeof(struct cogmaster__z80) == 38u, "z80 changed: update z80_io
 _Static_assert(sizeof(struct cogmaster__bus) == 40u, "bus changed: update bus_io");
 _Static_assert(sizeof(struct cogmaster__vdp) == 16510u, "vdp changed: update vdp_io");
 _Static_assert(sizeof(struct cogmaster__mapper) == 4u, "mapper changed: update mapper_io");
-_Static_assert(sizeof(struct cogmaster__io) == 8u, "io changed: update io_io");
+_Static_assert(sizeof(struct cogmaster__io) == 9u, "io changed: update io_io");
 /* The saved synth fields are the ring, integrator, DC estimate, head, levels,
    gained levels and the cadence phase. The trace counters, the stats and the
    PCM the host has not taken are its queue and counters, not state, so a new
@@ -325,6 +325,8 @@ static void io_io(struct cogmaster__sio *io, cogmaster *m)
         uint8_t v = cogmaster__sio_u8(io, "io_gg", &p->gg[i], 0u, UINT8_MAX);
         cogmaster__sio_check(io, i != 4u || (v & 0x07u) == 0u);
     }
+    /* The audio control, which only the FM unit's $F2 writes, within the bits the unit keeps. */
+    cogmaster__sio_u8(io, "io_audio_ctrl", &p->audio_ctrl, 0u, (uint8_t)m->fm_mask);
 }
 
 /* The cadence phase is a fraction of a sample, below the modulus of the
@@ -361,8 +363,9 @@ static void synth_io(struct cogmaster__sio *io, cogmaster *m)
             cogmaster__sio_i64(io, "synth_ring", slot, -slot_max, slot_max);
         }
     }
-    static const uint32_t level_max[COGMASTER__SYNTH_SOURCES] = {0x1Fu, 0x1Fu,      0x1Fu, 0x1Fu,
-                                                                 0xFFu, UINT32_MAX, 0xFFu};
+    /* Sources 5 and 6 are the FM unit's: its sum as 16 bits and the control it leaves. */
+    const uint32_t level_max[COGMASTER__SYNTH_SOURCES] = {
+        0x1Fu, 0x1Fu, 0x1Fu, 0x1Fu, 0xFFu, m->fm_unit ? 0xFFFFu : 0u, m->fm_mask};
     for (uint32_t src = 0u; src < COGMASTER__SYNTH_SOURCES; src++) {
         cogmaster__sio_u32(io, "synth_level", &s->level[src], 0u, level_max[src]);
         uint32_t gmax = cogmaster__synth_gained_max(m, src);

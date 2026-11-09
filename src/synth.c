@@ -69,6 +69,11 @@ static const uint16_t volume[16] = {32767, 26028, 20675, 16422, 13045, 10362, 82
 #define SYNTH_G_PSG_FM 491u
 #define SYNTH_G_FM 1402u
 
+/* The FM unit's two sources and the tick spacing of its samples. */
+#define FM_SOURCE_SUM 5u
+#define FM_SOURCE_CTRL 6u
+#define FM_SAMPLE_TICKS 216u
+
 /* The ring and its sums stay inside int64. A kernel row is added with each tap
    scaled by 65,536 (the interpolation below), so a coefficient is at most
    28,452 times 65,536 in magnitude, and the largest taps of the 33 rows
@@ -136,7 +141,37 @@ void cogmaster__synth_reset(cogmaster *m, int power)
     m->synth.trace_pending = 0u;
     m->synth.trace_dropped = 0u;
     cogmaster__psg_reset(m);
+    cogmaster__fm_reset(m);
     cogmaster__psg_snapshot(m);
+    if (m->fm_unit) {
+        cogmaster__synth_level(m, m->ticks, FM_SOURCE_SUM, (uint16_t)m->opll.sum);
+        cogmaster__synth_level(m, m->ticks, FM_SOURCE_CTRL, m->io.audio_ctrl);
+    }
+}
+
+/* The YM2413 completes a sample every 72 Z80 clocks, which is 216 ticks, the first at tick
+   216 after a load or a reset (SMS-AUDIO section 4). It runs lazily like the PSG: every
+   sample at or before a tick runs first, in order, and the sum goes to the synthesiser as 16
+   bits, as the original wraps it, only when it changes. */
+void cogmaster__fm_reset(cogmaster *m)
+{
+    cogmaster__opll_reset(&m->opll);
+    m->fm_next = FM_SAMPLE_TICKS;
+    m->io.audio_ctrl = 0u;
+}
+
+void cogmaster__fm_catch_up(cogmaster *m, uint64_t tick)
+{
+    if (!m->fm_unit) {
+        return;
+    }
+    while (m->fm_next <= tick) {
+        uint32_t level = (uint16_t)cogmaster__opll_sample(&m->opll);
+        if (level != m->synth.level[FM_SOURCE_SUM]) {
+            cogmaster__synth_level(m, m->fm_next, FM_SOURCE_SUM, level);
+        }
+        m->fm_next += FM_SAMPLE_TICKS;
+    }
 }
 
 /* Division of a signed value by d, truncating toward zero, built on unsigned
@@ -192,13 +227,15 @@ void cogmaster__synth_frame_end(cogmaster *m)
     uint32_t room = UINT32_MAX - m->counters.audio_dropped;
     m->counters.audio_dropped += left < room ? left : room;
 
-    /* The chip runs to this frame's deadline, inclusive, before the frame is
-       summed; a write that overshot the deadline has already taken it further.
+    /* The chips run to this frame's deadline, inclusive, the PSG first, before the frame is
+       summed; a write that overshot the deadline has already taken them further.
        The frame has counted itself by now, so its events are placed from the
        start it had while it ran. */
     if (m->frame > 0u) {
         m->frame--;
-        cogmaster__psg_catch_up(m, (m->frame + 1u) * cogmaster__frame_ticks(m));
+        uint64_t deadline = (m->frame + 1u) * cogmaster__frame_ticks(m);
+        cogmaster__psg_catch_up(m, deadline);
+        cogmaster__fm_catch_up(m, deadline);
         m->frame++;
     }
 
@@ -287,6 +324,38 @@ static uint32_t synth_gain(const cogmaster *m, uint32_t source)
     return SYNTH_G_FM;
 }
 
+/* What $F2 lets through (SMS-AUDIO section 4.2): 0 the PSG alone, 1 the FM alone, 2 neither,
+   3 both. The chips keep running either way; only their levels are gated here. A profile with
+   no FM unit has no mute. */
+static int synth_psg_audible(const cogmaster *m)
+{
+    uint32_t ctrl = m->synth.level[FM_SOURCE_CTRL];
+    return !m->fm_unit || ctrl == 0u || ctrl == 3u;
+}
+
+static int synth_fm_audible(const cogmaster *m)
+{
+    return m->fm_unit && (m->synth.level[FM_SOURCE_CTRL] & 1u) != 0u;
+}
+
+/* The YM2413's sum is a signed level of 16 bits whatever the chip returned: its low 16 bits
+   are what the original keeps, so a sum past the range of 16 bits wraps as it does there.
+   The sounding voices stay within COGMASTER__OPLL_SUM_MAX of zero; the sum is biased by
+   32,768 (flipping the top bit adds it to the wrapped value, so nothing is signed) to a
+   non-negative value, the part below the bottom of that range is dropped, and the span of
+   twice the bound is normalised to the PSG's full scale. A level outside the bound
+   saturates, so every 16 bit value gives a gained level between 0 and the largest. The
+   largest product is 65,376 x 32,767, under 2^32. */
+static uint32_t synth_fm_level(uint32_t sum16)
+{
+    uint32_t biased = (sum16 & 0xFFFFu) ^ 0x8000u;
+    uint32_t low = 0x8000u - COGMASTER__OPLL_SUM_MAX;
+    uint32_t span = 2u * COGMASTER__OPLL_SUM_MAX;
+    uint32_t t = biased > low ? biased - low : 0u;
+    t = t < span ? t : span;
+    return (t * volume[0] + COGMASTER__OPLL_SUM_MAX) / span;
+}
+
 uint32_t cogmaster__synth_gained_max(const cogmaster *m, uint32_t source)
 {
     if (source < 4u || (source == 5u && m->fm_unit)) {
@@ -304,12 +373,13 @@ static void synth_psg(cogmaster *m, uint64_t tick, uint32_t first, uint32_t last
     struct synth_place place;
     int placed = 0;
     uint32_t channels = synth_channels(m);
+    int audible = synth_psg_audible(m);
     for (uint32_t src = first; src <= last; src++) {
         uint32_t lv = s->level[src];
         uint32_t amp = (lv & 0x10u) != 0u ? volume[lv & 15u] : 0u;
         uint32_t gained = (amp * synth_gain(m, src) + 2048u) / 4096u;
         for (uint32_t ch = 0u; ch < channels; ch++) {
-            uint32_t want = synth_routed(m, src, ch) ? gained : 0u;
+            uint32_t want = synth_routed(m, src, ch) && audible ? gained : 0u;
             int32_t delta = (int32_t)want - (int32_t)s->gained[src][ch];
             if (delta == 0) {
                 continue;
@@ -324,19 +394,50 @@ static void synth_psg(cogmaster *m, uint64_t tick, uint32_t first, uint32_t last
     }
 }
 
+/* The FM unit's gained level, the same on every output: the normalised sum through the FM
+   gain while $F2 lets it through, else nothing; the difference from the one last fed to the
+   ring is what enters it. */
+static void synth_fm(cogmaster *m, uint64_t tick)
+{
+    struct cogmaster__synth *s = &m->synth;
+    struct synth_place place;
+    int placed = 0;
+    uint32_t channels = synth_channels(m);
+    uint32_t gained =
+        (synth_fm_level(s->level[FM_SOURCE_SUM]) * synth_gain(m, FM_SOURCE_SUM) + 2048u) / 4096u;
+    uint32_t want = synth_fm_audible(m) ? gained : 0u;
+    for (uint32_t ch = 0u; ch < channels; ch++) {
+        int32_t delta = (int32_t)want - (int32_t)s->gained[FM_SOURCE_SUM][ch];
+        if (delta == 0) {
+            continue;
+        }
+        s->gained[FM_SOURCE_SUM][ch] = want;
+        if (!placed) {
+            synth_place_at(m, tick, &place);
+            placed = 1;
+        }
+        synth_add(s, &place, ch, delta);
+    }
+}
+
 void cogmaster__synth_level(cogmaster *m, uint64_t tick, uint32_t source, uint32_t level)
 {
     cogmaster__synth_trace(m, tick, source, level);
     if (source >= COGMASTER__SYNTH_SOURCES) {
         return;
     }
-    static const uint32_t width[COGMASTER__SYNTH_SOURCES] = {0x1Fu, 0x1Fu,      0x1Fu, 0x1Fu,
-                                                             0xFFu, UINT32_MAX, 0xFFu};
+    static const uint32_t width[COGMASTER__SYNTH_SOURCES] = {0x1Fu, 0x1Fu,   0x1Fu, 0x1Fu,
+                                                             0xFFu, 0xFFFFu, 0xFFu};
     m->synth.level[source] = level & width[source];
     if (source < 4u) {
         synth_psg(m, tick, source, source);
     } else if (source == 4u) {
         synth_psg(m, tick, 0u, 3u);
+    } else if (source == FM_SOURCE_SUM) {
+        synth_fm(m, tick);
+    } else {
+        synth_psg(m, tick, 0u, 3u);
+        synth_fm(m, tick);
     }
 }
 

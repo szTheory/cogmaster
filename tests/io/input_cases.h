@@ -140,7 +140,8 @@ static void test_lag_decode(void)
         for (uint32_t p = 0u; p < 256u; p++) {
             m->input_read = 0u;
             (void)cogmaster__bus_in(m, (uint16_t)(0x1200u | p));
-            int decoded = profile == 0u ? p >= 0xC0u
+            /* The export mirrors of $F0 to $F2 answer as $DC and $DD but are no input. */
+            int decoded = profile == 0u ? p >= 0xC0u && (p < 0xF0u || p > 0xF2u)
                                         : p == 0xDCu || p == 0xDDu ||
                                               (profile >= 2u && (p == 0xC0u || p == 0xC1u)) ||
                                               (profile == 2u && p == 0u);
