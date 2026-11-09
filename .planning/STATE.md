@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 04
 current_phase_name: Sound
 status: executing
-stopped_at: Completed 04-05-PLAN.md
-last_updated: "2026-11-09T20:35:26.780Z"
+stopped_at: Completed 04-06-PLAN.md
+last_updated: "2026-11-09T20:43:15.802Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 04 execution started
-state_head: 17078d524b2960c2ee26d5ee513562fdf73fcbf4
+state_head: fef39e2eb0d1c25e2f2d4c672b18df542c6734a4
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 62
-  completed_plans: 52
+  completed_plans: 53
   percent: 75
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 04 (Sound) — EXECUTING
-Plan: 6 of 15
+Plan: 7 of 15
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 04 execution started
 
@@ -116,6 +116,7 @@ Progress: [████████░░] 75%
 | Phase 04 P03 | 7min | 3 tasks | 14 files |
 | Phase 04 P04 | 15min | 2 tasks | 9 files |
 | Phase 04 P05 | 20min | 3 tasks | 12 files |
+| Phase 04 P06 | 8min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -259,6 +260,9 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 04]: 04-05: The PSG compares its own channel levels before and after each step or write and emits the differences; noise uses counter[3], noise_div and out[3] as rate counter, divider flip-flop and shifted-out bit, so the first shift is on the first step
 - [Phase 04]: 04-05: A saved PSG step origin must be a multiple of 48, not after the tick count and at most one frame plus 117 ticks behind it, so a hostile state cannot make the next catch-up run unbounded steps; state is saved between frames, so a mid-frame save restores the chip but not the synth taps the frame had placed
 - [Phase 04]: 04-05: A Game Gear console in Master System video mode routes every PSG channel to both outputs; the volume law oracle is derived in integers (ratio 213,225,862 over 2^28 on a Q20 value); the synth tests park the chip so their direct levels are not overwritten
+- [Phase 04]: 04-06: Only the Game Gear port block $00-$06 and the $3E/$3F decode follow the video mode (has_gg_ports); the console still decides full decode, pad pins, $DD and chip_in, so a Game Gear in Master System mode keeps its pad and Start as Pause
+- [Phase 04]: 04-06: A native $06 write catches the PSG up, stores the mask once in io.gg[5] and records source 4 at m->ticks; in Master System mode $00-$06 are undecoded (open bus reads, unmapped writes), $3E powers on at $AB, and no playing or fixture hash moved
+- [Phase 04]: 04-06: audio.cost bounds kernel additions by 16 x outputs x (4 x steps + 5 x writes) over a 33 tick OUT hammer on NTSC, PAL and native Game Gear; measured about 12 to 16 percent of the bound, ring reach 816, 981 and 816 against 992
 
 ### Pending Todos
 
@@ -304,6 +308,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-11-09 | Execute phase 4 plan 04-03 (gsd-execute-phase 04); fm profile field, info fields, state header byte, abi.api_v9, audio guide; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Execute phase 4 plan 04-04 (gsd-execute-phase 04); band-limited synthesis, mixer, DC blocker, synth state and seven integer proofs; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Execute phase 4 plan 04-05 (gsd-execute-phase 04); SN76489 model, bus wiring, reset snapshot, PSG state and eleven closed-form psg cases; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-06 (gsd-execute-phase 04); Game Gear $06 stereo routing, native-mode port decode fix, audio.cost hammer bound; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -315,6 +320,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-09T20:35:26.603Z
-Stopped at: Completed 04-05-PLAN.md
+Last session: 2026-11-09T20:43:15.539Z
+Stopped at: Completed 04-06-PLAN.md
 Resume file: None
