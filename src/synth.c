@@ -23,11 +23,14 @@ static uint32_t synth_channels(const cogmaster *m)
     return m->machine == COGMASTER_MACHINE_GG ? 2u : 1u;
 }
 
+/* The trace log is the one piece a SOFT reset clears: its ticks restart. */
 void cogmaster__synth_reset(cogmaster *m, int power)
 {
     if (power) {
         memset(&m->synth, 0, sizeof m->synth);
     }
+    m->synth.trace_pending = 0u;
+    m->synth.trace_dropped = 0u;
 }
 
 void cogmaster__synth_frame_end(cogmaster *m)
@@ -84,15 +87,48 @@ cogmaster_status cogmaster_get_audio(cogmaster *m, cogmaster_audio *io)
 
 void cogmaster__synth_trace(cogmaster *m, uint64_t tick, uint32_t source, uint32_t level)
 {
-    (void)m;
-    (void)tick;
-    (void)source;
-    (void)level;
+    struct cogmaster__synth *s = &m->synth;
+    if (m->trace_log == NULL) {
+        return;
+    }
+    if (s->trace_pending >= m->trace_cap) {
+        if (s->trace_dropped < UINT32_MAX) {
+            s->trace_dropped++;
+        }
+        return;
+    }
+    cogmaster_audio_record *r = &m->trace_log[s->trace_pending++];
+    r->tick = tick;
+    r->source = source;
+    r->level = level;
 }
 
+/* Copies the oldest records that fit, reports them and what was lost (the
+   log's overflow plus those past capacity), and empties the log. */
 cogmaster_status cogmaster_get_audio_trace(cogmaster *m, cogmaster_audio_trace *io)
 {
-    (void)m;
-    (void)io;
-    return COGMASTER_STATUS_ERR_NO_CONTENT;
+    if (m == NULL || io == NULL || m->trace_cap == 0u) {
+        return COGMASTER_STATUS_ERR_ARGUMENT;
+    }
+    cogmaster_status st = cogmaster__check_out_size(io, COGMASTER__FIRST_SIZE_AUDIO_TRACE);
+    if (st != COGMASTER_STATUS_OK) {
+        return st;
+    }
+    if (!m->loaded) {
+        return COGMASTER_STATUS_ERR_NO_CONTENT;
+    }
+    if (io->records == NULL && io->capacity > 0u) {
+        return COGMASTER_STATUS_ERR_ARGUMENT;
+    }
+    struct cogmaster__synth *s = &m->synth;
+    uint32_t n = s->trace_pending < io->capacity ? s->trace_pending : io->capacity;
+    if (n > 0u) {
+        memcpy(io->records, m->trace_log, (size_t)n * sizeof *io->records);
+    }
+    uint64_t lost = (uint64_t)s->trace_dropped + (s->trace_pending - n);
+    io->written = n;
+    io->dropped = lost > UINT32_MAX ? UINT32_MAX : (uint32_t)lost;
+    s->trace_pending = 0u;
+    s->trace_dropped = 0u;
+    return COGMASTER_STATUS_OK;
 }
