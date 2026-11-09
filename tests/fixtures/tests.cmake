@@ -94,12 +94,15 @@ set(COGMASTER_FIXTURES_DIR ${PROJECT_BINARY_DIR}/fixtures)
 set(fixtures_src ${PROJECT_SOURCE_DIR}/tests/roms/src)
 set(fixtures_images "")
 foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_to_play boot_to_play_gg battery
-    psg_sweep)
+    psg_sweep psg_sweep_gg)
   set(extension sms)
   set(image_name ${name})
   if(name STREQUAL "boot_to_play_gg")
     set(extension gg)
     set(image_name boot_to_play)
+  elseif(name STREQUAL "psg_sweep_gg")
+    set(extension gg)
+    set(image_name psg_sweep)
   endif()
   set(image ${COGMASTER_FIXTURES_DIR}/${image_name}.${extension})
   set(identity_check "")
@@ -120,6 +123,7 @@ foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_t
     WORKING_DIRECTORY ${fixtures_src}
     DEPENDS ${fixtures_src}/${name}.asm ${fixtures_src}/${name}.link ${fixtures_src}/header.inc
       ${fixtures_src}/mailbox.inc ${fixtures_src}/ports.asm ${fixtures_src}/boot_to_play.asm
+      ${fixtures_src}/psg_sweep.asm
       ${PROJECT_SOURCE_DIR}/tests/cart/fixture_facts.txt ${PROJECT_SOURCE_DIR}/tests/cart/fixture.cmake
     COMMENT "Assembling the ${name} fixture"
     VERBATIM)
@@ -313,6 +317,15 @@ cogmaster_add_test(NAME fixtures.psg_sweep
   COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=psg_sweep
     -DIMAGE=${COGMASTER_FIXTURES_DIR}/psg_sweep.sms -DFRAMES=300
     -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/psg_sweep.txt
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable psg TIMEOUT 10)
+# The Game Gear image is the same table with the port $06 entries, judged by the same rows under
+# the gg profile.
+# Timeout: 10 s floor; 0.05 s slowest local run, no hosted run yet, so provisional.
+cogmaster_add_test(NAME fixtures.psg_sweep.gg
+  COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=psg_sweep_gg -DROM=psg_sweep -DPROFILE=gg
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/psg_sweep.gg -DFRAMES=300
+    -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/psg_sweep_gg.txt
     -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS fixtures portable psg TIMEOUT 10)
 # Timeout: 10 s floor; 2 x 0.02 s, slowest of 2 runs, run 39376644025, provisional.

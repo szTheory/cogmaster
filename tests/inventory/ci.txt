@@ -119,6 +119,7 @@ fixtures.ports.sms-export	fixtures,portable
 fixtures.ports.sms-japan	fixtures,portable
 fixtures.ports.sms-pal	fixtures,portable
 fixtures.psg_sweep	fixtures,portable,psg
+fixtures.psg_sweep.gg	fixtures,portable,psg
 fixtures.vdp_lines.judge.hang	fixtures,portable
 fixtures.vdp_lines.judge.missing_row	fixtures,portable
 fixtures.vdp_lines.judge.wrong_value	fixtures,portable
