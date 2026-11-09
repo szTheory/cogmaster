@@ -103,6 +103,34 @@ export Master System with `COGMASTER_FM_ON` is the way to exercise the unit's de
 tell it from the Japanese console. The unit is fixed for the life of a load, and a saved state loads only into
 an instance with the same choice.
 
+With the unit attached a game drives it through three ports, which answer ahead of the I/O chip, so they work
+whether or not a game has set bit 2 of port $3E to turn that chip off (the way games probe for the unit):
+
+- **$F0 and $F1.** A write to $F0 latches a register number; a write to $F1 stores a byte in the latched register
+  of the YM2413. The chip makes one sample every 72 Z80 clocks (216 ticks), the first at tick 216 after a load or
+  reset, and is brought up to date lazily like the PSG: a write to $F1 first completes every sample due at or
+  before its tick, then applies, and is heard from the next sample. No write is dropped or delayed; the unit's
+  busy time after a write is not modelled. The end of a frame runs the chip to the frame's last tick, after the
+  PSG. Reads of $F0 and $F1 drive nothing and read as an undriven bus.
+- **$F2, the audio control.** A write stores its two low bits (the rest are ignored): 0 sounds the PSG only, 1 the
+  FM unit only, 2 neither and 3 both. The mute is applied where the two are mixed, so both chips keep running
+  while one is muted and the log still reports their levels. A read returns the stored value in bits 1 and 0,
+  zero in bits 4 to 2, and in bits 7, 6 and 5 bits 11, 7 and 3 of a 12-bit counter of lines since the last load
+  or reset (the tick count divided by 684). Reads of the three ports are never counted as input.
+- **Without the unit** writes to the three ports are ignored and are no fault. The export console reads them as
+  its pad ports (even ports as $DC, odd as $DD), and the Japanese console without the unit and the Game Gear read
+  an undriven bus.
+
+The FM sum is mixed as a level, like each PSG channel: the chip's sum, kept to 16 bits as the original keeps it,
+is shifted to a positive range, scaled so that the loudest the sounding voices can be is the PSG's full scale,
+and gained by 1402 over 4096. The voices that sound together (nine tones, or six tones and five drums) never
+add up to more than 32,688, so the sum fits in 16 bits for every sounding voice; the silent group's last outputs
+stay in the chip's sum and can carry it past that, and such a sum counts as its low 16 bits and is limited at
+the ends of the scale. Four PSG channels at full level and the FM unit at full scale together peak under the
+1 dB line. A reset gives the chip its power-on state (every register 0), the PSG its own, and $F2 the value 0, so
+a note sounding before a SOFT reset is silent after it and is heard again when the game writes $F2 and the note
+again. Whether a hardware reset really clears the FM chip is not measured; this is the model's default.
+
 ## The trace log
 
 An instance can record every change a sound source makes, for tools that check the chips rather than listen to
@@ -112,9 +140,10 @@ them. `cogmaster_config.trace_records` is the log's size in records; 0, the defa
   NTSC frame) since the last load or reset of either kind; the log is in causal order and the ticks never fall
   within one run. `source` names what
   changed: 0 to 3 are the PSG's three tone channels and its noise channel, 4 is the Game Gear stereo mask, 5 is the
-  FM unit's output sum and 6 is the FM control register as the profile leaves it. `level` is the new raw value of
-  that source, before any mixing gain, so a later change to the mix moves the samples and not the log. For sources
-  0 to 3 bit 4 is the channel's output and bits 3 to 0 its attenuation; for 4 and 6 it is the byte itself.
+  FM unit's output sum (as 16 bits) and 6 is the FM control register as the profile leaves it. `level` is the new
+  raw value of that source, before any mixing gain, so a later change to the mix moves the samples and not the log.
+  For sources 0 to 3 bit 4 is the channel's output and bits 3 to 0 its attenuation; for 4 and 6 it is the byte
+  itself.
 - **Drain.** `cogmaster_get_audio_trace` copies the oldest records first, up to `capacity`, and empties the log.
   Drain after every frame; a frame holds at most a few tens of thousands of records. An instance created with no
   log answers `COGMASTER_STATUS_ERR_ARGUMENT`.
@@ -123,7 +152,8 @@ them. `cogmaster_config.trace_records` is the log's size in records; 0, the defa
 - **Restarts.** Ticks restart at a load and at both kinds of reset, and the log is emptied there. A consumer that
   spans a reset therefore sees the tick count go back to 0 and must split its stream at that point; drain before
   you reset, and treat the first record after it as a new run. The first records of the new run are one per
-  active source at tick 0 (sources 0 to 3, and 4 on a Game Gear in its own video mode), the chips' power-on levels.
+  active source at tick 0 (sources 0 to 3, 4 on a Game Gear in its own video mode, and 5 and 6 with the FM unit),
+  the chips' power-on levels.
 
 The log is allocated once, by the first load, through your allocator. Nothing is allocated after it.
 
