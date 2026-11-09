@@ -156,4 +156,35 @@ static inline uint64_t cogmaster__sio_u64(struct cogmaster__sio *io, const char 
     return x;
 }
 
+/* A signed field, for the audio levels and accumulators that go below zero.
+   It rides the unsigned machinery with a bias of 2^63: x is stored as
+   x + 2^63 modulo 2^64, which keeps the order, so the stored value and its
+   bounds compare as unsigned. Written as an exclusive or with the top bit,
+   so no signed shift or signed overflow is involved. */
+#define COGMASTER__SIO_BIAS (UINT64_C(1) << 63)
+
+static inline uint64_t cogmaster__sio_bias(int64_t x)
+{
+    return (uint64_t)x ^ COGMASTER__SIO_BIAS;
+}
+
+static inline int64_t cogmaster__sio_unbias(uint64_t u)
+{
+    uint64_t x = u ^ COGMASTER__SIO_BIAS;
+    /* Two's complement without an out-of-range conversion: a set top bit is
+       the negative value -(~x) - 1. */
+    return x <= (uint64_t)INT64_MAX ? (int64_t)x : -(int64_t)(~x) - 1;
+}
+
+static inline int64_t cogmaster__sio_i64(struct cogmaster__sio *io, const char *name, int64_t *v,
+                                         int64_t min, int64_t max)
+{
+    int64_t x = cogmaster__sio_unbias(cogmaster__sio_field(
+        io, name, cogmaster__sio_bias(*v), 8u, cogmaster__sio_bias(min), cogmaster__sio_bias(max)));
+    if (io->mode == COGMASTER__SIO_APPLY) {
+        *v = x;
+    }
+    return x;
+}
+
 #endif /* COGMASTER_STATE_H */

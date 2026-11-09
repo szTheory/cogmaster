@@ -2,14 +2,14 @@
 
    Layout. A 64-byte header, then the body:
      header  magic, format version, header size, total size, behaviour
-             revision, API version, profile (machine, region, TV and a zero
-             byte), ROM CRC-32, body CRC-32,
-             frame, ticks, 12 reserved zero bytes
+             revision, API version, profile (machine, region, TV and video
+             mode), ROM CRC-32, body CRC-32,
+             frame, ticks, the FM unit, 11 reserved zero bytes
      body    the counters, the first-fault record, the Z80, the beam and the
              frame deadline, the VDP with its 16 KiB of VRAM, the 8 KiB of
              work RAM, then the board, the mapper registers and the
              cartridge RAM (none, 8 KiB or 32 KiB, fixed by the image),
-             then the I/O ports
+             then the I/O ports and the synthesiser's cadence phase
    One field list drives every pass (state.h), so they cannot drift apart. A
    struct is never copied as a whole: padding, pointers and the allocator
    never reach the bytes. The emitted field and render cursor are saved so a partially drawn
@@ -24,11 +24,11 @@
 
 /* Header offsets, in the order header_io visits them: magic 0, format
    version 8, header size 10, total size 12, behaviour revision 16, API
-   version 20, machine 24, region 25, TV 26, profile reserved 27, ROM CRC-32
-   28, body CRC-32 32, frame 36, ticks 44, reserved 52. */
+   version 20, machine 24, region 25, TV 26, video mode 27, ROM CRC-32 28,
+   body CRC-32 32, frame 36, ticks 44, FM unit 52, reserved 53. */
 #define H_BODY_CRC 32u
-#define H_RESERVED 52u
-#define H_RESERVED_SIZE 12u
+#define H_RESERVED 53u
+#define H_RESERVED_SIZE 11u
 _Static_assert(H_RESERVED + H_RESERVED_SIZE == STATE_HEADER_SIZE, "the header is 64 bytes");
 
 /* A loaded state's ticks are capped at 2^62, far from 2^64 wrapping
@@ -50,6 +50,12 @@ _Static_assert(sizeof(struct cogmaster__bus) == 40u, "bus changed: update bus_io
 _Static_assert(sizeof(struct cogmaster__vdp) == 16510u, "vdp changed: update vdp_io");
 _Static_assert(sizeof(struct cogmaster__mapper) == 4u, "mapper changed: update mapper_io");
 _Static_assert(sizeof(struct cogmaster__io) == 8u, "io changed: update io_io");
+/* Five 32-bit counters and the PCM the host has not taken. The cadence phase
+   is the only field that is state: the counters and the PCM are the host's
+   queue, so a new field either joins synth_io or is added to this size. */
+_Static_assert(sizeof(struct cogmaster__synth) ==
+                   5u * sizeof(uint32_t) + sizeof(int16_t[COGMASTER__AUDIO_MAX_FRAMES * 2u]),
+               "synth changed: update synth_io");
 
 /* A beam is at most one line short of the frame's lines down and 683 ticks
    into a line, and one Z80 step is at most 69 ticks, so the beam is at most
@@ -101,6 +107,9 @@ static struct state_time header_io(struct cogmaster__sio *io, cogmaster *m, uint
     } else {
         cogmaster__sio_check(io, time.ticks >= start);
     }
+    /* Attached at load and never changed, so a state loads only into an
+       instance with the same FM unit. */
+    fixed(io, "fm_unit", m->fm_unit, 1u);
     for (uint32_t i = 0; i < H_RESERVED_SIZE; i++) {
         fixed(io, "reserved", 0u, 1u);
     }
@@ -306,6 +315,20 @@ static void io_io(struct cogmaster__sio *io, cogmaster *m)
     }
 }
 
+/* The cadence phase is a fraction of a sample, below the modulus of the
+   instance's TV (synth.c). The undrained PCM and the trace log are the host's
+   queue, not state: loading a state discards the PCM so the next frame does
+   not count it as dropped. */
+static void synth_io(struct cogmaster__sio *io, cogmaster *m)
+{
+    uint32_t mod = m->tv == COGMASTER_TV_PAL ? COGMASTER__AUDIO_MOD_PAL : COGMASTER__AUDIO_MOD_NTSC;
+    cogmaster__sio_u32(io, "synth_phase", &m->synth.phase, 0u, mod - 1u);
+    if (io->mode == COGMASTER__SIO_APPLY) {
+        m->synth.pcm_frames = 0u;
+        m->synth.pcm_read = 0u;
+    }
+}
+
 /* The whole state, in the order the format fixes. */
 static void state_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
 {
@@ -319,6 +342,7 @@ static void state_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
     ram_io(io, m);
     mapper_io(io, m);
     io_io(io, m);
+    synth_io(io, m);
     cogmaster_input *inputs[2] = {&m->pending_input, &m->input};
     for (uint32_t i = 0u; i < 2u; i++) {
         cogmaster_input *p = inputs[i];

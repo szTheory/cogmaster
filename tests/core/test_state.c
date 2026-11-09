@@ -533,8 +533,64 @@ static void test_round_trip(void)
 /* Every field set one step outside its bounds is refused, and the refusal
    changes nothing, for both test cards and for an image. A field the
    visitor adds later is swept with no new test code. */
+/* A signed field travels the unsigned machinery: any value round-trips
+   through WRITE, VALIDATE and APPLY, the bounds are signed, and the stored
+   bytes are ordered like the values. */
+static void i64_round_trip(void)
+{
+    static const int64_t values[] = {INT64_MIN, INT64_MIN + 1, -12345,        -1,       0,
+                                     1,         12345,         INT64_MAX - 1, INT64_MAX};
+    uint8_t bytes[8];
+    uint64_t previous = 0u;
+    for (size_t i = 0; i < sizeof values / sizeof values[0]; i++) {
+        struct cogmaster__sio io;
+        int64_t v = values[i];
+        memset(&io, 0, sizeof io);
+        io.mode = COGMASTER__SIO_WRITE;
+        io.w = bytes;
+        CHECK_EQ_U64((uint64_t)cogmaster__sio_i64(&io, "i64", &v, INT64_MIN, INT64_MAX),
+                     (uint64_t)values[i]);
+        CHECK_EQ_U64(io.w - bytes, 8);
+        uint64_t stored = get_le(bytes, 8u);
+        CHECK(i == 0u || stored > previous);
+        previous = stored;
+        int64_t got = 0;
+        memset(&io, 0, sizeof io);
+        io.mode = COGMASTER__SIO_VALIDATE;
+        io.r = bytes;
+        (void)cogmaster__sio_i64(&io, "i64", &got, INT64_MIN, INT64_MAX);
+        CHECK_EQ_U64(io.bad, 0);
+        memset(&io, 0, sizeof io);
+        io.mode = COGMASTER__SIO_APPLY;
+        io.r = bytes;
+        CHECK_EQ_U64((uint64_t)cogmaster__sio_i64(&io, "i64", &got, INT64_MIN, INT64_MAX),
+                     (uint64_t)values[i]);
+        CHECK_EQ_U64((uint64_t)got, (uint64_t)values[i]);
+        /* Bounds of minus ten to ten: the edges load, one past each is refused. */
+        const int inside = values[i] >= -10 && values[i] <= 10;
+        memset(&io, 0, sizeof io);
+        io.mode = COGMASTER__SIO_VALIDATE;
+        io.r = bytes;
+        (void)cogmaster__sio_i64(&io, "i64", &got, -10, 10);
+        CHECK_EQ_U64(io.bad, inside ? 0 : 1);
+    }
+    /* RECORD reports the biased bounds, ordered. */
+    struct cogmaster__state_field rec;
+    struct cogmaster__sio io;
+    int64_t v = 0;
+    memset(&io, 0, sizeof io);
+    io.mode = COGMASTER__SIO_RECORD;
+    io.rec = &rec;
+    io.rec_cap = 1u;
+    (void)cogmaster__sio_i64(&io, "i64", &v, -10, 10);
+    CHECK_EQ_U64(io.rec_n, 1);
+    CHECK_EQ_U64(rec.width, 8);
+    CHECK(rec.min < rec.max);
+}
+
 static void test_record_sweep(void)
 {
+    i64_round_trip();
     const uint32_t machines[] = {COGMASTER_MACHINE_SMS2, COGMASTER_MACHINE_GG};
     for (size_t k = 0; k < 2u; k++) {
         cogmaster *src = make(machines[k]);
@@ -759,7 +815,6 @@ static void test_rejects_header(void)
     memcpy(bad, good, size);
     bad[fm_unit->offset] ^= 1u;
     expect_refused("fm unit byte", target, size, target_size);
-    reject_other_fm();
     /* Ticks one away from frame x 179,208, both inside their own bounds. */
     memcpy(bad, good, size);
     put_le(bad + ticks->offset, get_le(good + ticks->offset, 8u) + 1u, 8u);
@@ -774,6 +829,7 @@ static void test_rejects_header(void)
     cogmaster_destroy(gg);
 
     reject_image_states();
+    reject_other_fm();
 
     CHECK_EQ_U64(cogmaster__state_load(target, NULL, size), COGMASTER_STATUS_ERR_ARGUMENT);
     CHECK_EQ_U64(cogmaster__state_load(NULL, good, size), COGMASTER_STATUS_ERR_ARGUMENT);
