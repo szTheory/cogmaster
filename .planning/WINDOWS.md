@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 1
+open_count: 0
 waived_count: 0
-fixed_count: 9
+fixed_count: 10
 total_count: 10
-last_updated: 2026-11-09T21:27:49.446Z
+last_updated: 2026-11-09T21:59:32.310Z
 ---
 
 # Broken Windows Ledger
@@ -24,7 +24,7 @@ last_updated: 2026-11-09T21:27:49.446Z
 | 7 | 03 | deviation | tests/compat/tests.cmake |  | Windows ARM64 shell-heavy compatibility ratchet exceeded the 30-second harness timeout; raise to 60 seconds without changing assertions | fixed |  | 2026-10-20T22:47:50.694Z | 2026-10-20T22:50:50.471Z |
 | 8 | 03 | deviation | runner/save.c |  | WASI libc omits mkstemp; use exclusive same-directory open with private native permissions and existing collision/failure/continuation controls | fixed |  | 2026-10-20T22:57:34.648Z | 2026-10-20T23:01:40.839Z |
 | 9 | 04 | stub | src/synth.c | 51 | cogmaster__synth_frame_end writes silence; synthesis lands with the PSG and FM plans of the same phase | fixed |  | 2026-11-09T19:45:26.324Z | 2026-11-09T20:33:54.809Z |
-| 10 | 04 | unmet-truth | src/opll.h | 18 | The sum cogmaster__opll_sample returns can leave 16 bits: the silent voice group's held outputs stay in it (and the test register holds every envelope at full level), so all fourteen peaks (38,817) bound it, not the sounding voices' 32,688; a cast to uint16_t of the sum is as the original's wrap, so plan 04-12 must not treat the level as inside int16 | open |  | 2026-11-09T21:27:49.446Z |  |
+| 10 | 04 | unmet-truth | src/opll.h | 18 | The sum cogmaster__opll_sample returns can leave 16 bits: the silent voice group's held outputs stay in it (and the test register holds every envelope at full level), so all fourteen peaks (38,817) bound it, not the sounding voices' 32,688; a cast to uint16_t of the sum is as the original's wrap, so plan 04-12 must not treat the level as inside int16 | fixed |  | 2026-11-09T21:27:49.446Z | 2026-11-09T21:59:32.310Z |
 
 ````json
 [
@@ -152,10 +152,10 @@ last_updated: 2026-11-09T21:27:49.446Z
     "file": "src/opll.h",
     "line": 18,
     "description": "The sum cogmaster__opll_sample returns can leave 16 bits: the silent voice group's held outputs stay in it (and the test register holds every envelope at full level), so all fourteen peaks (38,817) bound it, not the sounding voices' 32,688; a cast to uint16_t of the sum is as the original's wrap, so plan 04-12 must not treat the level as inside int16",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-11-09T21:27:49.446Z",
-    "resolved_at": null,
+    "resolved_at": "2026-11-09T21:59:32.310Z",
     "milestone": "v1.0"
   }
 ]
