@@ -212,7 +212,7 @@ Plans:
   4. A test shows the libretro batch and single-sample audio paths deliver PCM equal to the runner's (stereo on GG, duplicated mono on SMS), and the hosted RetroArch session's recording is non-silent (SND-04).
   5. A test renders reference tones through the synthesiser and shows the largest non-harmonic peak below 16 kHz under −80 dB, and synthesis cost per output sample stays bounded under a register-hammering fixture (SND-05).
 
-**Plans**: 14/15 plans executed, one sequential chain (waves 1–15; `parallelization` is off, and most adjacent plans share the test inventories, `tests/audio/tests.cmake`, the pin files or a source file, so the order is kept even where a pair shares none)
+**Plans**: 15/15 plans executed, one sequential chain (waves 1–15; `parallelization` is off, and most adjacent plans share the test inventories, `tests/audio/tests.cmake`, the pin files or a source file, so the order is kept even where a pair shares none)
 
 Plans:
 **Wave 1**
@@ -258,7 +258,7 @@ Plans:
 - [x] 04-14-PLAN.md — libretro batch, single and both-registered sessions equal the runner; cogmaster_fm option
 
 **Wave 15** *(blocked on Wave 14 completion)*
-- [ ] 04-15-PLAN.md — Hosted RetroArch recording against a silent control, perf exception, hosted evidence
+- [x] 04-15-PLAN.md — Hosted RetroArch recording against a silent control, perf exception, hosted evidence
 
 **UI hint**: no
 **Canonical refs:** `.planning/preparation/SMS-AUDIO.md`, `.planning/preparation/ARCHITECTURE.md`, `.planning/preparation/CONFORMANCE.md`
@@ -273,4 +273,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. A test frame in RetroArch | 12/12 | Complete    | 2026-10-19 |
 | 2. The CPU matches the public vectors | 17/17 | Complete    | 2026-10-20 |
 | 3. Games play in RetroArch | 18/18 | Complete    | 2026-10-20 |
-| 4. Sound | 14/15 | In Progress | - |
+| 4. Sound | 15/15 | In Progress | - |

@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 04
 current_phase_name: Sound
-status: executing
-stopped_at: Completed 04-14-PLAN.md
-last_updated: "2026-11-09T22:28:28.611Z"
+status: verifying
+stopped_at: Completed 04-15-PLAN.md
+last_updated: "2026-11-09T22:51:54.120Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 04 execution started
-state_head: 4236ca314d3e1b06f19bbb37cde7a2bdc5f8cd5f
+state_head: 9aaf3780e54e13b166ca44e7a63903d02d358c79
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 62
-  completed_plans: 61
+  completed_plans: 62
   percent: 75
 ---
 
@@ -31,10 +31,10 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 
 Phase: 04 (Sound) — EXECUTING
 Plan: 15 of 15
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-09 — Phase 04 execution started
 
-Next command: `/gsd-execute-phase 04`. Phase 03 shipped as v0.3.0.
+Next command: `/gsd-code-review 04`. All fifteen plans of phase 04 are executed; hosted run https://github.com/szTheory/cogmaster/actions/runs/42714958262 is green on head 9aaf378.
 
 Ship: https://github.com/szTheory/cogmaster/pull/8. `cmake --workflow --preset ci` exited 0 during ship. Hosted verification: https://github.com/szTheory/cogmaster/actions/runs/39514577638 (`gh run view 39514577638 --exit-status`, exit 0).
 
@@ -125,6 +125,7 @@ Progress: [████████░░] 75%
 | Phase 04 P12 | 29min | 2 tasks | 14 files |
 | Phase 04 P13 | 13 min | 2 tasks | 14 files |
 | Phase 04 P14 | 9min | 2 tasks | 11 files |
+| Phase 04 P15 | 22min | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -285,6 +286,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 04]: fm_sweep's detection routine reads $F2 first and restores it, compares bits 1-0 of four written values, and its script runs on every console so the no-unit runs prove the ports change nothing
 - [Phase 04]: 04-14: The libretro adapter needed no audio change; host sessions with the batch, single-sample and both callbacks equal the runner's --hash-audio hash on SMS (mono as L = R) and GG (interleaved), with 801 or 802 frames and running totals on the cadence formula
 - [Phase 04]: 04-14: cogmaster_fm (auto, off, on) is in the v2, v1 and v0 option tables sized by one macro with compile-time checks; on with Game Gear content stays automatic so the content loads
+- [Phase 04]: 04-15: Hosted RetroArch records a silent control and psg_sweep.sms and .gg; audio.cmake (19 lines) holds every assertion with the length bounds, hosted code is 299 of 300 lines after flip.cmake gave way to expect_fail.cmake; the first hosted run of the phase head exposed GCC, MSVC, UBSan and macOS x64 timeout failures, fixed in 41b8f26; perf allow boot_to_play 357 to 2027-01-07 (+3.56 percent, base from a dispatch on main); docs/testing.md has 7 bytes of headroom
 
 ### Pending Todos
 
@@ -339,6 +341,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-11-09 | Execute phase 4 plan 04-12 (gsd-execute-phase 04); the YM2413 on the Japanese console: $F0-$F2 ahead of the I/O chip, 216-tick catch-up, $F2 mixer gate, total 16-bit FM level (ledger row 10 fixed), chip state block, reset snapshot and cost bound; 2 tasks, 5 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Execute phase 4 plan 04-13 (gsd-execute-phase 04); fm_sweep with its own $F2 detection routine, fm.detect, three fixture profiles, runner.hash_audio.fm and three new pin rows per file; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Execute phase 4 plan 04-14 (gsd-execute-phase 04); libretro batch, single and both-callback audio sessions equal the runner's PCM, cogmaster_fm option in all three tables, .info and README say sound; 2 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-15 (gsd-execute-phase 04); hosted RetroArch records a silent control and psg_sweep on both consoles, flip.cmake gone for expect_fail.cmake, first hosted run of the phase head fixed (GCC, MSVC, UBSan, macOS x64 timeouts), perf allow line, hosted run 42714958262 green; 2 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -350,6 +353,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-09T22:28:28.270Z
-Stopped at: Completed 04-14-PLAN.md
+Last session: 2026-11-09T22:51:53.837Z
+Stopped at: Completed 04-15-PLAN.md
 Resume file: None
