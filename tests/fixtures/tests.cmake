@@ -94,7 +94,7 @@ set(COGMASTER_FIXTURES_DIR ${PROJECT_BINARY_DIR}/fixtures)
 set(fixtures_src ${PROJECT_SOURCE_DIR}/tests/roms/src)
 set(fixtures_images "")
 foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_to_play boot_to_play_gg battery
-    psg_sweep psg_sweep_gg)
+    psg_sweep psg_sweep_gg fm_sweep)
   set(extension sms)
   set(image_name ${name})
   if(name STREQUAL "boot_to_play_gg")
@@ -123,7 +123,7 @@ foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_t
     WORKING_DIRECTORY ${fixtures_src}
     DEPENDS ${fixtures_src}/${name}.asm ${fixtures_src}/${name}.link ${fixtures_src}/header.inc
       ${fixtures_src}/mailbox.inc ${fixtures_src}/ports.asm ${fixtures_src}/boot_to_play.asm
-      ${fixtures_src}/psg_sweep.asm
+      ${fixtures_src}/psg_sweep.asm ${fixtures_src}/fm_sweep.asm
       ${PROJECT_SOURCE_DIR}/tests/cart/fixture_facts.txt ${PROJECT_SOURCE_DIR}/tests/cart/fixture.cmake
     COMMENT "Assembling the ${name} fixture"
     VERBATIM)
@@ -328,6 +328,27 @@ cogmaster_add_test(NAME fixtures.psg_sweep.gg
     -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/psg_sweep_gg.txt
     -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS fixtures portable psg TIMEOUT 10)
+# Fault prevented: an FM unit that the fixture's own detection routine finds where no unit
+# exists, or misses where one is attached, or a script whose frame or write counters drift, so
+# the FM hashes over it would judge a different program. The Japanese console carries the unit;
+# the export console and the Game Gear (running the same image) do not, and the same script runs
+# on all three.
+# Timeout: 10 s floor; 0.05 s slowest local run, no hosted run yet, so provisional.
+foreach(profile IN ITEMS sms-japan sms-export gg)
+  if(profile STREQUAL "sms-japan")
+    set(args -DMACHINE=sms -DREGION=ntsc-j)
+  elseif(profile STREQUAL "sms-export")
+    set(args -DMACHINE=sms -DREGION=ntsc-u)
+  else()
+    set(args -DMACHINE=gg)
+  endif()
+  cogmaster_add_test(NAME fixtures.fm_sweep.${profile}
+    COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=fm_sweep ${args} -DPROFILE=${profile}
+      -DIMAGE=${COGMASTER_FIXTURES_DIR}/fm_sweep.sms -DFRAMES=300
+      -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+      -DOUT=${fixtures_out}/fm_sweep.${profile}.txt -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures fm portable TIMEOUT 10)
+endforeach()
 # Timeout: 10 s floor; 2 x 0.02 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME fixtures.mapper_sega
   COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=mapper_sega

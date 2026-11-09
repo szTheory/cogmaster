@@ -109,6 +109,9 @@ fixtures.boot_to_play.input	fixtures,portable
 fixtures.boot_to_play.mailbox	fixtures,portable
 fixtures.boot_to_play.pad2	fixtures,portable
 fixtures.boot_to_play.wrong_hash	fixtures,portable
+fixtures.fm_sweep.gg	fixtures,fm,portable
+fixtures.fm_sweep.sms-export	fixtures,fm,portable
+fixtures.fm_sweep.sms-japan	fixtures,fm,portable
 fixtures.hello	fixtures,portable
 fixtures.judge.hang	fixtures,portable
 fixtures.judge.missing_row	fixtures,portable

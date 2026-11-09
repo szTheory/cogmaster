@@ -155,3 +155,12 @@ psg_sweep,23:noise_reset_frames,*,0120,derived,owned ROM PSG script segment
 psg_sweep,24:noise_reset_writes,*,00F0,derived,owned ROM PSG script segment
 psg_sweep,25:volume_pops_frames,*,0121,derived,owned ROM PSG script segment
 psg_sweep,26:volume_pops_writes,*,08F4,derived,owned ROM PSG script segment
+fm_sweep,01:fm_detect,sms-japan,0001,doc,SMS-AUDIO section 4.1
+fm_sweep,01:fm_detect,sms-export,0000,doc,SMS-AUDIO section 4.1
+fm_sweep,01:fm_detect,gg,0000,doc,SMS-AUDIO section 4.1
+fm_sweep,02:notes_frames,*,003C,derived,owned ROM FM script segment
+fm_sweep,03:notes_writes,*,0010,derived,owned ROM FM script segment
+fm_sweep,04:rhythm_frames,*,007E,derived,owned ROM FM script segment
+fm_sweep,05:rhythm_writes,*,0027,derived,owned ROM FM script segment
+fm_sweep,06:control_frames,*,00D6,derived,owned ROM FM script segment
+fm_sweep,07:control_writes,*,002F,derived,owned ROM FM script segment
