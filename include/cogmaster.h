@@ -97,6 +97,10 @@ typedef struct cogmaster_allocator {
 typedef struct cogmaster_config {
     uint32_t size;
     cogmaster_allocator allocator; /* alloc and free required */
+    uint32_t trace_records;        /* audio trace log size in records, 0 for none */
+#if UINTPTR_MAX > UINT32_MAX
+    uint32_t reserved;
+#endif
 } cogmaster_config;
 
 typedef struct cogmaster_audio {
@@ -107,6 +111,20 @@ typedef struct cogmaster_audio {
     uint32_t channels; /* out: 1 or 2 */
     uint32_t dropped;  /* out */
 } cogmaster_audio;
+
+typedef struct cogmaster_audio_record {
+    uint64_t tick;
+    uint32_t source;
+    uint32_t level;
+} cogmaster_audio_record;
+
+typedef struct cogmaster_audio_trace {
+    uint32_t size;
+    cogmaster_audio_record *records; /* in: the caller's buffer */
+    uint32_t capacity;               /* in: records it holds */
+    uint32_t written;                /* out */
+    uint32_t dropped;                /* out */
+} cogmaster_audio_trace;
 
 typedef struct cogmaster_versions {
     uint32_t size;
@@ -210,6 +228,7 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media);
 cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out); /* out may be NULL */
 cogmaster_status cogmaster_get_frame(const cogmaster *m, cogmaster_frame *io);
 cogmaster_status cogmaster_get_audio(cogmaster *m, cogmaster_audio *io);
+cogmaster_status cogmaster_get_audio_trace(cogmaster *m, cogmaster_audio_trace *io);
 cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out);
 cogmaster_status cogmaster_reset(cogmaster *m, uint32_t kind); /* COGMASTER_RESET_* */
 cogmaster_status cogmaster_get_fault(const cogmaster *m, cogmaster_fault *out);

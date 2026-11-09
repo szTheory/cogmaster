@@ -180,13 +180,18 @@ struct cogmaster__io {
 /* The most sample frames one video frame produces: the PAL count. */
 #define COGMASTER__AUDIO_MAX_FRAMES 966u
 
+/* The most records a host may ask the trace log to hold: 16 MiB. */
+#define COGMASTER__TRACE_MAX (1u << 20)
+
 /* The synthesiser's saved and transient state. The phase is the fraction of
    a sample carried between frames, in [0, mod); the PCM is the last frame's
    output waiting for the host, channels interleaved. */
 struct cogmaster__synth {
     uint32_t phase;
-    uint32_t pcm_frames; /* sample frames the last frame produced */
-    uint32_t pcm_read;   /* of those, the frames the host has taken */
+    uint32_t pcm_frames;    /* sample frames the last frame produced */
+    uint32_t pcm_read;      /* of those, the frames the host has taken */
+    uint32_t trace_pending; /* records waiting in the instance's trace log */
+    uint32_t trace_dropped; /* appends the full log refused since the last drain */
     int16_t pcm[COGMASTER__AUDIO_MAX_FRAMES * 2u];
 };
 
@@ -213,6 +218,8 @@ struct cogmaster {
     cogmaster_input pending_input, input;
     uint8_t input_read;
     struct cogmaster__synth synth;
+    uint32_t trace_cap;                /* the host's trace_records, kept across loads */
+    cogmaster_audio_record *trace_log; /* trace_cap records, allocated by the first load */
     uint8_t ram[COGMASTER__RAM_SIZE];
     uint16_t field[COGMASTER__FIELD_MAX_H][COGMASTER__FIELD_W]; /* RGB444 per dot */
     struct {
@@ -256,7 +263,10 @@ _Static_assert(sizeof(cogmaster_allocator) == 3 * COGMASTER__P, "allocator size"
 
 _Static_assert(offsetof(cogmaster_config, size) == 0, "config.size");
 _Static_assert(offsetof(cogmaster_config, allocator) == COGMASTER__P, "config.allocator");
-_Static_assert(sizeof(cogmaster_config) == 4 * COGMASTER__P, "config size");
+_Static_assert(offsetof(cogmaster_config, trace_records) == 4 * COGMASTER__P,
+               "config.trace_records");
+/* The field after the allocator, and on 64-bit an explicit pad to a multiple of P. */
+_Static_assert(sizeof(cogmaster_config) == 5 * COGMASTER__P, "config size");
 
 _Static_assert(offsetof(cogmaster_versions, size) == 0, "versions.size");
 _Static_assert(offsetof(cogmaster_versions, library_major) == 4, "versions.library_major");
@@ -357,6 +367,23 @@ _Static_assert(offsetof(cogmaster_audio, channels) == 2 * COGMASTER__P + 8, "aud
 _Static_assert(offsetof(cogmaster_audio, dropped) == 2 * COGMASTER__P + 12, "audio.dropped");
 _Static_assert(sizeof(cogmaster_audio) == 2 * COGMASTER__P + 16, "audio size");
 
+/* One trace record is 16 bytes, never hashed as memory; the trace struct is
+   the buffer pointer between its size and three counters. */
+_Static_assert(offsetof(cogmaster_audio_record, tick) == 0, "audio_record.tick");
+_Static_assert(offsetof(cogmaster_audio_record, source) == 8, "audio_record.source");
+_Static_assert(offsetof(cogmaster_audio_record, level) == 12, "audio_record.level");
+_Static_assert(sizeof(cogmaster_audio_record) == 16, "audio_record size");
+_Static_assert(offsetof(cogmaster_audio_trace, size) == 0, "audio_trace.size");
+_Static_assert(offsetof(cogmaster_audio_trace, records) == COGMASTER__P, "audio_trace.records");
+_Static_assert(offsetof(cogmaster_audio_trace, capacity) == 2 * COGMASTER__P,
+               "audio_trace.capacity");
+_Static_assert(offsetof(cogmaster_audio_trace, written) == 2 * COGMASTER__P + 4,
+               "audio_trace.written");
+_Static_assert(offsetof(cogmaster_audio_trace, dropped) == 2 * COGMASTER__P + 8,
+               "audio_trace.dropped");
+/* 2P + 12 bytes rounded up to a multiple of P: 32 on 64-bit, 20 on 32-bit. */
+_Static_assert(sizeof(cogmaster_audio_trace) == (COGMASTER__P == 8 ? 32 : 20), "audio_trace size");
+
 /* The size of each struct as first released. A caller's size tag below it
    is refused; each is pinned to the layout above, so appending a field later
    cannot move it. */
@@ -369,7 +396,9 @@ _Static_assert(sizeof(cogmaster_audio) == 2 * COGMASTER__P + 16, "audio size");
 #define COGMASTER__FIRST_SIZE_FAULT 32u
 #define COGMASTER__FIRST_SIZE_CART_INFO 52u
 #define COGMASTER__FIRST_SIZE_AUDIO ((uint32_t)(2 * COGMASTER__P + 16))
-_Static_assert(COGMASTER__FIRST_SIZE_CONFIG == sizeof(cogmaster_config), "config first size");
+#define COGMASTER__FIRST_SIZE_AUDIO_TRACE ((uint32_t)(COGMASTER__P == 8 ? 32 : 20))
+_Static_assert(COGMASTER__FIRST_SIZE_CONFIG == offsetof(cogmaster_config, trace_records),
+               "config first size");
 _Static_assert(COGMASTER__FIRST_SIZE_MEDIA == 4 * COGMASTER__P, "media first size");
 _Static_assert(COGMASTER__FIRST_SIZE_FRAME == sizeof(cogmaster_frame), "frame first size");
 _Static_assert(COGMASTER__FIRST_SIZE_INFO == offsetof(cogmaster_info, region), "info first size");
@@ -380,6 +409,8 @@ _Static_assert(COGMASTER__FIRST_SIZE_FAULT == sizeof(cogmaster_fault), "fault fi
 _Static_assert(COGMASTER__FIRST_SIZE_CART_INFO == offsetof(cogmaster_cart_info, identified),
                "cart_info first size");
 _Static_assert(COGMASTER__FIRST_SIZE_AUDIO == sizeof(cogmaster_audio), "audio first size");
+_Static_assert(COGMASTER__FIRST_SIZE_AUDIO_TRACE == sizeof(cogmaster_audio_trace),
+               "audio_trace first size");
 
 /* Input structs: OK when the size tag at s is at least first and at most
    4096, and every byte past ours is zero; ERR_STRUCT_SIZE otherwise. */
@@ -497,6 +528,11 @@ void cogmaster__boot_handoff(cogmaster *m, int power);
    frames the host never took in the dropped counter. */
 void cogmaster__synth_reset(cogmaster *m, int power);
 void cogmaster__synth_frame_end(cogmaster *m);
+
+/* Appends a level change to the host's trace log, if it asked for one: in
+   causal order, a full log counts the append in its dropped total instead.
+   Load and both resets empty the log, because ticks restart there. */
+void cogmaster__synth_trace(cogmaster *m, uint64_t tick, uint32_t source, uint32_t level);
 
 /* The test card's RGB444 colour at field dot (x, y) for a resolved machine. */
 uint16_t cogmaster__testcard_pixel(uint32_t x, uint32_t y, uint32_t machine);

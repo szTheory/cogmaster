@@ -28,6 +28,18 @@ int main(void)
     CHECK_EQ_U64(offsetof(cogmaster_audio, channels), 2u * p + 8u);
     CHECK_EQ_U64(offsetof(cogmaster_audio, dropped), 2u * p + 12u);
     CHECK_EQ_U64(sizeof(cogmaster_audio), 2u * p + 16u);
+    CHECK_EQ_U64(offsetof(cogmaster_config, trace_records), 4u * p);
+    CHECK_EQ_U64(sizeof(cogmaster_config), 5u * p);
+    CHECK_EQ_U64(offsetof(cogmaster_audio_record, tick), 0u);
+    CHECK_EQ_U64(offsetof(cogmaster_audio_record, source), 8u);
+    CHECK_EQ_U64(offsetof(cogmaster_audio_record, level), 12u);
+    CHECK_EQ_U64(sizeof(cogmaster_audio_record), 16u);
+    CHECK_EQ_U64(offsetof(cogmaster_audio_trace, size), 0u);
+    CHECK_EQ_U64(offsetof(cogmaster_audio_trace, records), p);
+    CHECK_EQ_U64(offsetof(cogmaster_audio_trace, capacity), 2u * p);
+    CHECK_EQ_U64(offsetof(cogmaster_audio_trace, written), 2u * p + 4u);
+    CHECK_EQ_U64(offsetof(cogmaster_audio_trace, dropped), 2u * p + 8u);
+    CHECK_EQ_U64(sizeof(cogmaster_audio_trace), p == 8u ? 32u : 20u);
 
     cogmaster_config cfg = {0};
     cfg.size = sizeof cfg;
@@ -56,6 +68,24 @@ int main(void)
     CHECK_EQ_U64(a.dropped, 0u);
     for (uint32_t i = 0; i < a.written; i++)
         CHECK_EQ_U64(pcm[i], 0u);
+    cogmaster_destroy(m);
+
+    /* A trace log is the host's choice: above one million records is refused,
+       and a log of none has nothing to drain. */
+    cfg.trace_records = (1u << 20) + 1u;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_ERR_ARGUMENT);
+    cfg.trace_records = 0u;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    cogmaster_audio_record record = {0};
+    cogmaster_audio_trace trace;
+    memset(&trace, 0, sizeof trace);
+    trace.size = sizeof trace;
+    trace.records = &record;
+    trace.capacity = 1u;
+    CHECK_EQ_U64(cogmaster_get_audio_trace(m, &trace), COGMASTER_STATUS_ERR_ARGUMENT);
+    CHECK_EQ_U64(trace.written + trace.dropped, 0u);
+    CHECK_EQ_U64(record.tick + record.source + record.level, 0u);
     cogmaster_destroy(m);
     CHECK_DONE();
 }

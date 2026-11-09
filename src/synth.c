@@ -81,3 +81,18 @@ cogmaster_status cogmaster_get_audio(cogmaster *m, cogmaster_audio *io)
     io->dropped = m->counters.audio_dropped;
     return COGMASTER_STATUS_OK;
 }
+
+void cogmaster__synth_trace(cogmaster *m, uint64_t tick, uint32_t source, uint32_t level)
+{
+    (void)m;
+    (void)tick;
+    (void)source;
+    (void)level;
+}
+
+cogmaster_status cogmaster_get_audio_trace(cogmaster *m, cogmaster_audio_trace *io)
+{
+    (void)m;
+    (void)io;
+    return COGMASTER_STATUS_ERR_NO_CONTENT;
+}

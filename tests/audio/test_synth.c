@@ -238,11 +238,156 @@ static void drain_channels(void)
     }
 }
 
+/* The allocator the trace tests count with: allocations so far, and a size
+   that fails when it is asked for. */
+static unsigned allocations;
+static size_t refuse_size;
+
+static void *counting_alloc(void *user, size_t size)
+{
+    (void)user;
+    if (size == refuse_size) {
+        return NULL;
+    }
+    allocations++;
+    return malloc(size);
+}
+
+static cogmaster *make_traced(uint32_t trace_records, uint32_t config_size, cogmaster_status want)
+{
+    cogmaster_config cfg;
+    memset(&cfg, 0, sizeof cfg);
+    cfg.size = config_size;
+    cfg.allocator.alloc = counting_alloc;
+    cfg.allocator.free = test_free;
+    cfg.trace_records = trace_records;
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), want);
+    return m;
+}
+
+static cogmaster_audio_record log_record[8];
+
+static cogmaster_status drain_log(cogmaster *m, cogmaster_audio_trace *t, uint32_t capacity)
+{
+    memset(log_record, 0xA5, sizeof log_record);
+    memset(t, 0, sizeof *t);
+    t->size = (uint32_t)sizeof *t;
+    t->records = log_record;
+    t->capacity = capacity;
+    return cogmaster_get_audio_trace(m, t);
+}
+
+static void append(cogmaster *m, uint32_t first, uint32_t count)
+{
+    for (uint32_t i = first; i < first + count; i++) {
+        cogmaster__synth_trace(m, 1000u + i, i % 7u, 100u + i);
+    }
+}
+
+/* The log is the host's: its size is capped at create, allocated once at load,
+   drained oldest first with every loss counted, and emptied by a load or a
+   reset. */
+static void drain_trace(void)
+{
+    const uint32_t first = (uint32_t)(4u * sizeof(void *));
+    cogmaster_audio_trace t;
+    cogmaster_media media =
+        media_for(COGMASTER_MACHINE_SMS2, COGMASTER_TV_NTSC, COGMASTER_VIDEO_SMS);
+
+    /* The cap: one past a million records is refused, a million is not; a
+       config at its first size reads no later field, so it keeps no log. */
+    CHECK(make_traced((1u << 20) + 1u, (uint32_t)sizeof(cogmaster_config),
+                      COGMASTER_STATUS_ERR_ARGUMENT) == NULL);
+    cogmaster *m = make_traced(1u << 20, (uint32_t)sizeof(cogmaster_config), COGMASTER_STATUS_OK);
+    cogmaster_destroy(m);
+    m = make_traced(5u, first, COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(drain_log(m, &t, 4u), COGMASTER_STATUS_ERR_ARGUMENT);
+    cogmaster_destroy(m);
+
+    /* Asked for none, there is nothing to drain. */
+    m = make_traced(0u, (uint32_t)sizeof(cogmaster_config), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(drain_log(m, &t, 4u), COGMASTER_STATUS_ERR_ARGUMENT);
+    append(m, 0u, 1u);
+    cogmaster_destroy(m);
+
+    /* A log of four: before a load there is no content; a failed allocation
+       is ERR_NO_MEMORY and the instance stays unloaded. */
+    refuse_size = 4u * sizeof(cogmaster_audio_record);
+    m = make_traced(4u, (uint32_t)sizeof(cogmaster_config), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(drain_log(m, &t, 4u), COGMASTER_STATUS_ERR_NO_CONTENT);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_ERR_NO_MEMORY);
+    CHECK_EQ_U64(drain_log(m, &t, 4u), COGMASTER_STATUS_ERR_NO_CONTENT);
+    cogmaster_destroy(m);
+    refuse_size = 0u;
+    m = make_traced(4u, (uint32_t)sizeof(cogmaster_config), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    unsigned after_load = allocations;
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(allocations, after_load);
+
+    /* Overflow: six appends into four slots keep the first four in order and
+       count two dropped. */
+    append(m, 0u, 6u);
+    CHECK_EQ_U64(drain_log(m, &t, 8u), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(t.written, 4u);
+    CHECK_EQ_U64(t.dropped, 2u);
+    for (uint32_t i = 0u; i < 4u; i++) {
+        CHECK_EQ_U64(log_record[i].tick, 1000u + i);
+        CHECK_EQ_U64(log_record[i].source, i % 7u);
+        CHECK_EQ_U64(log_record[i].level, 100u + i);
+    }
+    CHECK_EQ_HEX(log_record[4].level, 0xA5A5A5A5u);
+    CHECK_EQ_U64(drain_log(m, &t, 8u), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(t.written + t.dropped, 0u);
+
+    /* A small capacity copies in order and counts the rest; zero capacity
+       needs no buffer and counts all; a NULL buffer with capacity is refused. */
+    append(m, 0u, 4u);
+    CHECK_EQ_U64(drain_log(m, &t, 3u), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(t.written, 3u);
+    CHECK_EQ_U64(t.dropped, 1u);
+    CHECK_EQ_U64(log_record[2].level, 102u);
+    CHECK_EQ_HEX(log_record[3].level, 0xA5A5A5A5u);
+    append(m, 0u, 2u);
+    t.capacity = 2u;
+    t.records = NULL;
+    CHECK_EQ_U64(cogmaster_get_audio_trace(m, &t), COGMASTER_STATUS_ERR_ARGUMENT);
+    t.capacity = 0u;
+    CHECK_EQ_U64(cogmaster_get_audio_trace(m, &t), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(t.written, 0u);
+    CHECK_EQ_U64(t.dropped, 2u);
+    CHECK_EQ_U64(drain_log(m, &t, 8u), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(t.written + t.dropped, 0u);
+
+    /* A load and both resets empty the log and its drop count. */
+    append(m, 0u, 6u);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(drain_log(m, &t, 8u), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(t.written + t.dropped, 0u);
+    for (uint32_t kind = COGMASTER_RESET_SOFT; kind <= COGMASTER_RESET_POWER; kind++) {
+        append(m, 0u, 6u);
+        CHECK_EQ_U64(cogmaster_reset(m, kind), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(drain_log(m, &t, 8u), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(t.written + t.dropped, 0u);
+    }
+
+    /* The checks every call makes. */
+    CHECK_EQ_U64(cogmaster_get_audio_trace(NULL, &t), COGMASTER_STATUS_ERR_ARGUMENT);
+    CHECK_EQ_U64(cogmaster_get_audio_trace(m, NULL), COGMASTER_STATUS_ERR_ARGUMENT);
+    t.size = COGMASTER__FIRST_SIZE_AUDIO_TRACE - 1u;
+    CHECK_EQ_U64(cogmaster_get_audio_trace(m, &t), COGMASTER_STATUS_ERR_STRUCT_SIZE);
+    cogmaster_destroy(m);
+}
+
 static void test_drain(void)
 {
     drain_pcm();
     drain_loads();
     drain_channels();
+    drain_trace();
 }
 
 static const struct {
