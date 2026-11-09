@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 milestone: v1.0
 milestone_name: SMS and Game Gear games play with sound in RetroArch
-current_phase: 03
-current_phase_name: Games play in RetroArch
-status: paused
-stopped_at: Phase 4 context gathered; runtime Claude Code; model Claude Sonnet 5.5
-last_updated: "2026-11-09T16:45:50.758Z"
+current_phase: 04
+current_phase_name: Sound
+status: ready_to_execute
+stopped_at: Phase 4 planned (15 plans); runtime Claude Code; model Claude Sonnet 5.5
+last_updated: "2026-11-09T19:16:12.722Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 03 shipped in PR
-state_head: cd5f7c89340ddf4306ca2fd71305da17c651fcb8
+state_head: d585bc44f2137ee7516818d88088eb61c876758e
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 47
+  total_plans: 62
   completed_plans: 47
   percent: 75
 ---
@@ -29,12 +29,12 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 
 ## Current Position
 
-Phase: 03 (Games play in RetroArch) — SHIPPED IN PR #8
-Plan: 18 of 18
-Status: Paused after phase 03 release v0.3.0; phase 04 not started
-Last activity: 2026-10-20 — Shipped phase 03 as PR #8; fresh local CI exited 0 (342 tests and 4 package checks); runtime Codex; model GPT-6
+Phase: 04 (Sound) — READY TO EXECUTE
+Plan: 0 of 15
+Status: Phase 04 planned; ready to execute
+Last activity: 2026-11-09 — Planned phase 04: 15 plans in 15 serial waves; checker verification accepted after three revision rounds; runtime Claude Code; model claude-sonnet-5-5
 
-Next command: `$gsd-discuss-phase 04`. PR #8 and release PR #9 merged; v0.3.0 published with 19 assets; release run 39517457183 passed. Pause handoff: `.planning/HANDOFF.json`.
+Next command: `/gsd-execute-phase 04`. Phase 03 shipped as v0.3.0.
 
 Ship: https://github.com/szTheory/cogmaster/pull/8. `cmake --workflow --preset ci` exited 0 during ship. Hosted verification: https://github.com/szTheory/cogmaster/actions/runs/39514577638 (`gh run view 39514577638 --exit-status`, exit 0).
 
@@ -281,6 +281,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-10-20 | Pause after phase 03 release (gsd-pause-work); v0.3.0 confirmed, PR #10 nightly fix green | Codex | GPT-6 |
 
 | 2026-11-09 | Discuss phase 4 (gsd-discuss-phase 4); six research agents plus adversarial cross-check; 35 decisions | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Plan phase 4 (gsd-plan-phase 4); research, 15 plans, checker passes after owner-approved revisions | Claude Code | claude-sonnet-5-5 (planner claude-opus-5-5) |
 
 ## Deferred Items
 
@@ -292,6 +293,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-09T16:45:50.595Z
-Stopped at: Phase 4 context gathered; runtime Claude Code; model Claude Sonnet 5.5
-Resume file: .planning/phases/04-sound/04-CONTEXT.md
+Last session: 2026-11-09T19:16:12.722Z
+Stopped at: Phase 4 planned (15 plans); runtime Claude Code; model Claude Sonnet 5.5
+Resume file: .planning/phases/04-sound/04-01-PLAN.md

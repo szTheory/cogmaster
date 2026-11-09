@@ -212,7 +212,54 @@ Plans:
   4. A test shows the libretro batch and single-sample audio paths deliver PCM equal to the runner's (stereo on GG, duplicated mono on SMS), and the hosted RetroArch session's recording is non-silent (SND-04).
   5. A test renders reference tones through the synthesiser and shows the largest non-harmonic peak below 16 kHz under −80 dB, and synthesis cost per output sample stays bounded under a register-hammering fixture (SND-05).
 
-**Plans**: TBD
+**Plans**: 15 plans, one sequential chain (waves 1–15; `parallelization` is off, and most adjacent plans share the test inventories, `tests/audio/tests.cmake`, the pin files or a source file, so the order is kept even where a pair shares none)
+
+Plans:
+**Wave 1**
+- [ ] 04-01-PLAN.md — Requirement, roadmap, decision and preparation amendments (D-33 first) and the SOFT-reset rule
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 04-02-PLAN.md — API 9 door: exact-cadence PCM through the libretro adapter, cadence and drain tests, trace log
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 04-03-PLAN.md — API 9 completion: fm profile field, info fields, state header byte, abi.api_v9, audio guide
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 04-04-PLAN.md — Band-limited synthesis, mixer and DC blocker with spectral, headroom and ring proofs
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 04-05-PLAN.md — SN76489 on the bus, reset snapshots and SOFT contract, PSG state, closed-form PSG units
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 04-06-PLAN.md — GG stereo on $06, native-mode port decode, hostile-hammer cost bound
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [ ] 04-07-PLAN.md — Runner --hash-audio and the psg_sweep fixture
+
+**Wave 8** *(blocked on Wave 7 completion)*
+- [ ] 04-08-PLAN.md — psg_sweep Game Gear image, audio hash-matrix rows and frozen pins
+
+**Wave 9** *(blocked on Wave 8 completion)*
+- [ ] 04-09-PLAN.md — boot_to_play chime, input notes and GG stereo, pinned without moving its picture
+
+**Wave 10** *(blocked on Wave 9 completion)*
+- [ ] 04-10-PLAN.md — emu2413 port measured and matched to upstream by a one-shot oracle, notice and provenance
+
+**Wave 11** *(blocked on Wave 10 completion)*
+- [ ] 04-11-PLAN.md — Frozen 2,000,000-sample lockstep and the YM2413 chip-level units
+
+**Wave 12** *(blocked on Wave 11 completion)*
+- [ ] 04-12-PLAN.md — YM2413 on the Japanese profile: $F0-$F2, mixer, reset, FM state and cost
+
+**Wave 13** *(blocked on Wave 12 completion)*
+- [ ] 04-13-PLAN.md — fm_sweep fixture, detection per profile and frozen FM hashes
+
+**Wave 14** *(blocked on Wave 13 completion)*
+- [ ] 04-14-PLAN.md — libretro batch, single and both-registered sessions equal the runner; cogmaster_fm option
+
+**Wave 15** *(blocked on Wave 14 completion)*
+- [ ] 04-15-PLAN.md — Hosted RetroArch recording against a silent control, perf exception, hosted evidence
+
 **UI hint**: no
 **Canonical refs:** `.planning/preparation/SMS-AUDIO.md`, `.planning/preparation/ARCHITECTURE.md`, `.planning/preparation/CONFORMANCE.md`
 
@@ -226,4 +273,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. A test frame in RetroArch | 12/12 | Complete    | 2026-10-19 |
 | 2. The CPU matches the public vectors | 17/17 | Complete    | 2026-10-20 |
 | 3. Games play in RetroArch | 18/18 | Complete    | 2026-10-20 |
-| 4. Sound | 0/TBD | Not started | - |
+| 4. Sound | 0/15 | Planned | - |
