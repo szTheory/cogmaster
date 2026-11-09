@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 04
 current_phase_name: Sound
 status: executing
-stopped_at: Completed 04-08-PLAN.md
-last_updated: "2026-11-09T20:59:54.376Z"
+stopped_at: Completed 04-09-PLAN.md
+last_updated: "2026-11-09T21:04:42.416Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 04 execution started
-state_head: c87945f92868af87bee7c413b543dfb95328c775
+state_head: 357d657c5c706db82c3b67a50b22bce7dba753c8
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 62
-  completed_plans: 55
+  completed_plans: 56
   percent: 75
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 04 (Sound) — EXECUTING
-Plan: 9 of 15
+Plan: 10 of 15
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 04 execution started
 
@@ -119,6 +119,7 @@ Progress: [████████░░] 75%
 | Phase 04 P06 | 8min | 2 tasks | 10 files |
 | Phase 04 P07 | 11min | 2 tasks | 16 files |
 | Phase 04 P08 | 4min | 2 tasks | 11 files |
+| Phase 04 P09 | 5 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -268,6 +269,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 04]: 04-07: The runner's audio hashing is its own module (runner/audio.c); both drops, a count off 801 or 802 (965 or 966 PAL) and out-of-order source ticks fail the frame at once with exit 1, and levels are merged and serialised as 16 bits with a 0x10000 no-level sentinel
 - [Phase 04]: 04-07: psg_sweep is a 19-segment table player closing with 38 mailbox records (frames waited and PSG writes), with assemble-time guards on the segment count and the 60-record mailbox; the Game Gear $06 entries add no wait, record or count, so the SMS and GG images report identical records
 - [Phase 04]: 04-08: psg_sweep.gg is built through the fixtures loop with a second image special case (psg_sweep_gg to psg_sweep.gg) and judged by the same 38 rows under profile gg; the four psg_sweep sound rows in hashes.txt are tagged '<file> <profile> <region> baseline' after the keyword and frozen in tests/audio/transitions.txt and pcm.txt, compared inside runner.hashes_file; runner.hashes_file keeps TIMEOUT 30 (2.3 s inside the ci workflow) pending hosted be32 and wasm32 timings
+- [Phase 04]: boot_to_play sound: chime state at $C210, tone 1 note attenuation at $C212, jp forever on both images; four audio rows pinned in tests/audio
 
 ### Pending Todos
 
@@ -327,6 +329,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-09T20:59:54.156Z
-Stopped at: Completed 04-08-PLAN.md
+Last session: 2026-11-09T21:04:42.149Z
+Stopped at: Completed 04-09-PLAN.md
 Resume file: None
