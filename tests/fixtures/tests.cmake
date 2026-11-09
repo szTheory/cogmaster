@@ -93,7 +93,8 @@ endif()
 set(COGMASTER_FIXTURES_DIR ${PROJECT_BINARY_DIR}/fixtures)
 set(fixtures_src ${PROJECT_SOURCE_DIR}/tests/roms/src)
 set(fixtures_images "")
-foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_to_play boot_to_play_gg battery)
+foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_to_play boot_to_play_gg battery
+    psg_sweep)
   set(extension sms)
   set(image_name ${name})
   if(name STREQUAL "boot_to_play_gg")
@@ -305,6 +306,15 @@ cogmaster_add_test(NAME fixtures.boot_to_play.mailbox
     -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/boot_to_play.txt
     -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS fixtures portable TIMEOUT 10)
+# Fault prevented: a PSG script whose frame or write counters drift, or an image that is not
+# the one pinned, so the sound hashes over it would judge a different program.
+# Timeout: 10 s floor; 0.05 s slowest local run, no hosted run yet, so provisional.
+cogmaster_add_test(NAME fixtures.psg_sweep
+  COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=psg_sweep
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/psg_sweep.sms -DFRAMES=300
+    -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/psg_sweep.txt
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable psg TIMEOUT 10)
 # Timeout: 10 s floor; 2 x 0.02 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME fixtures.mapper_sega
   COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=mapper_sega

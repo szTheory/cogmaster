@@ -975,9 +975,13 @@ cogmaster_add_test(NAME runner.hash.repeat
 # input, a sample total off the cadence formula, a sample that clips, a frame
 # of the wrong length passed as a hash, or a trace log that overflows silently.
 # Timeout: 30 s; the card and the fixture runs take well under a second each.
+set(hash_audio_image "")
+if(COGMASTER_FIXTURES)
+  set(hash_audio_image -DIMAGE=${PROJECT_BINARY_DIR}/fixtures/psg_sweep.sms)
+endif()
 cogmaster_add_test(NAME runner.hash_audio
   COMMAND ${runner_check} -DCASE=hash_audio -DSHORT=$<TARGET_FILE:cogmaster-test-run-audio-short>
-    -P ${CMAKE_CURRENT_LIST_FILE}
+    ${hash_audio_image} -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS portable psg runner TIMEOUT 30)
 
 # Fault prevented: --version printing something a script cannot parse.
