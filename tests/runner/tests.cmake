@@ -574,7 +574,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(NOT rc STREQUAL "0" OR out MATCHES "--(capabilities|boot|bios)")
       message(FATAL_ERROR "--help: expected exit 0 and no later option, got exit ${rc}\n${out}")
     endif()
-  elseif(CASE STREQUAL "hash_audio")
+  elseif(CASE STREQUAL "hash_audio" OR CASE STREQUAL "hash_audio_fm")
     # Each run is made twice and must print the same bytes; the sample total
     # is the cumulative cadence formula in integer math, and nothing clips.
     # IMAGE, when set, is a fixture that sounds.
@@ -603,6 +603,36 @@ if(CMAKE_SCRIPT_MODE_FILE)
       set(peak ${CMAKE_MATCH_4} PARENT_SCOPE)
       set(sound "${out1}" PARENT_SCOPE)
     endfunction()
+
+    if(CASE STREQUAL "hash_audio_fm")
+      # The FM fixture on the Japanese console, whose built-in unit sounds, and on the export
+      # console, which has none: both obey the checks above, each equals its frozen lines, the
+      # Japanese run sounds, and the two differ, so the unit is heard and does not leak.
+      foreach(region IN ITEMS ntsc-j ntsc-u)
+        audio_run(300 ${IMAGE} --machine sms --region ${region})
+        if(NOT channels STREQUAL "1" OR peak GREATER 29204)
+          message(FATAL_ERROR "--hash-audio fm ${region}: channels ${channels} peak ${peak}, want 1 and at most 29204")
+        endif()
+        if(region STREQUAL "ntsc-j" AND peak LESS 1)
+          message(FATAL_ERROR "--hash-audio fm ${region}: the unit made no sound (peak ${peak})")
+        endif()
+        foreach(kind IN ITEMS transitions pcm)
+          file(READ "${PINS}/${kind}.txt" pins)
+          string(REGEX MATCH "(^|\n)audio-${kind} ([0-9]+ [^\n]*)\n" run_line "${sound}")
+          set(want_line "\naudio-${kind} fm_sweep.sms sms ${region} baseline ${CMAKE_MATCH_2}\n")
+          string(FIND "\n${pins}" "${want_line}" at)
+          if(at EQUAL -1)
+            message(FATAL_ERROR "--hash-audio fm ${region}: the ${kind} line is not in ${PINS}/${kind}.txt:\n${run_line}")
+          endif()
+          string(REPLACE "-" "_" id "${region}")
+          set(${kind}_${id} "${run_line}")
+        endforeach()
+      endforeach()
+      if(pcm_ntsc_j STREQUAL pcm_ntsc_u OR transitions_ntsc_j STREQUAL transitions_ntsc_u)
+        message(FATAL_ERROR "--hash-audio fm: the Japanese and export consoles sound alike")
+      endif()
+      return()
+    endif()
 
     # The card is silent: one channel on the Master System, two on the Game Gear, no peak.
     audio_run(60)
@@ -1024,6 +1054,17 @@ cogmaster_add_test(NAME runner.hash_audio
   COMMAND ${runner_check} -DCASE=hash_audio -DSHORT=$<TARGET_FILE:cogmaster-test-run-audio-short>
     ${hash_audio_image} -DPINS=${PROJECT_SOURCE_DIR}/tests/audio -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS portable psg runner TIMEOUT 30)
+
+# Fault prevented: an FM unit whose sound differs between two runs, between lanes or from the
+# frozen lines, that stays silent on the Japanese console, or that sounds on the export console.
+# Timeout: 30 s floor; four 300 frame runs of 0.1 s each, no hosted run yet, so provisional.
+if(COGMASTER_FIXTURES)
+  cogmaster_add_test(NAME runner.hash_audio.fm
+    COMMAND ${runner_check} -DCASE=hash_audio_fm
+      -DIMAGE=${PROJECT_BINARY_DIR}/fixtures/fm_sweep.sms -DPINS=${PROJECT_SOURCE_DIR}/tests/audio
+      -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fm portable runner TIMEOUT 30)
+endif()
 
 # Fault prevented: --version printing something a script cannot parse.
 cogmaster_add_test(NAME runner.version

@@ -144,6 +144,7 @@ fixtures.vdp_lines.pixels.pal.240	fixtures,portable
 fixtures.wla_pin.self_test	fixtures
 fm.chip_off	fm,portable
 fm.cost	fm,portable
+fm.detect	fm,portable
 fm.f2_catches_up	fm,portable
 fm.f2_read_bits	fm,portable
 fm.f2_write_mask	fm,portable
@@ -238,6 +239,7 @@ runner.hash.repeat	portable,runner
 runner.hash.self_test	runner
 runner.hash.sms	portable,runner
 runner.hash_audio	portable,psg,runner
+runner.hash_audio.fm	fm,portable,runner
 runner.hashes_compare.byte.self_test	runner
 runner.hashes_compare.count.self_test	runner
 runner.hashes_file	portable,runner

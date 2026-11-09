@@ -349,6 +349,14 @@ foreach(profile IN ITEMS sms-japan sms-export gg)
       -DOUT=${fixtures_out}/fm_sweep.${profile}.txt -P ${CMAKE_CURRENT_LIST_FILE}
     LABELS fixtures fm portable TIMEOUT 10)
 endforeach()
+# Fault prevented: a detection routine that is only proven through the runner's default unit
+# setting. The same built image runs on an export console with the unit switched on (it must find
+# it) and on a Japanese console with the unit switched off (it must not), reading the mailbox
+# through cogmaster_peek as the runner does.
+# Timeout: 10 s floor; 0.1 s slowest local run, no hosted run yet, so provisional.
+cogmaster_add_test(NAME fm.detect
+  COMMAND cogmaster-test-fm detect ${COGMASTER_FIXTURES_DIR}/fm_sweep.sms
+  LABELS fm portable TIMEOUT 10)
 # Timeout: 10 s floor; 2 x 0.02 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME fixtures.mapper_sega
   COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=mapper_sega

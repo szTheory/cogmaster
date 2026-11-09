@@ -90,8 +90,10 @@ if(MODE STREQUAL "write")
     # native Game Gear image, then the playable fixture without input (60
     # frames) and with the play script (14 frames). tests/audio/ pins them.
     foreach(row IN ITEMS "psg_sweep.sms|sms|sms|sms|ntsc-u|300|baseline|"
-        "psg_sweep.sms|sms|sms|sms|pal|300|baseline|" "psg_sweep.sms|gg-sms|gg|sms|ntsc-u|300|baseline|"
+        "psg_sweep.sms|sms|sms|sms|pal|300|baseline|" "psg_sweep.sms|sms|sms|sms|ntsc-j|300|baseline|"
+        "psg_sweep.sms|gg-sms|gg|sms|ntsc-u|300|baseline|"
         "psg_sweep.gg|native|gg|gg|ntsc-u|300|baseline|"
+        "fm_sweep.sms|sms|sms|sms|ntsc-j|300|baseline|" "fm_sweep.sms|sms|sms|sms|ntsc-u|300|baseline|"
         "boot_to_play.sms|sms|sms|sms|ntsc-u|60|baseline|" "boot_to_play.sms|sms|sms|sms|ntsc-u|14|input|play"
         "boot_to_play.gg|native|gg|gg|ntsc-u|60|baseline|" "boot_to_play.gg|native|gg|gg|ntsc-u|14|input|play-gg")
       string(REPLACE "|" ";" row "${row}")

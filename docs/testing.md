@@ -131,10 +131,17 @@ seven files are the six `build` legs and `be32`. wasm32 compares its own file wi
 once it is promoted, the count becomes eight.
 
 The file also carries the sound rows: 300 frames of `cogmaster-run --hash-audio` over `psg_sweep.sms` (Master System
-on NTSC and PAL, and the Game Gear in Master System mode) and `psg_sweep.gg` (native). Each `audio-transitions` and
+on NTSC, PAL and Japan, and the Game Gear in Master System mode), `psg_sweep.gg` (native) and `fm_sweep.sms` (Master
+System, Japan and NTSC). Each `audio-transitions` and
 `audio-pcm` line is tagged `<file> <profile> <region> baseline` after its keyword. `tests/audio/transitions.txt` and
 `tests/audio/pcm.txt` freeze those lines; `runner.hashes_file` requires the rows to equal them and names the first
-line that differs, and `runner.hash_audio` requires its own `psg_sweep.sms` lines to be among them. After an
+line that differs, and `runner.hash_audio` requires its own `psg_sweep.sms` lines to be among them. The Japan row of
+`psg_sweep.sms` differs from the NTSC one only because the Japanese console carries the FM unit, which adds the control
+record and lowers the PSG; every other existing row is unchanged. `fm_sweep.sms` has its own detection routine for
+port `$F2`: the three `fixtures.fm_sweep.*` tests judge its detect record on the Japanese console (1), the export
+console (0) and the Game Gear (0); `fm.detect` loads the built image with the unit forced on for an export console
+(1) and off for a Japanese one (0); and `runner.hash_audio.fm` shows its Japanese and export runs repeat, equal their
+frozen lines and differ from each other. `ctest -L fm` runs all of these with the chip and unit tests. After an
 intended change, regenerate them from a clean `ci` build:
 
 ```sh

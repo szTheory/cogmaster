@@ -1340,6 +1340,93 @@ static void cost(void)
     cogmaster_destroy(m);
 }
 
+/* ---- The detect routine of the fm_sweep fixture, under each unit setting ---- */
+
+#define FIXTURE_SIZE 32768u
+#define MB_BASE 0xC100u
+#define MB_RUNNING 0x80u
+#define MB_DONE_FRAMES 300u
+#define MB_RECORD_COUNT 7u
+
+static uint8_t fixture[FIXTURE_SIZE];
+
+static uint32_t mailbox_byte(const cogmaster *m, uint32_t offset)
+{
+    return cogmaster_peek(m, COGMASTER_SPACE_BUS, MB_BASE + offset) & 0xFFu;
+}
+
+/* Runs the built fm_sweep image on the console and unit setting given, as the runner does: until
+   its mailbox reports done, with each frame's sound taken. The program's detect record (the
+   first, id 1) must hold want, and its script must have run to its seventh record whatever the
+   unit setting. */
+static void detect_case(const char *what, uint32_t region, uint32_t fm, uint32_t want)
+{
+    cogmaster_media media;
+    cogmaster_config cfg;
+    cogmaster *m = NULL;
+    uint32_t frames = 0;
+    int running = 0;
+
+    memset(&media, 0, sizeof media);
+    media.size = (uint32_t)sizeof media;
+    media.image = fixture;
+    media.image_size = FIXTURE_SIZE;
+    media.machine = COGMASTER_MACHINE_SMS2;
+    media.region = region;
+    media.tv = COGMASTER_TV_NTSC;
+    media.video_mode = COGMASTER_VIDEO_SMS;
+    media.fm = fm;
+    memset(&cfg, 0, sizeof cfg);
+    cfg.size = (uint32_t)sizeof cfg;
+    cfg.allocator.alloc = test_alloc;
+    cfg.allocator.free = test_free;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    if (m == NULL) {
+        exit(1);
+    }
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    while (frames < MB_DONE_FRAMES && !(running && mailbox_byte(m, 5u) == 0u)) {
+        uint32_t peak;
+
+        (void)take_frame(m, pcm, &peak);
+        frames++;
+        running = running || mailbox_byte(m, 5u) == MB_RUNNING;
+    }
+    if (!running || mailbox_byte(m, 5u) != 0u) {
+        fprintf(stderr, "%s: the mailbox is not done after %u frames\n", what, (unsigned)frames);
+    }
+    CHECK_EQ_U64(mailbox_byte(m, 5u), 0u);
+    CHECK_EQ_U64(mailbox_byte(m, 6u), MB_RECORD_COUNT);
+    CHECK_EQ_U64(mailbox_byte(m, 0x10u), 1u);
+    CHECK_EQ_U64(mailbox_byte(m, 0x11u), 1u);
+    if (mailbox_byte(m, 0x12u) != want || mailbox_byte(m, 0x13u) != 0u) {
+        fprintf(stderr, "%s: detect record %u, want %u\n", what, (unsigned)mailbox_byte(m, 0x12u),
+                (unsigned)want);
+        check_failures++;
+    }
+    /* The last record is the frame count of the third segment: the script ran to its end. */
+    CHECK_EQ_U64(mailbox_byte(m, 0x10u + 4u * 5u + 2u), 0xD6u);
+    cogmaster_destroy(m);
+}
+
+/* An export console with the unit switched on finds it, and a Japanese console with the unit
+   switched off does not; the automatic setting follows the region. The routine reads port $F2
+   itself, so this is the program's own answer, not the runner's. */
+static void detect(const char *path)
+{
+    FILE *f = fopen(path, "rb");
+
+    if (f == NULL || fread(fixture, 1u, FIXTURE_SIZE, f) != FIXTURE_SIZE) {
+        fprintf(stderr, "cannot read %s as %u bytes\n", path, (unsigned)FIXTURE_SIZE);
+        exit(1);
+    }
+    (void)fclose(f);
+    detect_case("export, unit on", COGMASTER_REGION_EXPORT, COGMASTER_FM_ON, 1u);
+    detect_case("japan, unit off", COGMASTER_REGION_JAPAN, COGMASTER_FM_OFF, 0u);
+    detect_case("japan, automatic", COGMASTER_REGION_JAPAN, COGMASTER_FM_AUTO, 1u);
+    detect_case("export, automatic", COGMASTER_REGION_EXPORT, COGMASTER_FM_AUTO, 0u);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
@@ -1369,12 +1456,17 @@ int main(int argc, char **argv)
         lockstep(argv[2]);
         CHECK_DONE();
     }
+    if (argc == 3 && strcmp(argv[1], "detect") == 0) {
+        detect(argv[2]);
+        CHECK_DONE();
+    }
     for (size_t i = 0; argc == 2 && i < sizeof cases / sizeof cases[0]; i++) {
         if (strcmp(argv[1], cases[i].name) == 0) {
             cases[i].run();
             CHECK_DONE();
         }
     }
-    fprintf(stderr, "usage: cogmaster-test-fm lockstep <digest file> | <case>\n");
+    fprintf(stderr,
+            "usage: cogmaster-test-fm lockstep <digest file> | detect <fm_sweep image> | <case>\n");
     return 2;
 }
