@@ -32,8 +32,8 @@ void cogmaster__psg_reset(cogmaster *m)
 
 /* What channel ch presents: bit 4 is its output, bits 3 to 0 its attenuation.
    A tone channel whose period is 0 or 1 holds its output high; the integrated
-   chip does this and games play 4-bit samples through it (SMS-AUDIO section
-   2.2). Its flip-flop keeps counting underneath. */
+   chip does this and games play 4-bit samples through it (see SMS-AUDIO
+   section 2.2). Its flip-flop keeps counting underneath. */
 uint32_t cogmaster__psg_level(const cogmaster *m, uint32_t ch)
 {
     const struct cogmaster__psg *p = &m->psg;
@@ -126,8 +126,8 @@ void cogmaster__psg_catch_up(cogmaster *m, uint64_t tick)
 /* A write to the register the latch names. Register r is channel r / 2; odd
    r is the attenuation, even r the tone period or, for channel 3, the noise
    control, and writing the noise control resets the shift register (SMS-AUDIO
-   sections 2.1 and 2.4). data holds the bits the byte supplies: 4 on a latch
-   byte, 6 on a data byte, which only a tone period uses beyond 4. */
+   section 2.1 and section 2.4). data holds the bits the byte supplies: 4 on a
+   latch byte, 6 on a data byte, which only a tone period uses beyond 4. */
 static void psg_register(struct cogmaster__psg *p, uint32_t data, int latch_byte)
 {
     uint32_t reg = p->latch;

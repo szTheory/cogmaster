@@ -46,6 +46,37 @@ square wave faster than the output rate leaves no audible alias. A host hears th
 - **What a change moves.** The kernel, the volume law, the gains and the DC corner decide the samples, so a change
   to any of them moves the PCM hash and no recorded transition. Sources, levels and ticks decide the transitions.
 
+## The PSG
+
+The sound chip on every machine is the PSG (an SN76489 variant inside the VDP): three tone channels and a noise
+channel. Any write to a port from $40 to $7F reaches it; $7F is the usual port and some games use $7E. Reads of $7E
+and $7F stay the VDP's beam counters.
+
+- **Time.** The chip steps once every 48 ticks (16 Z80 clocks), counted from tick 0 at a load or a reset of either
+  kind. It is brought up to date lazily: when a write arrives, every step up to the write's tick runs first, then
+  the byte applies. A write stamped exactly on a step tick therefore sees that step already taken. A volume write
+  takes effect at its own tick, not at the next step, which is what lets a game play samples through the volume
+  register. The end of a frame runs the chip to the frame's last tick, that tick included, and no further. The
+  bus stall a write causes on some chips is not modelled.
+- **Tone.** A channel with period N toggles its output every N steps; the first step toggles every output from 0
+  to 1. A period of 0 or 1 holds the output high at the channel's volume and records nothing, though the counter
+  keeps running underneath. This is the model's choice for the integrated chip, a default that hardware could
+  overturn.
+- **Noise.** A 16-bit shift register that starts at $8000 shifts right once every 32, 64 or 128 steps (control 0,
+  1 or 2) or on tone 2's rising edge (control 3, where a tone 2 period of 0 counts as 1). White noise feeds bits 0
+  and 3 back into the top bit; periodic noise feeds bit 0 back and repeats every 16 shifts, and white noise every
+  57,337. The channel's output is the bit shifted out. Writing the noise control, by latch byte or by data byte,
+  puts the register back to $8000; writing the noise volume does not. That reset rule and the interval counting
+  are defaults, not measured on hardware.
+- **Records.** Sources 0 to 3 report `output << 4 | attenuation` as the trace log's level, from the registers
+  alone, so changing the volume law or the mix gain moves the samples and none of the records.
+- **Reset.** A load and both kinds of reset put the chip back to its power-on values: every attenuation off,
+  periods and noise control 0, shift register $8000, counters and outputs clear, a data byte that follows no
+  latch byte writing the volume of channel 1, and the step origin at tick 0, where the tick count restarts. The
+  chip then reports its levels to the synthesiser at tick 0, so what the synthesiser holds is the chip's. After a
+  SOFT reset a held tone falls to silence in the first samples of the next frame, and the volume a game wrote
+  before the reset is heard again when it writes it again.
+
 ## The FM unit
 
 The Japanese Master System has a YM2413 FM sound unit beside the PSG; the export Master System and the Game Gear
@@ -82,7 +113,8 @@ them. `cogmaster_config.trace_records` is the log's size in records; 0, the defa
   drain. A non-zero value means the trace has a gap; the library never drops a record without counting it.
 - **Restarts.** Ticks restart at a load and at both kinds of reset, and the log is emptied there. A consumer that
   spans a reset therefore sees the tick count go back to 0 and must split its stream at that point; drain before
-  you reset, and treat the first record after it as a new run.
+  you reset, and treat the first record after it as a new run. The first records of the new run are one per
+  active source at tick 0 (sources 0 to 3, and 4 on a Game Gear in its own video mode), the chips' power-on levels.
 
 The log is allocated once, by the first load, through your allocator. Nothing is allocated after it.
 

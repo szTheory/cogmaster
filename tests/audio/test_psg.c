@@ -279,8 +279,9 @@ static void test_reset_soft(void)
 
     /* The chip steps from tick 0: tone 0 at period 5 toggles on the 48-tick
        grid in this frame. */
-    out_at(m, 40000u, 0x7Fu, 0x85u);
-    out_at(m, 40003u, 0x7Fu, 0x90u);
+    uint64_t wrote = m->ticks + 40000u;
+    out_at(m, wrote, 0x7Fu, 0x85u);
+    out_at(m, wrote + 3u, 0x7Fu, 0x90u);
     (void)drain_trace(m);
     CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
     frames++;
@@ -289,7 +290,7 @@ static void test_reset_soft(void)
     uint32_t n = drain_trace(m);
     uint32_t toggles = 0u, off_grid = 0u;
     for (uint32_t i = 0u; i < n; i++) {
-        if (log_record[i].source == 0u && log_record[i].tick > 40003u) {
+        if (log_record[i].source == 0u && log_record[i].tick > wrote + 3u) {
             toggles++;
             off_grid += log_record[i].tick % STEP != 0u;
         }
@@ -489,6 +490,465 @@ static void test_state_continue(void)
     refuse_chip_fields();
 }
 
+/* A chip, and its trace log, back at power-on. */
+static void power_on(cogmaster *m)
+{
+    CHECK_EQ_U64(cogmaster_reset(m, COGMASTER_RESET_POWER), COGMASTER_STATUS_OK);
+    (void)drain_trace(m);
+}
+
+static void put(cogmaster *m, uint64_t tick, uint8_t v)
+{
+    cogmaster__psg_write(m, tick, v);
+}
+
+/* The latch byte for channel ch's tone or noise control (type 0) or its
+   attenuation (type 1), with four data bits. */
+static uint8_t latch(uint32_t ch, uint32_t type, uint32_t data)
+{
+    return (uint8_t)(0x80u | ch << 5 | type << 4 | (data & 15u));
+}
+
+/* A tone period of n on channel ch, written as the two bytes a game writes: a
+   latch byte with the low four bits, then a data byte with the high six. */
+static void put_period(cogmaster *m, uint64_t tick, uint32_t ch, uint32_t n)
+{
+    put(m, tick, latch(ch, 0u, n));
+    put(m, tick, (uint8_t)(n >> 4));
+}
+
+/* Records of source ch after tick: how many, and how many are not exactly
+   spacing ticks after the one before. */
+static uint32_t spaced(uint32_t n, uint32_t ch, uint64_t after, uint64_t spacing, uint32_t *bad)
+{
+    uint32_t seen = 0u;
+    uint64_t last = 0u;
+    *bad = 0u;
+    for (uint32_t i = 0u; i < n; i++) {
+        if (log_record[i].source != ch || log_record[i].tick <= after) {
+            continue;
+        }
+        if (seen > 0u) {
+            *bad += log_record[i].tick - last != spacing;
+        }
+        last = log_record[i].tick;
+        seen++;
+    }
+    return seen;
+}
+
+/* A tone of period n on channel ch at full volume: from the first toggle on,
+   its records are exactly 48 n ticks apart (the chip steps every 48 ticks and
+   a period of n toggles every n steps). A period of 0 or 1 holds the output
+   high: it leaves no record after the volume write. */
+static void check_period(cogmaster *m, uint32_t ch, uint32_t n)
+{
+    power_on(m);
+    put_period(m, 100u, ch, n);
+    put(m, 100u, latch(ch, 1u, 0u));
+    cogmaster__psg_catch_up(m, 100u + 48u * (5u * (n > 1u ? n : 1u) + 4u));
+    uint32_t count = drain_trace(m);
+    uint32_t bad = 0u;
+    uint32_t seen = spaced(count, ch, 100u, 48u * n, &bad);
+    if (n < 2u) {
+        CHECK_EQ_U64(seen, 0u);
+        CHECK_EQ_U64(cogmaster__psg_level(m, ch), 0x10u);
+    } else {
+        CHECK(seen >= 4u);
+        CHECK_EQ_U64(bad, 0u);
+    }
+    if (seen < 4u && n >= 2u) {
+        fprintf(stderr, "period %lu on channel %lu: %lu records\n", (unsigned long)n,
+                (unsigned long)ch, (unsigned long)seen);
+    }
+}
+
+/* All 1,024 periods on tone 0, and a spread of them on tones 1 and 2. */
+static void test_periods(void)
+{
+    cogmaster *m = export_sms();
+    for (uint32_t n = 0u; n < 1024u; n++) {
+        check_period(m, 0u, n);
+    }
+    static const uint16_t spread[] = {0u, 1u, 2u, 3u, 7u, 254u, 1023u};
+    for (uint32_t ch = 1u; ch < 3u; ch++) {
+        for (uint32_t i = 0u; i < sizeof spread / sizeof spread[0]; i++) {
+            check_period(m, ch, spread[i]);
+        }
+    }
+    cogmaster_destroy(m);
+}
+
+/* round(32767 x 10^(-i / 10)) for i below 15 and 0 at 15: the step ratio is
+   10^(-1/10), which is 213,225,862 / 2^28 to nine digits, applied to a Q20
+   value, then rounded. Every unrounded value is at least 0.04 from a half, so
+   the nine digits decide nothing. */
+static uint32_t law(uint32_t i)
+{
+    if (i >= 15u) {
+        return 0u;
+    }
+    uint64_t x = (uint64_t)32767u << 20;
+    for (uint32_t k = 0u; k < i; k++) {
+        x = x * 213225862u >> 28;
+    }
+    return (uint32_t)((x + (1u << 19)) >> 20);
+}
+
+/* Every attenuation on every channel: the record is output << 4 | attenuation
+   (the tone channels hold their output high at period 0, the noise output is
+   0), a tone's gained level is the law through the gain, and the PCM step is
+   that level within the kernel's overshoot and its settling. */
+static void test_volumes(void)
+{
+    CHECK_EQ_U64(law(0u), 32767u);
+    CHECK_EQ_U64(law(7u), 6538u);
+    CHECK_EQ_U64(law(15u), 0u);
+    cogmaster *m = export_sms();
+    for (uint32_t ch = 0u; ch < 4u; ch++) {
+        for (uint32_t att = 0u; att < 16u; att++) {
+            power_on(m);
+            put(m, 100u, latch(ch, 1u, att));
+            uint32_t out = ch < 3u ? 1u : 0u;
+            CHECK_EQ_U64(cogmaster__psg_level(m, ch), out << 4 | att);
+            uint32_t n = drain_trace(m);
+            if (att == 15u) {
+                CHECK_EQ_U64(n, 0u);
+            } else if (n == 1u) {
+                CHECK_EQ_U64(log_record[0].tick, 100u);
+                CHECK_EQ_U64(log_record[0].source, ch);
+                CHECK_EQ_U64(log_record[0].level, out << 4 | att);
+            } else {
+                CHECK_EQ_U64(n, 1u);
+            }
+            uint32_t gained = out != 0u ? (law(att) * 840u + 2048u) / 4096u : 0u;
+            CHECK_EQ_U64(m->synth.gained[ch][0], gained);
+            if (ch < 3u) {
+                uint32_t peak = frame_peak(m);
+                CHECK(peak * 100u >= gained * 90u);
+                CHECK(peak * 100u <= gained * 109u);
+            }
+        }
+    }
+    cogmaster_destroy(m);
+}
+
+#define SHIFTS 20u
+
+/* Steps the chip from power-on one step at a time with noise control control
+   (and, for control 3, a tone 2 period of tone2) and notes the step each shift
+   happened at, and the register after it, for the first SHIFTS shifts. */
+static void run_noise(cogmaster *m, uint32_t control, uint32_t tone2, uint32_t steps[SHIFTS],
+                      uint16_t after[SHIFTS])
+{
+    power_on(m);
+    put_period(m, 0u, 2u, tone2);
+    put(m, 0u, latch(3u, 1u, 0u));
+    put(m, 0u, latch(3u, 0u, control));
+    CHECK_EQ_U64(m->psg.lfsr, 0x8000u);
+    uint32_t found = 0u;
+    uint16_t seen = m->psg.lfsr;
+    for (uint32_t k = 1u; found < SHIFTS && k < 20000u; k++) {
+        cogmaster__psg_catch_up(m, 48u * k);
+        if (m->psg.lfsr != seen) {
+            seen = m->psg.lfsr;
+            steps[found] = k;
+            after[found] = seen;
+            found++;
+        }
+    }
+    CHECK_EQ_U64(found, SHIFTS);
+}
+
+/* The shift register after n shifts from $8000. Shifted right, a 1 enters at
+   the top when the bit shifted out is 1 (periodic noise), or when bit 0 and bit
+   3 differ (white noise): so the lone bit walks down, and white noise first
+   differs when it reaches bit 3, at the 13th shift. */
+static uint16_t lfsr_after(uint32_t n, int white)
+{
+    if (n <= 12u) {
+        return (uint16_t)(0x8000u >> n);
+    }
+    if (!white) {
+        return (uint16_t)(0x8000u >> (n % 16u));
+    }
+    static const uint16_t tail[3] = {0x8004u, 0x4002u, 0x2001u};
+    return tail[n - 13u];
+}
+
+/* The eight noise controls: bits 1 and 0 pick the shift interval (32, 64 or 128
+   steps, or tone 2's rising edge) and bit 2 white or periodic feedback. The
+   first shift is on the first step; the register walks as lfsr_after says; the
+   noise channel's output is the bit shifted out, first high at the 16th shift.
+   With tone 2 as the clock, a period of 0 acts as 1. */
+static void check_noise(cogmaster *m, uint32_t control, uint32_t tone2)
+{
+    static uint32_t steps[SHIFTS];
+    static uint16_t after[SHIFTS];
+    uint32_t mode = control & 3u;
+    int white = (control & 4u) != 0u;
+    uint32_t interval = mode < 3u ? 32u << mode : 2u * (tone2 > 1u ? tone2 : 1u);
+    run_noise(m, control, tone2, steps, after);
+    uint32_t bad_step = 0u, bad_state = 0u;
+    for (uint32_t j = 0u; j < SHIFTS; j++) {
+        bad_step += steps[j] != 1u + j * interval;
+        bad_state += after[j] != lfsr_after(j + 1u, white) && j < (white ? 15u : SHIFTS);
+    }
+    CHECK_EQ_U64(bad_step, 0u);
+    CHECK_EQ_U64(bad_state, 0u);
+
+    power_on(m);
+    put_period(m, 0u, 2u, tone2);
+    put(m, 0u, latch(3u, 1u, 0u));
+    put(m, 0u, latch(3u, 0u, control));
+    (void)drain_trace(m);
+    cogmaster__psg_catch_up(m, 48u * (1u + 15u * interval));
+    uint32_t n = drain_trace(m);
+    uint32_t high = 0u;
+    for (uint32_t i = 0u; i < n; i++) {
+        if (log_record[i].source == 3u && log_record[i].level == 0x10u) {
+            high++;
+            CHECK_EQ_U64(log_record[i].tick, 48u * (1u + 15u * interval));
+        }
+    }
+    CHECK_EQ_U64(high, 1u);
+}
+
+static void test_noise_controls(void)
+{
+    cogmaster *m = export_sms();
+    for (uint32_t control = 0u; control < 8u; control++) {
+        if ((control & 3u) != 3u) {
+            check_noise(m, control, 0u);
+        } else {
+            static const uint16_t clock[] = {0u, 1u, 3u, 10u};
+            for (uint32_t i = 0u; i < sizeof clock / sizeof clock[0]; i++) {
+                check_noise(m, control, clock[i]);
+            }
+        }
+    }
+    cogmaster_destroy(m);
+}
+
+/* From $8000 the 16 bit register with taps on bits 0 and 3 comes back to
+   $8000 after exactly 57,337 shifts; periodic noise after 16. Tone 2 at period
+   0 clocks the noise every second step, which keeps the run short. */
+static uint32_t shifts_to_return(cogmaster *m, uint32_t control)
+{
+    power_on(m);
+    put(m, 0u, latch(3u, 0u, control));
+    uint32_t shifts = 0u;
+    uint16_t seen = m->psg.lfsr;
+    for (uint32_t k = 1u; k < 400000u; k++) {
+        cogmaster__psg_catch_up(m, 48u * k);
+        if (m->psg.lfsr != seen) {
+            seen = m->psg.lfsr;
+            shifts++;
+            if (seen == 0x8000u) {
+                return shifts;
+            }
+        }
+    }
+    return 0u;
+}
+
+static void test_lfsr_period(void)
+{
+    cogmaster *m = export_sms();
+    CHECK_EQ_U64(shifts_to_return(m, 7u), 57337u);
+    CHECK_EQ_U64(shifts_to_return(m, 3u), 16u);
+    cogmaster_destroy(m);
+}
+
+/* The write protocol (SMS-AUDIO section 2.1): a latch byte names a register and
+   gives four bits, a data byte after it goes to the same register, and the
+   latch stays put. */
+static void test_protocol(void)
+{
+    cogmaster *m = export_sms();
+    power_on(m);
+    /* Power-on latches register 3, the volume of channel 1. */
+    put(m, 0u, 0x05u);
+    CHECK_EQ_U64(m->psg.att[1], 5u);
+
+    /* A tone: the latch byte holds the low four bits, a data byte the high six,
+       and a second data byte changes the high bits only. */
+    put(m, 0u, 0x8Eu);
+    CHECK_EQ_U64(m->psg.period[0], 0x0Eu);
+    put(m, 0u, 0x0Fu);
+    CHECK_EQ_U64(m->psg.period[0], 0xFEu);
+    put(m, 0u, 0x01u);
+    CHECK_EQ_U64(m->psg.period[0], 0x1Eu);
+    put(m, 0u, 0x3Fu);
+    CHECK_EQ_U64(m->psg.period[0], 0x3FEu);
+    put(m, 0u, 0x8Au);
+    CHECK_EQ_U64(m->psg.period[0], 0x3FAu);
+
+    /* A volume: a data byte after the volume latch rewrites the volume, from its
+       low four bits, and the latch persists. */
+    put(m, 0u, 0x95u);
+    CHECK_EQ_U64(m->psg.att[0], 5u);
+    put(m, 0u, 0x03u);
+    CHECK_EQ_U64(m->psg.att[0], 3u);
+    put(m, 0u, 0x3Fu);
+    CHECK_EQ_U64(m->psg.att[0], 15u);
+    put(m, 0u, 0x02u);
+    CHECK_EQ_U64(m->psg.att[0], 2u);
+    CHECK_EQ_U64(m->psg.period[0], 0x3FAu);
+
+    /* Another latch moves the target; the tone period of channel 2 and the
+       attenuation of channel 3 are reached the same way. */
+    put(m, 0u, latch(2u, 0u, 9u));
+    put(m, 0u, 0x12u);
+    CHECK_EQ_U64(m->psg.period[2], 0x129u);
+    put(m, 0u, latch(3u, 1u, 7u));
+    put(m, 0u, 0x0Cu);
+    CHECK_EQ_U64(m->psg.att[3], 12u);
+    CHECK_EQ_U64(m->psg.period[2], 0x129u);
+    CHECK_EQ_U64(m->psg.att[0], 2u);
+
+    /* The noise control, by latch byte or by data byte, resets the shift
+       register to $8000; a noise volume write does not. Three bits are kept. */
+    put(m, 0u, latch(3u, 0u, 6u));
+    CHECK_EQ_U64(m->psg.noise, 6u);
+    cogmaster__psg_catch_up(m, 48u * 40u);
+    CHECK(m->psg.lfsr != 0x8000u);
+    put(m, 48u * 40u, 0x7Cu);
+    CHECK_EQ_U64(m->psg.noise, 4u);
+    CHECK_EQ_U64(m->psg.lfsr, 0x8000u);
+    cogmaster__psg_catch_up(m, 48u * 120u);
+    CHECK(m->psg.lfsr != 0x8000u);
+    uint16_t dirty = m->psg.lfsr;
+    put(m, 48u * 120u, latch(3u, 1u, 2u));
+    CHECK_EQ_U64(m->psg.lfsr, dirty);
+    put(m, 48u * 120u, latch(3u, 0u, 1u));
+    CHECK_EQ_U64(m->psg.lfsr, 0x8000u);
+    CHECK_EQ_U64(m->psg.noise, 1u);
+    cogmaster_destroy(m);
+}
+
+/* A write stamped exactly on a step tick is applied after that step; one tick
+   earlier it is applied before. The tone's counter shows which: the step at 48
+   reloads it from the period it finds, and the records show the order. */
+static void test_tie_rule(void)
+{
+    cogmaster *m = export_sms();
+    power_on(m);
+    put_period(m, 10u, 0u, 2u);
+    put(m, 10u, latch(0u, 1u, 0u));
+    (void)drain_trace(m);
+    put(m, 48u, latch(0u, 1u, 5u));
+    CHECK_EQ_U64(m->psg.at, 48u);
+    uint32_t n = drain_trace(m);
+    CHECK_EQ_U64(n, 2u);
+    if (n == 2u) {
+        /* The step's toggle, then the write. */
+        CHECK_EQ_U64(log_record[0].tick, 48u);
+        CHECK_EQ_U64(log_record[0].level, 0x10u);
+        CHECK_EQ_U64(log_record[1].tick, 48u);
+        CHECK_EQ_U64(log_record[1].level, 0x15u);
+    }
+
+    /* The period written at 48 met a step that had already reloaded from the
+       old period 0; one tick earlier it is the new one that is reloaded. */
+    power_on(m);
+    put(m, 48u, latch(0u, 0u, 5u));
+    CHECK_EQ_U64(m->psg.at, 48u);
+    CHECK_EQ_U64(m->psg.counter[0], 0u);
+    power_on(m);
+    put(m, 47u, latch(0u, 0u, 5u));
+    CHECK_EQ_U64(m->psg.at, 0u);
+    cogmaster__psg_catch_up(m, 48u);
+    CHECK_EQ_U64(m->psg.counter[0], 5u);
+    cogmaster_destroy(m);
+}
+
+/* Two instances written the same way. */
+static cogmaster *configured(void)
+{
+    cogmaster *m = export_sms();
+    put_period(m, 1000u, 0u, 5u);
+    put(m, 1000u, latch(0u, 1u, 0u));
+    put_period(m, 1100u, 1u, 7u);
+    put(m, 1100u, latch(1u, 1u, 3u));
+    put(m, 1200u, latch(3u, 1u, 0u));
+    put(m, 1200u, latch(3u, 0u, 5u));
+    return m;
+}
+
+/* The frame end runs the chip to the frame's deadline, inclusive: after the
+   second frame, whose deadline 358,416 is 7,467 steps, the last step is at the
+   deadline, and no step is taken past it. An empty frame leaves no record of a
+   tone channel (periods 0 and 1 are silent). Catching up in one call or in many
+   gives the same chip and the same records, and a frame's records are those of
+   catching the chip up to its deadline by hand. */
+static void test_frame_flush(void)
+{
+    cogmaster *m = export_sms();
+    (void)drain_trace(m);
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    uint32_t n = drain_trace(m);
+    for (uint32_t i = 0u; i < n; i++) {
+        CHECK(log_record[i].source >= 3u);
+    }
+    CHECK_EQ_U64(m->synth.stats.psg_steps, 3733u);
+    CHECK_EQ_U64(m->psg.at, 3733u * 48u);
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(m->synth.stats.psg_steps, 7467u);
+    CHECK_EQ_U64(m->psg.at, 358416u);
+    CHECK_EQ_U64(m->bus.deadline, 3u * 179208u);
+    cogmaster_destroy(m);
+
+    cogmaster *one = configured();
+    cogmaster *many = configured();
+    (void)drain_trace(one);
+    (void)drain_trace(many);
+    cogmaster__psg_catch_up(one, 60000u);
+    uint64_t t = 1200u;
+    uint32_t lcg = 12345u;
+    while (t < 60000u) {
+        lcg = lcg * 1103515245u + 12345u;
+        t += 1u + (lcg >> 16) % 200u;
+        cogmaster__psg_catch_up(many, t < 60000u ? t : 60000u);
+    }
+    static cogmaster_audio_record first[TRACE];
+    uint32_t ra = drain_trace(one);
+    memcpy(first, log_record, (size_t)ra * sizeof first[0]);
+    uint32_t rb = drain_trace(many);
+    CHECK(ra > 300u);
+    CHECK_EQ_U64(ra, rb);
+    CHECK(memcmp(first, log_record, (size_t)ra * sizeof first[0]) == 0);
+    CHECK(memcmp(&one->psg, &many->psg, sizeof one->psg) == 0);
+    cogmaster_destroy(one);
+    cogmaster_destroy(many);
+
+    /* A frame run through the bus, and the same writes and a catch-up by hand. */
+    cogmaster *bus = export_sms();
+    cogmaster *hand = export_sms();
+    (void)drain_trace(bus);
+    (void)drain_trace(hand);
+    static const struct {
+        uint64_t tick;
+        uint8_t v;
+    } writes[] = {{1000u, 0x85u},  {1003u, 0x00u},  {1006u, 0x90u},  {50000u, 0xA3u},
+                  {50003u, 0x00u}, {50006u, 0xB1u}, {90000u, 0xE5u}, {90003u, 0xF0u}};
+    for (size_t i = 0u; i < sizeof writes / sizeof writes[0]; i++) {
+        out_at(bus, writes[i].tick, 0x7Fu, writes[i].v);
+        put(hand, writes[i].tick, writes[i].v);
+    }
+    CHECK_EQ_U64(cogmaster_run_frame(bus, NULL), COGMASTER_STATUS_OK);
+    cogmaster__psg_catch_up(hand, 179208u);
+    ra = drain_trace(bus);
+    memcpy(first, log_record, (size_t)ra * sizeof first[0]);
+    rb = drain_trace(hand);
+    CHECK(ra > 300u);
+    CHECK_EQ_U64(ra, rb);
+    CHECK(memcmp(first, log_record, (size_t)ra * sizeof first[0]) == 0);
+    CHECK(memcmp(&bus->psg, &hand->psg, sizeof bus->psg) == 0);
+    cogmaster_destroy(bus);
+    cogmaster_destroy(hand);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
@@ -497,6 +957,13 @@ static const struct {
     {"snapshot", test_snapshot},
     {"reset_soft", test_reset_soft},
     {"state_continue", test_state_continue},
+    {"periods", test_periods},
+    {"volumes", test_volumes},
+    {"noise_controls", test_noise_controls},
+    {"lfsr_period", test_lfsr_period},
+    {"protocol", test_protocol},
+    {"tie_rule", test_tie_rule},
+    {"frame_flush", test_frame_flush},
 };
 
 int main(int argc, char **argv)

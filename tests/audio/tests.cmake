@@ -31,9 +31,14 @@ set_target_properties(cogmaster-test-psg PROPERTIES
 cogmaster_warnings(cogmaster-test-psg)
 
 # Fault prevented: a Z80 write to the sound port that never reaches the chip, a chip that
-# runs off the tick grid or lags its writes, or a level that is not heard in the stream.
-foreach(case IN ITEMS through_bus snapshot reset_soft state_continue)
-  # Timeout: 10 s floor; 0.01 s local run, no hosted run yet, so provisional.
+# runs off the tick grid or lags its writes, a period, volume or noise setting that differs
+# from its closed form, a reset or a loaded state that leaves the chip and the synthesiser
+# disagreeing, or a level that is not heard in the stream.
+foreach(case IN ITEMS through_bus snapshot reset_soft state_continue periods volumes
+                  noise_controls lfsr_period protocol tie_rule frame_flush)
+  # Timeout: 10 s floor; 0.08 s slowest local run (psg.state_continue), no hosted run yet, so
+  # provisional. The be32 and wasm32 legs were not run locally; their 8 and 5 times scales
+  # leave 80 s and 50 s.
   cogmaster_add_test(NAME psg.${case} COMMAND cogmaster-test-psg ${case}
     LABELS psg portable TIMEOUT 10)
 endforeach()

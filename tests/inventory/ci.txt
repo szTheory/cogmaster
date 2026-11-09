@@ -199,10 +199,17 @@ policy.e2e_budget.shared_helper	hygiene,policy
 policy.no_skip	policy
 policy.no_skip.self_test	policy
 policy.notices	policy
+psg.frame_flush	portable,psg
+psg.lfsr_period	portable,psg
+psg.noise_controls	portable,psg
+psg.periods	portable,psg
+psg.protocol	portable,psg
 psg.reset_soft	portable,psg
 psg.snapshot	portable,psg
 psg.state_continue	portable,psg
 psg.through_bus	portable,psg
+psg.tie_rule	portable,psg
+psg.volumes	portable,psg
 release.archive_contents	release
 release.archive_contents.self_test	release
 release.floor	release
