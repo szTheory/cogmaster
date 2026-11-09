@@ -1,0 +1,4 @@
+audio-transitions psg_sweep.sms sms ntsc-u baseline 300 count 61340 sha256 d195b6d2e1de6850d92cb18b027d72af0f6017eb308bac917f9e8588060f6071
+audio-transitions psg_sweep.sms sms pal baseline 300 count 72878 sha256 7f0dec6a7065d9f3fc4b37f88480d32b470495b2db926111112cfb464929a064
+audio-transitions psg_sweep.sms gg-sms ntsc-u baseline 300 count 61340 sha256 d195b6d2e1de6850d92cb18b027d72af0f6017eb308bac917f9e8588060f6071
+audio-transitions psg_sweep.gg native ntsc-u baseline 300 count 61352 sha256 c5d63619dee6cc01ddde2cd8a99296c5a6d84e6a283da7bd02b3ddcf3ff5be87

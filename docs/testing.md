@@ -130,6 +130,22 @@ differs. The fixed count means a lane that stops uploading fails the job instead
 seven files are the six `build` legs and `be32`. wasm32 compares its own file with Linux x64's and only reports;
 once it is promoted, the count becomes eight.
 
+The file also carries the sound rows: 300 frames of `cogmaster-run --hash-audio` over `psg_sweep.sms` (Master System
+on NTSC and PAL, and the Game Gear in Master System mode) and `psg_sweep.gg` (native). Each `audio-transitions` and
+`audio-pcm` line is tagged `<file> <profile> <region> baseline` after its keyword. `tests/audio/transitions.txt` and
+`tests/audio/pcm.txt` freeze those lines; `runner.hashes_file` requires the rows to equal them and names the first
+line that differs, and `runner.hash_audio` requires its own `psg_sweep.sms` lines to be among them. After an
+intended change, regenerate them from a clean `ci` build:
+
+```sh
+grep '^audio-transitions' build/ci/hashes.txt > tests/audio/transitions.txt
+grep '^audio-pcm' build/ci/hashes.txt > tests/audio/pcm.txt
+```
+
+The transitions hash covers every sound-chip output change in order, so it proves the emulated behaviour; the PCM
+hash covers the samples after synthesis, so it also proves the mix. A mix retune changes only `pcm.txt`; a change
+to `transitions.txt` means the emulated behaviour moved.
+
 `ctest --preset ci -R <regex>` reruns part of the suite after a build; `ctest --test-dir build/ci -L <label>`
 selects by label.
 
@@ -407,6 +423,8 @@ it supplies no input. It is never installed or packaged. The production module s
 `libretro.host.content` and `libretro.host.replay` run the same callback/pixel sequence against both modules.
 The portable screenshot tests prove matching pixels pass, equal images with wrong scroll fail, and a changed
 pixel fails. The replay layout was measured from the released 1.22.2 binary; no emulator source was read.
+The hosted Game Gear case holds Start on frames 5, 6 and 8 and compares the native 160×144 crop at field
+origin (48,24) with the shared coordinate oracle.
 
 **Rerunning it.** Rerun the job from the run page, or `gh run rerun <run-id> --failed`. On a Mac with a desktop
 session the same steps run locally from the job's commands, with `-DRETROARCH` pointing at an installed
@@ -428,8 +446,7 @@ forms, optional final newline, missing/surplus records and invalid fields.
 each frame, reconstructs every callback pixel as RGB444 and checks each coordinate
 from frame 4 against the independent oracle. Its final digest equals the runner's.
 It also checks descriptor and pad/none claims, disconnected pads and missing input
-callbacks. Existing no-content SMS/GG, RGB565, single-sample and batch silence tests
-remain registered. This is in-process integration evidence; the real RetroArch job
+callbacks. This is in-process integration evidence; the real RetroArch job
 described above remains the separate frontend check.
 
 ## Release archives
@@ -495,15 +512,6 @@ apart from the host's: `docker run --rm -v "$PWD:/src" -v /src/build -w /src ubu
 anything else happens; only then does it unpack an archive into `DEST` or copy the file there. `policy.pins`
 requires four fields per row, a unique name, an `https://` URL and a 64-digit digest. Packages installed with apt
 stay unpinned: they are signed, and drift fails loudly as a build failure or a hash change.
-
-The hosted Game Gear case uses the same driver and owned fixture schedule, with
-Start held on frames 5, 6 and 8. It compares both baseline and input screenshots
-with the runner native 160×144 crop and the shared coordinate oracle at field
-origin (48,24), retaining SMS input/scroll, no-content and one-pixel controls.
-Only owned fixture screenshots are uploaded. The implementation commit is pushed
-before dispatching CI; accepted evidence is a successful workflow_dispatch run for
-that exact SHA, with all four named RetroArch screenshot/control steps successful.
-The hosted helper budget includes the shared oracle.
 
 The in-process presentation cases exercise RGB565 and XRGB8888, all active heights,
 native GG and SMS compatibility, default and square pixels, full field, rejected

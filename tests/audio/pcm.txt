@@ -1,0 +1,4 @@
+audio-pcm psg_sweep.sms sms ntsc-u baseline 300 rate 48000 channels 1 samples 240309 peak 7222 clipped 0 sha256 f4f9d228dd87016993d30471afa6461e5c3b8cf239d10b98cd637a2b4f49404f
+audio-pcm psg_sweep.sms sms pal baseline 300 rate 48000 channels 1 samples 289729 peak 7181 clipped 0 sha256 e0429c44e404af0024452e344644031f39ab67535495b23aa0fd6543acf0fb5b
+audio-pcm psg_sweep.sms gg-sms ntsc-u baseline 300 rate 48000 channels 2 samples 240309 peak 7222 clipped 0 sha256 cc14be28b5bf5c39146345e620a807f054bdf2e6d67dd27e06343f1db56aa189
+audio-pcm psg_sweep.gg native ntsc-u baseline 300 rate 48000 channels 2 samples 240309 peak 7688 clipped 0 sha256 3dc0263ed0ef5e6a0221bc0609d1583a3d784fa6bcf59737fbbe22e336e583f1

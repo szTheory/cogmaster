@@ -81,6 +81,24 @@ if(CMAKE_SCRIPT_MODE_FILE)
         message(FATAL_ERROR "playing matrix missing ${row}")
       endif()
     endforeach()
+    # The sound rows equal the frozen pins, line for line; the first line that differs is named.
+    foreach(kind IN ITEMS transitions pcm)
+      file(STRINGS "${OUT}/hashes.txt" got REGEX "^audio-${kind} ")
+      file(STRINGS "${PINS}/${kind}.txt" want)
+      list(LENGTH got got_n)
+      list(LENGTH want want_n)
+      if(want_n EQUAL 0 OR NOT got_n EQUAL want_n)
+        message(FATAL_ERROR "audio-${kind}: ${got_n} lines against ${want_n} in ${PINS}/${kind}.txt")
+      endif()
+      math(EXPR last "${got_n} - 1")
+      foreach(i RANGE ${last})
+        list(GET got ${i} got_line)
+        list(GET want ${i} want_line)
+        if(NOT got_line STREQUAL want_line)
+          message(FATAL_ERROR "audio-${kind} line ${i} differs from ${PINS}/${kind}.txt:\n  got  ${got_line}\n  want ${want_line}")
+        endif()
+      endforeach()
+    endforeach()
     file(MAKE_DIRECTORY "${OUT}/card-only")
     execute_process(COMMAND ${CMAKE_COMMAND} -DMODE=write -DRUN=${RUN}
       "-DEMULATOR=${EMULATOR}" -DOUT=${OUT}/card-only -DFIXTURES= -P ${HASHES}
@@ -574,6 +592,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
       endif()
       set(channels ${CMAKE_MATCH_2} PARENT_SCOPE)
       set(peak ${CMAKE_MATCH_4} PARENT_SCOPE)
+      set(sound "${out1}" PARENT_SCOPE)
     endfunction()
 
     # The card is silent: one channel on the Master System, two on the Game Gear, no peak.
@@ -590,6 +609,16 @@ if(CMAKE_SCRIPT_MODE_FILE)
       if(NOT channels STREQUAL "1" OR peak LESS 1 OR peak GREATER 29204)
         message(FATAL_ERROR "--hash-audio ${IMAGE}: channels ${channels} peak ${peak}, want 1 to 29204")
       endif()
+      # The run's own lines, tagged as hashes.txt tags them, are lines of the frozen pins.
+      foreach(kind IN ITEMS transitions pcm)
+        file(READ "${PINS}/${kind}.txt" pins)
+        string(REGEX MATCH "(^|\n)audio-${kind} ([0-9]+ [^\n]*)\n" run_line "${sound}")
+        set(want_line "\naudio-${kind} psg_sweep.sms sms ntsc-u baseline ${CMAKE_MATCH_2}\n")
+        string(FIND "\n${pins}" "${want_line}" at)
+        if(at EQUAL -1)
+          message(FATAL_ERROR "--hash-audio ${IMAGE}: the ${kind} line is not in ${PINS}/${kind}.txt:\n${run_line}")
+        endif()
+      endforeach()
     endif()
 
     # A runner built to offer the core 800 samples a frame meets a frame of 801
@@ -683,10 +712,13 @@ set(runner_fixtures "")
 if(COGMASTER_FIXTURES)
   set(runner_fixtures -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures)
 endif()
+# Timeout: 30 s floor; 2 x 2.3 s, slowest of 5 local runs with the sound rows (1.2 s alone to 2.3 s
+# inside the parallel ci workflow), no hosted run yet, so provisional until the be32 (x8) and wasm32 (x5) timings of the first hosted run are read.
 cogmaster_add_test(NAME runner.hashes_file
   COMMAND ${CMAKE_COMMAND} -DCASE=hash_matrix -DRUN=$<TARGET_FILE:cogmaster-run>
     "-DEMULATOR=${runner_emulator}" -DOUT=${PROJECT_BINARY_DIR} ${runner_fixtures}
-    -DHASHES=${runner_hashes} -P ${CMAKE_CURRENT_LIST_FILE}
+    -DHASHES=${runner_hashes} -DPINS=${PROJECT_SOURCE_DIR}/tests/audio
+    -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS runner portable TIMEOUT 30)
 
 # Fault prevented: a comparison that passes lanes which differ, or a lane
@@ -981,7 +1013,7 @@ if(COGMASTER_FIXTURES)
 endif()
 cogmaster_add_test(NAME runner.hash_audio
   COMMAND ${runner_check} -DCASE=hash_audio -DSHORT=$<TARGET_FILE:cogmaster-test-run-audio-short>
-    ${hash_audio_image} -P ${CMAKE_CURRENT_LIST_FILE}
+    ${hash_audio_image} -DPINS=${PROJECT_SOURCE_DIR}/tests/audio -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS portable psg runner TIMEOUT 30)
 
 # Fault prevented: --version printing something a script cannot parse.

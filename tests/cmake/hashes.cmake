@@ -84,6 +84,31 @@ if(MODE STREQUAL "write")
         endforeach()
       endif()
     endforeach()
+    # Fault prevented: a sound that differs between lanes. The sound fixture's
+    # two hash lines, each tagged "<file> <profile> <region> <variant>" after
+    # the keyword, for the Master System image on both machines and both TV
+    # standards and for the native Game Gear image. tests/audio/ pins them.
+    foreach(row IN ITEMS "psg_sweep.sms|sms|sms|sms|ntsc-u" "psg_sweep.sms|sms|sms|sms|pal"
+        "psg_sweep.sms|gg-sms|gg|sms|ntsc-u" "psg_sweep.gg|native|gg|gg|ntsc-u")
+      string(REPLACE "|" ";" row "${row}")
+      list(GET row 0 filename)
+      list(GET row 1 profile)
+      list(GET row 2 machine)
+      list(GET row 3 video)
+      list(GET row 4 region)
+      execute_process(COMMAND ${EMULATOR} "${RUN}" "${FIXTURES}/${filename}" --machine ${machine}
+        --video-mode ${video} --region ${region} --frames 300 --hash-audio
+        OUTPUT_VARIABLE sound ERROR_VARIABLE err RESULT_VARIABLE rc)
+      if(NOT rc STREQUAL "0")
+        message(FATAL_ERROR "sound ${filename}/${profile}/${region}: exit ${rc}: ${sound}${err}")
+      endif()
+      string(REPLACE "\n" ";" sound "${sound}")
+      foreach(line IN LISTS sound)
+        if(line MATCHES "^audio-(transitions|pcm) (.*)$")
+          string(APPEND lines "audio-${CMAKE_MATCH_1} ${filename} ${profile} ${region} baseline ${CMAKE_MATCH_2}\n")
+        endif()
+      endforeach()
+    endforeach()
   endif()
   # Unix newlines on every host: file(WRITE) writes CRLF on Windows.
   file(CONFIGURE OUTPUT "${OUT}/hashes.txt" NEWLINE_STYLE UNIX CONTENT "${lines}")
