@@ -28,7 +28,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: A test frame in RetroArch** - The library, runner and libretro core deliver a hashed test card on every platform, installed into RetroArch by the README line, released by merging (completed 2026-10-19)
 - [x] **Phase 2: The CPU matches the public vectors** - An own Z80 matches SingleStepTests on every cycle, with the tick-lattice bus, the Sega and Codemasters mappers, ports, Pause and the first-fault trace (completed 2026-10-20)
 - [x] **Phase 3: Games play in RetroArch** - VDP mode 4, the Game Gear window, two pads, regions and battery saves make fixtures playable on both machines, with the ledger ratcheting (completed 2026-10-20)
-- [ ] **Phase 4: Sound** - The PSG with Game Gear stereo and the YM2413 play through the runner and RetroArch with transition and PCM hashes identical on every platform
+- [x] **Phase 4: Sound** - The PSG with Game Gear stereo and the YM2413 play through the runner and RetroArch with transition and PCM hashes identical on every platform (completed 2026-11-09)
 
 ## Phase Details
 
@@ -212,7 +212,7 @@ Plans:
   4. A test shows the libretro batch and single-sample audio paths deliver PCM equal to the runner's (stereo on GG, duplicated mono on SMS), and the hosted RetroArch session's recording is non-silent (SND-04).
   5. A test renders reference tones through the synthesiser and shows the largest non-harmonic peak below 16 kHz under −80 dB, and synthesis cost per output sample stays bounded under a register-hammering fixture (SND-05).
 
-**Plans**: 15/15 plans executed, one sequential chain (waves 1–15; `parallelization` is off, and most adjacent plans share the test inventories, `tests/audio/tests.cmake`, the pin files or a source file, so the order is kept even where a pair shares none)
+**Plans**: 15/15 plans complete, one sequential chain (waves 1–15; `parallelization` is off, and most adjacent plans share the test inventories, `tests/audio/tests.cmake`, the pin files or a source file, so the order is kept even where a pair shares none)
 
 Plans:
 **Wave 1**
@@ -273,4 +273,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. A test frame in RetroArch | 12/12 | Complete    | 2026-10-19 |
 | 2. The CPU matches the public vectors | 17/17 | Complete    | 2026-10-20 |
 | 3. Games play in RetroArch | 18/18 | Complete    | 2026-10-20 |
-| 4. Sound | 15/15 | In Progress | - |
+| 4. Sound | 15/15 | Complete    | 2026-11-09 |
