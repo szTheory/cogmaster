@@ -283,6 +283,21 @@ static cogmaster_status drain_log(cogmaster *m, cogmaster_audio_trace *t, uint32
     return cogmaster_get_audio_trace(m, t);
 }
 
+/* A load and each reset leave the sound chips' snapshot in the log: one
+   record per PSG source at tick 0, nothing else (the appends before it are
+   gone, and nothing was lost). */
+static void expect_snapshot_only(cogmaster *m)
+{
+    cogmaster_audio_trace t;
+    CHECK_EQ_U64(drain_log(m, &t, 8u), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(t.written, 4u);
+    CHECK_EQ_U64(t.dropped, 0u);
+    for (uint32_t i = 0u; i < 4u; i++) {
+        CHECK_EQ_U64(log_record[i].tick, 0u);
+        CHECK_EQ_U64(log_record[i].source, i);
+    }
+}
+
 static void append(cogmaster *m, uint32_t first, uint32_t count)
 {
     for (uint32_t i = first; i < first + count; i++) {
@@ -332,6 +347,7 @@ static void drain_trace(void)
     unsigned after_load = allocations;
     CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
     CHECK_EQ_U64(allocations, after_load);
+    expect_snapshot_only(m);
 
     /* Overflow: six appends into four slots keep the first four in order and
        count two dropped. */
@@ -367,16 +383,15 @@ static void drain_trace(void)
     CHECK_EQ_U64(drain_log(m, &t, 8u), COGMASTER_STATUS_OK);
     CHECK_EQ_U64(t.written + t.dropped, 0u);
 
-    /* A load and both resets empty the log and its drop count. */
+    /* A load and both resets empty the log and its drop count, then leave
+       the snapshot. */
     append(m, 0u, 6u);
     CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
-    CHECK_EQ_U64(drain_log(m, &t, 8u), COGMASTER_STATUS_OK);
-    CHECK_EQ_U64(t.written + t.dropped, 0u);
+    expect_snapshot_only(m);
     for (uint32_t kind = COGMASTER_RESET_SOFT; kind <= COGMASTER_RESET_POWER; kind++) {
         append(m, 0u, 6u);
         CHECK_EQ_U64(cogmaster_reset(m, kind), COGMASTER_STATUS_OK);
-        CHECK_EQ_U64(drain_log(m, &t, 8u), COGMASTER_STATUS_OK);
-        CHECK_EQ_U64(t.written + t.dropped, 0u);
+        expect_snapshot_only(m);
     }
 
     /* The checks every call makes. */

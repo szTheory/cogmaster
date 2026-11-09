@@ -199,6 +199,9 @@ policy.e2e_budget.shared_helper	hygiene,policy
 policy.no_skip	policy
 policy.no_skip.self_test	policy
 policy.notices	policy
+psg.reset_soft	portable,psg
+psg.snapshot	portable,psg
+psg.state_continue	portable,psg
 psg.through_bus	portable,psg
 release.archive_contents	release
 release.archive_contents.self_test	release

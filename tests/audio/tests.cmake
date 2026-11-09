@@ -32,7 +32,7 @@ cogmaster_warnings(cogmaster-test-psg)
 
 # Fault prevented: a Z80 write to the sound port that never reaches the chip, a chip that
 # runs off the tick grid or lags its writes, or a level that is not heard in the stream.
-foreach(case IN ITEMS through_bus)
+foreach(case IN ITEMS through_bus snapshot reset_soft state_continue)
   # Timeout: 10 s floor; 0.01 s local run, no hosted run yet, so provisional.
   cogmaster_add_test(NAME psg.${case} COMMAND cogmaster-test-psg ${case}
     LABELS psg portable TIMEOUT 10)
