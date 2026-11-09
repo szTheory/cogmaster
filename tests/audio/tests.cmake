@@ -42,3 +42,14 @@ foreach(case IN ITEMS through_bus snapshot reset_soft state_continue periods vol
   cogmaster_add_test(NAME psg.${case} COMMAND cogmaster-test-psg ${case}
     LABELS psg portable TIMEOUT 10)
 endforeach()
+
+# Fault prevented: a Game Gear stereo mask that sends a channel to the wrong output or to
+# neither, a write to the register that leaves the chip behind it or the log without its
+# record, or a Game Gear console in Master System video mode that lets the port split the
+# outputs.
+foreach(case IN ITEMS routing port06_sms_mode)
+  # Timeout: 10 s floor; the slowest local run is under 0.1 s, no hosted run yet, so
+  # provisional. be32 and wasm32 scales leave 80 s and 50 s.
+  cogmaster_add_test(NAME psg.gg.${case} COMMAND cogmaster-test-psg gg_${case}
+    LABELS psg portable TIMEOUT 10)
+endforeach()

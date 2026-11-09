@@ -949,6 +949,139 @@ static void test_frame_flush(void)
     cogmaster_destroy(hand);
 }
 
+/* Runs one frame of a stereo instance and returns the largest sample magnitude
+   of each output, left then right, and how many sample frames have the two
+   outputs different. */
+static uint32_t stereo_frame(cogmaster *m, uint32_t peak[2])
+{
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    cogmaster_audio a;
+    memset(&a, 0, sizeof a);
+    a.size = (uint32_t)sizeof a;
+    a.samples = pcm;
+    a.capacity = COGMASTER__AUDIO_MAX_FRAMES;
+    CHECK_EQ_U64(cogmaster_get_audio(m, &a), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(a.channels, 2u);
+    uint32_t apart = 0u;
+    peak[0] = 0u;
+    peak[1] = 0u;
+    for (uint32_t i = 0u; i < a.written; i++) {
+        for (uint32_t ch = 0u; ch < 2u; ch++) {
+            int32_t v = pcm[i * 2u + ch];
+            uint32_t mag = (uint32_t)(v < 0 ? -v : v);
+            peak[ch] = mag > peak[ch] ? mag : peak[ch];
+        }
+        apart += pcm[i * 2u] != pcm[i * 2u + 1u];
+    }
+    return apart;
+}
+
+/* PSG channel ch at full volume and sounding at once: a tone at period 1 holds
+   its output high, so volume alone makes a step; the noise channel at control 0
+   raises its output at the 16th shift, 24,576 ticks in, well inside a frame. */
+static void sound_channel(cogmaster *m, uint64_t tick, uint32_t ch)
+{
+    if (ch < 3u) {
+        out_at(m, tick, 0x7Fu, (uint8_t)(0x81u | (ch << 5)));
+        out_at(m, tick + 3u, 0x7Fu, 0x00u);
+    } else {
+        out_at(m, tick, 0x7Fu, 0xE0u);
+    }
+    out_at(m, tick + 6u, 0x7Fu, (uint8_t)(0x90u | (ch << 5)));
+}
+
+/* The Game Gear's $06 in native mode: bit n + 4 sends channel n to the left
+   and bit n to the right. The write catches the chip up and leaves one record
+   for source 4 at its own tick. $FF, $0F, $F0 and $00 sound both outputs, the
+   right one, the left one and neither; each of the eight bits alone sounds
+   exactly the output it names for exactly the channel it names. */
+static void test_gg_routing(void)
+{
+    static const struct {
+        uint8_t mask;
+        uint32_t left, right;
+    } whole[] = {{0xFFu, 1u, 1u}, {0x0Fu, 0u, 1u}, {0xF0u, 1u, 0u}, {0x00u, 0u, 0u}};
+    for (size_t k = 0u; k < sizeof whole / sizeof whole[0]; k++) {
+        cogmaster *m = make(COGMASTER_MACHINE_GG, COGMASTER_REGION_EXPORT, COGMASTER_VIDEO_GG);
+        (void)drain_trace(m);
+        out_at(m, 1000u, 0x06u, whole[k].mask);
+        CHECK_EQ_HEX(m->io.gg[5], whole[k].mask);
+        /* The chip was caught up to the write, and the record is the mask. */
+        CHECK_EQ_U64(m->psg.at, 1000u / STEP * STEP);
+        uint32_t n = drain_trace(m);
+        uint32_t source4 = 0u;
+        for (uint32_t i = 0u; i < n; i++) {
+            source4 += log_record[i].source == 4u;
+        }
+        CHECK_EQ_U64(source4, 1u);
+        CHECK(n >= 1u);
+        if (n >= 1u) {
+            CHECK_EQ_U64(log_record[n - 1u].source, 4u);
+            CHECK_EQ_U64(log_record[n - 1u].tick, 1000u);
+            CHECK_EQ_HEX(log_record[n - 1u].level, whole[k].mask);
+        }
+        sound_channel(m, 2000u, 0u);
+        uint32_t peak[2];
+        (void)stereo_frame(m, peak);
+        CHECK_EQ_U64(peak[0] > 1000u, whole[k].left);
+        CHECK_EQ_U64(peak[1] > 1000u, whole[k].right);
+        CHECK(whole[k].left != 0u || peak[0] == 0u);
+        CHECK(whole[k].right != 0u || peak[1] == 0u);
+        cogmaster_destroy(m);
+    }
+    for (uint32_t bit = 0u; bit < 8u; bit++) {
+        cogmaster *m = make(COGMASTER_MACHINE_GG, COGMASTER_REGION_EXPORT, COGMASTER_VIDEO_GG);
+        out_at(m, 1000u, 0x06u, (uint8_t)(1u << bit));
+        sound_channel(m, 2000u, bit & 3u);
+        uint32_t peak[2];
+        (void)stereo_frame(m, peak);
+        uint32_t side = bit >= 4u ? 0u : 1u;
+        CHECK(peak[side] > 1000u);
+        CHECK_EQ_U64(peak[1u - side], 0u);
+        /* The other three channels are routed nowhere by this mask. */
+        for (uint32_t ch = 0u; ch < 4u; ch++) {
+            if (ch != (bit & 3u)) {
+                sound_channel(m, m->ticks + 1000u, ch);
+            }
+        }
+        (void)stereo_frame(m, peak);
+        CHECK_EQ_U64(peak[1u - side], 0u);
+        cogmaster_destroy(m);
+    }
+}
+
+/* In Master System video mode a Game Gear does not decode $06: the write
+   records no source 4, leaves the mask at its power-on value, and every sample
+   of the two outputs is the same, as when the mask is $FF. */
+static void test_gg_port06_sms_mode(void)
+{
+    cogmaster *m = make(COGMASTER_MACHINE_GG, COGMASTER_REGION_EXPORT, COGMASTER_VIDEO_SMS);
+    (void)drain_trace(m);
+    out_at(m, 1000u, 0x06u, 0xF0u);
+    CHECK_EQ_U64(drain_trace(m), 0u);
+    CHECK_EQ_HEX(m->io.gg[5], 0xFF);
+    sound_channel(m, 2000u, 0u);
+    uint32_t peak[2];
+    uint32_t apart = stereo_frame(m, peak);
+    CHECK(peak[0] > 1000u);
+    CHECK_EQ_U64(peak[0], peak[1]);
+    CHECK_EQ_U64(apart, 0u);
+    uint32_t n = drain_trace(m);
+    for (uint32_t i = 0u; i < n; i++) {
+        CHECK(log_record[i].source < 4u);
+    }
+    cogmaster_destroy(m);
+
+    /* The control: the same writes in native mode split the two outputs. */
+    m = make(COGMASTER_MACHINE_GG, COGMASTER_REGION_EXPORT, COGMASTER_VIDEO_GG);
+    out_at(m, 1000u, 0x06u, 0xF0u);
+    sound_channel(m, 2000u, 0u);
+    apart = stereo_frame(m, peak);
+    CHECK(apart > 100u);
+    CHECK_EQ_U64(peak[1], 0u);
+    cogmaster_destroy(m);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
@@ -964,6 +1097,8 @@ static const struct {
     {"protocol", test_protocol},
     {"tie_rule", test_tie_rule},
     {"frame_flush", test_frame_flush},
+    {"gg_routing", test_gg_routing},
+    {"gg_port06_sms_mode", test_gg_port06_sms_mode},
 };
 
 int main(int argc, char **argv)

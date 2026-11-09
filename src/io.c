@@ -2,7 +2,10 @@
    section 4). The export Master System decodes A7, A6 and A0 only, so
    $00-$3F latch $3E (even) and $3F (odd) and $C0-$FF answer as $DC (even)
    and $DD (odd). The Japanese console and the Game Gear decode the full
-   address (section 4, "Full decode exceptions"). */
+   address (section 4, "Full decode exceptions"). The Game Gear's own ports,
+   $00-$06, exist only in its native mode; in Master System mode the console
+   keeps its full decode and its pad, and decodes $3E and $3F as a full-decode
+   Master System does. */
 #include "internal.h"
 
 cogmaster_status cogmaster_set_input(cogmaster *m, const cogmaster_input *in)
@@ -57,6 +60,15 @@ static int full_decode(const cogmaster *m)
     return is_gg(m) || m->region == COGMASTER_REGION_JAPAN;
 }
 
+/* Whether $00-$06 exist and $3E does not: the Game Gear in native mode. In
+   Master System mode the console keeps its full decode and its pad, but those
+   ports are not decoded and $3E and $3F answer as on a full-decode Master
+   System. */
+static int has_gg_ports(const cogmaster *m)
+{
+    return cogmaster__native_gg(m);
+}
+
 /* An undriven read: SMS1 retains the last driven byte, whereas the SMS2
    and the Game Gear pull the data bus up to $FF
    (SMS-SYSTEM C5). Shipped software makes such reads, so they are counted,
@@ -70,7 +82,7 @@ uint8_t cogmaster__io_open_bus(cogmaster *m)
 void cogmaster__io_reset(cogmaster *m)
 {
     struct cogmaster__io *io = &m->io;
-    io->mem_ctrl = is_gg(m) ? IO_MEM_GG : IO_MEM_SMS;
+    io->mem_ctrl = has_gg_ports(m) ? IO_MEM_GG : IO_MEM_SMS;
     io->io_ctrl = IO_CTRL_RESET;
     for (uint32_t i = 0; i < 6u; i++) {
         io->gg[i] = gg_reset[i];
@@ -166,8 +178,8 @@ uint8_t cogmaster__io_in(cogmaster *m, uint16_t port)
     if (p >= 0xC0u) {
         return chip_in(m, p);
     }
-    if (is_gg(m) && p <= 6u) {
-        if (p == 0u && cogmaster__native_gg(m)) {
+    if (has_gg_ports(m) && p <= 6u) {
+        if (p == 0u) {
             m->input_read = 1u;
             return (uint8_t)((m->input.port1 != COGMASTER_DEVICE_NONE && m->input.start
                                   ? 0u
@@ -190,11 +202,17 @@ void cogmaster__io_out(cogmaster *m, uint16_t port, uint8_t v)
 {
     struct cogmaster__io *io = &m->io;
     uint32_t p = port & 0xFFu;
-    if (is_gg(m)) {
+    if (has_gg_ports(m)) {
         /* Game Gear mode has no $3E; $04 is the link's receive register,
-           which a write leaves alone. */
+           which a write leaves alone. $06 is the stereo mask: the chip is
+           caught up to the write and the mask is stamped at its tick, one
+           copy of it living here (SMS-AUDIO section 3). */
         if (p >= 1u && p <= 6u) {
-            if (p != 4u) {
+            if (p == 6u) {
+                cogmaster__psg_catch_up(m, m->ticks);
+                io->gg[5] = v;
+                cogmaster__synth_level(m, m->ticks, 4u, v);
+            } else if (p != 4u) {
                 io->gg[p - 1u] = p == 5u ? (uint8_t)(v & ~GG_STATUS_FLAGS) : v;
             }
             return;

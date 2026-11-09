@@ -29,8 +29,8 @@ static void test_free(void *user, void *ptr, size_t size)
 }
 
 /* A new instance of the profile with a 1 KiB image of HALTs stamped at
-   $0100. */
-static cogmaster *load(uint32_t machine, uint32_t region, uint32_t tv)
+   $0100, in the video mode given (0 lets the machine choose). */
+static cogmaster *load_video(uint32_t machine, uint32_t region, uint32_t tv, uint32_t video)
 {
     cogmaster_config cfg;
     memset(&cfg, 0, sizeof cfg);
@@ -52,8 +52,14 @@ static cogmaster *load(uint32_t machine, uint32_t region, uint32_t tv)
     media.machine = machine;
     media.region = region;
     media.tv = tv;
+    media.video_mode = video;
     CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
     return m;
+}
+
+static cogmaster *load(uint32_t machine, uint32_t region, uint32_t tv)
+{
+    return load_video(machine, region, tv, 0u);
 }
 
 static cogmaster *export_sms(void)
@@ -211,6 +217,58 @@ static void test_gg_ports(void)
     cogmaster_destroy(m);
 }
 
+/* A Game Gear console running in Master System video mode has no $00-$06
+   and decodes $3E and $3F as a full-decode Master System does (SMS-SYSTEM
+   section 4), while its pad pins, full decode and $DD are unchanged: $3E
+   latches (powering on at the Master System's $AB), $3F latches, reads of
+   $00-$06 are open bus, a write to $06 latches nothing, and a reset puts
+   $3E back at $AB. */
+static void test_gg_sms_mode(void)
+{
+    cogmaster *m = load_video(COGMASTER_MACHINE_GG, COGMASTER_REGION_EXPORT, COGMASTER_TV_NTSC,
+                              COGMASTER_VIDEO_SMS);
+    CHECK_EQ_HEX(m->io.mem_ctrl, 0xAB);
+    cogmaster__bus_out(m, 0x003Eu, 0xAFu);
+    CHECK_EQ_HEX(m->io.mem_ctrl, 0xAF);
+    cogmaster__bus_out(m, 0x003Fu, 0x55u);
+    CHECK_EQ_HEX(m->io.io_ctrl, 0x55);
+    CHECK_EQ_U64(fault_of(m).present, 0);
+    /* Full decode: a mirror of $3E latches nothing. */
+    cogmaster__bus_out(m, 0x0002u, 0xABu);
+    CHECK_EQ_HEX(m->io.mem_ctrl, 0xAF);
+    CHECK_EQ_U64(fault_of(m).kind, COGMASTER__FAULT_UNMAPPED_WRITE);
+    cogmaster__bus_out(m, 0x003Eu, 0xABu);
+
+    /* $00-$06 read open bus, and a write to $06 changes nothing. */
+    uint32_t before = m->counters.open_bus_reads;
+    for (uint32_t p = 0; p <= 6u; p++) {
+        CHECK_EQ_HEX(cogmaster__bus_in(m, (uint16_t)p), 0xFF);
+    }
+    CHECK_EQ_U64(m->counters.open_bus_reads, before + 7u);
+    cogmaster__bus_out(m, 0x0006u, 0xF0u);
+    CHECK_EQ_HEX(m->io.gg[5], 0xFF);
+
+    /* The pad answers at $DC, $DD and $C0, $C1, and the chip's other
+       mirrors stay open bus. Port B has no pad on a Game Gear. */
+    cogmaster_input in;
+    memset(&in, 0, sizeof in);
+    in.size = (uint32_t)sizeof in;
+    in.p1 = 1u;
+    in.p2 = 3u;
+    CHECK_EQ_U64(cogmaster_set_input(m, &in), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0x00DCu), 0xFE);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0x00C0u), 0xFE);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0x00DDu), 0xFF);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0x00DEu), 0xFF);
+
+    /* A reset returns $3E to the Master System's value. */
+    cogmaster__bus_out(m, 0x003Eu, 0xAFu);
+    CHECK_EQ_U64(cogmaster_reset(m, COGMASTER_RESET_POWER), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(m->io.mem_ctrl, 0xAB);
+    cogmaster_destroy(m);
+}
+
 /* An undriven port reads $FF on the SMS2 and the Game Gear and counts one
    open-bus read each time. */
 static void test_open_bus(void)
@@ -340,6 +398,7 @@ static const struct {
     {"lag_decode", test_lag_decode},
     {"decode_mirrors", test_decode_mirrors},
     {"gg_ports", test_gg_ports},
+    {"gg_sms_mode", test_gg_sms_mode},
     {"open_bus", test_open_bus},
     {"port3e", test_port3e},
     {"port3f_region", test_port3f_region},

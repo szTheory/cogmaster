@@ -144,6 +144,7 @@ install.stage	install
 io.absolute_input	io,portable
 io.decode_mirrors	io,portable
 io.gg_ports	io,portable
+io.gg_sms_mode	io,portable
 io.lag_decode	io,portable
 io.open_bus	io,portable
 io.pad_pins	io,portable
@@ -200,6 +201,8 @@ policy.no_skip	policy
 policy.no_skip.self_test	policy
 policy.notices	policy
 psg.frame_flush	portable,psg
+psg.gg.port06_sms_mode	portable,psg
+psg.gg.routing	portable,psg
 psg.lfsr_period	portable,psg
 psg.noise_controls	portable,psg
 psg.periods	portable,psg

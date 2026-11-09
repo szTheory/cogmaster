@@ -70,6 +70,13 @@ and $7F stay the VDP's beam counters.
   are defaults, not measured on hardware.
 - **Records.** Sources 0 to 3 report `output << 4 | attenuation` as the trace log's level, from the registers
   alone, so changing the volume law or the mix gain moves the samples and none of the records.
+- **Game Gear stereo.** In the Game Gear's own video mode, a write to port $06 brings the chip up to date and sets
+  the mask: bit n + 4 sends channel n to the left and bit n to the right, so $FF sounds both sides, $0F the right
+  only, $F0 the left only and $00 neither. The change is a record for source 4 at the write's tick, and the mask
+  powers on at $FF. In Master System video mode a Game Gear does not decode $06 at all: a write latches nothing,
+  is recorded as the unmapped write a Japanese Master System records, and every channel reaches both outputs.
+  That mode also decodes $3E and $3F as a Master System does ($3E powers on at $AB), and keeps its pad, its full
+  decode and Start as Pause.
 - **Reset.** A load and both kinds of reset put the chip back to its power-on values: every attenuation off,
   periods and noise control 0, shift register $8000, counters and outputs clear, a data byte that follows no
   latch byte writing the volume of channel 1, and the step origin at tick 0, where the tick count restarts. The

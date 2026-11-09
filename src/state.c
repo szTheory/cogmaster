@@ -313,12 +313,12 @@ static void mapper_io(struct cogmaster__sio *io, cogmaster *m)
     cogmaster__sio_check(io, board != COGMASTER__BOARD_CODEMASTERS || (ctrl & 0x7Fu) == 0u);
 }
 
-/* The Game Gear decodes no $3E, so its enables stay as the hand-off left
-   them; its $05 keeps no status flag. */
+/* The Game Gear in native mode decodes no $3E, so its enables stay as the
+   hand-off left them; its $05 keeps no status flag. */
 static void io_io(struct cogmaster__sio *io, cogmaster *m)
 {
     struct cogmaster__io *p = &m->io;
-    int gg = m->machine == COGMASTER_MACHINE_GG;
+    int gg = cogmaster__native_gg(m);
     cogmaster__sio_u8(io, "io_mem_ctrl", &p->mem_ctrl, gg ? 0xA8u : 0u, gg ? 0xA8u : UINT8_MAX);
     cogmaster__sio_u8(io, "io_ctrl", &p->io_ctrl, 0u, UINT8_MAX);
     for (uint32_t i = 0; i < 6u; i++) {
