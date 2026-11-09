@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 04
 current_phase_name: Sound
 status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-11-09T19:46:47.054Z"
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-11-09T19:56:22.110Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 04 execution started
-state_head: 34ad1e63e17f776472a711441bda202c626d41e5
+state_head: 19552bc4374326782d507238cac282e8e8819ab2
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 62
-  completed_plans: 49
+  completed_plans: 50
   percent: 75
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 04 (Sound) — EXECUTING
-Plan: 3 of 15
+Plan: 4 of 15
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 04 execution started
 
@@ -113,6 +113,7 @@ Progress: [████████░░] 75%
 | Phase 03 P18 | 31min | 2 tasks | 27 files |
 | Phase 04 P01 | 5min | 2 tasks | 8 files |
 | Phase 04 P02 | 13min | 3 tasks | 15 files |
+| Phase 04 P03 | 7min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -249,6 +250,8 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 04]: 04-02: API 9, behaviour revision 11 and state format 11 are bumped once for the phase; the per-tick cadence is 176/39,375 NTSC and 9,600/2,128,137 PAL with a remainder in the synth, so every frame is 801 or 802 (965 or 966 PAL)
 - [Phase 04]: 04-02: The trace log is host-sized (trace_records, cap 1,048,576), allocated once at the first load before the cartridge copy, drained oldest first with overflow and uncopied records counted in dropped, and cleared by load and both resets
 - [Phase 04]: 04-02: The libretro adapter drains cogmaster_get_audio right after the frame runs, widens mono to L = R, and keeps no pacing state; core state tests drain frames like a host until plan 04-03 saves the synth phase
+- [Phase 04]: 04-03: media.fm resolves the FM unit at load (AUTO only for Japan on a non-GG machine, ON on any Master System, refused on a Game Gear); fm_unit and fm_mask live on the instance and info reports the resolved unit with the audio channels
+- [Phase 04]: 04-03: state header byte 52 is fm_unit fixed to the instance (11 reserved bytes remain); synth_io saves only the cadence phase, bounded by the TV modulus, and a state load drops undrained PCM; cogmaster__sio_i64 carries signed fields by a 2^63 bias
 
 ### Pending Todos
 
@@ -291,6 +294,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-11-09 | Plan phase 4 (gsd-plan-phase 4); research, 15 plans, checker passes after owner-approved revisions | Claude Code | claude-sonnet-5-5 (planner claude-opus-5-5) |
 | 2026-11-09 | Execute phase 4 plan 04-01 (gsd-execute-phase 04); documents only, 2 tasks | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Execute phase 4 plan 04-02 (gsd-execute-phase 04); API 9 door, exact cadence, adapter drain, trace log; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-03 (gsd-execute-phase 04); fm profile field, info fields, state header byte, abi.api_v9, audio guide; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -302,6 +306,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-09T19:46:46.701Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-11-09T19:56:21.940Z
+Stopped at: Completed 04-03-PLAN.md
 Resume file: None
