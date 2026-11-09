@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 04
 current_phase_name: Sound
-status: ready_to_execute
-stopped_at: Phase 4 planned (15 plans); runtime Claude Code; model Claude Sonnet 5.5
-last_updated: "2026-11-09T19:16:12.722Z"
-last_activity: 2026-10-20
-last_activity_desc: Phase 03 shipped in PR
-state_head: d585bc44f2137ee7516818d88088eb61c876758e
+status: executing
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-11-09T19:33:29.003Z"
+last_activity: 2026-11-09
+last_activity_desc: Phase 04 execution started
+state_head: 2e996bec30199839415c7c531909e1e85402f949
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 62
-  completed_plans: 47
+  completed_plans: 48
   percent: 75
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-20)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 03 — Games play in RetroArch
+**Current focus:** Phase 04 — Sound
 
 ## Current Position
 
-Phase: 04 (Sound) — READY TO EXECUTE
-Plan: 0 of 15
-Status: Phase 04 planned; ready to execute
-Last activity: 2026-11-09 — Planned phase 04: 15 plans in 15 serial waves; checker verification accepted after three revision rounds; runtime Claude Code; model claude-sonnet-5-5
+Phase: 04 (Sound) — EXECUTING
+Plan: 2 of 15
+Status: Ready to execute
+Last activity: 2026-11-09 — Phase 04 execution started
 
 Next command: `/gsd-execute-phase 04`. Phase 03 shipped as v0.3.0.
 
@@ -111,6 +111,7 @@ Progress: [████████░░] 75%
 | Phase 03 P16 | 7min | 2 tasks | 16 files |
 | Phase 03 P17 | 12min | 2 tasks | 24 files |
 | Phase 03 P18 | 31min | 2 tasks | 27 files |
+| Phase 04 P01 | 5min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -242,6 +243,8 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 03]: Use exclusive same-directory open for portable save temporaries, retaining private native permissions and untouched collision files.
 - [Phase 03]: Stop execution with all eighteen plans complete, ready for code review before formal verification; phase 04 remains pending.
 - [Phase 03]: Preserve every native and portable assertion while correcting actual inventories and measured host timeout bounds.
+- [Phase 04]: 04-01: Ticks and frames count from the last load or reset of either kind; one SOFT rule (synth keeps phase, ring, integrator, DC, levels, undrained PCM; chips return to power-on constants and step origin) is stated in D-01 and D-24
+- [Phase 04]: 04-01: Third-party SN76489 and YM2413 test ROM conformance is deferred; owned psg_sweep and fm_sweep fixtures, units and the lockstep test carry SND-01 and SND-02; SND-03 cadence is 801 or 802 per NTSC frame
 
 ### Pending Todos
 
@@ -282,6 +285,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 
 | 2026-11-09 | Discuss phase 4 (gsd-discuss-phase 4); six research agents plus adversarial cross-check; 35 decisions | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Plan phase 4 (gsd-plan-phase 4); research, 15 plans, checker passes after owner-approved revisions | Claude Code | claude-sonnet-5-5 (planner claude-opus-5-5) |
+| 2026-11-09 | Execute phase 4 plan 04-01 (gsd-execute-phase 04); documents only, 2 tasks | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -293,6 +297,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-09T19:16:12.722Z
-Stopped at: Phase 4 planned (15 plans); runtime Claude Code; model Claude Sonnet 5.5
-Resume file: .planning/phases/04-sound/04-01-PLAN.md
+Last session: 2026-11-09T19:33:28.853Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None
