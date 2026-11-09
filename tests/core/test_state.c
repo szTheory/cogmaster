@@ -54,8 +54,9 @@ static cogmaster_config make_config(void)
 }
 
 /* A new instance of the profile running the 1 KiB image img, or the test
-   card when img is NULL. */
-static cogmaster *make_with(const uint8_t *img, uint32_t machine, uint32_t region, uint32_t tv)
+   card when img is NULL, with the FM unit as fm says. */
+static cogmaster *make_fm_with(const uint8_t *img, uint32_t machine, uint32_t region, uint32_t tv,
+                               uint32_t fm)
 {
     cogmaster_config cfg = make_config();
     cogmaster *m = NULL;
@@ -68,8 +69,14 @@ static cogmaster *make_with(const uint8_t *img, uint32_t machine, uint32_t regio
     media.machine = machine;
     media.region = region;
     media.tv = tv;
+    media.fm = fm;
     CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
     return m;
+}
+
+static cogmaster *make_with(const uint8_t *img, uint32_t machine, uint32_t region, uint32_t tv)
+{
+    return make_fm_with(img, machine, region, tv, COGMASTER_FM_AUTO);
 }
 
 /* A new instance with the test card of machine loaded. */
@@ -82,6 +89,18 @@ static cogmaster *make(uint32_t machine)
 static cogmaster *make_image(const uint8_t *img)
 {
     return make_with(img, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO, COGMASTER_TV_AUTO);
+}
+
+/* The FM unit's ports, written as a Z80 writes them: the unit audible, then instrument 1 on
+   voice 0 at an f-number of $180 in block 4, keyed on. */
+static void play_fm_note(cogmaster *m)
+{
+    static const uint8_t writes[][2] = {{0xF2u, 3u},    {0xF0u, 0x30u}, {0xF1u, 0x10u},
+                                        {0xF0u, 0x10u}, {0xF1u, 0x80u}, {0xF0u, 0x20u},
+                                        {0xF1u, 0x19u}};
+    for (size_t i = 0; i < sizeof writes / sizeof writes[0]; i++) {
+        cogmaster__bus_out(m, writes[i][0], writes[i][1]);
+    }
 }
 
 /* An image that keeps changing RAM, registers and flags: a loop that
@@ -195,6 +214,10 @@ static void round_trip_image(uint32_t region, uint32_t tv)
 {
     fill_images();
     cogmaster *a = make_with(img_loop, COGMASTER_MACHINE_SMS2, region, tv);
+    if (a->fm_unit) {
+        /* The chip is mid-note when the state is taken, its envelopes and phases moving. */
+        play_fm_note(a);
+    }
     run_frames(a, 2u);
     for (uint32_t i = 0; i < 1000u; i++) {
         cogmaster__z80_step(a);
@@ -226,7 +249,26 @@ static void round_trip_image(uint32_t region, uint32_t tv)
     cogmaster_destroy(b);
 }
 
-static void sweep(cogmaster *src, cogmaster *target)
+/* The fields an FM unit adds: the chip's block, its next sample tick and the control port. A
+   chip field repeats for each slot, voice and patch with the same bound, so one of each
+   distinct name and bound stands for them all. */
+static int fm_field(size_t n, size_t i, size_t start)
+{
+    const struct cogmaster__state_field *fd = &fields[i];
+
+    if (strncmp(fd->name, "opll_", 5u) != 0) {
+        return strcmp(fd->name, "fm_next") == 0 || strcmp(fd->name, "io_audio_ctrl") == 0;
+    }
+    for (size_t k = start; k < i && k < n; k++) {
+        if (strcmp(fields[k].name, fd->name) == 0 && fields[k].min == fd->min &&
+            fields[k].max == fd->max) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static void sweep(cogmaster *src, cogmaster *target, int fm_only)
 {
     size_t size = save(src, good);
     size_t target_size = save(target, before);
@@ -234,11 +276,18 @@ static void sweep(cogmaster *src, cogmaster *target)
     CHECK(n >= 14u);
     size_t swept = 0;
     size_t ram = 0;
+    size_t fm_start = 0;
+    while (fm_start < n && strncmp(fields[fm_start].name, "opll_", 5u) != 0) {
+        fm_start++;
+    }
     for (size_t i = 0; i < n && size != 0u; i++) {
         const struct cogmaster__state_field *fd = &fields[i];
         CHECK(fd->offset + fd->width <= size);
         if (strcmp(fd->name, "ram") == 0) {
             ram++;
+        }
+        if (fm_only && !fm_field(n, i, fm_start)) {
+            continue;
         }
         /* One interior and both edge pixels exercise the shared RGB444 bound. */
         if ((strcmp(fd->name, "field_pixel") == 0 || strcmp(fd->name, "completed_pixel") == 0 ||
@@ -322,7 +371,11 @@ static void reject_other_profile(void)
         {COGMASTER_REGION_JAPAN, COGMASTER_TV_NTSC},
     };
     for (size_t k = 0; k < 2u; k++) {
-        cogmaster *src = make_with(NULL, COGMASTER_MACHINE_SMS2, pairs[k][0], pairs[k][1]);
+        /* The Japanese console carries the FM unit by default, which makes its state a
+           different size; without it the states are the same size and only the profile
+           differs. */
+        cogmaster *src =
+            make_fm_with(NULL, COGMASTER_MACHINE_SMS2, pairs[k][0], pairs[k][1], COGMASTER_FM_OFF);
         run_frames(src, 3u);
         cogmaster *target = make(COGMASTER_MACHINE_SMS2);
         run_frames(target, 3u);
@@ -331,7 +384,8 @@ static void reject_other_profile(void)
         CHECK_EQ_U64(size, target_size);
         if (size != 0u && size == target_size) {
             expect_refused("state of another profile", target, size, target_size);
-            cogmaster *same = make_with(NULL, COGMASTER_MACHINE_SMS2, pairs[k][0], pairs[k][1]);
+            cogmaster *same = make_fm_with(NULL, COGMASTER_MACHINE_SMS2, pairs[k][0], pairs[k][1],
+                                           COGMASTER_FM_OFF);
             CHECK_EQ_U64(cogmaster__state_load(same, bad, size), COGMASTER_STATUS_OK);
             cogmaster_destroy(same);
         }
@@ -357,7 +411,8 @@ static cogmaster *make_fm(uint32_t fm)
 }
 
 /* Two instances of one machine, region and TV that differ only in the FM
-   unit refuse each other's state, and each loads its own. */
+   unit refuse each other's state, and each loads its own: the YM2413's block
+   is in the state exactly when the unit is attached, so the sizes differ. */
 static void reject_other_fm(void)
 {
     cogmaster *with = make_fm(COGMASTER_FM_ON);
@@ -366,13 +421,18 @@ static void reject_other_fm(void)
     run_frames(without, 3u);
     size_t size = save(with, bad);
     size_t target_size = save(without, before);
-    CHECK_EQ_U64(size, target_size);
-    if (size != 0u && size == target_size) {
+    CHECK(size > target_size);
+    if (size > target_size && target_size != 0u) {
         expect_refused("state of the other fm unit", without, size, target_size);
-        CHECK_EQ_U64(cogmaster__state_save(without, after, target_size), COGMASTER_STATUS_OK);
         cogmaster *same = make_fm(COGMASTER_FM_ON);
         CHECK_EQ_U64(cogmaster__state_load(same, bad, size), COGMASTER_STATUS_OK);
         cogmaster_destroy(same);
+        /* The smaller state is no better for the unit: its bytes stop short of the
+           chip's block. */
+        CHECK_EQ_U64(save(without, good), target_size);
+        CHECK_EQ_U64(save(with, before), size);
+        memcpy(bad, good, target_size);
+        expect_refused("state without the fm block", with, target_size, size);
     }
     cogmaster_destroy(with);
     cogmaster_destroy(without);
@@ -447,7 +507,7 @@ static void mapper_round_trip(size_t n, uint32_t board, uint32_t ram_size, const
     (void)field(fields_n, "mapper_ctrl");
     cogmaster *target = make_board(n);
     run_frames(target, 1u);
-    sweep(a, target);
+    sweep(a, target, 0);
     cogmaster_destroy(a);
     cogmaster_destroy(b);
     cogmaster_destroy(target);
@@ -597,7 +657,7 @@ static void test_record_sweep(void)
         run_frames(src, 60u);
         cogmaster *target = make(machines[k]);
         run_frames(target, 5u);
-        sweep(src, target);
+        sweep(src, target, 0);
         cogmaster_destroy(src);
         cogmaster_destroy(target);
     }
@@ -614,7 +674,7 @@ static void test_record_sweep(void)
         cogmaster *target =
             make_with(img_loop, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO, tvs[k]);
         run_frames(target, 1u);
-        sweep(src, target);
+        sweep(src, target, 0);
         cogmaster_destroy(src);
         cogmaster_destroy(target);
     }
@@ -625,7 +685,18 @@ static void test_record_sweep(void)
     cogmaster *target =
         make_with(NULL, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT, COGMASTER_TV_PAL);
     run_frames(target, 5u);
-    sweep(src, target);
+    sweep(src, target, 0);
+    cogmaster_destroy(src);
+    cogmaster_destroy(target);
+    /* A Japanese console carries the FM unit, whose block is swept too: every field of the chip
+       that has a bound narrower than its type is refused just outside it. */
+    src = make_with(NULL, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_JAPAN, COGMASTER_TV_NTSC);
+    play_fm_note(src);
+    run_frames(src, 60u);
+    target = make_with(NULL, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_JAPAN, COGMASTER_TV_NTSC);
+    run_frames(target, 5u);
+    sweep(src, target, 1);
+    CHECK_EQ_U64(src->fm_unit, 1u);
     cogmaster_destroy(src);
     cogmaster_destroy(target);
 }

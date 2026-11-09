@@ -10,9 +10,9 @@ cogmaster_warnings(cogmaster-test-audio)
 # Fault prevented: a frame that holds a count off the exact rational rate, so a
 # frontend that paces on audio drifts, a drain that loses, repeats or overruns
 # the samples of a frame, or a level change that is not heard as a band-limited
-# step at its place in the stream.
+# step at its place in the stream, or an FM level that leaves the range a saved state is bound by.
 foreach(case IN ITEMS cadence drain step spectral no_clip amplitude_bound ring_overshoot
-                  stereo_mask state_continue)
+                  stereo_mask state_continue fm_level)
   # Timeout: 10 s floor; 0.32 s slowest local run (audio.cadence; audio.spectral
   # takes 0.05 s for its integer DFT), no hosted run yet, so provisional. be32 and
   # wasm32 were not run locally; their 8 and 5 times scales leave 80 s and 50 s,
@@ -95,8 +95,12 @@ foreach(case IN ITEMS key_on rhythm noise lfo test_register slot_count sum_bound
 endforeach()
 
 # Fault prevented: a note a Z80 writes to $F0 and $F1 that never sounds, or sounds late or off the
-# 216-tick grid, or that $F2 does not mute at the mixer.
-foreach(case IN ITEMS through_bus)
+# 216-tick grid, an $F2 value that mutes the wrong chip or none, a unit that hides behind the I/O
+# chip's $3E switch, a console without the unit that reads or counts its ports, a reset that
+# leaves the mute or the FM level stale, a saved state that loses the chip or accepts a chip it
+# cannot have, or a ROM that hammers the ports and makes a frame cost more than its bound.
+foreach(case IN ITEMS through_bus f2_write_mask f2_read_bits f2_catches_up chip_off no_unit_ports
+                  reset_kinds state_round_trip cost)
   # Timeout: 10 s floor; 0.09 s slowest local run (fm.state_round_trip), no hosted run yet, so
   # provisional. The be32 and wasm32 scales leave 80 s and 50 s.
   cogmaster_add_test(NAME fm.${case} COMMAND cogmaster-test-fm ${case}

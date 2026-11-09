@@ -65,10 +65,12 @@ static cogmaster *make(uint32_t machine, uint32_t tv, uint32_t video)
 
 /* These tests set the synthesiser's levels directly, so the sound chip is
    parked at its last step of the frame: its own steps would write over the
-   levels set here. The chip has its own tests. */
+   levels set here. The chips have their own tests: the FM unit's next sample is parked
+   just past the frame's last tick the same way. */
 static void frame(cogmaster *m)
 {
     m->psg.at = (m->frame + 1u) * cogmaster__frame_ticks(m) / 48u * 48u;
+    m->fm_next = ((m->frame + 1u) * cogmaster__frame_ticks(m) / 216u + 1u) * 216u;
     CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
 }
 
@@ -739,6 +741,55 @@ static void extremes(uint32_t n, uint32_t channels, int32_t *lo, int32_t *hi)
     }
 }
 
+/* A Japanese Master System test card, which carries the FM unit. */
+static cogmaster *make_japan(void)
+{
+    cogmaster_config cfg;
+    memset(&cfg, 0, sizeof cfg);
+    cfg.size = (uint32_t)sizeof cfg;
+    cfg.allocator.alloc = test_alloc;
+    cfg.allocator.free = test_free;
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    if (m == NULL) {
+        exit(1);
+    }
+    cogmaster_media media =
+        media_for(COGMASTER_MACHINE_SMS2, COGMASTER_TV_NTSC, COGMASTER_VIDEO_SMS);
+    media.region = COGMASTER_REGION_JAPAN;
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(m->fm_unit, 1u);
+    return m;
+}
+
+/* Four PSG channels at full level and the FM unit from its lowest sounding sum to its highest,
+   all in one step at every kernel row, with both let through: the sum of the two full scales
+   is 26,928, the kernel overshoots it by under 8.3 percent, and the peak stays under the
+   1 dB line with no clamp. */
+static void test_no_clip_fm(void)
+{
+    int32_t peak = 0;
+    int32_t low = 0;
+    for (uint64_t tick = 40000u; tick < 40000u + 224u; tick += 3u) {
+        cogmaster *m = make_japan();
+        cogmaster__synth_level(m, 0u, 6u, 3u);
+        cogmaster__synth_level(m, 0u, 5u, (uint16_t)(0u - COGMASTER__OPLL_SUM_MAX));
+        for (uint32_t src = 0u; src < 4u; src++) {
+            cogmaster__synth_level(m, tick, src, PSG_FULL);
+        }
+        cogmaster__synth_level(m, tick, 5u, COGMASTER__OPLL_SUM_MAX);
+        cogmaster_audio a;
+        frame(m);
+        CHECK_EQ_U64(drain(m, &a, COGMASTER__AUDIO_MAX_FRAMES), COGMASTER_STATUS_OK);
+        extremes(a.written, a.channels, &low, &peak);
+        CHECK_EQ_U64(m->synth.stats.clamps, 0u);
+        cogmaster_destroy(m);
+    }
+    CHECK(peak <= MINUS_ONE_DBFS);
+    CHECK(peak > 4 * 3928 + 11216);
+    printf("no_clip: four channels and the FM unit at full scale peak %ld\n", (long)peak);
+}
+
 /* Four PSG channels at full level stepping together, on both Game Gear
    channels, at every kernel row: the peak stays 1 dB under full scale and
    nothing saturates, with the Master System gain and with the gain beside the
@@ -786,6 +837,70 @@ static void test_no_clip(void)
         (long)psg, 4 * STEP_HEIGHT, (long)(psg * 1000 / (4 * STEP_HEIGHT) - 1000), (long)fm);
     int32_t pulse = no_clip_run(0u, 900u, &low);
     CHECK(pulse < 32767 && low > -32768);
+    test_no_clip_fm();
+}
+
+/* The FM unit's level is the sum as 16 bits, as the original wraps it, and the mixer takes every
+   one of the 65,536 values: the gained level is never above the largest the profile allows
+   (what a saved state is bounded by), never falls as the signed sum rises, is the lowest at the
+   lowest sounding sum and the largest at the highest, and with $F2 letting nothing or only the
+   PSG through it is 0. A sum past the sounding bound, which the silent voices' held outputs can
+   cause, is the level its low 16 bits give. */
+static void test_fm_level(void)
+{
+    cogmaster *m = make_japan();
+    const uint32_t most = cogmaster__synth_gained_max(m, 5u);
+    uint32_t above = 0u, falls = 0u, wrong_level = 0u, last = 0u;
+    uint32_t at_low = 1u, at_high = 0u, at_zero = 0u, at_wrapped = 0u;
+    CHECK_EQ_U64(most, 11216u);
+
+    cogmaster__synth_level(m, 1000u, 6u, 1u);
+    for (int32_t s = INT16_MIN; s <= INT16_MAX; s++) {
+        const uint32_t level = (uint16_t)s;
+        cogmaster__synth_level(m, 1000u, 5u, level);
+        /* The ring takes a step per level; keep it small, as a frame would. */
+        memset(m->synth.ring, 0, sizeof m->synth.ring);
+        const uint32_t gained = m->synth.gained[5][0];
+        above += gained > most;
+        falls += gained < last;
+        last = gained;
+        wrong_level += m->synth.level[5] != level;
+        if (s == -(int32_t)COGMASTER__OPLL_SUM_MAX) {
+            at_low = gained;
+        } else if (s == (int32_t)COGMASTER__OPLL_SUM_MAX) {
+            at_high = gained;
+        } else if (s == 0) {
+            at_zero = gained;
+        } else if (s == (int32_t)COGMASTER__OPLL_SUM_ALL - 65536) {
+            at_wrapped = gained;
+        }
+    }
+    CHECK_EQ_U64(above, 0u);
+    CHECK_EQ_U64(falls, 0u);
+    CHECK_EQ_U64(wrong_level, 0u);
+    CHECK_EQ_U64(at_low, 0u);
+    CHECK_EQ_U64(at_high, most);
+    CHECK(at_zero + 1u >= most / 2u && at_zero <= most / 2u + 1u);
+
+    /* The sums the chip can return past 16 bits wrap as the original's do: all fourteen peaks
+       (38,817) are the level of -26,719, and both ends of the range, past the sounding bound,
+       saturate. */
+    cogmaster__synth_level(m, 1000u, 5u, (uint16_t)COGMASTER__OPLL_SUM_ALL);
+    CHECK_EQ_U64(m->synth.gained[5][0], at_wrapped);
+    CHECK(at_wrapped > 0u && at_wrapped < most);
+    cogmaster__synth_level(m, 1000u, 5u, (uint16_t)INT16_MAX);
+    CHECK_EQ_U64(m->synth.gained[5][0], most);
+    cogmaster__synth_level(m, 1000u, 5u, (uint16_t)INT16_MIN);
+    CHECK_EQ_U64(m->synth.gained[5][0], 0u);
+
+    /* Neither mute nor the PSG alone lets any of it through, and the stored level stays. */
+    for (uint32_t ctrl = 0u; ctrl < 4u; ctrl++) {
+        cogmaster__synth_level(m, 1000u, 6u, ctrl);
+        cogmaster__synth_level(m, 1000u, 5u, 0x1234u);
+        CHECK_EQ_U64(m->synth.level[5], 0x1234u);
+        CHECK((ctrl & 1u) != 0u ? m->synth.gained[5][0] > 0u : m->synth.gained[5][0] == 0u);
+    }
+    cogmaster_destroy(m);
 }
 
 static int64_t ring_extreme(const cogmaster *m)
@@ -1075,6 +1190,7 @@ static const struct {
     {"step", test_step},
     {"spectral", test_spectral},
     {"no_clip", test_no_clip},
+    {"fm_level", test_fm_level},
     {"amplitude_bound", test_amplitude_bound},
     {"ring_overshoot", test_ring_overshoot},
     {"stereo_mask", test_stereo_mask},

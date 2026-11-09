@@ -421,6 +421,7 @@ static void sum_bound(void)
 
 #define IMAGE_SIZE 1024u
 #define TRACE 32768u
+#define STATE_BUF 393216u
 #define PORT_ADDRESS 0xF0u
 #define PORT_DATA 0xF1u
 #define PORT_CTRL 0xF2u
@@ -429,6 +430,10 @@ static void sum_bound(void)
 static uint8_t image[IMAGE_SIZE];
 static int16_t pcm[COGMASTER__AUDIO_MAX_FRAMES * 2u];
 static cogmaster_audio_record log_record[TRACE];
+static cogmaster_audio_record log_other[TRACE];
+static uint8_t state_a[STATE_BUF];
+static uint8_t state_b[STATE_BUF];
+static uint8_t state_c[STATE_BUF];
 
 static void *test_alloc(void *user, size_t size)
 {
@@ -501,6 +506,14 @@ static void note_on(cogmaster *m, uint64_t tick)
         out_at(m, tick + 33u * i, PORT_ADDRESS, writes[i]);
         out_at(m, tick + 33u * i + 33u, PORT_DATA, writes[i + 1]);
     }
+}
+
+/* Tone 0 at period $0FE and full volume, through $7F. */
+static void psg_tone(cogmaster *m, uint64_t tick)
+{
+    out_at(m, tick, 0x7Fu, 0x8Eu);
+    out_at(m, tick + 33u, 0x7Fu, 0x0Fu);
+    out_at(m, tick + 66u, 0x7Fu, 0x90u);
 }
 
 /* The records waiting in the log, oldest first, copied to dst; empties the log. */
@@ -675,6 +688,612 @@ static void through_bus(void)
     cogmaster_destroy(m);
 }
 
+/* Writes of $F2 store the bits the profile keeps: bits 7 to 2 are ignored, a mask of 1 keeps bit
+   0, and the value reaches the log as source 6. The drained audio carries what $F2 lets
+   through: for each value, four instances take the same writes at the same ticks and differ
+   only in what they are given to play. The PSG alone is heard for 0, the FM alone for 1,
+   neither for 2 and both for 3, so a mute applied to the wrong source, or not at all, makes one
+   of the comparisons fail. */
+#define MIX_FRAMES 4u
+#define MIX_SAMPLES (COGMASTER__AUDIO_MAX_FRAMES * MIX_FRAMES)
+
+static int16_t mixed[4][MIX_SAMPLES];
+
+/* Plays four frames after $F2 = ctrl right after the load, with the PSG tone and the FM note
+   as asked, into out; returns the samples. */
+static uint32_t mix_run(uint32_t ctrl, int tone, int note, int16_t *out)
+{
+    cogmaster *m = make_unit(COGMASTER_REGION_JAPAN, COGMASTER_FM_AUTO);
+    uint32_t total = 0;
+
+    out_at(m, 10, PORT_CTRL, (uint8_t)ctrl);
+    if (tone) {
+        psg_tone(m, 400);
+    }
+    if (note) {
+        note_on(m, 600);
+    }
+    for (uint32_t i = 0; i < MIX_FRAMES; i++) {
+        uint32_t peak;
+        total += take_frame(m, out + total, &peak);
+    }
+    cogmaster_destroy(m);
+    return total;
+}
+
+static int same(const int16_t *a, const int16_t *b, uint32_t n)
+{
+    return memcmp(a, b, n * sizeof a[0]) == 0;
+}
+
+static void f2_write_mask(void)
+{
+    cogmaster *m = make_unit(COGMASTER_REGION_JAPAN, COGMASTER_FM_AUTO);
+
+    CHECK_EQ_U64(m->fm_mask, 3);
+    (void)drain_trace(m);
+    static const struct {
+        uint8_t written;
+        uint8_t stored;
+    } masked[] = {{0xFF, 3}, {0xFC, 0}, {0x02, 2}, {0xF5, 1}, {0x03, 3}, {0x00, 0}};
+    for (uint32_t i = 0; i < sizeof masked / sizeof masked[0]; i++) {
+        out_at(m, 100u + 40u * i, PORT_CTRL, masked[i].written);
+        CHECK_EQ_U64(m->io.audio_ctrl, masked[i].stored);
+        CHECK_EQ_U64(m->synth.level[6], masked[i].stored);
+    }
+    uint32_t n = drain_trace(m);
+    CHECK_EQ_U64(count_source(n, 6), sizeof masked / sizeof masked[0]);
+    CHECK_EQ_U64(log_record[0].level, 3);
+    CHECK_EQ_U64(log_record[n - 1u].level, 0);
+
+    /* The unit alone keeps bit 0; the mask is plain data. */
+    m->fm_mask = 1;
+    out_at(m, 400, PORT_CTRL, 3);
+    CHECK_EQ_U64(m->io.audio_ctrl, 1);
+    out_at(m, 440, PORT_CTRL, 2);
+    CHECK_EQ_U64(m->io.audio_ctrl, 0);
+    cogmaster_destroy(m);
+
+    /* An export console with the unit switched on has it too, as the detector's test hook. */
+    m = make_unit(COGMASTER_REGION_EXPORT, COGMASTER_FM_ON);
+    CHECK_EQ_U64(m->fm_unit, 1);
+    out_at(m, 100, PORT_CTRL, 3);
+    CHECK_EQ_U64(m->io.audio_ctrl, 3);
+    cogmaster_destroy(m);
+
+    for (uint32_t ctrl = 0; ctrl < 4; ctrl++) {
+        const uint32_t n_c = mix_run(ctrl, 1, 1, mixed[0]);
+        const uint32_t n_p = mix_run(ctrl, 1, 0, mixed[1]);
+        const uint32_t n_f = mix_run(ctrl, 0, 1, mixed[2]);
+        const uint32_t n_n = mix_run(ctrl, 0, 0, mixed[3]);
+        CHECK(n_c == n_p && n_p == n_f && n_f == n_n);
+        const int c_p = same(mixed[0], mixed[1], n_c);
+        const int c_f = same(mixed[0], mixed[2], n_c);
+        const int c_n = same(mixed[0], mixed[3], n_c);
+        const int p_n = same(mixed[1], mixed[3], n_c);
+        const int f_n = same(mixed[2], mixed[3], n_c);
+        if (ctrl == 0) {
+            CHECK(c_p && !p_n);
+        } else if (ctrl == 1) {
+            CHECK(c_f && !f_n);
+        } else if (ctrl == 2) {
+            CHECK(c_n && p_n && f_n);
+        } else {
+            CHECK(!c_p && !c_f && !c_n);
+            CHECK(!p_n && !f_n);
+        }
+    }
+}
+
+/* $F2 brings both chips up to date before it gates them, so what they did before the write is
+   heard and what they do after is not. Two instances play the same tone and note and mute both at
+   tick 99,000; one also makes writes that change nothing, which catch the chips up to just before
+   the mute. They must sound the same, and the sound must be the one that stops at the mute: it
+   carries the tone and the note up to it. A mute that gated the chips' pending steps instead
+   would cut the first of them short. */
+#define MUTE_TICK 99000u
+
+static uint32_t late_mute_run(int redundant, int16_t *out)
+{
+    cogmaster *m = make_unit(COGMASTER_REGION_JAPAN, COGMASTER_FM_AUTO);
+    uint32_t total = 0;
+    uint32_t peak;
+
+    out_at(m, 10, PORT_CTRL, 3);
+    psg_tone(m, 400);
+    note_on(m, 600);
+    if (redundant) {
+        out_at(m, MUTE_TICK - 66u, PORT_ADDRESS, 0x10);
+        out_at(m, MUTE_TICK - 33u, PORT_DATA, 0x80);
+        out_at(m, MUTE_TICK - 3u, 0x7Fu, 0x90u);
+    }
+    out_at(m, MUTE_TICK, PORT_CTRL, 2);
+    for (uint32_t i = 0; i < 3; i++) {
+        total += take_frame(m, out + total, &peak);
+        CHECK(i > 0 || peak > 0);
+    }
+    cogmaster_destroy(m);
+    return total;
+}
+
+static void f2_catches_up(void)
+{
+    static int16_t plain[3u * COGMASTER__AUDIO_MAX_FRAMES];
+    static int16_t caught[3u * COGMASTER__AUDIO_MAX_FRAMES];
+    const uint32_t n = late_mute_run(0, plain);
+
+    CHECK_EQ_U64(late_mute_run(1, caught), n);
+    CHECK(same(plain, caught, n));
+}
+
+/* Reads of $F2 return what was written, bits 7, 6 and 5 follow bits 11, 7 and 3 of the line
+   counter (the line index of the tick count since the load or reset) and bits 4 to 2 read 0.
+   Reads of the other two ports drive nothing, and no read of any is input. */
+static void f2_read_bits(void)
+{
+    static const struct {
+        uint32_t line;
+        uint32_t bits;
+    } counter[] = {{0, 0x00},    {7, 0x00},    {8, 0x20},    {16, 0x00},   {24, 0x20},
+                   {127, 0x20},  {128, 0x40},  {136, 0x60},  {2047, 0x60}, {2048, 0x80},
+                   {2056, 0xA0}, {2176, 0xC0}, {2184, 0xE0}, {4095, 0xE0}, {4096, 0x00}};
+    cogmaster *m = make_unit(COGMASTER_REGION_JAPAN, COGMASTER_FM_AUTO);
+
+    for (uint32_t stored = 0; stored < 4; stored++) {
+        out_at(m, 100, PORT_CTRL, (uint8_t)stored);
+        for (uint32_t i = 0; i < sizeof counter / sizeof counter[0]; i++) {
+            /* The first and last tick of the line read the same. */
+            for (uint32_t edge = 0; edge < 2; edge++) {
+                m->ticks = (uint64_t)counter[i].line * 684u + (edge ? 683u : 0u);
+                m->input_read = 0;
+                const uint8_t v = cogmaster__io_in(m, PORT_CTRL);
+                CHECK_EQ_HEX(v, counter[i].bits | stored);
+                CHECK_EQ_U64(v & 0x1Cu, 0);
+                CHECK_EQ_U64(m->input_read, 0);
+            }
+        }
+    }
+    /* The ports $F0 and $F1 are written and not read: the bus is undriven. */
+    m->input_read = 0;
+    const uint32_t open_before = m->counters.open_bus_reads;
+    CHECK_EQ_HEX(cogmaster__io_in(m, PORT_ADDRESS), 0xFF);
+    CHECK_EQ_HEX(cogmaster__io_in(m, PORT_DATA), 0xFF);
+    CHECK_EQ_U64(m->counters.open_bus_reads, open_before + 2u);
+    CHECK_EQ_U64(m->input_read, 0);
+    cogmaster_destroy(m);
+}
+
+/* On a console with the unit the ports $F0 to $F2 answer ahead of the I/O chip: with $3E bit 2
+   set (chip off, cartridge and RAM left on) a write to $F2 still stores and mutes, its read
+   still returns the stored value with the counter bits, and the instrument, frequency and
+   key-on written through $F0 and $F1 still change the chip's registers and sound; the pad
+   ports answer open bus while the chip is off and as before when it is back. A decode behind
+   the I/O chip's gate fails each of these. */
+static void chip_off(void)
+{
+    cogmaster *m = make_unit(COGMASTER_REGION_JAPAN, COGMASTER_FM_AUTO);
+    const uint8_t on = m->io.mem_ctrl;
+    const uint8_t dc = cogmaster__bus_in(m, 0xDCu);
+    const uint8_t dd = cogmaster__bus_in(m, 0xDDu);
+
+    out_at(m, 100, 0x3Eu, (uint8_t)(on | 0x04u));
+    CHECK_EQ_U64(m->io.mem_ctrl, on | 0x04u);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDCu), 0xFF);
+    out_at(m, 140, PORT_CTRL, 3);
+    CHECK_EQ_U64(m->io.audio_ctrl, 3);
+    m->ticks = 8u * 684u;
+    CHECK_EQ_HEX(cogmaster__bus_in(m, PORT_CTRL), 0x20u | 3u);
+    note_on(m, 8u * 684u + 100u);
+    CHECK_EQ_U64(m->opll.reg[0x30], 0x10);
+    CHECK_EQ_U64(m->opll.reg[0x10], 0x80);
+    CHECK_EQ_U64(m->opll.reg[0x20], KEY_ON_B4);
+    CHECK(run_peak(m, 2) > 0);
+
+    /* Muted again with the chip still off, the FM goes silent. */
+    out_at(m, in_frame(m, 500), PORT_CTRL, 0);
+    CHECK_EQ_U64(m->io.audio_ctrl, 0);
+    CHECK(run_peak(m, SETTLE_FRAMES) > 0);
+    CHECK_EQ_U64(run_peak(m, 1), 0);
+
+    out_at(m, in_frame(m, 100), 0x3Eu, on);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDCu), dc);
+    CHECK_EQ_HEX(cogmaster__bus_in(m, 0xDDu), dd);
+    CHECK_EQ_U64(m->fault_present, 0);
+    cogmaster_destroy(m);
+}
+
+/* Without the unit the three ports do nothing and cost nothing. The export console reads them
+   as $DC (even) and $DD (odd) without counting a read of input; a Japanese console and a Game
+   Gear without the unit read open bus; a write changes nothing and is no fault. */
+static void no_unit_ports(void)
+{
+    cogmaster *m = make_unit(COGMASTER_REGION_EXPORT, COGMASTER_FM_AUTO);
+
+    CHECK_EQ_U64(m->fm_unit, 0);
+    m->input.p1 = 0x15u;
+    m->input.p2 = 0x0Cu;
+    for (uint32_t port = PORT_ADDRESS; port <= PORT_CTRL; port++) {
+        m->input_read = 0;
+        CHECK_EQ_HEX(cogmaster__io_in(m, (uint16_t)port), (port & 1u) ? 0xFCu : 0xEAu);
+        CHECK_EQ_U64(m->input_read, 0);
+    }
+    m->input_read = 0;
+    CHECK_EQ_HEX(cogmaster__io_in(m, 0xDCu), 0xEA);
+    CHECK_EQ_U64(m->input_read, 1);
+
+    const struct cogmaster__opll quiet = m->opll;
+    out_at(m, 100, PORT_ADDRESS, 0x30);
+    out_at(m, 140, PORT_DATA, 0x10);
+    out_at(m, 180, PORT_CTRL, 3);
+    CHECK_EQ_U64(m->io.audio_ctrl, 0);
+    CHECK_EQ_U64(m->synth.level[6], 0);
+    CHECK(memcmp(&quiet, &m->opll, sizeof quiet) == 0);
+    CHECK_EQ_U64(m->fault_present, 0);
+    CHECK_EQ_U64(drain_trace(m), 4);
+    cogmaster_destroy(m);
+
+    for (uint32_t k = 0; k < 2; k++) {
+        m = k == 0 ? make_unit(COGMASTER_REGION_JAPAN, COGMASTER_FM_OFF)
+                   : make_profile(COGMASTER_MACHINE_GG, COGMASTER_REGION_EXPORT, COGMASTER_VIDEO_GG,
+                                  COGMASTER_FM_AUTO);
+        CHECK_EQ_U64(m->fm_unit, 0);
+        for (uint32_t port = PORT_ADDRESS; port <= PORT_CTRL; port++) {
+            const uint32_t open_before = m->counters.open_bus_reads;
+            m->input_read = 0;
+            CHECK_EQ_HEX(cogmaster__io_in(m, (uint16_t)port), 0xFF);
+            CHECK_EQ_U64(m->counters.open_bus_reads, open_before + 1u);
+            CHECK_EQ_U64(m->input_read, 0);
+        }
+        out_at(m, 100, PORT_ADDRESS, 0x30);
+        out_at(m, 140, PORT_DATA, 0x10);
+        out_at(m, 180, PORT_CTRL, 3);
+        CHECK_EQ_U64(m->io.audio_ctrl, 0);
+        CHECK_EQ_U64(m->opll.latch, 0);
+        CHECK_EQ_U64(m->opll.reg[0x30], 0);
+        CHECK_EQ_U64(m->fault_present, 0);
+        cogmaster_destroy(m);
+    }
+}
+
+/* A load and both resets leave the unit at its power-on state: $F2 at 0, every YM register 0,
+   the PSG silent, the next sample at tick 216 and the tick-0 snapshot of sources 0 to 3, 5 and
+   6 in the log. The synthesiser holds the chip's levels, so after a SOFT reset the unit is
+   muted (a stale mute or FM level would leave the note audible without its $F2 write), and
+   the note written again is heard once $F2 is. The sample count of a SOFT reset stays on the
+   cadence, and a POWER reset restarts it. */
+static void expect_unit_snapshot(cogmaster *m, const char *what)
+{
+    static const uint32_t sources[6] = {0, 1, 2, 3, 5, 6};
+    const uint32_t n = drain_trace(m);
+
+    if (n != 6u) {
+        fprintf(stderr, "%s: %lu records, wanted 6\n", what, (unsigned long)n);
+        check_failures++;
+        return;
+    }
+    for (uint32_t i = 0; i < n; i++) {
+        CHECK_EQ_U64(log_record[i].tick, 0);
+        CHECK_EQ_U64(log_record[i].source, sources[i]);
+    }
+    CHECK_EQ_U64(log_record[4].level, 0);
+    CHECK_EQ_U64(log_record[5].level, 0);
+}
+
+static void reset_kinds(void)
+{
+    for (uint32_t kind = COGMASTER_RESET_SOFT; kind <= COGMASTER_RESET_POWER; kind++) {
+        cogmaster *m = make_unit(COGMASTER_REGION_JAPAN, COGMASTER_FM_AUTO);
+        uint64_t frames = 0;
+        uint64_t total = 0;
+        uint32_t peak;
+
+        expect_unit_snapshot(m, "load");
+        CHECK_EQ_U64(m->fm_next, 216);
+        out_at(m, 100, PORT_CTRL, 1);
+        note_on(m, 200);
+        for (uint32_t i = 0; i < 3; i++) {
+            total += take_frame(m, pcm, &peak);
+            frames++;
+        }
+        CHECK(peak > 0);
+        CHECK_EQ_U64(m->synth.level[5], (uint16_t)m->opll.sum);
+        CHECK_EQ_U64(m->synth.level[6], 1);
+        CHECK(m->synth.gained[5][0] > 0);
+        CHECK(m->fm_next > 3u * 179208u);
+        (void)drain_trace(m);
+
+        CHECK_EQ_U64(cogmaster_reset(m, kind), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(m->io.audio_ctrl, 0);
+        CHECK_EQ_U64(m->opll.latch, 0);
+        for (uint32_t r = 0; r < 0x40u; r++) {
+            CHECK_EQ_U64(m->opll.reg[r], 0);
+        }
+        for (uint32_t ch = 0; ch < 4; ch++) {
+            CHECK_EQ_U64(m->psg.att[ch], 15);
+        }
+        CHECK_EQ_U64(m->fm_next, 216);
+        CHECK_EQ_U64(m->synth.level[5], (uint16_t)m->opll.sum);
+        CHECK_EQ_U64(m->synth.level[5], 0);
+        CHECK_EQ_U64(m->synth.level[6], 0);
+        CHECK_EQ_U64(m->synth.gained[5][0], 0);
+        CHECK_EQ_HEX(cogmaster__io_in(m, PORT_CTRL), 0);
+        m->ticks = 8u * 684u;
+        CHECK_EQ_HEX(cogmaster__io_in(m, PORT_CTRL), 0x20);
+        m->ticks = 0;
+        expect_unit_snapshot(m, kind == COGMASTER_RESET_SOFT ? "soft reset" : "power reset");
+
+        /* The old note again, with $F2 as the reset left it: muted. */
+        note_on(m, 200);
+        CHECK_EQ_U64(m->opll.reg[0x20], KEY_ON_B4);
+        for (uint32_t i = 0; i < SETTLE_FRAMES; i++) {
+            const uint64_t n = take_frame(m, pcm, &peak);
+            if (kind == COGMASTER_RESET_SOFT) {
+                total += n;
+            }
+            frames++;
+        }
+        CHECK_EQ_U64(peak, 0);
+        /* And with $F2 written, heard. */
+        out_at(m, in_frame(m, 100), PORT_CTRL, 1);
+        uint32_t heard = 0;
+        for (uint32_t i = 0; i < 3; i++) {
+            total += take_frame(m, pcm, &peak);
+            frames++;
+            heard = peak > heard ? peak : heard;
+        }
+        CHECK(heard > 0);
+        if (kind == COGMASTER_RESET_SOFT) {
+            CHECK_EQ_U64(total, frames * 3504512u / 4375u);
+        }
+        cogmaster_destroy(m);
+    }
+}
+
+static uint64_t get_le(const uint8_t *p, uint32_t width)
+{
+    uint64_t v = 0;
+
+    for (uint32_t i = 0; i < width; i++) {
+        v |= (uint64_t)p[i] << (8u * i);
+    }
+    return v;
+}
+
+static void put_le(uint8_t *p, uint64_t v, uint32_t width)
+{
+    for (uint32_t i = 0; i < width; i++) {
+        p[i] = (uint8_t)(v >> (8u * i));
+    }
+}
+
+static const struct cogmaster__state_field *find_field(const struct cogmaster__state_field *f,
+                                                       size_t n, const char *name)
+{
+    for (size_t i = 0; i < n; i++) {
+        if (strcmp(f[i].name, name) == 0) {
+            return &f[i];
+        }
+    }
+    fprintf(stderr, "no state field named %s\n", name);
+    check_failures++;
+    return NULL;
+}
+
+/* Loads the size bytes of state_c into target, which must refuse them and save the bytes it
+   saved before. */
+static void expect_refused(cogmaster *target, size_t size, const char *what)
+{
+    const size_t target_size = cogmaster__state_size(target);
+
+    CHECK(target_size > 64u && target_size <= STATE_BUF);
+    CHECK_EQ_U64(cogmaster__state_save(target, state_a, target_size), COGMASTER_STATUS_OK);
+    if (cogmaster__state_load(target, state_c, size) == COGMASTER_STATUS_OK) {
+        fprintf(stderr, "%s: accepted\n", what);
+        check_failures++;
+    }
+    CHECK_EQ_U64(cogmaster__state_save(target, state_b, target_size), COGMASTER_STATUS_OK);
+    if (memcmp(state_a, state_b, target_size) != 0) {
+        fprintf(stderr, "%s: the refused load changed the instance\n", what);
+        check_failures++;
+    }
+}
+
+/* The state of an instance with the unit holds the chip, its sample tick and the control, and a
+   state loaded into a second instance runs on as the first does: the same samples, the same
+   log records and the same bytes after ten frames. A state is refused when it carries what the
+   instance cannot have: a control with no unit, a chip block for a console without one, a
+   sample tick off the grid or behind the frame, or a chip whose sum is not its channels'. */
+static void state_round_trip(void)
+{
+    static int16_t pcm_other[COGMASTER__AUDIO_MAX_FRAMES * 2u];
+    cogmaster *a = make_unit(COGMASTER_REGION_JAPAN, COGMASTER_FM_AUTO);
+    uint32_t peak;
+
+    out_at(a, 100, PORT_CTRL, 3);
+    psg_tone(a, 400);
+    note_on(a, 600);
+    for (uint32_t i = 0; i < 3; i++) {
+        (void)take_frame(a, pcm, &peak);
+    }
+    CHECK(peak > 0);
+    (void)drain_trace(a);
+    const size_t size = cogmaster__state_size(a);
+    CHECK(size > 64u && size <= STATE_BUF);
+    CHECK_EQ_U64(cogmaster__state_save(a, state_a, size), COGMASTER_STATUS_OK);
+
+    cogmaster *b = make_unit(COGMASTER_REGION_JAPAN, COGMASTER_FM_AUTO);
+    out_at(b, 100, PORT_CTRL, 2);
+    out_at(b, 140, PORT_ADDRESS, 0x30);
+    out_at(b, 180, PORT_DATA, 0x70);
+    (void)take_frame(b, pcm_other, &peak);
+    (void)drain_into(b, log_other);
+    CHECK_EQ_U64(cogmaster__state_load(b, state_a, size), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(b->fm_next, a->fm_next);
+    /* Every field of the chip but its evaluation counter came across. */
+    struct cogmaster__opll chip_a = a->opll;
+    struct cogmaster__opll chip_b = b->opll;
+    chip_a.slot_evals = 0;
+    chip_b.slot_evals = 0;
+    CHECK(memcmp(&chip_a, &chip_b, sizeof chip_a) == 0);
+
+    for (uint32_t i = 0; i < 10; i++) {
+        uint32_t peak_b;
+        const uint32_t na = take_frame(a, pcm, &peak);
+        const uint32_t nb = take_frame(b, pcm_other, &peak_b);
+        CHECK_EQ_U64(na, nb);
+        CHECK(memcmp(pcm, pcm_other, (size_t)na * sizeof pcm[0]) == 0);
+        const uint32_t ra = drain_into(a, log_record);
+        const uint32_t rb = drain_into(b, log_other);
+        CHECK_EQ_U64(ra, rb);
+        CHECK(ra > 100u && memcmp(log_record, log_other, (size_t)ra * sizeof log_record[0]) == 0);
+        CHECK(peak > 0);
+    }
+    CHECK_EQ_U64(cogmaster__state_save(a, state_b, size), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster__state_save(b, state_c, size), COGMASTER_STATUS_OK);
+    CHECK(memcmp(state_b, state_c, size) == 0);
+    cogmaster_destroy(b);
+
+    /* Poked into a copy of the first state, a field the instance cannot hold is refused. */
+    const size_t n = cogmaster__state_record(a, NULL, 0);
+    struct cogmaster__state_field *fields = malloc(n * sizeof *fields);
+    if (fields == NULL) {
+        exit(1);
+    }
+    CHECK_EQ_U64(cogmaster__state_record(a, fields, n), n);
+    CHECK_EQ_U64(cogmaster__state_save(a, state_a, size), COGMASTER_STATUS_OK);
+    static const struct {
+        const char *field;
+        int64_t add;
+        uint64_t set;
+        const char *what;
+    } hostile[] = {
+        {"io_audio_ctrl", 0, 4, "a control above the unit's bits"},
+        {"fm_next", 1, 0, "a sample tick off the 216 grid"},
+        {"fm_next", 0, 216, "a sample tick behind the last frame"},
+        {"fm_next", 216 * 100000, 0, "a sample tick far ahead of the ticks"},
+        {"opll_sum", 1, 0, "a sum that is not the channels' total"},
+        {"opll_slot_eg_out", 0, 128, "an envelope level past mute"},
+        {"opll_slot_patch", 0, 38, "an instrument past the table"},
+        {"opll_slot_pg_out", 0, 1024, "a phase index past the wave table"},
+        {"opll_slot_eg_shift", 0, 14, "an envelope shift past 13"},
+        {"opll_noise", 0, 0, "a noise register of zero, which never changes"},
+        {"opll_patch_number", 0, 19, "an instrument number past the rhythm ones"},
+        {"fm_unit", 0, 0, "the header without the unit"},
+    };
+    for (size_t i = 0; i < sizeof hostile / sizeof hostile[0]; i++) {
+        const struct cogmaster__state_field *f = find_field(fields, n, hostile[i].field);
+        if (f == NULL) {
+            continue;
+        }
+        memcpy(state_c, state_a, size);
+        put_le(state_c + f->offset,
+               hostile[i].set != 0 || hostile[i].add == 0
+                   ? hostile[i].set
+                   : get_le(state_a + f->offset, f->width) + (uint64_t)hostile[i].add,
+               f->width);
+        cogmaster__state_seal(state_c, size);
+        expect_refused(a, size, hostile[i].what);
+    }
+    /* The control: the unchanged state, resealed, loads. */
+    memcpy(state_c, state_a, size);
+    cogmaster__state_seal(state_c, size);
+    CHECK_EQ_U64(cogmaster__state_load(a, state_c, size), COGMASTER_STATUS_OK);
+    free(fields);
+
+    /* A console without the unit has no chip block: a state with one is refused by its size,
+       and its own state, with the control set, is refused by the field. */
+    cogmaster *plain = make_unit(COGMASTER_REGION_JAPAN, COGMASTER_FM_OFF);
+    (void)take_frame(plain, pcm, &peak);
+    const size_t plain_size = cogmaster__state_size(plain);
+    CHECK(plain_size > 64u && plain_size < size);
+    memcpy(state_c, state_a, size);
+    expect_refused(plain, size, "a chip block without the unit");
+    const size_t pn = cogmaster__state_record(plain, NULL, 0);
+    fields = malloc(pn * sizeof *fields);
+    if (fields == NULL) {
+        exit(1);
+    }
+    CHECK_EQ_U64(cogmaster__state_record(plain, fields, pn), pn);
+    CHECK_EQ_U64(cogmaster__state_save(plain, state_c, plain_size), COGMASTER_STATUS_OK);
+    const struct cogmaster__state_field *ctrl = find_field(fields, pn, "io_audio_ctrl");
+    const struct cogmaster__state_field *unit = find_field(fields, pn, "fm_unit");
+    if (ctrl != NULL && unit != NULL) {
+        CHECK_EQ_U64(ctrl->max, 0);
+        put_le(state_c + ctrl->offset, 1, ctrl->width);
+        cogmaster__state_seal(state_c, plain_size);
+        expect_refused(plain, plain_size, "a control with no unit");
+        CHECK_EQ_U64(cogmaster__state_save(plain, state_c, plain_size), COGMASTER_STATUS_OK);
+        put_le(state_c + unit->offset, 1, unit->width);
+        cogmaster__state_seal(state_c, plain_size);
+        expect_refused(plain, plain_size, "the unit byte of a console without one");
+    }
+    free(fields);
+    cogmaster_destroy(plain);
+    cogmaster_destroy(a);
+}
+
+/* A ROM that writes the unit's ports as fast as the Z80 can issue OUT, 11 T-states or 33 ticks
+   apart, cannot make a frame cost more than its bound. The chip takes one sample per 216 ticks
+   and evaluates 18 slots in it whatever the registers say. A write moves at most four PSG
+   channels or, for $F2, four PSG sources and the FM source, one kernel addition each on every
+   output, and a PSG step moves at most four; so a frame adds at most 16 taps a ring for each
+   of four times the steps, five times the writes and the FM samples. */
+static void cost(void)
+{
+    static const uint8_t psg_bytes[12] = {0x82u, 0x02u, 0xA2u, 0x02u, 0xC2u, 0x02u,
+                                          0x90u, 0xB0u, 0xD0u, 0xF0u, 0xE4u, 0xE5u};
+    cogmaster *m = make_unit(COGMASTER_REGION_JAPAN, COGMASTER_FM_AUTO);
+    const uint64_t frame_ticks = cogmaster__frame_ticks(m);
+    const uint32_t rings = 1;
+    uint32_t seed = 0x2413u;
+    uint32_t writes = 0;
+    uint32_t psg_writes = 0;
+    uint32_t f2_writes = 0;
+
+    (void)drain_trace(m);
+    for (uint64_t t = 33, i = 0; t < frame_ticks; t += 33, i++) {
+        seed = seed * 1664525u + 1013904223u;
+        switch (i % 6u) {
+        case 0:
+            out_at(m, t, PORT_ADDRESS, (uint8_t)((seed >> 8) % 0x40u));
+            break;
+        case 2:
+            out_at(m, t, PORT_CTRL, (uint8_t)((i / 6u) % 4u));
+            f2_writes++;
+            break;
+        case 3:
+        case 5:
+            out_at(m, t, 0x7Fu, psg_bytes[psg_writes++ % 12u]);
+            break;
+        default:
+            out_at(m, t, PORT_DATA, (uint8_t)(seed >> 16));
+            break;
+        }
+        writes++;
+    }
+    uint32_t peak;
+    (void)take_frame(m, pcm, &peak);
+
+    const struct cogmaster__synth_stats *st = &m->synth.stats;
+    const uint64_t samples = m->opll.slot_evals / 18u;
+    CHECK_EQ_U64(m->opll.slot_evals, 18u * samples);
+    CHECK_EQ_U64(samples, (m->fm_next - 216u) / 216u);
+    CHECK(samples <= (frame_ticks + 215u) / 216u);
+    CHECK(samples + 2u >= frame_ticks / 216u);
+    CHECK(st->psg_steps <= (frame_ticks + 47u) / 48u);
+    CHECK_EQ_U64(st->psg_writes, psg_writes);
+    const uint64_t bound =
+        (uint64_t)COGMASTER__SYNTH_TAPS * rings * (4u * st->psg_steps + 5u * writes + samples);
+    CHECK(st->kernel_apps <= bound);
+    /* The hammer changed levels, so the bound is not met by a chip that stopped. */
+    CHECK(st->kernel_apps > COGMASTER__SYNTH_TAPS * 1000u);
+    CHECK(st->max_index + 32u < COGMASTER__SYNTH_RING);
+    const uint32_t n = drain_trace(m);
+    CHECK(count_source(n, 5) > 100u);
+    CHECK_EQ_U64(count_source(n, 6), f2_writes);
+    cogmaster_destroy(m);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
@@ -687,6 +1306,14 @@ static const struct {
     {"slot_count", slot_count},
     {"sum_bound", sum_bound},
     {"through_bus", through_bus},
+    {"f2_write_mask", f2_write_mask},
+    {"f2_read_bits", f2_read_bits},
+    {"f2_catches_up", f2_catches_up},
+    {"chip_off", chip_off},
+    {"no_unit_ports", no_unit_ports},
+    {"reset_kinds", reset_kinds},
+    {"state_round_trip", state_round_trip},
+    {"cost", cost},
 };
 
 int main(int argc, char **argv)
