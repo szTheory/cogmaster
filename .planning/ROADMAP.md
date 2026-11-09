@@ -206,9 +206,9 @@ Plans:
 **Depends on**: Phase 3
 **Requirements**: SND-01, SND-02, SND-03, SND-04, SND-05
 **Success Criteria** (what must be TRUE):
-  1. `ctest -L psg` passes every tone, volume and noise setting of the SN76489 model against SMS-AUDIO 1 and JoppyFurr's MIT test ROM, and the GG stereo register routes channels per SMS-AUDIO 2 (SND-01).
-  2. `ctest -L fm` passes JoppyFurr's MIT YM2413 test ROM checks for the Japanese profile at Z80/72 Hz, with port `$F2` selecting PSG, FM, none or both, and the OPLL seed's notice is present in `THIRD-PARTY-NOTICES.md` (SND-02).
-  3. `cogmaster-run --hash-audio` prints the same transition-stream and PCM hashes for the `psg_sweep` and `boot_to_play` fixtures on every platform, with exactly 3,504,512/4,375 samples per NTSC frame at 48 kHz and no clipping (SND-03).
+  1. `ctest -L psg` passes every tone, volume and noise setting of the SN76489 model against SMS-AUDIO 1 through closed-form unit oracles and the owned `psg_sweep` fixture judged by frozen transition and PCM hashes, and the GG stereo register routes channels per SMS-AUDIO 2 (SND-01); third-party ROM conformance is deferred (REQUIREMENTS, Sound).
+  2. `ctest -L fm` passes the lockstep test against the unmodified emu2413 upstream, the register-level units and the owned `fm_sweep` fixture judged by frozen hashes for the Japanese profile at Z80/72 Hz, with port `$F2` selecting PSG, FM, none or both, and the emu2413 notice is present in `THIRD-PARTY-NOTICES.md` (SND-02).
+  3. `cogmaster-run --hash-audio` prints the same transition-stream and PCM hashes for the `psg_sweep` and `boot_to_play` fixtures on every platform, with 801 or 802 samples per NTSC frame (965 or 966 PAL) at 48 kHz, cumulative total floor(F x 3,504,512 / 4,375) (PAL floor(F x 685,094,400 / 709,379)), and no clipping (SND-03).
   4. A test shows the libretro batch and single-sample audio paths deliver PCM equal to the runner's (stereo on GG, duplicated mono on SMS), and the hosted RetroArch session's recording is non-silent (SND-04).
   5. A test renders reference tones through the synthesiser and shows the largest non-harmonic peak below 16 kHz under −80 dB, and synthesis cost per output sample stays bounded under a register-hammering fixture (SND-05).
 

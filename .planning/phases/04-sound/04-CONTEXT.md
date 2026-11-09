@@ -24,11 +24,22 @@ volume table, mix arithmetic, pins, licences, RetroArch 1.22.2 behaviour).
 ## Implementation Decisions
 
 ### Time base, synthesis and mix
-- **D-01 (time unit):** Every audio timestamp is the absolute bus **tick** (3 ticks per Z80 cycle) since the last
-  POWER reset or load; a SOFT reset does not restart the count. Never "cycle": where SMS-AUDIO §5 says `u64
+- **D-01 (time unit):** Every audio timestamp is the absolute bus **tick** (3 ticks per Z80 cycle) counted from the
+  last load or reset of either kind; both SOFT and POWER restart the count. Never "cycle": where SMS-AUDIO §5 says `u64
   cycle`, read tick (DEC.34 and ARCHITECTURE §5 already say tick). The rational constants quoted below
   (176/13,125 and so on) are per Z80 cycle; per tick the modulus is three times larger (NTSC 39,375). —
   **Reversibility:** costly — the hash record layout and every pinned digest depend on it.
+  Amended at planning (new evidence: research finding F1; confirmed by the owner at planning, 2026-11-09): ticks and
+  frames count from the last load or reset of either kind, because cogmaster_reset restarts both for SOFT and POWER
+  (implemented by src/bus.c cogmaster__bus_origin, stated in the first paragraph of docs/embedding.md "## Reset",
+  asserted by tests/bus/test_bus.c test_frame_origin and tests/core/test_state.c). This is the single SOFT rule every
+  later plan implements. Snapshots are stamped tick 0 at load and at both resets. Across a SOFT reset the synth keeps
+  its phase accumulator, ring and head, integrator, DC estimator, stored per-source levels and undrained PCM, and
+  clears the trace log. Each chip returns to its power-on constants including its step origin (the PSG's last-step
+  tick returns to 0 and the FM next-sample tick to 216), and its reset levels reach the synth through
+  cogmaster__synth_level at tick 0, so the synth's stored levels equal the chips' levels and the step to silence is
+  band-limited at the first sample of the next frame. Ring positions are relative to the head and an event's sample
+  index is measured from the current frame's start, so no event lands at a stale ring position.
 - **D-02 (kernel family):** Band-limited step synthesis, the sibling `szTheory/nesturbator` `src/synth.c` family
   (MIT, same author, pin `9f9386c661f6`), with an integer impulse ring that is summed once per frame. Alternatives
   were measured and fail SND-05: polyBLEP −27 dB, box average −15.6 dB, sample-and-hold −4 dB; the "box bins"
@@ -48,6 +59,9 @@ volume table, mix arithmetic, pins, licences, RetroArch 1.22.2 behaviour).
   fraction = t & 0xFFFF, each tap `a*(65536−f) + b*f` (exact). Do not copy the sibling's 16 int64 divisions per
   event or its correction tap. A `_Static_assert` and a max-amplitude test bound the int64 accumulation (about
   2^58.6 for the 16 × 64 Q20 shape; the planner re-derives the bound for the table actually used).
+  Amended at planning (new evidence: the shipped kernel is the sibling's 16 x 32 table, plan 04-04): with 32 phases
+  the shift is << 21, t = (frac << 21) / mod, row = t >> 16 (frac < mod <= 2,128,137 < 2^22, so frac << 21 < 2^43 and
+  row < 32); << 22 applies only to the 64-phase D-03 fallback table.
 - **D-05 (ring):** A 1,024-slot int64 **impulse ring** with a global head. Each event adds at
   `head + sample_index_in_frame + k`; additions commute, so lazy and unordered chip catch-up (PSG, FM) is safe.
   Integrate only at the frame end for the nominal sample count; events past it land in the next frame. Save the
@@ -96,9 +110,12 @@ volume table, mix arithmetic, pins, licences, RetroArch 1.22.2 behaviour).
 ### PSG and Game Gear stereo
 - **D-11 (PSG module):** One file, per-/16-tick loop with lazy catch-up. Tie rule: before a write stamped τ, run
   every step with `48k ≤ τ`, then apply the write; document and test it, plus the frame-end flush. The divider
-  phase is derived from absolute ticks (a frame is 3,733.5 steps, so it is not frame-aligned). Volume writes are
+  phase is derived from absolute ticks, counted from the last load or reset of either kind (a frame is 3,733.5
+  steps, so it is not frame-aligned). Volume writes are
   combinational: catch up through τ, apply, stamp the record at τ, not at the next tick (this is what makes the
   GG "SEGA" chant and other PCM-by-volume tricks work). READY stall is not modelled.
+  Amended at planning (new evidence: research finding F1, the D-01/D-24 amendment): the tick origin is the last load
+  or reset of either kind, so the PSG last-step tick returns to 0 at both resets.
 - **D-12 (open-conflict defaults, each pinned by a cheap test, each flippable only by hardware evidence):**
   **period 0 and period 1 both hold the channel output constant high at its volume, with no transition records**
   (SMS-AUDIO §2.2 PSG-0, DEC.35; the flip-flop still counts internally; ares' literal toggle-every-tick would
@@ -141,6 +158,9 @@ volume table, mix arithmetic, pins, licences, RetroArch 1.22.2 behaviour).
   ARCHITECTURE line 79; add an emu2413 section to `THIRD-PARTY-NOTICES.md` (paths, pin, SHA-256 of `emu2413.c`,
   changes, LICENSE verbatim; the header says 2026 and LICENSE says 2001–2019, reproduce both). — **Reversibility:**
   costly — notices, provenance and the digests follow the seed.
+  Amended at planning (new evidence: the 800-line file rule of ENGINEERING.md, plan 04-10): the port spans src/opll.c
+  (per-sample path) and src/opll_reg.c (register writes, reset, patch setup) with src/opll.h and src/opll_tables.inc;
+  the 1,100-line replacement trigger counts both .c files and the .h.
 - **D-16 (integer conversion and proof):** The only float in the core path is `kl_table` (multiples of 0.125) and
   `/ EG_STEP`: use an integer `kl8[]` (the dB2 value ×8) and `tll = ((tmp >> (3 − KL)) * 8) / 3` (derived by the
   research; the lockstep test is what proves it exact). Delete the rate
@@ -152,7 +172,7 @@ volume table, mix arithmetic, pins, licences, RetroArch 1.22.2 behaviour).
 - **D-17 (one instrument table):** emu2413's YM2413 rows only, no A/B knob (nothing in-repo can arbitrate between
   lineages). Remove the "ymfm (emu2413 selectable)" knob from ARCHITECTURE line 168; record the table's origins
   (andete's notes, Nuke.YKT VRC7 rhythm rows, Chabin YMF281B rows) in the provenance entry.
-- **D-18 (cadence, writes, state):** Sample k completes at T-state 72k since power-on (216 ticks). A write first
+- **D-18 (cadence, writes, state):** Sample k completes at T-state 72k since the last load or reset of either kind (216 ticks). A write first
   catches up every sample ending at or before its tick, then applies and takes effect from the next sample; no busy
   state, no dropped or delayed write (the 12/84-clock gaps are ignored, as MAME does; they are chip clocks = T-states
   = 36/252 ticks if a diagnostic ever needs them). Serialise **every non-pointer field**: latch, `reg[0x40]`,
@@ -163,6 +183,8 @@ volume table, mix arithmetic, pins, licences, RetroArch 1.22.2 behaviour).
   `fm_unit` is on. Source-5 level is the native signed sum as `(uint16_t)`, merged on change, independent of
   `fm_gain` and the `$F2` mute; a test asserts the worst-case sum stays inside the int16 hash field.
   Cost: a test counts slot evaluations and asserts exactly 18 × samples under a register-hammering fixture.
+  Amended at planning (new evidence: research finding F1, the D-01/D-24 amendment): the tick origin is the last load
+  or reset of either kind, so the FM next-sample tick returns to 216 at both resets.
 - **D-19 (accuracy bought):** emu2413-grade: rhythm and noise LFSR, AM/PM LFO, the test register. Not bought: DAC
   multiplexing, analogue filtering, die-level timing.
 
@@ -179,14 +201,17 @@ volume table, mix arithmetic, pins, licences, RetroArch 1.22.2 behaviour).
   11, state format 11, recorded in `docs/embedding.md`; later mix retunes are one more bump plus regenerated PCM
   pins. — **Reversibility:** one-way — the public struct layout and the state format are published contracts.
 - **D-21 (`$F2`):** Write stores `v & fm_mask`, bits 7–2 ignored. Read returns stored | counter bits (bit 5 =
-  counter bit 3, bit 6 = bit 7, bit 7 = bit 11), bits 4–2 zero; the counter derives from the absolute line index
+  counter bit 3, bit 6 = bit 7, bit 7 = bit 11), bits 4–2 zero; the counter derives from the line index of the tick count since the last load or reset of either kind
   (no new state). Values: 0 PSG only, 1 FM only, 2 both off, 3 both on; muting is applied at the mixer, so the
   chips keep running. Power-on and both reset kinds: `$F2 = 0`, YM registers cleared, PSG silent (matches MAME's
   reset and the BIOS hand-off; whether a soft reset really clears the chips on hardware is unverified, so a test
   pins it and SMS-AUDIO §9 records it). On smsj, $F0–$F2 are independent of `$3E` bit 2. Without FM keep today's
   behaviour: writes ignored with no fault; export reads mirror $DC/$DD; GG and fm=off Japan read open bus; reads of
   $F0–$F2 never set `input_read` (DEC.38). The "%10 on export" value stays an unverified claim and is not
-  implemented. Keep `io.decode_mirrors` and `bus.fault_not_faults` passing.
+  implemented. Keep `io.decode_mirrors` and `fault.not_faults` passing.
+  Amended at planning (new evidence: research finding F1, the D-01/D-24 amendment): the tick origin is the last load
+  or reset of either kind, so the $F2 counter bits come from the line index of that tick count, not from a count kept
+  across resets; the test is registered as fault.not_faults in tests/bus/tests.cmake and both inventories.
 - **D-22 (libretro options and state):** exactly one new libretro option, `cogmaster_fm` (auto | off | on, reload
   content), added in all three places (`lr_definitions`, the v1 fallback `definitions[6]` with loop `i < 6`, and the
   `retro_variable` array). Per-voice or per-chip volume is deferred. `audio_ctrl` joins `struct cogmaster__io`
@@ -194,6 +219,8 @@ volume table, mix arithmetic, pins, licences, RetroArch 1.22.2 behaviour).
   the header's reserved space becomes `fm_unit` (`state.c` has a one-byte profile-reserved at offset 27 and a
   12-byte reserved block at 52; the planner picks one and states the remaining count); every new audio field gets a field-range sweep
   entry; LFSR ≠ 0 is cross-checked on load; undrained output is cleared on load.
+  Amended at planning (new evidence: research finding F12): the v1 fallback holds five options plus a zeroed
+  terminator today (definitions[6], loop i < 5), so adding cogmaster_fm makes it definitions[7] with loop bound i < 6.
 
 ### Observability: transition stream, hashes, runner
 - **D-23 (tap is a caller-owned change log, not a v5 hook):** no hook machinery exists (hooks are TOOL-01 /
@@ -209,8 +236,11 @@ volume table, mix arithmetic, pins, licences, RetroArch 1.22.2 behaviour).
   the source's previous merged level; the previous-level array lives in the runner and carries across frames.
   Frame end catches PSG and FM up to the deadline; the runner asserts per-source ticks are monotone. At load and at
   every reset the core emits one snapshot record per active source **at the current tick** (tick 0 for load and
-  POWER reset; a SOFT reset happens at a later tick and does not restart the count, D-01), GG mask only on GG, FM
+  both reset kinds, because ticks count from the last load or reset of either kind, D-01), GG mask only on GG, FM
   and control only with an FM unit, so power-on state is hashed and the per-profile source set is checked.
+  Amended at planning (new evidence: research finding F1; confirmed by the owner at planning, 2026-11-09): the
+  snapshot is stamped tick 0 at load and at both reset kinds, and the SOFT rule of D-01 applies: across a SOFT reset
+  the trace log is cleared and each chip's reset levels reach the synth through cogmaster__synth_level at tick 0.
 - **D-25 (levels, so retunes never move the primary hash):** sources 0–3 = `out << 4 | att` from registers only
   (not Q15); 4 = the mask byte; 5 = the OPLL signed sum, pre-gain; 6 = the effective `$F2` after profile masking.
   Correcting the volume table or any mix constant therefore moves PCM digests only. Source 5 depends on the FM
@@ -319,6 +349,13 @@ volume table, mix arithmetic, pins, licences, RetroArch 1.22.2 behaviour).
   cost bound is a deterministic counter, not a clock: count kernel applications and PSG steps per frame and assert
   them against the formula (PSG steps ≤ 3,734 + OUT writes ≤ 59,736/11 + FM samples ≤ 830, times 16 taps times the
   ring count) under the hostile hammer fixture; FM's 18 × samples slot-evaluation count (D-18) is the FM part.
+  Amended at planning (new evidence: per-event accounting, plans 04-06 and 04-12): one PSG step can change up to four
+  channel levels (three tones toggle and the noise shifts on the same step) and one OUT write at most five (a GG $06
+  write re-routes up to four PSG sources plus itself; an $F2 write on the FM profile re-feeds PSG sources 0-3 and FM
+  source 5, five ring sources, source 6 being only a gate), so the asserted bound is kernel applications <= 16 x rings
+  x (4 x PSG steps + 5 x OUT writes + FM samples), the FM term being one source-5 event per sample and zero without
+  an FM unit; PSG steps <= ceil(frame_ticks / 48), FM samples <= ceil(frame_ticks / 216) and FM slot evaluations
+  exactly 18 x samples are asserted alongside.
 
 ### Claude's Discretion
 - Exact Q12 gain constants (D-07) and the exact trace-record capacity and struct shape (D-23), subject to the
