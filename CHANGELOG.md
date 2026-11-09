@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/szTheory/cogmaster/compare/v0.3.0...v0.4.0) (2026-11-09)
+
+
+### Features
+
+* **sound:** play SN76489 and YM2413 sound through the runner and libretro core ([#11](https://github.com/szTheory/cogmaster/issues/11)) ([8faf841](https://github.com/szTheory/cogmaster/commit/8faf841ca9f5e393610be5442528b836d447b497))
+
 ## [0.3.0](https://github.com/szTheory/cogmaster/compare/v0.2.0...v0.3.0) (2026-10-20)
 
 
