@@ -15,6 +15,7 @@ typedef struct cogmaster__run_options {
     uint32_t frames;
     int bench;
     int hash;
+    int hash_audio; /* --hash-audio: print the transition and sample hashes */
     const char *input;
     const char *expect;
     const char *save_dir;

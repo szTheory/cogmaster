@@ -231,6 +231,7 @@ runner.hash.gg	portable,runner
 runner.hash.repeat	portable,runner
 runner.hash.self_test	runner
 runner.hash.sms	portable,runner
+runner.hash_audio	portable,psg,runner
 runner.hashes_compare.byte.self_test	runner
 runner.hashes_compare.count.self_test	runner
 runner.hashes_file	portable,runner

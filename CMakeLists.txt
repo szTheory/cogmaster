@@ -134,6 +134,7 @@ if(COGMASTER_BUILD_RUNNER)
   set(COGMASTER_RUNNER_SOURCES
     runner/main.c
     runner/args.c
+    runner/audio.c
     runner/expect.c
     runner/input.c
     runner/bench.c

@@ -25,6 +25,10 @@
  * frame in progress: what was asked is printed for the frames that ran, and
  * the status is 0 unless an output or save flush fails.
  *
+ * --hash-audio drains the core's sound each frame (audio.h) and, after the
+ * last frame, prints one line for the merged level changes and one for the
+ * samples.
+ *
  * --trace first-fault reads the core's first-fault record after each frame,
  * stops at the first fault and prints it as one line, or "fault none".
  *
@@ -39,6 +43,7 @@
 #include <string.h>
 
 #include "args.h"
+#include "audio.h"
 #include "bench.h"
 #include "clock.h"
 #include "cogmaster.h"
@@ -282,6 +287,9 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     cfg.size = (uint32_t)sizeof cfg;
     cfg.allocator.alloc = run_alloc;
     cfg.allocator.free = run_free;
+    if (opt->hash_audio) {
+        cfg.trace_records = COGMASTER_RUN_TRACE_RECORDS;
+    }
     cogmaster *m = NULL;
     cogmaster_status st = cogmaster_create(&cfg, &m);
     if (st != COGMASTER_STATUS_OK) {
@@ -305,6 +313,14 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     media.tv = opt->tv;
     media.video_mode = opt->video_mode;
     int status = load_status(cogmaster_load(m, &media), image_size);
+    cogmaster__audio audio = {0};
+    if (status == COGMASTER__EXIT_OK && opt->hash_audio) {
+        cogmaster_info info = {0};
+        info.size = sizeof info;
+        status = cogmaster_get_info(m, &info) == COGMASTER_STATUS_OK
+                     ? cogmaster__audio_open(&audio, info.tv == COGMASTER_TV_PAL)
+                     : COGMASTER__EXIT_FAILURE;
+    }
     cogmaster__save save = {0};
     int save_loaded = 0;
     if (status == COGMASTER__EXIT_OK && opt->save_dir != NULL) {
@@ -396,6 +412,9 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
                     (unsigned long)st);
             status = COGMASTER__EXIT_FAILURE;
         }
+        if (status == COGMASTER__EXIT_OK && opt->hash_audio) {
+            status = cogmaster__audio_frame(&audio, m, n);
+        }
         if (status == COGMASTER__EXIT_OK && opt->expect != NULL)
             status = cogmaster__expect_frame(&expectations, m, (uint32_t)n, result.display_enabled,
                                              pixels);
@@ -442,6 +461,9 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     if (status == COGMASTER__EXIT_OK && opt->hash) {
         status = print_hash(m, ran, pixels);
     }
+    if (status == COGMASTER__EXIT_OK && opt->hash_audio) {
+        cogmaster__audio_print(&audio, ran);
+    }
     if (status == COGMASTER__EXIT_OK && opt->bench) {
         char report[512];
         size_t len =
@@ -466,6 +488,7 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     if (save_loaded && cogmaster__save_flush(&save, m) != COGMASTER__EXIT_OK)
         status = COGMASTER__EXIT_FAILURE;
     cogmaster__save_dispose(&save);
+    cogmaster__audio_close(&audio);
     cogmaster_destroy(m);
     free(pixels);
     free(samples);

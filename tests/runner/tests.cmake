@@ -530,7 +530,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     # Options a later release adds are refused now, and --help does not
     # mention them; --help and --version take nothing else; --trace takes
     # only first-fault and --region only its four names.
-    foreach(opt --hash-audio --capabilities --boot --bios)
+    foreach(opt --capabilities --boot --bios)
       expect_exit(2 "unknown option" --frames 1 ${opt})
       expect_exit(2 "unknown option" --frames 1 ${opt} x)
     endforeach()
@@ -544,8 +544,60 @@ if(CMAKE_SCRIPT_MODE_FILE)
     expect_exit(2 "usage" --probe)
     expect_exit(2 "usage" --probe --frames 1 ${SEEDS}/di-halt.sms)
     execute_process(COMMAND ${EMULATOR} ${RUN} --help RESULT_VARIABLE rc OUTPUT_VARIABLE out)
-    if(NOT rc STREQUAL "0" OR out MATCHES "--(hash-audio|capabilities|boot|bios)")
+    if(NOT rc STREQUAL "0" OR out MATCHES "--(capabilities|boot|bios)")
       message(FATAL_ERROR "--help: expected exit 0 and no later option, got exit ${rc}\n${out}")
+    endif()
+  elseif(CASE STREQUAL "hash_audio")
+    # Each run is made twice and must print the same bytes; the sample total
+    # is the cumulative cadence formula in integer math, and nothing clips.
+    # IMAGE, when set, is a fixture that sounds.
+    function(audio_run frames)
+      execute_process(COMMAND ${EMULATOR} ${RUN} --frames ${frames} --hash-audio ${ARGN}
+        RESULT_VARIABLE rc1 OUTPUT_VARIABLE out1 ERROR_VARIABLE err1)
+      execute_process(COMMAND ${EMULATOR} ${RUN} --frames ${frames} --hash-audio ${ARGN}
+        RESULT_VARIABLE rc2 OUTPUT_VARIABLE out2 ERROR_VARIABLE err2)
+      if(NOT rc1 STREQUAL "0" OR NOT rc2 STREQUAL "0")
+        message(FATAL_ERROR "--hash-audio ${ARGN}: exit ${rc1} and ${rc2}\n${out1}${err1}${err2}")
+      endif()
+      if(NOT out1 STREQUAL out2)
+        message(FATAL_ERROR "--hash-audio ${ARGN}: two runs differ:\n${out1}${out2}")
+      endif()
+      string(REPEAT "[0-9a-f]" 64 h64)
+      if(NOT out1 MATCHES "(^|\n)audio-transitions ${frames} count [0-9]+ sha256 ${h64}\n"
+          OR NOT out1 MATCHES "(^|\n)audio-pcm ${frames} rate 48000 channels ([12]) samples ([0-9]+) peak ([0-9]+) clipped ([0-9]+) sha256 ${h64}\n")
+        message(FATAL_ERROR "--hash-audio ${ARGN}: the two lines are missing or malformed:\n${out1}")
+      endif()
+      math(EXPR want "${frames} * 3504512 / 4375")
+      # Group 1 is the line start.
+      if(NOT CMAKE_MATCH_3 STREQUAL want OR NOT CMAKE_MATCH_5 STREQUAL "0")
+        message(FATAL_ERROR "--hash-audio ${ARGN}: samples ${CMAKE_MATCH_3} (want ${want}) clipped ${CMAKE_MATCH_5}")
+      endif()
+      set(channels ${CMAKE_MATCH_2} PARENT_SCOPE)
+      set(peak ${CMAKE_MATCH_4} PARENT_SCOPE)
+    endfunction()
+
+    # The card is silent: one channel on the Master System, two on the Game Gear, no peak.
+    audio_run(60)
+    if(NOT channels STREQUAL "1" OR NOT peak STREQUAL "0")
+      message(FATAL_ERROR "--hash-audio card: channels ${channels} peak ${peak}")
+    endif()
+    audio_run(60 --machine gg)
+    if(NOT channels STREQUAL "2" OR NOT peak STREQUAL "0")
+      message(FATAL_ERROR "--hash-audio card on gg: channels ${channels} peak ${peak}")
+    endif()
+    if(IMAGE)
+      audio_run(300 ${IMAGE})
+      if(NOT channels STREQUAL "1" OR peak LESS 1 OR peak GREATER 29204)
+        message(FATAL_ERROR "--hash-audio ${IMAGE}: channels ${channels} peak ${peak}, want 1 to 29204")
+      endif()
+    endif()
+
+    # A runner built to offer the core 800 samples a frame meets a frame of 801
+    # or 802: that is a failure, not a short hash.
+    execute_process(COMMAND ${EMULATOR} ${SHORT} --frames 2 --hash-audio
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "1" OR NOT err MATCHES "frame 1 holds 800 samples" OR out MATCHES "audio-")
+      message(FATAL_ERROR "the 800 sample runner: expected exit 1 and no hash lines, got exit ${rc}\n${out}${err}")
     endif()
   elseif(CASE STREQUAL "positional")
     # One file, positional or after --rom, runs; a second file, a file with
@@ -767,6 +819,15 @@ set_target_properties(cogmaster-test-run-stop PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
 cogmaster_warnings(cogmaster-test-run-stop)
 
+# The same runner offering the core 800 samples a frame, for runner.hash_audio.
+add_executable(cogmaster-test-run-audio-short ${COGMASTER_RUNNER_SOURCES})
+target_link_libraries(cogmaster-test-run-audio-short PRIVATE cogmaster::cogmaster cogmaster-host)
+target_compile_definitions(cogmaster-test-run-audio-short PRIVATE _POSIX_C_SOURCE=200809L
+  COGMASTER_RUN_AUDIO_CAP=800)
+set_target_properties(cogmaster-test-run-audio-short PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-run-audio-short)
+
 if(COGMASTER_FIXTURES)
   # Share uninstrumented helpers; only main and save carry the test-only hooks.
   set(save_support ${COGMASTER_RUNNER_SOURCES})
@@ -909,6 +970,15 @@ endforeach()
 cogmaster_add_test(NAME runner.hash.repeat
   COMMAND ${runner_check} -DCASE=hash_repeat -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS portable runner TIMEOUT 30)
+
+# Fault prevented: sound hash lines that differ between two runs of the same
+# input, a sample total off the cadence formula, a sample that clips, a frame
+# of the wrong length passed as a hash, or a trace log that overflows silently.
+# Timeout: 30 s; the card and the fixture runs take well under a second each.
+cogmaster_add_test(NAME runner.hash_audio
+  COMMAND ${runner_check} -DCASE=hash_audio -DSHORT=$<TARGET_FILE:cogmaster-test-run-audio-short>
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable psg runner TIMEOUT 30)
 
 # Fault prevented: --version printing something a script cannot parse.
 cogmaster_add_test(NAME runner.version

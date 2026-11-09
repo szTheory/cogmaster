@@ -1,12 +1,14 @@
 # cogmaster-run
 
-`cogmaster-run` is the headless runner. It runs the emulator for a fixed number of frames with no window, sound
-device or input device. It can print a frame hash, write PNG images and report frame times. Scripts and CI use it
+`cogmaster-run` is the headless runner. It runs the emulator for a fixed number of frames with no window and no
+input device, and plays no sound. It can print a frame hash, print hashes of the sound, write PNG images and report
+frame times. Scripts and CI use it
 to check that a build produces the expected picture. It can also describe a cartridge file without running it
 (see [Probe](#probe)).
 
 With no file, every run shows the built-in test card (see [Test card](#test-card)). Content uses the Mode 4
-background and sprite renderer; audio remains silent.
+background and sprite renderer, and the sound chips run and are heard through `--hash-audio` (see [Sound
+hashes](#sound-hashes)).
 
 `--machine sms` keeps the SMS2 profile; `--machine sms1` selects SMS1.
 `--video-mode auto|sms|gg` selects video independently of the machine.
@@ -59,6 +61,7 @@ cogmaster-run --help | --version
 | `--frames N` | Run N frames, N from 1 to 4294967295. Give either `--frames` or `--bench`, once. |
 | `--bench N` | Run N frames, time each one and print the report described under [Bench report](#bench-report). N is from 1 to 1073741823. The runner keeps 4 bytes per frame, so a very large N can exit 1 because memory ran out. |
 | `--hash` | After the last frame, print the SHA-256 of its picture. |
+| `--hash-audio` | After the last frame, print two lines hashing the sound's level changes and its samples, described under [Sound hashes](#sound-hashes). It does not need `--hash` and `--hash` does not need it. It is a usage error with `--bench` or `--probe`. |
 | `--save-dir DIR` | Import and persist raw battery data in an existing directory. Requires content. |
 | `--png N:FILE` | After frame N, write its picture to FILE as a PNG. N is from 1 to the frame count. Repeat the option to write more frames or files. If the run stops before frame N, FILE is not written and a line on standard error names it. |
 | `--trace first-fault` | After each frame, read the core's first-fault record; stop at the first fault and print it, described under [First fault](#first-fault). |
@@ -97,6 +100,34 @@ The hash is SHA-256 over the visible picture only: 256×192 on the Master System
 reads the rows from top to bottom. Each pixel is an RGB444 value (`0000BBBBGGGGRRRR`), stored as two bytes with
 the low byte first. The hash is therefore the same on little-endian and big-endian hosts. The test card does not
 change from frame to frame, so `--frames 1 --hash` and `--frames 60 --hash` print the same digest.
+
+## Sound hashes
+
+`--hash-audio` runs the sound path as a host would and prints two lines after the last frame (after the `--hash`
+line, if both are given):
+
+```text
+audio-transitions 60 count 878 sha256 <64 hex digits>
+audio-pcm 60 rate 48000 channels 1 samples 48061 peak 0 clipped 0 sha256 <64 hex digits>
+```
+
+The machine and console come from `--machine`, `--region` and `--video-mode` as for any run, so a Game Gear prints
+`channels 2` and a Master System `channels 1`. The first number on each line is the frames that ran.
+
+- **`audio-transitions`** hashes every change of a sound source's level, in time order. A source is one tone or
+  noise channel, the Game Gear stereo byte, or a Japanese Master System's FM unit. Each frame the runner takes the
+  core's log of changes, orders it by time and then by source, keeps only the last level a source was given at one
+  instant, and drops a level the source already held. Each kept change is hashed as 11 bytes: the time in master
+  clock ticks (8 bytes), the source (1) and the level (2), low byte first. `count` is how many were kept. Power-on
+  levels count as changes at tick 0. A level is the chip's register state, not a volume in samples, so changing
+  how loud a level sounds moves `audio-pcm` and leaves this line alone.
+- **`audio-pcm`** hashes every sample of the run as 16-bit values, low byte first, left then right on a Game Gear.
+  `samples` is the sample count per channel, which is `floor(frames x 3,504,512 / 4,375)` on NTSC. `peak` is the
+  largest magnitude (32,768 for the lowest value) and `clipped` counts samples at the extreme values.
+
+The run exits 1 and prints nothing to standard output when any frame does not hold 801 or 802 samples (965 or 966 on
+PAL), when the core dropped samples or log records, or when the core logs a source's changes out of time order. The
+check is made after each frame, so a hostile ROM cannot make the runner hold more than one frame of sound.
 
 ## PNG output
 
