@@ -68,12 +68,268 @@ static void lockstep(const char *path)
     }
 }
 
+static struct cogmaster__opll chip;
+static struct cogmaster__opll twin;
+
+static void put(struct cogmaster__opll *o, uint32_t reg, uint32_t v)
+{
+    cogmaster__opll_write(o, reg, v);
+}
+
+static void run(struct cogmaster__opll *o, uint32_t n)
+{
+    for (uint32_t i = 0; i < n; i++) {
+        (void)cogmaster__opll_sample(o);
+    }
+}
+
+/* Register $2n with the key on, block 4 and f-number bit 8 set: with $1n = $80 the f-number
+   is $180. */
+#define KEY_ON_B4 (0x10u | (4u << 1) | 1u)
+#define KEY_OFF_B4 ((4u << 1) | 1u)
+
+/* A key-on starts the carrier in its damp state; within two samples the damp is over and
+   the attack runs, the voice becomes audible, and a key-off releases it to silence. */
+static void key_on(void)
+{
+    uint32_t audible = 0;
+
+    cogmaster__opll_reset(&chip);
+    put(&chip, 0x30, 0x10); /* instrument 1, volume 0 */
+    put(&chip, 0x10, 0x80);
+    for (uint32_t i = 0; i < 8; i++) {
+        CHECK_EQ_U64(cogmaster__opll_sample(&chip), 0);
+    }
+    put(&chip, 0x20, KEY_ON_B4);
+    (void)cogmaster__opll_sample(&chip);
+    CHECK_EQ_U64(opll_car(&chip, 0)->eg_state, OPLL_DAMP);
+    (void)cogmaster__opll_sample(&chip);
+    CHECK(opll_car(&chip, 0)->eg_state != OPLL_DAMP);
+    for (uint32_t i = 0; i < 128 && !audible; i++) {
+        audible = cogmaster__opll_sample(&chip) != 0;
+    }
+    CHECK(audible);
+
+    put(&chip, 0x20, KEY_OFF_B4);
+    (void)cogmaster__opll_sample(&chip);
+    CHECK_EQ_U64(opll_car(&chip, 0)->eg_state, OPLL_RELEASE);
+    audible = 0;
+    for (uint32_t i = 0; i < 100; i++) {
+        audible |= cogmaster__opll_sample(&chip) != 0;
+    }
+    CHECK(audible); /* a decay, not a cut */
+    run(&chip, 20000);
+    CHECK_EQ_U64(opll_car(&chip, 0)->eg_out, OPLL_EG_MUTE);
+    for (uint32_t i = 0; i < 1000; i++) {
+        CHECK_EQ_U64(cogmaster__opll_sample(&chip), 0);
+    }
+}
+
+/* Each of the five rhythm keys in $0E sounds its own drum channel and no other. */
+static void rhythm(void)
+{
+    static const struct {
+        uint32_t key;
+        uint32_t channel;
+    } drums[5] = {{0x10, 9}, {0x08, 11}, {0x04, 12}, {0x02, 13}, {0x01, 10}};
+
+    for (uint32_t d = 0; d < 5; d++) {
+        uint32_t heard[COGMASTER__OPLL_CHANNELS] = {0};
+
+        cogmaster__opll_reset(&chip);
+        put(&chip, 0x16, 0x20);
+        put(&chip, 0x26, 0x05);
+        put(&chip, 0x17, 0x50);
+        put(&chip, 0x27, 0x05);
+        put(&chip, 0x18, 0xc0);
+        put(&chip, 0x28, 0x01);
+        put(&chip, 0x0e, 0x20); /* rhythm mode, every drum off */
+        CHECK_EQ_U64(chip.rhythm_mode, 1);
+        for (uint32_t i = 0; i < 100; i++) {
+            (void)cogmaster__opll_sample(&chip);
+            for (uint32_t c = 0; c < COGMASTER__OPLL_CHANNELS; c++) {
+                CHECK_EQ_U64(chip.ch_out[c], 0);
+            }
+        }
+        put(&chip, 0x0e, 0x20 | drums[d].key);
+        for (uint32_t i = 0; i < 5000; i++) {
+            (void)cogmaster__opll_sample(&chip);
+            for (uint32_t c = 0; c < COGMASTER__OPLL_CHANNELS; c++) {
+                heard[c] += chip.ch_out[c] != 0;
+            }
+        }
+        for (uint32_t c = 0; c < COGMASTER__OPLL_CHANNELS; c++) {
+            if (c == drums[d].channel) {
+                CHECK(heard[c] > 0);
+            } else {
+                CHECK_EQ_U64(heard[c], 0);
+            }
+        }
+    }
+}
+
+/* The noise generator is a 23-bit linear feedback shift register with taps at bits 0 and 9
+   that steps 18 times per sample, whether or not rhythm mode is on. */
+static uint32_t noise_after_sample(uint32_t n)
+{
+    for (uint32_t i = 0; i < 18; i++) {
+        n = (n & 1u) ? (n ^ 0x800200u) >> 1 : n >> 1;
+    }
+    return n;
+}
+
+static void noise(void)
+{
+    for (uint32_t mode = 0; mode < 2; mode++) {
+        uint32_t want = 1;
+
+        cogmaster__opll_reset(&chip);
+        CHECK_EQ_U64(chip.noise, 1);
+        put(&chip, 0x0e, mode ? 0x20 : 0x00);
+        for (uint32_t i = 0; i < 20000; i++) {
+            const uint32_t before = chip.noise;
+            (void)cogmaster__opll_sample(&chip);
+            want = noise_after_sample(want);
+            CHECK_EQ_U64(chip.noise, want);
+            CHECK(chip.noise != before);
+            CHECK(chip.noise != 0 && chip.noise < (1u << 23));
+        }
+    }
+}
+
+/* The amplitude LFO is a triangle of 0 to 13 held 64 samples per step with 13,440 samples
+   to the period, and the pitch LFO counts one per sample, eight steps of 1,024 samples. */
+static uint32_t am_level(uint32_t phase)
+{
+    const uint32_t step = phase >> 6;
+
+    if (step < 104) {
+        return step >> 3;
+    }
+    return step < 107 ? 13 : 12 - ((step - 107) >> 3);
+}
+
+static void lfo(void)
+{
+    cogmaster__opll_reset(&chip);
+    CHECK_EQ_U64(chip.pm_phase, 0);
+    CHECK_EQ_U64(chip.am_phase, 0);
+    for (uint32_t n = 1; n <= 2 * 13440; n++) {
+        (void)cogmaster__opll_sample(&chip);
+        CHECK_EQ_U64(chip.pm_phase, n);
+        CHECK_EQ_U64(chip.am_phase, n % 13440);
+        CHECK_EQ_U64(chip.lfo_am, am_level(n % 13440));
+    }
+
+    /* The pitch LFO moves the phase of a slot whose patch has the pitch bit: with f-number
+       $180 the offsets are 0 for the first 1,023 samples and 3 for the next 1,024, and a
+       phase step is 8 per unit of offset. */
+    cogmaster__opll_reset(&chip);
+    cogmaster__opll_reset(&twin);
+    for (uint32_t i = 0; i < 2; i++) {
+        struct cogmaster__opll *o = i ? &twin : &chip;
+        put(o, 0x00, 0x01 | (i ? 0x40u : 0u)); /* multiple 1, pitch LFO on in twin */
+        put(o, 0x10, 0x80);
+        put(o, 0x20, KEY_OFF_B4);
+        run(o, 2047);
+    }
+    CHECK_EQ_U64(opll_mod(&chip, 0)->pg_phase, (2047u * 0x1800u) & 0x7ffffu);
+    CHECK_EQ_U64((opll_mod(&twin, 0)->pg_phase - opll_mod(&chip, 0)->pg_phase) & 0x7ffffu,
+                 1024u * 3u * 8u);
+}
+
+/* The test register: bit 0 holds every envelope at full level, bit 1 holds both LFOs at
+   zero, bit 2 holds every phase generator at one step, bit 3 speeds the LFOs up. */
+static void test_register(void)
+{
+    /* Bit 1. */
+    cogmaster__opll_reset(&chip);
+    run(&chip, 100);
+    CHECK_EQ_U64(chip.pm_phase, 100);
+    put(&chip, 0x0f, 0x02);
+    run(&chip, 10);
+    CHECK_EQ_U64(chip.pm_phase, 0);
+    CHECK_EQ_U64(chip.am_phase, 0);
+    put(&chip, 0x0f, 0x00);
+    run(&chip, 1);
+    CHECK_EQ_U64(chip.pm_phase, 1);
+    CHECK_EQ_U64(chip.am_phase, 1);
+
+    /* Bit 3. */
+    cogmaster__opll_reset(&chip);
+    put(&chip, 0x0f, 0x08);
+    run(&chip, 3);
+    CHECK_EQ_U64(chip.pm_phase, 3 * 1024);
+    CHECK_EQ_U64(chip.am_phase, 3 * 64);
+
+    /* Bit 2: the phase restarts every sample, so it stays at one step of 0x1800. */
+    cogmaster__opll_reset(&chip);
+    put(&chip, 0x00, 0x01);
+    put(&chip, 0x10, 0x80);
+    put(&chip, 0x20, KEY_OFF_B4);
+    run(&chip, 5);
+    CHECK_EQ_U64(opll_mod(&chip, 0)->pg_phase, 5u * 0x1800u);
+    put(&chip, 0x0f, 0x04);
+    run(&chip, 5);
+    CHECK_EQ_U64(opll_mod(&chip, 0)->pg_phase, 0x1800u);
+    put(&chip, 0x0f, 0x00);
+    run(&chip, 1);
+    CHECK_EQ_U64(opll_mod(&chip, 0)->pg_phase, 2u * 0x1800u);
+
+    /* Bit 0: every envelope is at full level while it is set. */
+    cogmaster__opll_reset(&chip);
+    for (uint32_t i = 0; i < COGMASTER__OPLL_SLOTS; i++) {
+        CHECK_EQ_U64(chip.slot[i].eg_out, OPLL_EG_MUTE);
+    }
+    put(&chip, 0x0f, 0x01);
+    run(&chip, 1);
+    for (uint32_t i = 0; i < COGMASTER__OPLL_SLOTS; i++) {
+        CHECK_EQ_U64(chip.slot[i].eg_out, 0);
+    }
+}
+
+/* One call evaluates exactly 18 slots whatever the registers say, so a ROM that hammers
+   the chip cannot make a sample cost more. */
+static void slot_count(void)
+{
+    struct opll_stream st;
+
+    cogmaster__opll_reset(&chip);
+    CHECK_EQ_U64(chip.slot_evals, 0);
+    opll_stream_init(&st, OPLL_STREAM_SEED);
+    for (uint32_t i = 0; i < 10000; i++) {
+        const uint64_t r = opll_stream_next(&st);
+        put(&chip, opll_stream_address((uint32_t)((r >> 8) % OPLL_STREAM_ADDRESSES)),
+            (uint32_t)(r >> 40) & 0xffu);
+        (void)cogmaster__opll_sample(&chip);
+        CHECK_EQ_U64(chip.slot_evals, 18u * (i + 1u));
+    }
+}
+
+static const struct {
+    const char *name;
+    void (*run)(void);
+} cases[] = {
+    {"key_on", key_on},
+    {"rhythm", rhythm},
+    {"noise", noise},
+    {"lfo", lfo},
+    {"test_register", test_register},
+    {"slot_count", slot_count},
+};
+
 int main(int argc, char **argv)
 {
     if (argc == 3 && strcmp(argv[1], "lockstep") == 0) {
         lockstep(argv[2]);
         CHECK_DONE();
     }
-    fprintf(stderr, "usage: cogmaster-test-fm lockstep <digest file>\n");
+    for (size_t i = 0; argc == 2 && i < sizeof cases / sizeof cases[0]; i++) {
+        if (strcmp(argv[1], cases[i].name) == 0) {
+            cases[i].run();
+            CHECK_DONE();
+        }
+    }
+    fprintf(stderr, "usage: cogmaster-test-fm lockstep <digest file> | <case>\n");
     return 2;
 }

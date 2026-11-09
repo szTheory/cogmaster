@@ -82,3 +82,13 @@ cogmaster_warnings(cogmaster-test-fm)
 # eight times the native cost comes to.
 cogmaster_add_test(NAME fm.lockstep COMMAND cogmaster-test-fm lockstep
   ${CMAKE_CURRENT_LIST_DIR}/opll_lockstep.txt LABELS fm portable TIMEOUT 10)
+
+# Fault prevented: a key-on that never sounds or a key-off that never stops, a drum key that
+# sounds the wrong drum, a noise generator, an LFO or a test-register bit that differs from
+# the original, or a sample whose cost depends on what the ROM wrote.
+foreach(case IN ITEMS key_on rhythm noise lfo test_register slot_count)
+  # Timeout: 10 s floor; 0.05 s slowest local run, no hosted run yet, so provisional. The be32
+  # and wasm32 scales leave 80 s and 50 s.
+  cogmaster_add_test(NAME fm.${case} COMMAND cogmaster-test-fm ${case}
+    LABELS fm portable TIMEOUT 10)
+endforeach()
