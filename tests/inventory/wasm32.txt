@@ -22,6 +22,7 @@ abi.undefined	abi
 abi.undefined.self_test	abi
 audio.cadence	audio,portable
 audio.drain	audio,portable
+audio.step	audio,portable
 battery.continuation	mapper,portable
 battery.excluded	mapper,portable
 battery.fixture	mapper,portable

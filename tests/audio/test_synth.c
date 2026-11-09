@@ -390,12 +390,104 @@ static void test_drain(void)
     drain_trace();
 }
 
+/* The sample index a change at tick falls in during the first frame of an
+   NTSC instance whose cadence phase is 0. */
+static uint32_t index_of(uint64_t tick)
+{
+    return (uint32_t)(tick * COGMASTER__AUDIO_INC_NTSC / COGMASTER__AUDIO_MOD_NTSC);
+}
+
+/* Every kernel row sums to 32,768, and the table's largest taps are the ones
+   the accumulation bound in synth.c was derived from. */
+static void kernel_table(void)
+{
+    int64_t tap_max[COGMASTER__SYNTH_TAPS];
+    memset(tap_max, 0, sizeof tap_max);
+    int64_t biggest = 0;
+    for (uint32_t row = 0u; row < 32u; row++) {
+        int64_t sum = 0;
+        for (uint32_t k = 0u; k < COGMASTER__SYNTH_TAPS; k++) {
+            int64_t v = cogmaster__synth_kernel(row, k);
+            sum += v;
+            int64_t mag = v < 0 ? -v : v;
+            tap_max[k] = mag > tap_max[k] ? mag : tap_max[k];
+            biggest = mag > biggest ? mag : biggest;
+        }
+        CHECK_EQ_U64((uint64_t)sum, 32768u);
+    }
+    /* The partner of row 31 is row 0 one tap to the right. */
+    int64_t tap_sum = 0;
+    for (uint32_t k = 1u; k < COGMASTER__SYNTH_TAPS; k++) {
+        int64_t v = cogmaster__synth_kernel(0u, k - 1u);
+        tap_max[k] = (v < 0 ? -v : v) > tap_max[k] ? (v < 0 ? -v : v) : tap_max[k];
+    }
+    for (uint32_t k = 0u; k < COGMASTER__SYNTH_TAPS; k++) {
+        tap_sum += tap_max[k];
+    }
+    CHECK_EQ_U64((uint64_t)tap_sum, 70842u);
+    CHECK_EQ_U64((uint64_t)biggest, 28452u);
+}
+
+/* A level change is a band-limited, DC-blocked step: nothing before its
+   sample, the rise through the kernel, the full level 16 samples on less the
+   estimator's decay (a 256th of the gap a sample), then the slow decay itself.
+   The silent card stays exactly silent. */
+static void test_step(void)
+{
+    kernel_table();
+    const uint64_t tick = 20000u;
+    const uint32_t at = index_of(tick);
+    const int32_t level = 6720; /* attenuation 0 at the Master System gain */
+    cogmaster *m = make(COGMASTER_MACHINE_SMS2, COGMASTER_TV_NTSC, COGMASTER_VIDEO_SMS);
+    cogmaster__synth_level(m, tick, 0u, 0x10u);
+    cogmaster_audio a;
+    frame(m);
+    CHECK_EQ_U64(drain(m, &a, COGMASTER__AUDIO_MAX_FRAMES), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(a.written, 801u);
+    uint32_t before = 0u;
+    for (uint32_t i = 0u; i <= at; i++) {
+        before += pcm[i] != 0;
+    }
+    CHECK_EQ_U64(before, 0u);
+    int32_t peak = 0;
+    for (uint32_t i = at; i < at + 16u; i++) {
+        peak = pcm[i] > peak ? pcm[i] : peak;
+    }
+    /* The kernel overshoots its final value by under 9 percent. */
+    CHECK(peak > level && peak < level + level / 11);
+    CHECK(pcm[at + 4u] > -level / 20 && pcm[at + 4u] < level / 20);
+    CHECK(pcm[at + 9u] > level * 9 / 10);
+    int32_t full = pcm[at + 16u];
+    CHECK(full > level * 93 / 100 && full < level * 98 / 100);
+    int32_t late = pcm[at + 16u + 256u];
+    int32_t decayed = full * 3678 / 10000; /* (255 / 256) to the 256th */
+    CHECK(late > decayed - level / 100 && late < decayed + level / 100);
+    CHECK_EQ_U64(m->synth.stats.clamps, 0u);
+    CHECK_EQ_U64(m->synth.stats.kernel_apps, 16u);
+    CHECK_EQ_U64(m->synth.stats.max_index, at + 16u);
+    cogmaster_destroy(m);
+
+    /* No change, no sound: the card is zero sample for sample. */
+    m = make(COGMASTER_MACHINE_SMS2, COGMASTER_TV_NTSC, COGMASTER_VIDEO_SMS);
+    uint32_t nonzero = 0u;
+    for (uint32_t f = 0u; f < 4u; f++) {
+        frame(m);
+        CHECK_EQ_U64(drain(m, &a, COGMASTER__AUDIO_MAX_FRAMES), COGMASTER_STATUS_OK);
+        for (uint32_t i = 0u; i < a.written; i++) {
+            nonzero += pcm[i] != 0;
+        }
+    }
+    CHECK_EQ_U64(nonzero, 0u);
+    cogmaster_destroy(m);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
 } cases[] = {
     {"cadence", test_cadence},
     {"drain", test_drain},
+    {"step", test_step},
 };
 
 int main(int argc, char **argv)

@@ -9,7 +9,8 @@
              frame deadline, the VDP with its 16 KiB of VRAM, the 8 KiB of
              work RAM, then the board, the mapper registers and the
              cartridge RAM (none, 8 KiB or 32 KiB, fixed by the image),
-             then the I/O ports and the synthesiser's cadence phase
+             then the I/O ports and the synthesiser (cadence phase, ring
+             slots, integrator, DC estimate, levels)
    One field list drives every pass (state.h), so they cannot drift apart. A
    struct is never copied as a whole: padding, pointers and the allocator
    never reach the bytes. The emitted field and render cursor are saved so a partially drawn
@@ -50,11 +51,16 @@ _Static_assert(sizeof(struct cogmaster__bus) == 40u, "bus changed: update bus_io
 _Static_assert(sizeof(struct cogmaster__vdp) == 16510u, "vdp changed: update vdp_io");
 _Static_assert(sizeof(struct cogmaster__mapper) == 4u, "mapper changed: update mapper_io");
 _Static_assert(sizeof(struct cogmaster__io) == 8u, "io changed: update io_io");
-/* Five 32-bit counters and the PCM the host has not taken. The cadence phase
-   is the only field that is state: the counters and the PCM are the host's
-   queue, so a new field either joins synth_io or is added to this size. */
+/* The saved synth fields are the ring, integrator, DC estimate, head, levels,
+   gained levels and the cadence phase. The trace counters, the stats and the
+   PCM the host has not taken are its queue and counters, not state, so a new
+   field either joins synth_io or is added to this size. */
 _Static_assert(sizeof(struct cogmaster__synth) ==
-                   5u * sizeof(uint32_t) + sizeof(int16_t[COGMASTER__AUDIO_MAX_FRAMES * 2u]),
+                   sizeof(int64_t[2][COGMASTER__SYNTH_RING]) + 2u * sizeof(int64_t[2]) +
+                       (1u + 4u + 1u + COGMASTER__SYNTH_SOURCES + 2u * COGMASTER__SYNTH_SOURCES +
+                        3u) *
+                           sizeof(uint32_t) +
+                       sizeof(int16_t[COGMASTER__AUDIO_MAX_FRAMES * 2u]),
                "synth changed: update synth_io");
 
 /* A beam is at most one line short of the frame's lines down and 683 ticks
@@ -316,16 +322,52 @@ static void io_io(struct cogmaster__sio *io, cogmaster *m)
 }
 
 /* The cadence phase is a fraction of a sample, below the modulus of the
-   instance's TV (synth.c). The undrained PCM and the trace log are the host's
-   queue, not state: loading a state discards the PCM so the next frame does
-   not count it as dropped. */
+   instance's TV (synth.c). The synthesis is saved with it: the ring slots at
+   and after the head (an event lands at most a sample past the frame's end, so
+   32 hold every pending tap), the integrator, the DC estimate, the head and
+   each source's level and gained level. State is saved between frames, so the
+   other ring slots are empty and are zeroed on load. The bounds come from the
+   kernel table and the mixer gains (synth.c): a slot and the integrator stay
+   inside 2^56, the DC estimate inside its share of it, a gained level inside
+   the largest the profile's gain allows; a Master System has one output, so
+   the second channel is zero. The undrained PCM and the trace log are the
+   host's queue, not state: loading a state discards the PCM so the next frame
+   does not count it as dropped. */
 static void synth_io(struct cogmaster__sio *io, cogmaster *m)
 {
+    struct cogmaster__synth *s = &m->synth;
     uint32_t mod = m->tv == COGMASTER_TV_PAL ? COGMASTER__AUDIO_MOD_PAL : COGMASTER__AUDIO_MOD_NTSC;
-    cogmaster__sio_u32(io, "synth_phase", &m->synth.phase, 0u, mod - 1u);
+    cogmaster__sio_u32(io, "synth_phase", &s->phase, 0u, mod - 1u);
     if (io->mode == COGMASTER__SIO_APPLY) {
-        m->synth.pcm_frames = 0u;
-        m->synth.pcm_read = 0u;
+        memset(s->ring, 0, sizeof s->ring);
+    }
+    uint32_t head = cogmaster__sio_u32(io, "synth_head", &s->head, 0u, COGMASTER__SYNTH_RING - 1u);
+    uint32_t channels = m->machine == COGMASTER_MACHINE_GG ? 2u : 1u;
+    for (uint32_t ch = 0u; ch < 2u; ch++) {
+        int ok = ch < channels;
+        int64_t slot_max = ok ? COGMASTER__SYNTH_SLOT_MAX : 0;
+        int64_t integ_max = ok ? COGMASTER__SYNTH_INTEG_MAX : 0;
+        int64_t dc_max = ok ? COGMASTER__SYNTH_DC_MAX : 0;
+        cogmaster__sio_i64(io, "synth_integ", &s->integ[ch], -integ_max, integ_max);
+        cogmaster__sio_i64(io, "synth_dc", &s->dc[ch], -dc_max, dc_max);
+        for (uint32_t i = 0u; i < COGMASTER__SYNTH_SAVED; i++) {
+            int64_t *slot = &s->ring[ch][(head + i) & (COGMASTER__SYNTH_RING - 1u)];
+            cogmaster__sio_i64(io, "synth_ring", slot, -slot_max, slot_max);
+        }
+    }
+    static const uint32_t level_max[COGMASTER__SYNTH_SOURCES] = {0x1Fu, 0x1Fu,      0x1Fu, 0x1Fu,
+                                                                 0xFFu, UINT32_MAX, 0xFFu};
+    for (uint32_t src = 0u; src < COGMASTER__SYNTH_SOURCES; src++) {
+        cogmaster__sio_u32(io, "synth_level", &s->level[src], 0u, level_max[src]);
+        uint32_t gmax = cogmaster__synth_gained_max(m, src);
+        for (uint32_t ch = 0u; ch < 2u; ch++) {
+            cogmaster__sio_u32(io, "synth_gained", &s->gained[src][ch], 0u,
+                               ch < channels ? gmax : 0u);
+        }
+    }
+    if (io->mode == COGMASTER__SIO_APPLY) {
+        s->pcm_frames = 0u;
+        s->pcm_read = 0u;
     }
 }
 

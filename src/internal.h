@@ -183,15 +183,48 @@ struct cogmaster__io {
 /* The most records a host may ask the trace log to hold: 16 MiB. */
 #define COGMASTER__TRACE_MAX (1u << 20)
 
+/* Band-limited step synthesis. A level change adds a kernel (16 taps) into an
+   impulse ring of 1,024 slots per output channel; each sample integrates one
+   slot. Ring slots at and after head are saved: an event lands at most a
+   sample past the frame's end, so the 32 saved slots hold every pending tap. */
+#define COGMASTER__SYNTH_RING 1024u
+#define COGMASTER__SYNTH_TAPS 16u
+#define COGMASTER__SYNTH_SAVED 32u
+#define COGMASTER__SYNTH_SOURCES 7u
+
+/* Bounds that keep every int64 sum inside range, from the kernel table and
+   the mixer (synth.c states the derivation next to its static assertions). A
+   slot and the integrator are held at or below 2^56 in magnitude; the DC
+   estimate in Q16 sample units at or below the integrator over 2^15. */
+#define COGMASTER__SYNTH_SLOT_MAX (INT64_C(1) << 56)
+#define COGMASTER__SYNTH_INTEG_MAX (INT64_C(1) << 56)
+#define COGMASTER__SYNTH_DC_MAX (COGMASTER__SYNTH_INTEG_MAX / 32768)
+
+/* Counters the cost tests read; never state. */
+struct cogmaster__synth_stats {
+    uint32_t kernel_apps; /* taps added to a ring */
+    uint32_t clamps;      /* samples that left the int16 range */
+    uint32_t max_index;   /* the largest sample index plus taps an event reached */
+};
+
 /* The synthesiser's saved and transient state. The phase is the fraction of
    a sample carried between frames, in [0, mod); the PCM is the last frame's
-   output waiting for the host, channels interleaved. */
+   output waiting for the host, channels interleaved. level is each source's
+   last raw level and gained[source][channel] the gained level last fed to
+   the ring, so only the difference enters it. */
 struct cogmaster__synth {
+    int64_t ring[2][COGMASTER__SYNTH_RING];
+    int64_t integ[2];
+    int64_t dc[2];
     uint32_t phase;
     uint32_t pcm_frames;    /* sample frames the last frame produced */
     uint32_t pcm_read;      /* of those, the frames the host has taken */
     uint32_t trace_pending; /* records waiting in the instance's trace log */
     uint32_t trace_dropped; /* appends the full log refused since the last drain */
+    uint32_t head;          /* ring index of the sample the next frame starts with */
+    uint32_t level[COGMASTER__SYNTH_SOURCES];
+    uint32_t gained[COGMASTER__SYNTH_SOURCES][2];
+    struct cogmaster__synth_stats stats;
     int16_t pcm[COGMASTER__AUDIO_MAX_FRAMES * 2u];
 };
 
@@ -531,9 +564,10 @@ void cogmaster__boot_handoff(cogmaster *m, int power);
 
 /* The synthesiser. reset runs last in load and in both resets, after the bus,
    hand-off, I/O and VDP resets: power zeroes everything, a soft reset keeps
-   the phase and the undrained PCM. frame_end runs when a frame's ticks are
-   final and replaces the pending PCM with the frame's samples, counting any
-   frames the host never took in the dropped counter. */
+   the phase, ring, integrator, DC estimate, levels and the undrained PCM.
+   frame_end runs when a frame's ticks are final and replaces the pending PCM
+   with the frame's samples, counting any frames the host never took in the
+   dropped counter. */
 void cogmaster__synth_reset(cogmaster *m, int power);
 void cogmaster__synth_frame_end(cogmaster *m);
 
@@ -541,6 +575,21 @@ void cogmaster__synth_frame_end(cogmaster *m);
    causal order, a full log counts the append in its dropped total instead.
    Load and both resets empty the log, because ticks restart there. */
 void cogmaster__synth_trace(cogmaster *m, uint64_t tick, uint32_t source, uint32_t level);
+
+/* A sound source's level changed at tick (counted from the last load or reset)
+   in the frame being run. Traces the raw level, gains it, and feeds the change
+   to the ring as a band-limited step. Sources: 0 to 3 the PSG channels (bit 4
+   output, bits 3 to 0 attenuation), 4 the Game Gear stereo mask; 5 and 6 are
+   the FM unit's. Call only for frames already begun: state is saved between
+   frames. */
+void cogmaster__synth_level(cogmaster *m, uint64_t tick, uint32_t source, uint32_t level);
+
+/* The largest gained level a source may hold in this profile, for the state
+   bounds. */
+uint32_t cogmaster__synth_gained_max(const cogmaster *m, uint32_t source);
+
+/* One kernel table entry, Q15; every row sums to 32,768. For tests. */
+int32_t cogmaster__synth_kernel(uint32_t row, uint32_t tap);
 
 /* The test card's RGB444 colour at field dot (x, y) for a resolved machine. */
 uint16_t cogmaster__testcard_pixel(uint32_t x, uint32_t y, uint32_t machine);
