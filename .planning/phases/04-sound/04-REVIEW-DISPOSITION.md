@@ -5,7 +5,7 @@ titles: json
 findings:
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "The trace log is not \"in causal order\", and its ticks do fall within one run"
   - id: WR-02
     severity: warning
@@ -27,16 +27,16 @@ findings:
     severity: info
     disposition: open
     title: "Loading a state keeps the previous timeline's pending trace records"
-open: 6
+open: 5
 total: 6
-recorded: 2026-11-09T23:08:44.658Z
+recorded: 2026-11-09T23:18:42.643Z
 ---
 
 # Phase 04: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-01 | warning | open | - |
+| WR-01 | warning | fixed | 04-REVIEW-FIX.md |
 | WR-02 | warning | open | - |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
