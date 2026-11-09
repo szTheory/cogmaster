@@ -518,6 +518,7 @@ static int content_test(const char *path, const char *digest)
 #include "presentation.h"
 #include "controls.h"
 #include "battery.h"
+#include "audio.h"
 
 int main(int argc, char **argv)
 {
@@ -531,6 +532,15 @@ int main(int argc, char **argv)
     cogmaster_versions v;
     unsigned run, aspect_w, aspect_h, bad_counts = 0;
     size_t total = 0;
+
+    if (argc == 7 && strcmp(argv[2], "audio") == 0) {
+        if (!module_open(argv[1]))
+            return 1;
+        resolve_all();
+        int rc = missing != NULL ? 1 : audio_test(argv[3], argv[4], argv[5], argv[6]);
+        module_close();
+        return rc;
+    }
 
     if (argc == 5 && strcmp(argv[2], "battery") == 0) {
         if (!module_open(argv[1]))

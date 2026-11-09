@@ -183,6 +183,10 @@ libretro.battery.gg	libretro,portable
 libretro.battery.sms2	libretro,portable
 libretro.controls.rgb565	libretro,portable
 libretro.controls.xrgb8888	libretro,portable
+libretro.host.audio.boot_to_play.gg	libretro,portable
+libretro.host.audio.boot_to_play.sms	libretro,portable
+libretro.host.audio.psg_sweep.gg	libretro,portable
+libretro.host.audio.psg_sweep.sms	libretro,portable
 libretro.host.content	libretro,portable
 libretro.host.content.gg	libretro,portable
 libretro.host.gg	libretro,portable

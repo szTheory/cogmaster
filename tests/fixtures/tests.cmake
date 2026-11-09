@@ -50,6 +50,22 @@ if(CMAKE_SCRIPT_MODE_FILE)
         message(FATAL_ERROR "content host exit ${rc}: ${out} ${err}")
       endif()
     endif()
+  elseif(CASE STREQUAL "audio")
+    # The runner hashes FRAMES frames of the image's sound for MACHINE (sms or gg); the in-process
+    # host must deliver the same PCM through each way a frontend registers its audio callbacks.
+    execute_process(COMMAND ${EMULATOR} ${RUN} ${IMAGE} --machine ${MACHINE} --video-mode ${MACHINE}
+        --region ntsc-u --frames ${FRAMES} --hash-audio
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "0"
+        OR NOT out MATCHES "(^|\n)audio-pcm ${FRAMES} rate 48000 channels [12] samples [0-9]+ peak [0-9]+ clipped [0-9]+ sha256 ([0-9a-f]+)\n")
+      message(FATAL_ERROR "--hash-audio ${IMAGE}: exit ${rc}, no audio-pcm line:\n${out}${err}")
+    endif()
+    execute_process(COMMAND ${EMULATOR} ${HOST} ${MODULE} audio ${IMAGE} ${FRAMES} ${MACHINE}
+        ${CMAKE_MATCH_2}
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "0")
+      message(FATAL_ERROR "audio host exit ${rc}: ${out} ${err}")
+    endif()
   elseif(CASE STREQUAL "image")
     # The runner's probe finds the header checksum good.
     execute_process(COMMAND ${EMULATOR} ${RUN} --probe ${IMAGE} RESULT_VARIABLE rc

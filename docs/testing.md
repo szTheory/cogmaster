@@ -525,6 +525,12 @@ native GG and SMS compatibility, default and square pixels, full field, rejected
 geometry notifications, content-load-only overrides and exact PAL audio totals.
 They compare each delivered pixel against a separate public-library instance.
 
+`libretro.host.audio.*` play `psg_sweep` and `boot_to_play` on both machines through the module in three sessions:
+batch callback only, single-sample callback only and both (the single one must stay unused). The expected hash is
+the runner's `--hash-audio` hash of the same image, taken in the same test. The host hashes little-endian bytes,
+mono on the Master System and interleaved on the Game Gear, requires 801 or 802 frames each and running totals
+equal to `floor(frames x 3,504,512 / 4,375)`, and the per-channel hashes equal across sessions.
+
 The save seeds include 0, 1, 32767, 32768 and 32769 bytes and each persistence refusal
 class. The ordinary CI and ASan replay runs include them. `battery.import` also covers
 0, 1, N-1, N, N+1 and SIZE_MAX for all supported 8/16/32 KiB spans, overlapping sources,
