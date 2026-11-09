@@ -56,8 +56,12 @@ static cogmaster *make(uint32_t machine, uint32_t tv, uint32_t video)
     return m;
 }
 
+/* These tests set the synthesiser's levels directly, so the sound chip is
+   parked at its last step of the frame: its own steps would write over the
+   levels set here. The chip has its own tests. */
 static void frame(cogmaster *m)
 {
+    m->psg.at = (m->frame + 1u) * cogmaster__frame_ticks(m) / 48u * 48u;
     CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
 }
 

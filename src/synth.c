@@ -124,7 +124,8 @@ static uint32_t synth_channels(const cogmaster *m)
    undrained PCM, so the stream stays continuous; ring positions are relative
    to the head and an event is placed from its own frame's start, so nothing
    lands at a stale position when the tick count restarts. Only the trace log's
-   counts, whose ticks restart, are cleared. */
+   counts, whose ticks restart, are cleared. The chips return to their power-on
+   values either way, their step origin included. */
 void cogmaster__synth_reset(cogmaster *m, int power)
 {
     if (power) {
@@ -132,6 +133,7 @@ void cogmaster__synth_reset(cogmaster *m, int power)
     }
     m->synth.trace_pending = 0u;
     m->synth.trace_dropped = 0u;
+    cogmaster__psg_reset(m);
 }
 
 /* Division of a signed value by d, truncating toward zero, built on unsigned
@@ -186,6 +188,16 @@ void cogmaster__synth_frame_end(cogmaster *m)
     uint32_t left = s->pcm_frames - s->pcm_read;
     uint32_t room = UINT32_MAX - m->counters.audio_dropped;
     m->counters.audio_dropped += left < room ? left : room;
+
+    /* The chip runs to this frame's deadline, inclusive, before the frame is
+       summed; a write that overshot the deadline has already taken it further.
+       The frame has counted itself by now, so its events are placed from the
+       start it had while it ran. */
+    if (m->frame > 0u) {
+        m->frame--;
+        cogmaster__psg_catch_up(m, (m->frame + 1u) * cogmaster__frame_ticks(m));
+        m->frame++;
+    }
 
     uint64_t total = (uint64_t)s->phase + (uint64_t)cogmaster__frame_ticks(m) * inc;
     uint32_t n = (uint32_t)(total / mod);
@@ -250,12 +262,16 @@ static void synth_add(struct cogmaster__synth *s, const struct synth_place *p, u
 }
 
 /* Whether PSG channel n reaches output channel ch. The Master System has one
-   output. On the Game Gear the $06 mask sends channel n to the left with bit
-   n + 4 and to the right with bit n (SMS-AUDIO section 2.3). */
+   output. On the Game Gear in native mode the $06 mask sends channel n to the
+   left with bit n + 4 and to the right with bit n; in SMS mode the port is not
+   decoded and both outputs carry every channel (SMS-AUDIO section 3). */
 static int synth_routed(const cogmaster *m, uint32_t source, uint32_t ch)
 {
     if (m->machine != COGMASTER_MACHINE_GG) {
         return ch == 0u;
+    }
+    if (!cogmaster__native_gg(m)) {
+        return 1;
     }
     return ((m->synth.level[4] >> (source + (ch == 0u ? 4u : 0u))) & 1u) != 0u;
 }

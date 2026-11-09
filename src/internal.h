@@ -205,6 +205,8 @@ struct cogmaster__synth_stats {
     uint32_t kernel_apps; /* taps added to a ring */
     uint32_t clamps;      /* samples that left the int16 range */
     uint32_t max_index;   /* the largest sample index plus taps an event reached */
+    uint32_t psg_steps;   /* PSG steps taken */
+    uint32_t psg_writes;  /* bytes written to the PSG */
 };
 
 /* The synthesiser's saved and transient state. The phase is the fraction of
@@ -226,6 +228,24 @@ struct cogmaster__synth {
     uint32_t gained[COGMASTER__SYNTH_SOURCES][2];
     struct cogmaster__synth_stats stats;
     int16_t pcm[COGMASTER__AUDIO_MAX_FRAMES * 2u];
+};
+
+/* The Sega PSG's registers and counters (psg.c). at is the tick of the last
+   step taken, a multiple of 48. period holds the three 10-bit tone periods;
+   counter the three tone down-counters and, in [3], the noise rate counter;
+   out the tone flip-flops and, in [3], the noise output bit; noise_div the
+   noise divider's flip-flop; latch the register index (channel x 2, plus 1
+   for an attenuation) the next data byte writes. */
+struct cogmaster__psg {
+    uint64_t at;
+    uint16_t period[3];
+    uint16_t counter[4];
+    uint16_t lfsr;
+    uint8_t out[4];
+    uint8_t att[4];
+    uint8_t noise;
+    uint8_t noise_div;
+    uint8_t latch;
 };
 
 struct cogmaster {
@@ -253,6 +273,7 @@ struct cogmaster {
     cogmaster_input pending_input, input;
     uint8_t input_read;
     struct cogmaster__synth synth;
+    struct cogmaster__psg psg;
     uint32_t trace_cap;                /* the host's trace_records, kept across loads */
     cogmaster_audio_record *trace_log; /* trace_cap records, allocated by the first load */
     uint8_t ram[COGMASTER__RAM_SIZE];
@@ -583,6 +604,16 @@ void cogmaster__synth_trace(cogmaster *m, uint64_t tick, uint32_t source, uint32
    the FM unit's. Call only for frames already begun: state is saved between
    frames. */
 void cogmaster__synth_level(cogmaster *m, uint64_t tick, uint32_t source, uint32_t level);
+
+/* The PSG. reset gives the power-on constants with the step origin at tick 0;
+   catch_up runs every step at a multiple of 48 ticks up to tick, inclusive;
+   write catches up to tick, applies one byte and stamps the level changes at
+   tick; level is what channel ch presents (bit 4 output, bits 3 to 0
+   attenuation). */
+void cogmaster__psg_reset(cogmaster *m);
+void cogmaster__psg_catch_up(cogmaster *m, uint64_t tick);
+void cogmaster__psg_write(cogmaster *m, uint64_t tick, uint8_t v);
+uint32_t cogmaster__psg_level(const cogmaster *m, uint32_t ch);
 
 /* The largest gained level a source may hold in this profile, for the state
    bounds. */

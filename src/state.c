@@ -58,7 +58,7 @@ _Static_assert(sizeof(struct cogmaster__io) == 8u, "io changed: update io_io");
 _Static_assert(sizeof(struct cogmaster__synth) ==
                    sizeof(int64_t[2][COGMASTER__SYNTH_RING]) + 2u * sizeof(int64_t[2]) +
                        (1u + 4u + 1u + COGMASTER__SYNTH_SOURCES + 2u * COGMASTER__SYNTH_SOURCES +
-                        3u) *
+                        5u) *
                            sizeof(uint32_t) +
                        sizeof(int16_t[COGMASTER__AUDIO_MAX_FRAMES * 2u]),
                "synth changed: update synth_io");

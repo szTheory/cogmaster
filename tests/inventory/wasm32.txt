@@ -181,6 +181,7 @@ policy.e2e_budget.shared_helper	hygiene,policy
 policy.no_skip	policy
 policy.no_skip.self_test	policy
 policy.notices	policy
+psg.through_bus	portable,psg
 release.archive_contents	release
 release.archive_contents.self_test	release
 release.floor	release
