@@ -130,6 +130,29 @@ differs. The fixed count means a lane that stops uploading fails the job instead
 seven files are the six `build` legs and `be32`. wasm32 compares its own file with Linux x64's and only reports;
 once it is promoted, the count becomes eight.
 
+The file also carries the sound rows: 300 frames of `cogmaster-run --hash-audio` over `psg_sweep.sms` (Master System
+on NTSC, PAL and Japan, and the Game Gear in Master System mode), `psg_sweep.gg` (native) and `fm_sweep.sms` (Master
+System, Japan and NTSC). Each `audio-transitions` and
+`audio-pcm` line is tagged `<file> <profile> <region> baseline` after its keyword. `tests/audio/transitions.txt` and
+`tests/audio/pcm.txt` freeze those lines; `runner.hashes_file` requires the rows to equal them and names the first
+line that differs, and `runner.hash_audio` requires its own `psg_sweep.sms` lines to be among them. The Japan row of
+`psg_sweep.sms` differs from the NTSC one only because the Japanese console carries the FM unit, which adds the control
+record and lowers the PSG; every other existing row is unchanged. `fm_sweep.sms` has its own detection routine for
+port `$F2`: the three `fixtures.fm_sweep.*` tests judge its detect record on the Japanese console (1), the export
+console (0) and the Game Gear (0); `fm.detect` loads the built image with the unit forced on for an export console
+(1) and off for a Japanese one (0); and `runner.hash_audio.fm` shows its Japanese and export runs repeat, equal their
+frozen lines and differ from each other. `ctest -L fm` runs all of these with the chip and unit tests. After an
+intended change, regenerate them from a clean `ci` build:
+
+```sh
+grep '^audio-transitions' build/ci/hashes.txt > tests/audio/transitions.txt
+grep '^audio-pcm' build/ci/hashes.txt > tests/audio/pcm.txt
+```
+
+The transitions hash covers every sound-chip output change in order, so it proves the emulated behaviour; the PCM
+hash covers the samples after synthesis, so it also proves the mix. A mix retune changes only `pcm.txt`; a change
+to `transitions.txt` means the emulated behaviour moved.
+
 `ctest --preset ci -R <regex>` reruns part of the suite after a build; `ctest --test-dir build/ci -L <label>`
 selects by label.
 
@@ -381,32 +404,36 @@ the bug, commit the minimised file under `tests/fuzz/regress/` and add its `test
 The `retroarch` job proves that a real frontend shows the frame the runner hashes. It is a CI step, not a CTest,
 so it never skips itself off macOS. On `macos-15` it:
 
-1. unzips the core and the runner from the macOS arm64 `build` leg's `archives-macos-arm64` artifact;
+1. unzips the core and the runner from the macOS arm64 `build` leg's archives;
 2. fetches the pinned RetroArch Metal disk image with `scripts/fetch-pin.sh retroarch-dmg`, which checks its
    SHA-256 before anything opens it, copies the app out and checks its bundle version against `pins.txt`;
 3. runs `tests/retroarch/run_retroarch.cmake`: RetroArch gets its own `HOME`, `CFFIXED_USER_HOME` and the
    configuration from `tests/retroarch/test.cfg.in`, and starts with `--verbose -L <core>`, no content and
-   `--max-frames=60 --max-frames-ss`. The launch is bounded at 50 seconds; a failure prints RetroArch's log;
+   `--max-frames=60 --max-frames-ss`. The launch is bounded at 50 seconds and a failure prints its log;
 4. writes the runner's frame with `cogmaster-run --frames 60 --png 60:runner.png`, converts both PNGs to BMP with
-   `sips`, builds `tests/retroarch/compare.c`, and requires successful equality with a tolerant diagnostic match;
-5. runs `tests/retroarch/flip.cmake`: the comparator inverts one channel of actual pixel (7,3) in memory,
-   and must exit 1 naming that pixel;
+   `sips`, builds `tests/retroarch/compare.c`, and requires equality;
+5. runs the comparator with `--flip` through `tests/cmake/expect_fail.cmake`: it inverts one channel of actual
+   pixel (7,3) in memory and must exit 1 naming that pixel;
 6. downloads only the owned fixture, runner input and replay-only module from the same build. A 14-frame
    baseline records a replay in the released frontend. `replay.c` checks the observed v2 event layout and
    changes only port 0 RetroPad B: press, hold, release, press again. The frontend plays that stream into
    the adapter's normal input callback in a fresh session. The final released frames remain at counter 2;
-7. compares both screenshots with runner frames and, independently, every coordinate with `play_pixel`:
-   baseline counter/scroll 0 and input counter/scroll 2. Both must match. The changed-frame comparison also
-   runs the pixel control. Only PNGs of these owned images are uploaded for inspection.
+7. compares both screenshots with runner frames and, independently, every coordinate with `play_pixel`
+   (baseline counter/scroll 0, input 2), runs the pixel control on the changed frame and uploads only the PNGs;
+8. records sound with `--record` and `tests/retroarch/record.cfg` (mov, 16-bit PCM): the no-content session is a
+   silent control, and `psg_sweep.sms` and `psg_sweep.gg` are the sound sessions. `tests/retroarch/audio.cmake`
+   requires the movie, `afinfo` exit 0, 188,000 to 196,000 audio bytes, no non-zero byte in the control and at
+   least 8,192 in each sound session. It reads no log text.
 
-The shared driver, helpers, synthetic comparator fixture and shared pixel oracle total at most 300 physical
+The shared driver, helpers, checker, synthetic comparator fixture and pixel oracle total at most 300 physical
 lines; `policy.e2e_budget` counts them. The BMP reader accepts the uncompressed RGB24 output from `sips`.
 The test-only replay module compiles the production adapter unchanged and forwards only its three state
-entrypoints to the existing core state visitor. This enables the frontend's mandatory initial checkpoint;
-it supplies no input. It is never installed or packaged. The production module still refuses save states.
+entrypoints to the core state visitor, which enables the frontend's mandatory initial checkpoint; it supplies
+no input and is never packaged. The production module still refuses save states.
 `libretro.host.content` and `libretro.host.replay` run the same callback/pixel sequence against both modules.
-The portable screenshot tests prove matching pixels pass, equal images with wrong scroll fail, and a changed
-pixel fails. The replay layout was measured from the released 1.22.2 binary; no emulator source was read.
+The portable screenshot tests prove that matching pixels pass and that wrong scroll or a changed pixel fails. The replay layout was measured from the released 1.22.2 binary; no emulator source was read.
+The hosted Game Gear case holds Start on frames 5, 6 and 8 and compares the native 160×144 crop at field
+origin (48,24) with the shared coordinate oracle.
 
 **Rerunning it.** Rerun the job from the run page, or `gh run rerun <run-id> --failed`. On a Mac with a desktop
 session the same steps run locally from the job's commands, with `-DRETROARCH` pointing at an installed
@@ -428,8 +455,7 @@ forms, optional final newline, missing/surplus records and invalid fields.
 each frame, reconstructs every callback pixel as RGB444 and checks each coordinate
 from frame 4 against the independent oracle. Its final digest equals the runner's.
 It also checks descriptor and pad/none claims, disconnected pads and missing input
-callbacks. Existing no-content SMS/GG, RGB565, single-sample and batch silence tests
-remain registered. This is in-process integration evidence; the real RetroArch job
+callbacks. This is in-process integration evidence; the real RetroArch job
 described above remains the separate frontend check.
 
 ## Release archives
@@ -496,19 +522,17 @@ anything else happens; only then does it unpack an archive into `DEST` or copy t
 requires four fields per row, a unique name, an `https://` URL and a 64-digit digest. Packages installed with apt
 stay unpinned: they are signed, and drift fails loudly as a build failure or a hash change.
 
-The hosted Game Gear case uses the same driver and owned fixture schedule, with
-Start held on frames 5, 6 and 8. It compares both baseline and input screenshots
-with the runner native 160×144 crop and the shared coordinate oracle at field
-origin (48,24), retaining SMS input/scroll, no-content and one-pixel controls.
-Only owned fixture screenshots are uploaded. The implementation commit is pushed
-before dispatching CI; accepted evidence is a successful workflow_dispatch run for
-that exact SHA, with all four named RetroArch screenshot/control steps successful.
-The hosted helper budget includes the shared oracle.
-
 The in-process presentation cases exercise RGB565 and XRGB8888, all active heights,
 native GG and SMS compatibility, default and square pixels, full field, rejected
 geometry notifications, content-load-only overrides and exact PAL audio totals.
 They compare each delivered pixel against a separate public-library instance.
+
+`libretro.host.audio.*` play `psg_sweep` and `boot_to_play` on both machines through the module in three sessions:
+batch callback only, single-sample callback only and both (the single one must stay unused). The expected hash is
+the runner's `--hash-audio` hash of the same image, taken in the same test. The host hashes little-endian bytes,
+mono on the Master System and interleaved on the Game Gear, requires 801 or 802 frames each and running totals
+equal to `floor(frames x 3,504,512 / 4,375)`, and the per-channel hashes equal across sessions.
+`libretro.host.fm_option` compares the FM option's three values with the runner's hashes on each profile.
 
 The save seeds include 0, 1, 32767, 32768 and 32769 bytes and each persistence refusal
 class. The ordinary CI and ASan replay runs include them. `battery.import` also covers

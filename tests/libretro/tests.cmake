@@ -32,11 +32,13 @@ if(TARGET cogmaster_libretro)
       $<TARGET_FILE:cogmaster-test-screenshot> ${screenshot} ${screenshot}
     LABELS libretro portable TIMEOUT 10)
   set_tests_properties(libretro.screenshot.oracle PROPERTIES DEPENDS libretro.screenshot.fixture)
+  # Fault prevented: a comparator accepting a changed pixel at (7,3).
+  set(flip_cmd ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:cogmaster-test-screenshot>
+    ${screenshot} ${screenshot} --flip)
+  string(REPLACE ";" "$<SEMICOLON>" flip_cmd "${flip_cmd}")
   cogmaster_add_test(NAME libretro.screenshot.pixel_control
-    COMMAND ${CMAKE_COMMAND} -DCOMPARE=$<TARGET_FILE:cogmaster-test-screenshot>
-      -DEXPECTED=${screenshot} -DBMP=${screenshot}
-      "-DEMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}"
-      -P ${PROJECT_SOURCE_DIR}/tests/retroarch/flip.cmake
+    COMMAND ${CMAKE_COMMAND} "-DCMD=${flip_cmd}" -DCODE=1 "-DREGEX=first difference at 7,3:"
+      -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
     LABELS libretro portable TIMEOUT 10)
   set_tests_properties(libretro.screenshot.pixel_control PROPERTIES DEPENDS libretro.screenshot.fixture)
   # The in-process frontend. It hashes the delivered frame with the runner's
@@ -98,6 +100,38 @@ if(TARGET cogmaster_libretro)
         LABELS libretro portable TIMEOUT 60)
       endforeach()
     endforeach()
+    # Fault prevented: the core delivers sound the library did not produce, or a different amount of it,
+    # when the frontend registers only the batch callback, only the single-sample one, or both.
+    foreach(sound IN ITEMS "psg_sweep|sms|300" "psg_sweep|gg|300" "boot_to_play|sms|60"
+        "boot_to_play|gg|60")
+      string(REPLACE "|" ";" sound "${sound}")
+      list(GET sound 0 name)
+      list(GET sound 1 machine)
+      list(GET sound 2 frames)
+      set(image_name ${name})
+      if(machine STREQUAL "gg")
+        set(name ${name}_gg)
+      endif()
+      cogmaster_add_test(NAME libretro.host.audio.${image_name}.${machine}
+        COMMAND ${CMAKE_COMMAND} -DCASE=audio -DNAME=${name} -DMACHINE=${machine} -DFRAMES=${frames}
+          -DIMAGE=${PROJECT_BINARY_DIR}/fixtures/${image_name}.${machine}
+          -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+          -DRUN=$<TARGET_FILE:cogmaster-run> -DHOST=$<TARGET_FILE:cogmaster-test-libretro-host>
+          -DMODULE=$<TARGET_FILE:cogmaster_libretro> "-DEMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}"
+          -P ${PROJECT_SOURCE_DIR}/tests/fixtures/tests.cmake
+        LABELS libretro portable TIMEOUT 10)
+    endforeach()
+    # Fault prevented: the FM option attaching, detaching or refusing the unit differently from the
+    # library's setting, or failing the load of Game Gear content.
+    cogmaster_add_test(NAME libretro.host.fm_option
+      COMMAND ${CMAKE_COMMAND} -DCASE=fm_option -DNAME=fm_sweep
+        -DIMAGE=${PROJECT_BINARY_DIR}/fixtures/fm_sweep.sms
+        -DGG_IMAGE=${PROJECT_BINARY_DIR}/fixtures/psg_sweep.gg
+        -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+        -DRUN=$<TARGET_FILE:cogmaster-run> -DHOST=$<TARGET_FILE:cogmaster-test-libretro-host>
+        -DMODULE=$<TARGET_FILE:cogmaster_libretro> "-DEMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}"
+        -P ${PROJECT_SOURCE_DIR}/tests/fixtures/tests.cmake
+      LABELS libretro portable TIMEOUT 10)
   endif()
   # Fault prevented: the core RetroArch loads shows a frame, rate, geometry
   # or audio length other than the library's, or needs content to start.

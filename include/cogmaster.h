@@ -11,10 +11,10 @@
 extern "C" {
 #endif
 
-#define COGMASTER_API_VERSION 8
+#define COGMASTER_API_VERSION 9
 #define COGMASTER_ABI_VERSION 1
-#define COGMASTER_BEHAVIOUR_REVISION 10
-#define COGMASTER_STATE_FORMAT_VERSION 10
+#define COGMASTER_BEHAVIOUR_REVISION 11
+#define COGMASTER_STATE_FORMAT_VERSION 11
 
 typedef uint32_t cogmaster_status;
 #define COGMASTER_STATUS_OK 0u
@@ -53,6 +53,10 @@ typedef struct cogmaster_battery {
 #define COGMASTER_TV_AUTO 0u
 #define COGMASTER_TV_NTSC 1u
 #define COGMASTER_TV_PAL 2u
+
+#define COGMASTER_FM_AUTO 0u
+#define COGMASTER_FM_OFF 1u
+#define COGMASTER_FM_ON 2u
 
 #define COGMASTER_VIDEO_AUTO 0u
 #define COGMASTER_VIDEO_SMS 1u
@@ -97,7 +101,34 @@ typedef struct cogmaster_allocator {
 typedef struct cogmaster_config {
     uint32_t size;
     cogmaster_allocator allocator; /* alloc and free required */
+    uint32_t trace_records;        /* audio trace log size in records, 0 for none */
+#if UINTPTR_MAX > UINT32_MAX
+    uint32_t reserved;
+#endif
 } cogmaster_config;
+
+typedef struct cogmaster_audio {
+    uint32_t size;
+    int16_t *samples;  /* in: the caller's buffer */
+    uint32_t capacity; /* in: sample frames it holds */
+    uint32_t written;  /* out */
+    uint32_t channels; /* out: 1 or 2 */
+    uint32_t dropped;  /* out */
+} cogmaster_audio;
+
+typedef struct cogmaster_audio_record {
+    uint64_t tick;
+    uint32_t source;
+    uint32_t level;
+} cogmaster_audio_record;
+
+typedef struct cogmaster_audio_trace {
+    uint32_t size;
+    cogmaster_audio_record *records; /* in: the caller's buffer */
+    uint32_t capacity;               /* in: records it holds */
+    uint32_t written;                /* out */
+    uint32_t dropped;                /* out */
+} cogmaster_audio_trace;
 
 typedef struct cogmaster_versions {
     uint32_t size;
@@ -116,6 +147,10 @@ typedef struct cogmaster_media {
     uint32_t reserved;
 #endif
     uint32_t video_mode; /* COGMASTER_VIDEO_* */
+#if UINTPTR_MAX > UINT32_MAX
+    uint32_t reserved2;
+#endif
+    uint32_t fm; /* COGMASTER_FM_* */
 } cogmaster_media;
 
 typedef struct cogmaster_info {
@@ -128,6 +163,8 @@ typedef struct cogmaster_info {
     uint32_t par_num, par_den;
     uint32_t region, tv;
     uint32_t video_mode;
+    uint32_t audio_channels; /* 1 or 2 */
+    uint32_t fm;             /* COGMASTER_FM_ON or COGMASTER_FM_OFF */
 } cogmaster_info;
 
 typedef struct cogmaster_frame {
@@ -200,6 +237,8 @@ void cogmaster_destroy(cogmaster *m); /* NULL-safe */
 cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media);
 cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out); /* out may be NULL */
 cogmaster_status cogmaster_get_frame(const cogmaster *m, cogmaster_frame *io);
+cogmaster_status cogmaster_get_audio(cogmaster *m, cogmaster_audio *io);
+cogmaster_status cogmaster_get_audio_trace(cogmaster *m, cogmaster_audio_trace *io);
 cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out);
 cogmaster_status cogmaster_reset(cogmaster *m, uint32_t kind); /* COGMASTER_RESET_* */
 cogmaster_status cogmaster_get_fault(const cogmaster *m, cogmaster_fault *out);

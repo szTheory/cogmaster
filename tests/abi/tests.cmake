@@ -166,3 +166,10 @@ add_executable(cogmaster-test-api-v8 ${PROJECT_SOURCE_DIR}/tests/api/v8.c)
 target_link_libraries(cogmaster-test-api-v8 PRIVATE cogmaster::cogmaster)
 cogmaster_warnings(cogmaster-test-api-v8)
 cogmaster_add_test(NAME abi.api_v8 COMMAND cogmaster-test-api-v8 LABELS abi portable TIMEOUT 10)
+
+# Fault prevented: the audio drain, the trace log and the FM profile field
+# changing their layout or contract silently.
+add_executable(cogmaster-test-api-v9 ${PROJECT_SOURCE_DIR}/tests/api/v9.c)
+target_link_libraries(cogmaster-test-api-v9 PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-api-v9)
+cogmaster_add_test(NAME abi.api_v9 COMMAND cogmaster-test-api-v9 LABELS abi portable TIMEOUT 10)

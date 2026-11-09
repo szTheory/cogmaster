@@ -50,6 +50,70 @@ if(CMAKE_SCRIPT_MODE_FILE)
         message(FATAL_ERROR "content host exit ${rc}: ${out} ${err}")
       endif()
     endif()
+  elseif(CASE STREQUAL "audio")
+    # The runner hashes FRAMES frames of the image's sound for MACHINE (sms or gg); the in-process
+    # host must deliver the same PCM through each way a frontend registers its audio callbacks.
+    execute_process(COMMAND ${EMULATOR} ${RUN} ${IMAGE} --machine ${MACHINE} --video-mode ${MACHINE}
+        --region ntsc-u --frames ${FRAMES} --hash-audio
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "0"
+        OR NOT out MATCHES "(^|\n)audio-pcm ${FRAMES} rate 48000 channels [12] samples [0-9]+ peak [0-9]+ clipped [0-9]+ sha256 ([0-9a-f]+)\n")
+      message(FATAL_ERROR "--hash-audio ${IMAGE}: exit ${rc}, no audio-pcm line:\n${out}${err}")
+    endif()
+    execute_process(COMMAND ${EMULATOR} ${HOST} ${MODULE} audio ${IMAGE} ${FRAMES} ${MACHINE}
+        ${CMAKE_MATCH_2}
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "0")
+      message(FATAL_ERROR "audio host exit ${rc}: ${out} ${err}")
+    endif()
+  elseif(CASE STREQUAL "fm_option")
+    # The module's FM option against the runner. The runner's lines are the expectation: the
+    # automatic setting on the Japanese console equals the unit attached, off and on override
+    # the region, and on with Game Gear content is mapped to automatic so the content loads.
+    function(runner_pcm out image machine region)
+      execute_process(COMMAND ${EMULATOR} ${RUN} ${image} --machine ${machine} --video-mode ${machine}
+          --region ${region} --frames 300 --hash-audio
+        RESULT_VARIABLE rc OUTPUT_VARIABLE text ERROR_VARIABLE err)
+      if(NOT rc STREQUAL "0" OR NOT text MATCHES "(^|\n)audio-pcm 300 [^\n]* sha256 ([0-9a-f]+)\n")
+        message(FATAL_ERROR "--hash-audio ${image}: exit ${rc}, no audio-pcm line:\n${text}${err}")
+      endif()
+      set(${out} ${CMAKE_MATCH_2} PARENT_SCOPE)
+    endfunction()
+    function(host_pcm out image machine region fm)
+      execute_process(COMMAND ${EMULATOR} ${HOST} ${MODULE} fm_option ${image} 300 ${machine} ${region} ${fm}
+        RESULT_VARIABLE rc OUTPUT_VARIABLE text ERROR_VARIABLE err)
+      if(NOT rc STREQUAL "0")
+        message(FATAL_ERROR "host ${image} ${machine} ${region} fm ${fm}: exit ${rc}: ${text} ${err}")
+      endif()
+      string(STRIP "${text}" text)
+      set(${out} ${text} PARENT_SCOPE)
+    endfunction()
+    runner_pcm(japan ${IMAGE} sms ntsc-j)
+    runner_pcm(export ${IMAGE} sms ntsc-u)
+    runner_pcm(gg ${GG_IMAGE} gg ntsc-u)
+    if(japan STREQUAL export)
+      message(FATAL_ERROR "the runner's Japanese and export fm_sweep hashes are equal")
+    endif()
+    host_pcm(got ${IMAGE} sms ntsc-j auto)
+    if(NOT got STREQUAL japan)
+      message(FATAL_ERROR "fm auto on ntsc-j: ${got}, the runner's Japanese run gives ${japan}")
+    endif()
+    host_pcm(got ${IMAGE} sms ntsc-j off)
+    if(got STREQUAL japan)
+      message(FATAL_ERROR "fm off on ntsc-j still gives the Japanese run's hash ${japan}")
+    endif()
+    host_pcm(got ${IMAGE} sms ntsc-u auto)
+    if(NOT got STREQUAL export)
+      message(FATAL_ERROR "fm auto on ntsc-u: ${got}, the runner's export run gives ${export}")
+    endif()
+    host_pcm(got ${IMAGE} sms ntsc-u on)
+    if(got STREQUAL export)
+      message(FATAL_ERROR "fm on with ntsc-u still gives the export run's hash ${export}")
+    endif()
+    host_pcm(got ${GG_IMAGE} gg auto on)
+    if(NOT got STREQUAL gg)
+      message(FATAL_ERROR "fm on with Game Gear content: ${got}, the runner's run gives ${gg}")
+    endif()
   elseif(CASE STREQUAL "image")
     # The runner's probe finds the header checksum good.
     execute_process(COMMAND ${EMULATOR} ${RUN} --probe ${IMAGE} RESULT_VARIABLE rc
@@ -93,12 +157,16 @@ endif()
 set(COGMASTER_FIXTURES_DIR ${PROJECT_BINARY_DIR}/fixtures)
 set(fixtures_src ${PROJECT_SOURCE_DIR}/tests/roms/src)
 set(fixtures_images "")
-foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_to_play boot_to_play_gg battery)
+foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_to_play boot_to_play_gg battery
+    psg_sweep psg_sweep_gg fm_sweep)
   set(extension sms)
   set(image_name ${name})
   if(name STREQUAL "boot_to_play_gg")
     set(extension gg)
     set(image_name boot_to_play)
+  elseif(name STREQUAL "psg_sweep_gg")
+    set(extension gg)
+    set(image_name psg_sweep)
   endif()
   set(image ${COGMASTER_FIXTURES_DIR}/${image_name}.${extension})
   set(identity_check "")
@@ -119,6 +187,7 @@ foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_t
     WORKING_DIRECTORY ${fixtures_src}
     DEPENDS ${fixtures_src}/${name}.asm ${fixtures_src}/${name}.link ${fixtures_src}/header.inc
       ${fixtures_src}/mailbox.inc ${fixtures_src}/ports.asm ${fixtures_src}/boot_to_play.asm
+      ${fixtures_src}/psg_sweep.asm ${fixtures_src}/fm_sweep.asm
       ${PROJECT_SOURCE_DIR}/tests/cart/fixture_facts.txt ${PROJECT_SOURCE_DIR}/tests/cart/fixture.cmake
     COMMENT "Assembling the ${name} fixture"
     VERBATIM)
@@ -305,6 +374,53 @@ cogmaster_add_test(NAME fixtures.boot_to_play.mailbox
     -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/boot_to_play.txt
     -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS fixtures portable TIMEOUT 10)
+# Fault prevented: a PSG script whose frame or write counters drift, or an image that is not
+# the one pinned, so the sound hashes over it would judge a different program.
+# Timeout: 10 s floor; 0.05 s slowest local run, no hosted run yet, so provisional.
+cogmaster_add_test(NAME fixtures.psg_sweep
+  COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=psg_sweep
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/psg_sweep.sms -DFRAMES=300
+    -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/psg_sweep.txt
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable psg TIMEOUT 10)
+# The Game Gear image is the same table with the port $06 entries, judged by the same rows under
+# the gg profile.
+# Timeout: 10 s floor; 0.05 s slowest local run, no hosted run yet, so provisional.
+cogmaster_add_test(NAME fixtures.psg_sweep.gg
+  COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=psg_sweep_gg -DROM=psg_sweep -DPROFILE=gg
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/psg_sweep.gg -DFRAMES=300
+    -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/psg_sweep_gg.txt
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable psg TIMEOUT 10)
+# Fault prevented: an FM unit that the fixture's own detection routine finds where no unit
+# exists, or misses where one is attached, or a script whose frame or write counters drift, so
+# the FM hashes over it would judge a different program. The Japanese console carries the unit;
+# the export console and the Game Gear (running the same image) do not, and the same script runs
+# on all three.
+# Timeout: 10 s floor; 0.05 s slowest local run, no hosted run yet, so provisional.
+foreach(profile IN ITEMS sms-japan sms-export gg)
+  if(profile STREQUAL "sms-japan")
+    set(args -DMACHINE=sms -DREGION=ntsc-j)
+  elseif(profile STREQUAL "sms-export")
+    set(args -DMACHINE=sms -DREGION=ntsc-u)
+  else()
+    set(args -DMACHINE=gg)
+  endif()
+  cogmaster_add_test(NAME fixtures.fm_sweep.${profile}
+    COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=fm_sweep ${args} -DPROFILE=${profile}
+      -DIMAGE=${COGMASTER_FIXTURES_DIR}/fm_sweep.sms -DFRAMES=300
+      -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+      -DOUT=${fixtures_out}/fm_sweep.${profile}.txt -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures fm portable TIMEOUT 10)
+endforeach()
+# Fault prevented: a detection routine that is only proven through the runner's default unit
+# setting. The same built image runs on an export console with the unit switched on (it must find
+# it) and on a Japanese console with the unit switched off (it must not), reading the mailbox
+# through cogmaster_peek as the runner does.
+# Timeout: 10 s floor; 0.1 s slowest local run, no hosted run yet, so provisional.
+cogmaster_add_test(NAME fm.detect
+  COMMAND cogmaster-test-fm detect ${COGMASTER_FIXTURES_DIR}/fm_sweep.sms
+  LABELS fm portable TIMEOUT 10)
 # Timeout: 10 s floor; 2 x 0.02 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME fixtures.mapper_sega
   COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=mapper_sega

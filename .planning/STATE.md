@@ -2,20 +2,19 @@
 gsd_state_version: "1.0"
 milestone: v1.0
 milestone_name: SMS and Game Gear games play with sound in RetroArch
-current_phase: 03
-current_phase_name: Games play in RetroArch
-status: shipped
-stopped_at: Phase 03 shipped in PR #8; merge and release tracked at ship; runtime Codex; model GPT-6
-last_updated: "2026-10-20T23:34:42Z"
-last_activity: 2026-10-20
-last_activity_desc: Phase 03 shipped in PR #8 with fresh local CI; runtime Codex; model GPT-6
-state_head: 5e7afdcbbda9dfad6b65a34410838a448573e313
+current_phase: 04
+status: completed
+stopped_at: Phase 04 complete — all phases complete
+last_updated: "2026-11-09T23:12:08.488Z"
+last_activity: 2026-11-09
+last_activity_desc: Phase 04 complete
+state_head: f8dc704430c842a35020a5d138fd39a31a640e7b
 progress:
   total_phases: 4
-  completed_phases: 3
-  total_plans: 47
-  completed_plans: 47
-  percent: 75
+  completed_phases: 4
+  total_plans: 62
+  completed_plans: 62
+  percent: 100
 ---
 
 # Project State
@@ -25,25 +24,25 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-20)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 03 — Games play in RetroArch
+**Current focus:** Phase 04 — Sound
 
 ## Current Position
 
-Phase: 03 (Games play in RetroArch) — SHIPPED IN PR #8
-Plan: 18 of 18
-Status: Phase 03 shipped — PR #8; 88 UAT checks passed; phase 04 not started
-Last activity: 2026-10-20 — Shipped phase 03 as PR #8; fresh local CI exited 0 (342 tests and 4 package checks); runtime Codex; model GPT-6
+Phase: 04
+Plan: Not started
+Status: All phases complete
+Last activity: 2026-11-09 — Phase 04 complete
 
-Next command: `$gsd-discuss-phase 04`, after PR #8 merges and its automated release is confirmed at ship, per AGENTS rules 9/10.
+Next command: `/gsd-code-review 04`. All fifteen plans of phase 04 are executed; hosted run https://github.com/szTheory/cogmaster/actions/runs/42714958262 is green on head 9aaf378.
 
 Ship: https://github.com/szTheory/cogmaster/pull/8. `cmake --workflow --preset ci` exited 0 during ship. Hosted verification: https://github.com/szTheory/cogmaster/actions/runs/39514577638 (`gh run view 39514577638 --exit-status`, exit 0).
 
-Progress: [████████░░] 75%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 47
+- Total plans completed: 62
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -54,6 +53,7 @@ Progress: [████████░░] 75%
 | 01 | 12 | - | - |
 | 02 | 17 | - | - |
 | 03 | 18 | - | - |
+| 04 | 15 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -111,6 +111,21 @@ Progress: [████████░░] 75%
 | Phase 03 P16 | 7min | 2 tasks | 16 files |
 | Phase 03 P17 | 12min | 2 tasks | 24 files |
 | Phase 03 P18 | 31min | 2 tasks | 27 files |
+| Phase 04 P01 | 5min | 2 tasks | 8 files |
+| Phase 04 P02 | 13min | 3 tasks | 15 files |
+| Phase 04 P03 | 7min | 3 tasks | 14 files |
+| Phase 04 P04 | 15min | 2 tasks | 9 files |
+| Phase 04 P05 | 20min | 3 tasks | 12 files |
+| Phase 04 P06 | 8min | 2 tasks | 10 files |
+| Phase 04 P07 | 11min | 2 tasks | 16 files |
+| Phase 04 P08 | 4min | 2 tasks | 11 files |
+| Phase 04 P09 | 5 min | 2 tasks | 7 files |
+| Phase 04 P10 | 14min | 2 tasks | 11 files |
+| Phase 04 P11 | 9 min | 2 tasks | 7 files |
+| Phase 04 P12 | 29min | 2 tasks | 14 files |
+| Phase 04 P13 | 13 min | 2 tasks | 14 files |
+| Phase 04 P14 | 9min | 2 tasks | 11 files |
+| Phase 04 P15 | 22min | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -242,6 +257,36 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 03]: Use exclusive same-directory open for portable save temporaries, retaining private native permissions and untouched collision files.
 - [Phase 03]: Stop execution with all eighteen plans complete, ready for code review before formal verification; phase 04 remains pending.
 - [Phase 03]: Preserve every native and portable assertion while correcting actual inventories and measured host timeout bounds.
+- [Phase 04]: 04-01: Ticks and frames count from the last load or reset of either kind; one SOFT rule (synth keeps phase, ring, integrator, DC, levels, undrained PCM; chips return to power-on constants and step origin) is stated in D-01 and D-24
+- [Phase 04]: 04-01: Third-party SN76489 and YM2413 test ROM conformance is deferred; owned psg_sweep and fm_sweep fixtures, units and the lockstep test carry SND-01 and SND-02; SND-03 cadence is 801 or 802 per NTSC frame
+- [Phase 04]: 04-02: API 9, behaviour revision 11 and state format 11 are bumped once for the phase; the per-tick cadence is 176/39,375 NTSC and 9,600/2,128,137 PAL with a remainder in the synth, so every frame is 801 or 802 (965 or 966 PAL)
+- [Phase 04]: 04-02: The trace log is host-sized (trace_records, cap 1,048,576), allocated once at the first load before the cartridge copy, drained oldest first with overflow and uncopied records counted in dropped, and cleared by load and both resets
+- [Phase 04]: 04-02: The libretro adapter drains cogmaster_get_audio right after the frame runs, widens mono to L = R, and keeps no pacing state; core state tests drain frames like a host until plan 04-03 saves the synth phase
+- [Phase 04]: 04-03: media.fm resolves the FM unit at load (AUTO only for Japan on a non-GG machine, ON on any Master System, refused on a Game Gear); fm_unit and fm_mask live on the instance and info reports the resolved unit with the audio channels
+- [Phase 04]: 04-03: state header byte 52 is fm_unit fixed to the instance (11 reserved bytes remain); synth_io saves only the cadence phase, bounded by the TV modulus, and a state load drops undrained PCM; cogmaster__sio_i64 carries signed fields by a 2^63 bias
+- [Phase 04]: 04-04: Synthesis is the nesturbator 16 x 32 Q15 kernel through one unsigned division per change (t = (frac << 21) / mod for the 32-row table), a 1,024-slot int64 ring per channel, level-gaining Q12 gains (PSG 840; 491 and 1402 beside the FM unit) and a leaky DC blocker; the state saves the ring slots at and after the head, integrator, DC estimate, levels and gained levels, bounded at 2^56 with the integrator clamped per sample
+- [Phase 04]: 04-04: The sibling kernel passed the integer spectral test (18.6 kHz tone 85.0 dB under the reference, 111.9 kHz tone below the 16-bit rounding), so no kernel generator was added; four PSG channels stepping together peak at 28,944 against 29,204, and a rise followed by a fall can ring higher but does not saturate
+- [Phase 04]: 04-05: The PSG compares its own channel levels before and after each step or write and emits the differences; noise uses counter[3], noise_div and out[3] as rate counter, divider flip-flop and shifted-out bit, so the first shift is on the first step
+- [Phase 04]: 04-05: A saved PSG step origin must be a multiple of 48, not after the tick count and at most one frame plus 117 ticks behind it, so a hostile state cannot make the next catch-up run unbounded steps; state is saved between frames, so a mid-frame save restores the chip but not the synth taps the frame had placed
+- [Phase 04]: 04-05: A Game Gear console in Master System video mode routes every PSG channel to both outputs; the volume law oracle is derived in integers (ratio 213,225,862 over 2^28 on a Q20 value); the synth tests park the chip so their direct levels are not overwritten
+- [Phase 04]: 04-06: Only the Game Gear port block $00-$06 and the $3E/$3F decode follow the video mode (has_gg_ports); the console still decides full decode, pad pins, $DD and chip_in, so a Game Gear in Master System mode keeps its pad and Start as Pause
+- [Phase 04]: 04-06: A native $06 write catches the PSG up, stores the mask once in io.gg[5] and records source 4 at m->ticks; in Master System mode $00-$06 are undecoded (open bus reads, unmapped writes), $3E powers on at $AB, and no playing or fixture hash moved
+- [Phase 04]: 04-06: audio.cost bounds kernel additions by 16 x outputs x (4 x steps + 5 x writes) over a 33 tick OUT hammer on NTSC, PAL and native Game Gear; measured about 12 to 16 percent of the bound, ring reach 816, 981 and 816 against 992
+- [Phase 04]: 04-07: The runner's audio hashing is its own module (runner/audio.c); both drops, a count off 801 or 802 (965 or 966 PAL) and out-of-order source ticks fail the frame at once with exit 1, and levels are merged and serialised as 16 bits with a 0x10000 no-level sentinel
+- [Phase 04]: 04-07: psg_sweep is a 19-segment table player closing with 38 mailbox records (frames waited and PSG writes), with assemble-time guards on the segment count and the 60-record mailbox; the Game Gear $06 entries add no wait, record or count, so the SMS and GG images report identical records
+- [Phase 04]: 04-08: psg_sweep.gg is built through the fixtures loop with a second image special case (psg_sweep_gg to psg_sweep.gg) and judged by the same 38 rows under profile gg; the four psg_sweep sound rows in hashes.txt are tagged '<file> <profile> <region> baseline' after the keyword and frozen in tests/audio/transitions.txt and pcm.txt, compared inside runner.hashes_file; runner.hashes_file keeps TIMEOUT 30 (2.3 s inside the ci workflow) pending hosted be32 and wasm32 timings
+- [Phase 04]: boot_to_play sound: chime state at $C210, tone 1 note attenuation at $C212, jp forever on both images; four audio rows pinned in tests/audio
+- [Phase 04]: 04-10: The YM2413 is a 699 logic-line integer port of emu2413 (src/opll.c 424 lines, src/opll_reg.c 284), equal to the unmodified original sample for sample and channel for channel over 2,000,000 seeded stream samples; it returns the exact int32 channel sum, keeps the amplitude LFO phase below 13,440 and links slots and patches by index
+- [Phase 04]: 04-10: policy.notices reads the bulleted Applies to form and requires a notices section for every file with an SPDX line, plain MIT included; the emu2413 tables are generated by the oracle's tables mode, which fails if the integer key scale table differs from the original's float table
+- [Phase 04]: 04-11: COGMASTER__OPLL_SUM_MAX (32,688 = 6 tone + 5 drum peaks) bounds the sounding voices only; the returned sum also holds the silent group's last outputs, so it is bounded by all fourteen peaks (38,817) and can leave int16 (-36,095 measured with the test register); the source-5 level in plan 04-12 must keep the original's uint16 wrap or take the sounding voices only
+- [Phase 04]: 04-11: the lockstep digest is frozen in tests/audio/opll_lockstep.txt from the unmodified emu2413 at the pin (stream 2000000, re-run before freezing), so fm.lockstep fetches nothing
+- [Phase 04]: 04-12: The source-5 record stays the original's 16-bit wrap of the exact sum and the mixer is a pure function of those 16 bits (top-bit flip, drop below the lowest sounding sum, saturate at twice COGMASTER__OPLL_SUM_MAX, scale to the PSG full scale, gain 1402/4096), so all 65,536 values give a gained level in 0..11,216 and no int16 assumption remains — Resolves ledger row 10 without changing the lockstep digest or the record's value; audio.fm_level proves it for every 16-bit value
+- [Phase 04]: 04-12: The YM2413 address latch is a byte of struct cogmaster__opll; $F0-$F2 are decoded ahead of the I/O chip whenever the unit is attached; a muted source holds gained level 0, so no reset needs a special level and a SOFT reset gates the sources off with the control — One copy of the latch, chip-off independence on smsj, power-on and resets need no special stored level
+- [Phase 04]: 04-12: The chip's state block is every field but slot_evals plus the user instrument, bounded by the tables the fields index; OPLL_UPDATE_ALL is 15; a loaded next-sample tick must be a multiple of 216, past the last frame's deadline and at most one sample past the tick count — Bounds the next catch-up to a frame's samples and gives every pending-request and phase field a bound narrower than its type
+- [Phase 04]: fm_sweep's detection routine reads $F2 first and restores it, compares bits 1-0 of four written values, and its script runs on every console so the no-unit runs prove the ports change nothing
+- [Phase 04]: 04-14: The libretro adapter needed no audio change; host sessions with the batch, single-sample and both callbacks equal the runner's --hash-audio hash on SMS (mono as L = R) and GG (interleaved), with 801 or 802 frames and running totals on the cadence formula
+- [Phase 04]: 04-14: cogmaster_fm (auto, off, on) is in the v2, v1 and v0 option tables sized by one macro with compile-time checks; on with Game Gear content stays automatic so the content loads
+- [Phase 04]: 04-15: Hosted RetroArch records a silent control and psg_sweep.sms and .gg; audio.cmake (19 lines) holds every assertion with the length bounds, hosted code is 299 of 300 lines after flip.cmake gave way to expect_fail.cmake; the first hosted run of the phase head exposed GCC, MSVC, UBSan and macOS x64 timeout failures, fixed in 41b8f26; perf allow boot_to_play 357 to 2027-01-07 (+3.56 percent, base from a dispatch on main); docs/testing.md has 7 bytes of headroom
 
 ### Pending Todos
 
@@ -278,6 +323,27 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 
 | 2026-10-20 | Ship phase 3 (gsd-ship 03); PR #8, fresh local CI exit 0 | Codex | GPT-6 |
 
+| 2026-10-20 | Pause after phase 03 release (gsd-pause-work); v0.3.0 confirmed, PR #10 nightly fix green | Codex | GPT-6 |
+
+| 2026-11-09 | Discuss phase 4 (gsd-discuss-phase 4); six research agents plus adversarial cross-check; 35 decisions | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Plan phase 4 (gsd-plan-phase 4); research, 15 plans, checker passes after owner-approved revisions | Claude Code | claude-sonnet-5-5 (planner claude-opus-5-5) |
+| 2026-11-09 | Execute phase 4 plan 04-01 (gsd-execute-phase 04); documents only, 2 tasks | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-02 (gsd-execute-phase 04); API 9 door, exact cadence, adapter drain, trace log; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-03 (gsd-execute-phase 04); fm profile field, info fields, state header byte, abi.api_v9, audio guide; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-04 (gsd-execute-phase 04); band-limited synthesis, mixer, DC blocker, synth state and seven integer proofs; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-05 (gsd-execute-phase 04); SN76489 model, bus wiring, reset snapshot, PSG state and eleven closed-form psg cases; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-06 (gsd-execute-phase 04); Game Gear $06 stereo routing, native-mode port decode fix, audio.cost hammer bound; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-07 (gsd-execute-phase 04); cogmaster-run --hash-audio, runner.hash_audio, psg_sweep fixture with 38 judged records; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-08 (gsd-execute-phase 04); psg_sweep.gg, sound rows in hashes.txt, frozen tests/audio pins; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-09 (gsd-execute-phase 04); boot_to_play boot chime, input-edge notes, Game Gear stereo toggling, four pinned audio rows; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-10 (gsd-execute-phase 04); YM2413 port of emu2413 (699 logic lines), one-shot oracle equal over 2,000,000 samples, emu2413 notice and provenance, notices check tightened; 2 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-11 (gsd-execute-phase 04); fm.lockstep against the frozen 2,000,000-sample digest, seven chip-level fm cases, sum bound of the sounding voices (returned sum can leave int16, ledger entry); 2 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-12 (gsd-execute-phase 04); the YM2413 on the Japanese console: $F0-$F2 ahead of the I/O chip, 216-tick catch-up, $F2 mixer gate, total 16-bit FM level (ledger row 10 fixed), chip state block, reset snapshot and cost bound; 2 tasks, 5 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-13 (gsd-execute-phase 04); fm_sweep with its own $F2 detection routine, fm.detect, three fixture profiles, runner.hash_audio.fm and three new pin rows per file; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-14 (gsd-execute-phase 04); libretro batch, single and both-callback audio sessions equal the runner's PCM, cogmaster_fm option in all three tables, .info and README say sound; 2 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-15 (gsd-execute-phase 04); hosted RetroArch records a silent control and psg_sweep on both consoles, flip.cmake gone for expect_fail.cmake, first hosted run of the phase head fixed (GCC, MSVC, UBSan, macOS x64 timeouts), perf allow line, hosted run 42714958262 green; 2 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 close-out (gsd-execute-phase 04); code review 0 critical, 2 warning, 4 info; verifier passed 5/5; ci workflow exit 0, 399 tests | Claude Code | claude-sonnet-5-5 |
+
 ## Deferred Items
 
 Items acknowledged and deferred at milestone close, most recent first:
@@ -288,6 +354,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T23:34:42Z
-Stopped at: Phase 03 shipped in PR #8; phase 04 not started; runtime Codex; model GPT-6
+Last session: 2026-11-09T22:51:53.837Z
+Stopped at: Phase 04 complete — all phases complete
 Resume file: None

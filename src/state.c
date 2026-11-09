@@ -2,14 +2,21 @@
 
    Layout. A 64-byte header, then the body:
      header  magic, format version, header size, total size, behaviour
-             revision, API version, profile (machine, region, TV and a zero
-             byte), ROM CRC-32, body CRC-32,
-             frame, ticks, 12 reserved zero bytes
+             revision, API version, profile (machine, region, TV and video
+             mode), ROM CRC-32, body CRC-32,
+             frame, ticks, the FM unit, 11 reserved zero bytes
      body    the counters, the first-fault record, the Z80, the beam and the
              frame deadline, the VDP with its 16 KiB of VRAM, the 8 KiB of
              work RAM, then the board, the mapper registers and the
              cartridge RAM (none, 8 KiB or 32 KiB, fixed by the image),
-             then the I/O ports
+             then the I/O ports, the synthesiser (cadence phase, ring
+             slots, integrator, DC estimate, levels) and the PSG (step
+             origin, periods, counters, flip-flops, attenuations, noise
+             control, shift register, latch), then, only with the FM unit,
+             the YM2413 at a fixed size (registers, counters, noise, the
+             last sum, the user instrument, each of 18 operator slots with
+             its derived values and pending requests, the next sample's
+             tick)
    One field list drives every pass (state.h), so they cannot drift apart. A
    struct is never copied as a whole: padding, pointers and the allocator
    never reach the bytes. The emitted field and render cursor are saved so a partially drawn
@@ -24,11 +31,11 @@
 
 /* Header offsets, in the order header_io visits them: magic 0, format
    version 8, header size 10, total size 12, behaviour revision 16, API
-   version 20, machine 24, region 25, TV 26, profile reserved 27, ROM CRC-32
-   28, body CRC-32 32, frame 36, ticks 44, reserved 52. */
+   version 20, machine 24, region 25, TV 26, video mode 27, ROM CRC-32 28,
+   body CRC-32 32, frame 36, ticks 44, FM unit 52, reserved 53. */
 #define H_BODY_CRC 32u
-#define H_RESERVED 52u
-#define H_RESERVED_SIZE 12u
+#define H_RESERVED 53u
+#define H_RESERVED_SIZE 11u
 _Static_assert(H_RESERVED + H_RESERVED_SIZE == STATE_HEADER_SIZE, "the header is 64 bytes");
 
 /* A loaded state's ticks are capped at 2^62, far from 2^64 wrapping
@@ -49,7 +56,27 @@ _Static_assert(sizeof(struct cogmaster__z80) == 38u, "z80 changed: update z80_io
 _Static_assert(sizeof(struct cogmaster__bus) == 40u, "bus changed: update bus_io");
 _Static_assert(sizeof(struct cogmaster__vdp) == 16510u, "vdp changed: update vdp_io");
 _Static_assert(sizeof(struct cogmaster__mapper) == 4u, "mapper changed: update mapper_io");
-_Static_assert(sizeof(struct cogmaster__io) == 8u, "io changed: update io_io");
+_Static_assert(sizeof(struct cogmaster__io) == 9u, "io changed: update io_io");
+/* The saved synth fields are the ring, integrator, DC estimate, head, levels,
+   gained levels and the cadence phase. The trace counters, the stats and the
+   PCM the host has not taken are its queue and counters, not state, so a new
+   field either joins synth_io or is added to this size. */
+_Static_assert(sizeof(struct cogmaster__synth) ==
+                   sizeof(int64_t[2][COGMASTER__SYNTH_RING]) + 2u * sizeof(int64_t[2]) +
+                       (1u + 4u + 1u + COGMASTER__SYNTH_SOURCES + 2u * COGMASTER__SYNTH_SOURCES +
+                        5u) *
+                           sizeof(uint32_t) +
+                       sizeof(int16_t[COGMASTER__AUDIO_MAX_FRAMES * 2u]),
+               "synth changed: update synth_io");
+
+/* The PSG's size is pinned the same way: a new field either joins psg_io or
+   changes this. */
+_Static_assert(sizeof(struct cogmaster__psg) == 40u, "psg changed: update psg_io");
+
+/* The YM2413's size is pinned too. slot_evals is a counter the cost tests read, not state;
+   every other field, and the user instrument of the patches, joins opll_io. The other 36
+   instruments are the chip's ROM and load at every reset. */
+_Static_assert(sizeof(struct cogmaster__opll) == 1288u, "opll changed: update opll_io");
 
 /* A beam is at most one line short of the frame's lines down and 683 ticks
    into a line, and one Z80 step is at most 69 ticks, so the beam is at most
@@ -101,6 +128,9 @@ static struct state_time header_io(struct cogmaster__sio *io, cogmaster *m, uint
     } else {
         cogmaster__sio_check(io, time.ticks >= start);
     }
+    /* Attached at load and never changed, so a state loads only into an
+       instance with the same FM unit. */
+    fixed(io, "fm_unit", m->fm_unit, 1u);
     for (uint32_t i = 0; i < H_RESERVED_SIZE; i++) {
         fixed(io, "reserved", 0u, 1u);
     }
@@ -292,18 +322,255 @@ static void mapper_io(struct cogmaster__sio *io, cogmaster *m)
     cogmaster__sio_check(io, board != COGMASTER__BOARD_CODEMASTERS || (ctrl & 0x7Fu) == 0u);
 }
 
-/* The Game Gear decodes no $3E, so its enables stay as the hand-off left
-   them; its $05 keeps no status flag. */
-static void io_io(struct cogmaster__sio *io, cogmaster *m)
+/* The Game Gear in native mode decodes no $3E, so its enables stay as the
+   hand-off left them; its $05 keeps no status flag. */
+static uint8_t io_io(struct cogmaster__sio *io, cogmaster *m)
 {
     struct cogmaster__io *p = &m->io;
-    int gg = m->machine == COGMASTER_MACHINE_GG;
+    int gg = cogmaster__native_gg(m);
     cogmaster__sio_u8(io, "io_mem_ctrl", &p->mem_ctrl, gg ? 0xA8u : 0u, gg ? 0xA8u : UINT8_MAX);
     cogmaster__sio_u8(io, "io_ctrl", &p->io_ctrl, 0u, UINT8_MAX);
     for (uint32_t i = 0; i < 6u; i++) {
         uint8_t v = cogmaster__sio_u8(io, "io_gg", &p->gg[i], 0u, UINT8_MAX);
         cogmaster__sio_check(io, i != 4u || (v & 0x07u) == 0u);
     }
+    /* The audio control, which only the FM unit's $F2 writes, within the bits the unit keeps. */
+    return cogmaster__sio_u8(io, "io_audio_ctrl", &p->audio_ctrl, 0u, (uint8_t)m->fm_mask);
+}
+
+/* The cadence phase is a fraction of a sample, below the modulus of the
+   instance's TV (synth.c). The synthesis is saved with it: the ring slots at
+   and after the head (an event lands at most a sample past the frame's end, so
+   32 hold every pending tap), the integrator, the DC estimate, the head and
+   each source's level and gained level. State is saved between frames, so the
+   other ring slots are empty and are zeroed on load. The bounds come from the
+   kernel table and the mixer gains (synth.c): a slot and the integrator stay
+   inside 2^56, the DC estimate inside its share of it, a gained level inside
+   the largest the profile's gain allows; a Master System has one output, so
+   the second channel is zero. The undrained PCM and the trace log are the
+   host's queue, not state: loading a state discards the PCM so the next frame
+   does not count it as dropped. */
+static void synth_io(struct cogmaster__sio *io, cogmaster *m, uint32_t fm_levels[2])
+{
+    struct cogmaster__synth *s = &m->synth;
+    uint32_t mod = m->tv == COGMASTER_TV_PAL ? COGMASTER__AUDIO_MOD_PAL : COGMASTER__AUDIO_MOD_NTSC;
+    cogmaster__sio_u32(io, "synth_phase", &s->phase, 0u, mod - 1u);
+    if (io->mode == COGMASTER__SIO_APPLY) {
+        memset(s->ring, 0, sizeof s->ring);
+    }
+    uint32_t head = cogmaster__sio_u32(io, "synth_head", &s->head, 0u, COGMASTER__SYNTH_RING - 1u);
+    uint32_t channels = m->machine == COGMASTER_MACHINE_GG ? 2u : 1u;
+    for (uint32_t ch = 0u; ch < 2u; ch++) {
+        int ok = ch < channels;
+        int64_t slot_max = ok ? COGMASTER__SYNTH_SLOT_MAX : 0;
+        int64_t integ_max = ok ? COGMASTER__SYNTH_INTEG_MAX : 0;
+        int64_t dc_max = ok ? COGMASTER__SYNTH_DC_MAX : 0;
+        cogmaster__sio_i64(io, "synth_integ", &s->integ[ch], -integ_max, integ_max);
+        cogmaster__sio_i64(io, "synth_dc", &s->dc[ch], -dc_max, dc_max);
+        for (uint32_t i = 0u; i < COGMASTER__SYNTH_SAVED; i++) {
+            int64_t *slot = &s->ring[ch][(head + i) & (COGMASTER__SYNTH_RING - 1u)];
+            cogmaster__sio_i64(io, "synth_ring", slot, -slot_max, slot_max);
+        }
+    }
+    /* Sources 5 and 6 are the FM unit's: its sum as 16 bits and the control it leaves. */
+    const uint32_t level_max[COGMASTER__SYNTH_SOURCES] = {
+        0x1Fu, 0x1Fu, 0x1Fu, 0x1Fu, 0xFFu, m->fm_unit ? 0xFFFFu : 0u, m->fm_mask};
+    for (uint32_t src = 0u; src < COGMASTER__SYNTH_SOURCES; src++) {
+        uint32_t level = cogmaster__sio_u32(io, "synth_level", &s->level[src], 0u, level_max[src]);
+        if (src >= 5u) {
+            fm_levels[src - 5u] = level;
+        }
+        uint32_t gmax = cogmaster__synth_gained_max(m, src);
+        for (uint32_t ch = 0u; ch < 2u; ch++) {
+            cogmaster__sio_u32(io, "synth_gained", &s->gained[src][ch], 0u,
+                               ch < channels ? gmax : 0u);
+        }
+    }
+    if (io->mode == COGMASTER__SIO_APPLY) {
+        s->pcm_frames = 0u;
+        s->pcm_read = 0u;
+    }
+}
+
+/* The PSG. The step origin is a step tick, so a multiple of 48 and at most
+   the tick count; the chip runs lazily from it, so a loaded origin more than a
+   frame (plus the longest instruction and a step) behind the tick count would
+   make the next catch-up run far past one frame's steps and is refused. A tone
+   counter holds at most its period's 10 bits; the noise rate counter at most
+   64, the slowest reload. The shift register is never 0: it resets to $8000 and
+   feeds back from bit 0, so a zero register would stay silent for ever. The
+   latch names one of 8 registers (SMS-AUDIO section 2.1). */
+#define STATE_PSG_STEP 48u
+static void psg_io(struct cogmaster__sio *io, cogmaster *m, struct state_time time)
+{
+    struct cogmaster__psg *p = &m->psg;
+    uint64_t at = cogmaster__sio_u64(io, "psg_at", &p->at, 0u, STATE_TICKS_MAX);
+    for (uint32_t i = 0u; i < 3u; i++) {
+        cogmaster__sio_u16(io, "psg_period", &p->period[i], 0u, 1023u);
+    }
+    for (uint32_t i = 0u; i < 4u; i++) {
+        cogmaster__sio_u16(io, "psg_counter", &p->counter[i], 0u, i < 3u ? 1023u : 64u);
+    }
+    uint16_t lfsr = cogmaster__sio_u16(io, "psg_lfsr", &p->lfsr, 0u, UINT16_MAX);
+    for (uint32_t i = 0u; i < 4u; i++) {
+        cogmaster__sio_u8(io, "psg_out", &p->out[i], 0u, 1u);
+    }
+    for (uint32_t i = 0u; i < 4u; i++) {
+        cogmaster__sio_u8(io, "psg_att", &p->att[i], 0u, 15u);
+    }
+    cogmaster__sio_u8(io, "psg_noise", &p->noise, 0u, 7u);
+    cogmaster__sio_u8(io, "psg_noise_div", &p->noise_div, 0u, 1u);
+    cogmaster__sio_u8(io, "psg_latch", &p->latch, 0u, 7u);
+    cogmaster__sio_check(io, lfsr != 0u);
+    cogmaster__sio_check(io, at % STATE_PSG_STEP == 0u && at <= time.ticks);
+    cogmaster__sio_check(io, time.ticks - at <= (uint64_t)cogmaster__frame_ticks(m) +
+                                                    STATE_STEP_TICKS_MAX + STATE_PSG_STEP);
+}
+
+/* A signed field of width bytes inside [min, max]. It rides the unsigned machinery with half
+   the width's range added, so the stored value and its bounds compare as unsigned and no
+   signed shift or overflow is involved. */
+static int32_t signed_field(struct cogmaster__sio *io, const char *name, int32_t v, uint32_t width,
+                            int32_t min, int32_t max)
+{
+    int64_t bias = INT64_C(1) << (8u * width - 1u);
+    uint64_t u = cogmaster__sio_field(io, name, (uint64_t)(v + bias), width, (uint64_t)(min + bias),
+                                      (uint64_t)(max + bias));
+    return (int32_t)((int64_t)u - bias);
+}
+
+static int32_t i16_io(struct cogmaster__sio *io, const char *name, int16_t *v, int32_t min,
+                      int32_t max)
+{
+    int32_t x = signed_field(io, name, *v, 2u, min, max);
+    if (io->mode == COGMASTER__SIO_APPLY) {
+        *v = (int16_t)x;
+    }
+    return x;
+}
+
+/* The user instrument, patches 0 (modulator) and 1 (carrier); the carrier's total level and
+   feedback are never written, so they stay 0. Every field indexes a table or a shift, so each
+   is held to the bits a register write can give it. */
+static void opll_patch_io(struct cogmaster__sio *io, struct cogmaster__opll_patch *p, int carrier)
+{
+    cogmaster__sio_u8(io, "opll_patch_tl", &p->tl, 0u, carrier ? 0u : 63u);
+    cogmaster__sio_u8(io, "opll_patch_fb", &p->fb, 0u, carrier ? 0u : 7u);
+    cogmaster__sio_u8(io, "opll_patch_eg", &p->eg, 0u, 1u);
+    cogmaster__sio_u8(io, "opll_patch_ml", &p->ml, 0u, 15u);
+    cogmaster__sio_u8(io, "opll_patch_ar", &p->ar, 0u, 15u);
+    cogmaster__sio_u8(io, "opll_patch_dr", &p->dr, 0u, 15u);
+    cogmaster__sio_u8(io, "opll_patch_sl", &p->sl, 0u, 15u);
+    cogmaster__sio_u8(io, "opll_patch_rr", &p->rr, 0u, 15u);
+    cogmaster__sio_u8(io, "opll_patch_kr", &p->kr, 0u, 1u);
+    cogmaster__sio_u8(io, "opll_patch_kl", &p->kl, 0u, 3u);
+    cogmaster__sio_u8(io, "opll_patch_am", &p->am, 0u, 1u);
+    cogmaster__sio_u8(io, "opll_patch_pm", &p->pm, 0u, 1u);
+    cogmaster__sio_u8(io, "opll_patch_ws", &p->ws, 0u, 1u);
+}
+
+/* One operator slot: the registers' effect and the values derived from them, which a load
+   must not recompute (the first sample would change). It returns the instrument index as read,
+   for the cross check against the voice's number. Bounds follow the tables the values
+   index: the key scale table has 128 rows, the rate tables 4 and the shifts at most 13. The
+   largest total level is the table's 112 plus twice the largest level, 63. */
+#define STATE_OPLL_TLL_MAX 238u
+#define STATE_OPLL_VOLUME_MAX 60u
+static uint8_t opll_slot_io(struct cogmaster__sio *io, struct cogmaster__opll_slot *s)
+{
+    cogmaster__sio_u8(io, "opll_slot_type", &s->type, 0u, 3u);
+    uint8_t patch =
+        cogmaster__sio_u8(io, "opll_slot_patch", &s->patch, 0u, COGMASTER__OPLL_PATCHES - 1u);
+    cogmaster__sio_u8(io, "opll_slot_ws", &s->ws, 0u, 1u);
+    for (uint32_t i = 0u; i < 2u; i++) {
+        i16_io(io, "opll_slot_output", &s->output[i], -(int32_t)COGMASTER__OPLL_DRUM_PEAK,
+               (int32_t)COGMASTER__OPLL_DRUM_PEAK);
+    }
+    cogmaster__sio_u32(io, "opll_slot_pg_phase", &s->pg_phase, 0u, (1u << 19) - 1u);
+    cogmaster__sio_u16(io, "opll_slot_pg_out", &s->pg_out, 0u, 1023u);
+    cogmaster__sio_u8(io, "opll_slot_pg_keep", &s->pg_keep, 0u, 1u);
+    uint16_t blk_fnum = cogmaster__sio_u16(io, "opll_slot_blk_fnum", &s->blk_fnum, 0u, 0xFFFu);
+    uint16_t fnum = cogmaster__sio_u16(io, "opll_slot_fnum", &s->fnum, 0u, 0x1FFu);
+    uint8_t blk = cogmaster__sio_u8(io, "opll_slot_blk", &s->blk, 0u, 7u);
+    cogmaster__sio_u8(io, "opll_slot_eg_state", &s->eg_state, 0u, OPLL_DAMP);
+    cogmaster__sio_u8(io, "opll_slot_volume", &s->volume, 0u, STATE_OPLL_VOLUME_MAX);
+    cogmaster__sio_u8(io, "opll_slot_key_flag", &s->key_flag, 0u, 1u);
+    cogmaster__sio_u8(io, "opll_slot_sus_flag", &s->sus_flag, 0u, 1u);
+    cogmaster__sio_u16(io, "opll_slot_tll", &s->tll, 0u, STATE_OPLL_TLL_MAX);
+    cogmaster__sio_u8(io, "opll_slot_rks", &s->rks, 0u, 15u);
+    cogmaster__sio_u8(io, "opll_slot_eg_rate_h", &s->eg_rate_h, 0u, 15u);
+    cogmaster__sio_u8(io, "opll_slot_eg_rate_l", &s->eg_rate_l, 0u, 3u);
+    cogmaster__sio_u8(io, "opll_slot_eg_shift", &s->eg_shift, 0u, 13u);
+    cogmaster__sio_u8(io, "opll_slot_eg_out", &s->eg_out, 0u, OPLL_EG_MUTE);
+    cogmaster__sio_u8(io, "opll_slot_update", &s->update_requests, 0u, OPLL_UPDATE_ALL);
+    /* The block and f-number are set together, so the pair of them is what the slot holds. */
+    cogmaster__sio_check(io, (uint32_t)blk_fnum == ((uint32_t)blk << 9 | (uint32_t)fnum));
+    return patch;
+}
+
+/* The YM2413 unit, present only with fm_unit. Every field of the chip but its slot-evaluation
+   counter, and the nine voices' instrument numbers, are saved, the pointers of the original
+   being indices here already. The chip's last sum and the synthesiser's last FM level are one
+   value, and the control the synthesiser holds is the one the I/O ports hold. The next
+   sample's tick is a multiple of 216 past the last frame's deadline and at most one sample
+   past the tick count, which keeps the next catch-up to a frame's worth of samples. */
+#define STATE_OPLL_SAMPLE_TICKS 216u
+static void opll_io(struct cogmaster__sio *io, cogmaster *m, struct state_time time,
+                    const uint32_t levels[2], uint8_t ctrl)
+{
+    struct cogmaster__opll *o = &m->opll;
+    uint8_t reg14 = 0u;
+    uint8_t reg15 = 0u;
+    for (uint32_t i = 0u; i < 0x40u; i++) {
+        uint8_t r = cogmaster__sio_u8(io, "opll_reg", &o->reg[i], 0u, UINT8_MAX);
+        reg14 = i == 0x0Eu ? r : reg14;
+        reg15 = i == 0x0Fu ? r : reg15;
+    }
+    uint8_t test = cogmaster__sio_u8(io, "opll_test_flag", &o->test_flag, 0u, UINT8_MAX);
+    uint8_t rhythm = cogmaster__sio_u8(io, "opll_rhythm_mode", &o->rhythm_mode, 0u, 1u);
+    cogmaster__sio_u8(io, "opll_lfo_am", &o->lfo_am, 0u, 13u);
+    cogmaster__sio_u8(io, "opll_short_noise", &o->short_noise, 0u, 1u);
+    cogmaster__sio_u8(io, "opll_latch", &o->latch, 0u, UINT8_MAX);
+    cogmaster__sio_u32(io, "opll_key_status", &o->slot_key_status, 0u, (1u << 18) - 1u);
+    cogmaster__sio_u32(io, "opll_eg_counter", &o->eg_counter, 0u, UINT32_MAX);
+    cogmaster__sio_u32(io, "opll_pm_phase", &o->pm_phase, 0u, UINT32_MAX);
+    cogmaster__sio_u32(io, "opll_am_phase", &o->am_phase, 0u, 210u * 64u - 1u);
+    cogmaster__sio_u32(io, "opll_noise", &o->noise, 1u, (1u << 23) - 1u);
+    int32_t sum = 0;
+    int32_t held = signed_field(io, "opll_sum", o->sum, 4u, -(int32_t)COGMASTER__OPLL_SUM_ALL,
+                                (int32_t)COGMASTER__OPLL_SUM_ALL);
+    if (io->mode == COGMASTER__SIO_APPLY) {
+        o->sum = held;
+    }
+    uint8_t numbers[9];
+    for (uint32_t i = 0u; i < 9u; i++) {
+        numbers[i] = cogmaster__sio_u8(io, "opll_patch_number", &o->patch_number[i], 0u, 18u);
+    }
+    for (uint32_t i = 0u; i < COGMASTER__OPLL_CHANNELS; i++) {
+        int32_t peak = (int32_t)(i < 9u ? COGMASTER__OPLL_TONE_PEAK : COGMASTER__OPLL_DRUM_PEAK);
+        sum += i16_io(io, "opll_ch_out", &o->ch_out[i], -peak, peak);
+    }
+    uint8_t patch[COGMASTER__OPLL_SLOTS];
+    for (uint32_t i = 0u; i < COGMASTER__OPLL_SLOTS; i++) {
+        patch[i] = opll_slot_io(io, &o->slot[i]);
+    }
+    for (uint32_t i = 0u; i < 2u; i++) {
+        opll_patch_io(io, &o->patch[i], (int)i);
+    }
+    uint64_t next = cogmaster__sio_u64(io, "fm_next", &m->fm_next, STATE_OPLL_SAMPLE_TICKS,
+                                       STATE_TICKS_MAX + STATE_OPLL_SAMPLE_TICKS);
+    cogmaster__sio_check(io, test == reg15 && (uint32_t)rhythm == (((uint32_t)reg14 >> 5) & 1u));
+    cogmaster__sio_check(io, held == sum);
+    cogmaster__sio_check(io, levels[0] == (uint32_t)(uint16_t)held && levels[1] == (uint32_t)ctrl);
+    /* A voice's two slots play the two halves of its instrument. */
+    for (uint32_t i = 0u; i < 9u; i++) {
+        cogmaster__sio_check(io,
+                             (uint32_t)patch[2u * i] == 2u * (uint32_t)numbers[i] &&
+                                 (uint32_t)patch[2u * i + 1u] == 2u * (uint32_t)numbers[i] + 1u);
+    }
+    cogmaster__sio_check(io, next % STATE_OPLL_SAMPLE_TICKS == 0u);
+    cogmaster__sio_check(io, next > time.frame * cogmaster__frame_ticks(m));
+    cogmaster__sio_check(io, next <= time.ticks + STATE_OPLL_SAMPLE_TICKS);
 }
 
 /* The whole state, in the order the format fixes. */
@@ -318,7 +585,13 @@ static void state_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
     cogmaster__sio_check(io, m->machine != COGMASTER_MACHINE_SMS1 || height == 192u);
     ram_io(io, m);
     mapper_io(io, m);
-    io_io(io, m);
+    uint8_t audio_ctrl = io_io(io, m);
+    uint32_t fm_levels[2];
+    synth_io(io, m, fm_levels);
+    psg_io(io, m, time);
+    if (m->fm_unit) {
+        opll_io(io, m, time, fm_levels, audio_ctrl);
+    }
     cogmaster_input *inputs[2] = {&m->pending_input, &m->input};
     for (uint32_t i = 0u; i < 2u; i++) {
         cogmaster_input *p = inputs[i];

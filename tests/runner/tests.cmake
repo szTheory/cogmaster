@@ -81,6 +81,33 @@ if(CMAKE_SCRIPT_MODE_FILE)
         message(FATAL_ERROR "playing matrix missing ${row}")
       endif()
     endforeach()
+    # The playable fixture has all four sound rows, each with its two hashes.
+    foreach(row IN ITEMS "boot_to_play.sms sms ntsc-u baseline 60" "boot_to_play.sms sms ntsc-u input 14"
+        "boot_to_play.gg native ntsc-u baseline 60" "boot_to_play.gg native ntsc-u input 14")
+      foreach(kind IN ITEMS transitions pcm)
+        if(NOT hashes MATCHES "audio-${kind} ${row} ")
+          message(FATAL_ERROR "sound matrix missing audio-${kind} ${row}")
+        endif()
+      endforeach()
+    endforeach()
+    # The sound rows equal the frozen pins, line for line; the first line that differs is named.
+    foreach(kind IN ITEMS transitions pcm)
+      file(STRINGS "${OUT}/hashes.txt" got REGEX "^audio-${kind} ")
+      file(STRINGS "${PINS}/${kind}.txt" want)
+      list(LENGTH got got_n)
+      list(LENGTH want want_n)
+      if(want_n EQUAL 0 OR NOT got_n EQUAL want_n)
+        message(FATAL_ERROR "audio-${kind}: ${got_n} lines against ${want_n} in ${PINS}/${kind}.txt")
+      endif()
+      math(EXPR last "${got_n} - 1")
+      foreach(i RANGE ${last})
+        list(GET got ${i} got_line)
+        list(GET want ${i} want_line)
+        if(NOT got_line STREQUAL want_line)
+          message(FATAL_ERROR "audio-${kind} line ${i} differs from ${PINS}/${kind}.txt:\n  got  ${got_line}\n  want ${want_line}")
+        endif()
+      endforeach()
+    endforeach()
     file(MAKE_DIRECTORY "${OUT}/card-only")
     execute_process(COMMAND ${CMAKE_COMMAND} -DMODE=write -DRUN=${RUN}
       "-DEMULATOR=${EMULATOR}" -DOUT=${OUT}/card-only -DFIXTURES= -P ${HASHES}
@@ -530,7 +557,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     # Options a later release adds are refused now, and --help does not
     # mention them; --help and --version take nothing else; --trace takes
     # only first-fault and --region only its four names.
-    foreach(opt --hash-audio --capabilities --boot --bios)
+    foreach(opt --capabilities --boot --bios)
       expect_exit(2 "unknown option" --frames 1 ${opt})
       expect_exit(2 "unknown option" --frames 1 ${opt} x)
     endforeach()
@@ -544,8 +571,101 @@ if(CMAKE_SCRIPT_MODE_FILE)
     expect_exit(2 "usage" --probe)
     expect_exit(2 "usage" --probe --frames 1 ${SEEDS}/di-halt.sms)
     execute_process(COMMAND ${EMULATOR} ${RUN} --help RESULT_VARIABLE rc OUTPUT_VARIABLE out)
-    if(NOT rc STREQUAL "0" OR out MATCHES "--(hash-audio|capabilities|boot|bios)")
+    if(NOT rc STREQUAL "0" OR out MATCHES "--(capabilities|boot|bios)")
       message(FATAL_ERROR "--help: expected exit 0 and no later option, got exit ${rc}\n${out}")
+    endif()
+  elseif(CASE STREQUAL "hash_audio" OR CASE STREQUAL "hash_audio_fm")
+    # Each run is made twice and must print the same bytes; the sample total
+    # is the cumulative cadence formula in integer math, and nothing clips.
+    # IMAGE, when set, is a fixture that sounds.
+    function(audio_run frames)
+      execute_process(COMMAND ${EMULATOR} ${RUN} --frames ${frames} --hash-audio ${ARGN}
+        RESULT_VARIABLE rc1 OUTPUT_VARIABLE out1 ERROR_VARIABLE err1)
+      execute_process(COMMAND ${EMULATOR} ${RUN} --frames ${frames} --hash-audio ${ARGN}
+        RESULT_VARIABLE rc2 OUTPUT_VARIABLE out2 ERROR_VARIABLE err2)
+      if(NOT rc1 STREQUAL "0" OR NOT rc2 STREQUAL "0")
+        message(FATAL_ERROR "--hash-audio ${ARGN}: exit ${rc1} and ${rc2}\n${out1}${err1}${err2}")
+      endif()
+      if(NOT out1 STREQUAL out2)
+        message(FATAL_ERROR "--hash-audio ${ARGN}: two runs differ:\n${out1}${out2}")
+      endif()
+      string(REPEAT "[0-9a-f]" 64 h64)
+      if(NOT out1 MATCHES "(^|\n)audio-transitions ${frames} count [0-9]+ sha256 ${h64}\n"
+          OR NOT out1 MATCHES "(^|\n)audio-pcm ${frames} rate 48000 channels ([12]) samples ([0-9]+) peak ([0-9]+) clipped ([0-9]+) sha256 ${h64}\n")
+        message(FATAL_ERROR "--hash-audio ${ARGN}: the two lines are missing or malformed:\n${out1}")
+      endif()
+      math(EXPR want "${frames} * 3504512 / 4375")
+      # Group 1 is the line start.
+      if(NOT CMAKE_MATCH_3 STREQUAL want OR NOT CMAKE_MATCH_5 STREQUAL "0")
+        message(FATAL_ERROR "--hash-audio ${ARGN}: samples ${CMAKE_MATCH_3} (want ${want}) clipped ${CMAKE_MATCH_5}")
+      endif()
+      set(channels ${CMAKE_MATCH_2} PARENT_SCOPE)
+      set(peak ${CMAKE_MATCH_4} PARENT_SCOPE)
+      set(sound "${out1}" PARENT_SCOPE)
+    endfunction()
+
+    if(CASE STREQUAL "hash_audio_fm")
+      # The FM fixture on the Japanese console, whose built-in unit sounds, and on the export
+      # console, which has none: both obey the checks above, each equals its frozen lines, the
+      # Japanese run sounds, and the two differ, so the unit is heard and does not leak.
+      foreach(region IN ITEMS ntsc-j ntsc-u)
+        audio_run(300 ${IMAGE} --machine sms --region ${region})
+        if(NOT channels STREQUAL "1" OR peak GREATER 29204)
+          message(FATAL_ERROR "--hash-audio fm ${region}: channels ${channels} peak ${peak}, want 1 and at most 29204")
+        endif()
+        if(region STREQUAL "ntsc-j" AND peak LESS 1)
+          message(FATAL_ERROR "--hash-audio fm ${region}: the unit made no sound (peak ${peak})")
+        endif()
+        foreach(kind IN ITEMS transitions pcm)
+          file(READ "${PINS}/${kind}.txt" pins)
+          string(REGEX MATCH "(^|\n)audio-${kind} ([0-9]+ [^\n]*)\n" run_line "${sound}")
+          set(want_line "\naudio-${kind} fm_sweep.sms sms ${region} baseline ${CMAKE_MATCH_2}\n")
+          string(FIND "\n${pins}" "${want_line}" at)
+          if(at EQUAL -1)
+            message(FATAL_ERROR "--hash-audio fm ${region}: the ${kind} line is not in ${PINS}/${kind}.txt:\n${run_line}")
+          endif()
+          string(REPLACE "-" "_" id "${region}")
+          set(${kind}_${id} "${run_line}")
+        endforeach()
+      endforeach()
+      if(pcm_ntsc_j STREQUAL pcm_ntsc_u OR transitions_ntsc_j STREQUAL transitions_ntsc_u)
+        message(FATAL_ERROR "--hash-audio fm: the Japanese and export consoles sound alike")
+      endif()
+      return()
+    endif()
+
+    # The card is silent: one channel on the Master System, two on the Game Gear, no peak.
+    audio_run(60)
+    if(NOT channels STREQUAL "1" OR NOT peak STREQUAL "0")
+      message(FATAL_ERROR "--hash-audio card: channels ${channels} peak ${peak}")
+    endif()
+    audio_run(60 --machine gg)
+    if(NOT channels STREQUAL "2" OR NOT peak STREQUAL "0")
+      message(FATAL_ERROR "--hash-audio card on gg: channels ${channels} peak ${peak}")
+    endif()
+    if(IMAGE)
+      audio_run(300 ${IMAGE})
+      if(NOT channels STREQUAL "1" OR peak LESS 1 OR peak GREATER 29204)
+        message(FATAL_ERROR "--hash-audio ${IMAGE}: channels ${channels} peak ${peak}, want 1 to 29204")
+      endif()
+      # The run's own lines, tagged as hashes.txt tags them, are lines of the frozen pins.
+      foreach(kind IN ITEMS transitions pcm)
+        file(READ "${PINS}/${kind}.txt" pins)
+        string(REGEX MATCH "(^|\n)audio-${kind} ([0-9]+ [^\n]*)\n" run_line "${sound}")
+        set(want_line "\naudio-${kind} psg_sweep.sms sms ntsc-u baseline ${CMAKE_MATCH_2}\n")
+        string(FIND "\n${pins}" "${want_line}" at)
+        if(at EQUAL -1)
+          message(FATAL_ERROR "--hash-audio ${IMAGE}: the ${kind} line is not in ${PINS}/${kind}.txt:\n${run_line}")
+        endif()
+      endforeach()
+    endif()
+
+    # A runner built to offer the core 800 samples a frame meets a frame of 801
+    # or 802: that is a failure, not a short hash.
+    execute_process(COMMAND ${EMULATOR} ${SHORT} --frames 2 --hash-audio
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "1" OR NOT err MATCHES "frame 1 holds 800 samples" OR out MATCHES "audio-")
+      message(FATAL_ERROR "the 800 sample runner: expected exit 1 and no hash lines, got exit ${rc}\n${out}${err}")
     endif()
   elseif(CASE STREQUAL "positional")
     # One file, positional or after --rom, runs; a second file, a file with
@@ -631,10 +751,13 @@ set(runner_fixtures "")
 if(COGMASTER_FIXTURES)
   set(runner_fixtures -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures)
 endif()
+# Timeout: 30 s floor; 2 x 2.3 s, slowest of 5 local runs with the sound rows (1.2 s alone to 2.3 s
+# inside the parallel ci workflow), no hosted run yet, so provisional until the be32 (x8) and wasm32 (x5) timings of the first hosted run are read.
 cogmaster_add_test(NAME runner.hashes_file
   COMMAND ${CMAKE_COMMAND} -DCASE=hash_matrix -DRUN=$<TARGET_FILE:cogmaster-run>
     "-DEMULATOR=${runner_emulator}" -DOUT=${PROJECT_BINARY_DIR} ${runner_fixtures}
-    -DHASHES=${runner_hashes} -P ${CMAKE_CURRENT_LIST_FILE}
+    -DHASHES=${runner_hashes} -DPINS=${PROJECT_SOURCE_DIR}/tests/audio
+    -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS runner portable TIMEOUT 30)
 
 # Fault prevented: a comparison that passes lanes which differ, or a lane
@@ -766,6 +889,15 @@ target_compile_definitions(cogmaster-test-run-stop PRIVATE _POSIX_C_SOURCE=20080
 set_target_properties(cogmaster-test-run-stop PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
 cogmaster_warnings(cogmaster-test-run-stop)
+
+# The same runner offering the core 800 samples a frame, for runner.hash_audio.
+add_executable(cogmaster-test-run-audio-short ${COGMASTER_RUNNER_SOURCES})
+target_link_libraries(cogmaster-test-run-audio-short PRIVATE cogmaster::cogmaster cogmaster-host)
+target_compile_definitions(cogmaster-test-run-audio-short PRIVATE _POSIX_C_SOURCE=200809L
+  COGMASTER_RUN_AUDIO_CAP=800)
+set_target_properties(cogmaster-test-run-audio-short PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-run-audio-short)
 
 if(COGMASTER_FIXTURES)
   # Share uninstrumented helpers; only main and save carry the test-only hooks.
@@ -909,6 +1041,30 @@ endforeach()
 cogmaster_add_test(NAME runner.hash.repeat
   COMMAND ${runner_check} -DCASE=hash_repeat -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS portable runner TIMEOUT 30)
+
+# Fault prevented: sound hash lines that differ between two runs of the same
+# input, a sample total off the cadence formula, a sample that clips, a frame
+# of the wrong length passed as a hash, or a trace log that overflows silently.
+# Timeout: 30 s; the card and the fixture runs take well under a second each.
+set(hash_audio_image "")
+if(COGMASTER_FIXTURES)
+  set(hash_audio_image -DIMAGE=${PROJECT_BINARY_DIR}/fixtures/psg_sweep.sms)
+endif()
+cogmaster_add_test(NAME runner.hash_audio
+  COMMAND ${runner_check} -DCASE=hash_audio -DSHORT=$<TARGET_FILE:cogmaster-test-run-audio-short>
+    ${hash_audio_image} -DPINS=${PROJECT_SOURCE_DIR}/tests/audio -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable psg runner TIMEOUT 30)
+
+# Fault prevented: an FM unit whose sound differs between two runs, between lanes or from the
+# frozen lines, that stays silent on the Japanese console, or that sounds on the export console.
+# Timeout: 30 s floor; four 300 frame runs of 0.1 s each, no hosted run yet, so provisional.
+if(COGMASTER_FIXTURES)
+  cogmaster_add_test(NAME runner.hash_audio.fm
+    COMMAND ${runner_check} -DCASE=hash_audio_fm
+      -DIMAGE=${PROJECT_BINARY_DIR}/fixtures/fm_sweep.sms -DPINS=${PROJECT_SOURCE_DIR}/tests/audio
+      -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fm portable runner TIMEOUT 30)
+endif()
 
 # Fault prevented: --version printing something a script cannot parse.
 cogmaster_add_test(NAME runner.version

@@ -117,3 +117,50 @@ boot_to_play_gg,07:counter_scroll,start,0202,derived,owned absolute Start edge s
 boot_to_play_gg,17:raw_start_region,start,00C0,doc,SMS-SYSTEM section 4 native GG Start
 boot_to_play_gg,08:counter_scroll,start,0202,derived,owned absolute Start edge sequence
 boot_to_play_gg,18:raw_start_region,start,00C0,doc,SMS-SYSTEM section 4 native GG Start
+psg_sweep,01:boot_silence_frames,*,0014,derived,owned ROM PSG script segment
+psg_sweep,02:boot_silence_writes,*,0004,derived,owned ROM PSG script segment
+psg_sweep,03:loud_tone_frames,*,0046,derived,owned ROM PSG script segment
+psg_sweep,04:loud_tone_writes,*,0008,derived,owned ROM PSG script segment
+psg_sweep,05:latch_data_frames,*,004B,derived,owned ROM PSG script segment
+psg_sweep,06:latch_data_writes,*,000C,derived,owned ROM PSG script segment
+psg_sweep,07:data_after_volume_frames,*,0051,derived,owned ROM PSG script segment
+psg_sweep,08:data_after_volume_writes,*,0012,derived,owned ROM PSG script segment
+psg_sweep,09:latch_persists_frames,*,0058,derived,owned ROM PSG script segment
+psg_sweep,0A:latch_persists_writes,*,0018,derived,owned ROM PSG script segment
+psg_sweep,0B:periods_tone0_frames,*,0066,derived,owned ROM PSG script segment
+psg_sweep,0C:periods_tone0_writes,*,0028,derived,owned ROM PSG script segment
+psg_sweep,0D:periods_tone1_frames,*,0074,derived,owned ROM PSG script segment
+psg_sweep,0E:periods_tone1_writes,*,0038,derived,owned ROM PSG script segment
+psg_sweep,0F:periods_tone2_frames,*,0082,derived,owned ROM PSG script segment
+psg_sweep,10:periods_tone2_writes,*,0048,derived,owned ROM PSG script segment
+psg_sweep,11:walk_tone0_frames,*,0096,derived,owned ROM PSG script segment
+psg_sweep,12:walk_tone0_writes,*,005E,derived,owned ROM PSG script segment
+psg_sweep,13:walk_tone1_frames,*,00AA,derived,owned ROM PSG script segment
+psg_sweep,14:walk_tone1_writes,*,0074,derived,owned ROM PSG script segment
+psg_sweep,15:walk_tone2_frames,*,00BE,derived,owned ROM PSG script segment
+psg_sweep,16:walk_tone2_writes,*,008A,derived,owned ROM PSG script segment
+psg_sweep,17:attenuation_ch0_frames,*,00CE,derived,owned ROM PSG script segment
+psg_sweep,18:attenuation_ch0_writes,*,009D,derived,owned ROM PSG script segment
+psg_sweep,19:attenuation_ch1_frames,*,00DE,derived,owned ROM PSG script segment
+psg_sweep,1A:attenuation_ch1_writes,*,00B0,derived,owned ROM PSG script segment
+psg_sweep,1B:attenuation_ch2_frames,*,00EE,derived,owned ROM PSG script segment
+psg_sweep,1C:attenuation_ch2_writes,*,00C3,derived,owned ROM PSG script segment
+psg_sweep,1D:attenuation_ch3_frames,*,00FE,derived,owned ROM PSG script segment
+psg_sweep,1E:attenuation_ch3_writes,*,00D5,derived,owned ROM PSG script segment
+psg_sweep,1F:noise_controls_frames,*,010E,derived,owned ROM PSG script segment
+psg_sweep,20:noise_controls_writes,*,00E1,derived,owned ROM PSG script segment
+psg_sweep,21:noise_mode3_frames,*,011A,derived,owned ROM PSG script segment
+psg_sweep,22:noise_mode3_writes,*,00EB,derived,owned ROM PSG script segment
+psg_sweep,23:noise_reset_frames,*,0120,derived,owned ROM PSG script segment
+psg_sweep,24:noise_reset_writes,*,00F0,derived,owned ROM PSG script segment
+psg_sweep,25:volume_pops_frames,*,0121,derived,owned ROM PSG script segment
+psg_sweep,26:volume_pops_writes,*,08F4,derived,owned ROM PSG script segment
+fm_sweep,01:fm_detect,sms-japan,0001,doc,SMS-AUDIO section 4.1
+fm_sweep,01:fm_detect,sms-export,0000,doc,SMS-AUDIO section 4.1
+fm_sweep,01:fm_detect,gg,0000,doc,SMS-AUDIO section 4.1
+fm_sweep,02:notes_frames,*,003C,derived,owned ROM FM script segment
+fm_sweep,03:notes_writes,*,0010,derived,owned ROM FM script segment
+fm_sweep,04:rhythm_frames,*,007E,derived,owned ROM FM script segment
+fm_sweep,05:rhythm_writes,*,0027,derived,owned ROM FM script segment
+fm_sweep,06:control_frames,*,00D6,derived,owned ROM FM script segment
+fm_sweep,07:control_writes,*,002F,derived,owned ROM FM script segment

@@ -42,6 +42,8 @@ completed pixels/height/backdrop alongside the line counter
 and pending source, rolling NTSC-240 phase and held H value alongside the sprite
 slots, dot cursor, scroll/display latches and last driven bus byte, so older state
 bytes are refused. API version 6 appends the battery query; existing ABI layouts remain unchanged.
+API version 9 appends the audio drain `cogmaster_get_audio`. Behaviour revision 11 and state format 11
+cover the whole of the sound work, so older state bytes are refused. See [Audio](#audio).
 
 ## Getting it
 
@@ -108,7 +110,7 @@ program built against one header run with a library built from another.
   unbounded distance past your object.
 
 **Output structs** (`cogmaster_info`, `cogmaster_versions`, `cogmaster_run_result`, `cogmaster_fault`,
-`cogmaster_cart_info`):
+`cogmaster_cart_info`, `cogmaster_audio`, `cogmaster_audio_trace`):
 
 - A size below the struct's first released size returns `COGMASTER_STATUS_ERR_STRUCT_SIZE` and leaves the struct
   as it was.
@@ -127,6 +129,10 @@ First released sizes, where P is the pointer size (4 or 8):
 | `cogmaster_run_result` | 12 |
 | `cogmaster_fault` | 32 |
 | `cogmaster_cart_info` | 52 |
+| `cogmaster_audio` (output) | 2 × P + 16 |
+| `cogmaster_audio_trace` (output) | 32 on 64-bit, 20 on 32-bit |
+
+Whole structs: `cogmaster_media` is 56 bytes (32 on 32-bit, `fm` at 28) and `cogmaster_info` is 68.
 
 Fields are fixed-width integers and pointers; enumerations travel as `uint32_t` and zero is the default of every
 input field. Statuses, constants and fields are only ever appended.
@@ -166,12 +172,17 @@ media.machine = COGMASTER_MACHINE_AUTO;   /* or COGMASTER_MACHINE_SMS2, COGMASTE
 media.region = COGMASTER_REGION_AUTO;     /* or COGMASTER_REGION_EXPORT, COGMASTER_REGION_JAPAN */
 media.tv = COGMASTER_TV_AUTO;             /* or COGMASTER_TV_NTSC, COGMASTER_TV_PAL */
 media.video_mode = COGMASTER_VIDEO_AUTO;  /* or COGMASTER_VIDEO_SMS, COGMASTER_VIDEO_GG */
+media.fm = COGMASTER_FM_AUTO;             /* or COGMASTER_FM_OFF, COGMASTER_FM_ON */
 media.image = rom;                        /* the image bytes, or NULL for the test card */
 media.image_size = rom_size;              /* 0 with a NULL image */
 cogmaster_load(m, &media);
 
 cogmaster_run_frame(m, NULL);             /* one frame; the result struct is optional */
 ```
+
+`fm` picks the YM2413 FM unit: AUTO attaches it only for a Japanese Master System, OFF never, ON on any Master
+System; a value above ON, or ON with a Game Gear, returns `COGMASTER_STATUS_ERR_PROFILE_REJECTED`. A size tag
+from before `fm` reads AUTO. See [audio](audio.md).
 
 `video_mode` defaults to native GG on a Game Gear and SMS on either Master System.
 Explicit GG video requires a Game Gear. Explicit SMS video on a Game Gear retains
@@ -301,6 +312,33 @@ above 65536 returns `COGMASTER_STATUS_ERR_ARGUMENT`, which keeps every row offse
 A frame hash is SHA-256 over the crop rows, top to bottom, each pixel as two bytes with the low byte first. Hash
 those bytes, not the `uint16_t` array, or a big-endian host gets a different digest.
 
+## Audio
+
+The host contract is in [audio](audio.md). `cogmaster_run_frame` makes one frame's samples at 48 kHz and `cogmaster_get_audio(m, io)` hands them over:
+it copies the smaller of `capacity` and what is pending, in sample frames, into `samples` and sets `written`,
+`channels` and `dropped`. A sample frame is one `int16_t` when `channels` is 1 (the Master System) and a left
+and right pair when it is 2 (the Game Gear, in either video mode). Set `size` to `sizeof(cogmaster_audio)`.
+
+Every NTSC frame holds 801 or 802 sample frames and every PAL frame 965 or 966, never padded. After F frames the
+total is floor(F × 3,504,512 / 4,375) on NTSC and floor(F × 685,094,400 / 709,379) on PAL. Frames you do not
+take before the next `cogmaster_run_frame` are lost and counted in `dropped`, the total since load or POWER
+reset. Before the first frame after a load, `written` is 0.
+
+`capacity` 0 with a NULL `samples` is OK and reports `channels`; a NULL `samples` with `capacity` above 0
+returns `COGMASTER_STATUS_ERR_ARGUMENT`. A load and a POWER reset restart the cadence at 801; a SOFT reset keeps
+it and any samples not yet taken. The test card is silent but follows the same cadence.
+
+### The audio trace
+
+`cogmaster_config.trace_records` asks for a log of that many `cogmaster_audio_record` values (`tick`, `source`,
+`level`; 16 bytes each): 0, the default, keeps none, and above 1,048,576 `cogmaster_create` returns
+`COGMASTER_STATUS_ERR_ARGUMENT`. The first successful `cogmaster_load` allocates the log through your allocator,
+once; later loads reuse it and nothing is allocated after a load. `cogmaster_get_audio_trace(m, io)` copies up to
+`capacity` records, oldest first, into `records`, sets `written` and `dropped` and empties the log. `dropped`
+counts the records the full log refused plus those that did not fit `capacity`. An instance made with no log
+returns `COGMASTER_STATUS_ERR_ARGUMENT`, as does a NULL `records` with `capacity` above 0. A load and both
+resets empty the log, since ticks restart there.
+
 ## Reset
 
 `cogmaster_reset(m, kind)` restarts the loaded content without loading it again. Both kinds set the frame count
@@ -393,6 +431,8 @@ answer returns a value above 255: a NULL instance, no successful `cogmaster_load
 | `par_num`, `par_den` | 8 / 7 | 6 / 5 |
 | `region` | the loaded region: `COGMASTER_REGION_EXPORT` or `COGMASTER_REGION_JAPAN` | the same |
 | `tv` | the loaded video standard: `COGMASTER_TV_NTSC` or `COGMASTER_TV_PAL` | `COGMASTER_TV_NTSC` |
+| `audio_channels` | 1 | 2 |
+| `fm` | `COGMASTER_FM_ON` or `COGMASTER_FM_OFF` | `COGMASTER_FM_OFF` |
 
 `region` and `tv` are never AUTO: they report what `load` resolved. The pixel aspect ratio is reported, never
 applied. `max_w` × `max_h` sizes a buffer for any frame.
@@ -409,7 +449,7 @@ changes no state; a failed `cogmaster_load` keeps the content that was loaded be
 | `COGMASTER_STATUS_ERR_STRUCT_SIZE` | 2 | a size tag breaks the rules in [Structs and sizes](#structs-and-sizes) |
 | `COGMASTER_STATUS_ERR_NO_MEMORY` | 3 | `alloc` returned NULL in `cogmaster_create` (`*out` is left as it was) or in `cogmaster_load` |
 | `COGMASTER_STATUS_ERR_BUFFER_TOO_SMALL` | 4 | `pitch_bytes` is below `w × 2` for the rectangle requested |
-| `COGMASTER_STATUS_ERR_NO_CONTENT` | 5 | `cogmaster_run_frame`, `cogmaster_get_frame`, `cogmaster_get_info` or `cogmaster_reset` before a successful `cogmaster_load` |
+| `COGMASTER_STATUS_ERR_NO_CONTENT` | 5 | `cogmaster_run_frame`, `cogmaster_get_frame`, `cogmaster_get_info`, `cogmaster_get_audio`, `cogmaster_get_audio_trace` or `cogmaster_reset` before a successful `cogmaster_load` |
 | `COGMASTER_STATUS_ERR_PROFILE_REJECTED` | 6 | `cogmaster_media.machine`, `region` or `tv` is not one of its `COGMASTER_MACHINE_*`, `COGMASTER_REGION_*` or `COGMASTER_TV_*` values, or the pair was never made: `COGMASTER_TV_PAL` with `COGMASTER_MACHINE_GG` or with `COGMASTER_REGION_JAPAN` |
 | `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE` | 7 | an image is below 1,024 or above 1,048,576 + 512 bytes; checked before every other load rule |
 | `COGMASTER_STATUS_ERR_SAVE_SIZE` | 9 | raw save exceeds the classified persistent length |
@@ -418,11 +458,13 @@ changes no state; a failed `cogmaster_load` keeps the content that was loaded be
 | Function | Can return |
 |---|---|
 | `cogmaster_get_versions(out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE |
-| `cogmaster_create(cfg, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_MEMORY |
+| `cogmaster_create(cfg, out)` | OK, ERR_ARGUMENT (`trace_records` above 1,048,576 included), ERR_STRUCT_SIZE, ERR_NO_MEMORY |
 | `cogmaster_destroy(m)` | nothing; NULL is accepted |
 | `cogmaster_load(m, media)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_MEMORY, ERR_PROFILE_REJECTED, ERR_UNSUPPORTED_SIZE, ERR_UNSUPPORTED_BOARD |
 | `cogmaster_run_frame(m, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT |
 | `cogmaster_get_frame(m, io)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT, ERR_BUFFER_TOO_SMALL |
+| `cogmaster_get_audio(m, io)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT |
+| `cogmaster_get_audio_trace(m, io)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT |
 | `cogmaster_get_info(m, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE, ERR_NO_CONTENT |
 | `cogmaster_reset(m, kind)` | OK, ERR_ARGUMENT, ERR_NO_CONTENT |
 | `cogmaster_get_fault(m, out)` | OK, ERR_ARGUMENT, ERR_STRUCT_SIZE |
@@ -450,21 +492,23 @@ header does not know stays at the zero you wrote.
 ## Names
 
 Every public name, for reference: the opaque instance `cogmaster`; the types `cogmaster_status`,
-`cogmaster_allocator` (`alloc`, `free`, `user`), `cogmaster_config` (`size`, `allocator`), `cogmaster_versions`
+`cogmaster_allocator` (`alloc`, `free`, `user`), `cogmaster_config` (`size`, `allocator`, `trace_records`, `reserved`), `cogmaster_versions`
 (`size`, `library_major`, `library_minor`, `library_patch`, `api`, `abi`, `behaviour`, `state`),
-`cogmaster_media` (`size`, `image`, `image_size`, `machine`, `region`, `tv`), `cogmaster_info` (`size`, `machine`,
+`cogmaster_media` (`size`, `image`, `image_size`, `machine`, `region`, `tv`, `video_mode`, `reserved2`, `fm`), `cogmaster_info` (`size`, `machine`,
 `crop_w`, `crop_h`, `field_w`, `field_h`, `max_w`, `max_h`, `fps_num`, `fps_den`, `par_num`, `par_den`, `region`,
-`tv`), `cogmaster_frame`
-(`size`, `pixels`, `pitch_bytes`, `flags`, `x`, `y`, `w`, `h`, `field_h`, `backdrop_rgb444`) and
-`cogmaster_run_result` (`size`, `stop`, `overshoot_ticks`) and `cogmaster_fault` (`size`, `present`, `frame`,
+`tv`, `video_mode`, `audio_channels`, `fm`), `cogmaster_frame`
+(`size`, `pixels`, `pitch_bytes`, `flags`, `x`, `y`, `w`, `h`, `field_h`, `backdrop_rgb444`),
+`cogmaster_audio` (`size`, `samples`, `capacity`, `written`, `channels`, `dropped`),
+`cogmaster_audio_record` (`tick`, `source`, `level`), `cogmaster_audio_trace` (`size`, `records`, `capacity`,
+`written`, `dropped`) and `cogmaster_run_result` (`size`, `stop`, `overshoot_ticks`) and `cogmaster_fault` (`size`, `present`, `frame`,
 `line`, `dot`, `pc`, `addr`, `opcode`, `width`, `device`, `kind`) and `cogmaster_cart_info` (`size`,
 `image_size`, `body_offset`, `header_at`, `checksum`, `checksum_ok`, `product_code`, `version`, `region_code`,
 `rom_size_code`, `machine_guess`, `region_guess`, `board`, `identified`, `public_identity`, `persistence`,
 `persistent_size`, `persistence_geometry`, `video_mode`, `sha1`, `title`); the functions `cogmaster_get_versions`,
 `cogmaster_create`, `cogmaster_destroy`, `cogmaster_load`, `cogmaster_run_frame`, `cogmaster_get_frame`,
-`cogmaster_get_info`, `cogmaster_reset`, `cogmaster_get_fault`, `cogmaster_probe` and `cogmaster_peek`; the constants `COGMASTER_MACHINE_AUTO`,
+`cogmaster_get_info`, `cogmaster_get_audio`, `cogmaster_get_audio_trace`, `cogmaster_reset`, `cogmaster_get_fault`, `cogmaster_probe` and `cogmaster_peek`; the constants `COGMASTER_MACHINE_AUTO`,
 `COGMASTER_MACHINE_SMS2`, `COGMASTER_MACHINE_GG`, `COGMASTER_REGION_AUTO`, `COGMASTER_REGION_EXPORT`,
-`COGMASTER_REGION_JAPAN`, `COGMASTER_TV_AUTO`, `COGMASTER_TV_NTSC`, `COGMASTER_TV_PAL`, `COGMASTER_STOP_FRAME`, `COGMASTER_FRAME_FULL_FIELD`,
+`COGMASTER_REGION_JAPAN`, `COGMASTER_FM_AUTO`, `COGMASTER_FM_OFF`, `COGMASTER_FM_ON`, `COGMASTER_TV_AUTO`, `COGMASTER_TV_NTSC`, `COGMASTER_TV_PAL`, `COGMASTER_STOP_FRAME`, `COGMASTER_FRAME_FULL_FIELD`,
 `COGMASTER_RESET_SOFT`, `COGMASTER_RESET_POWER`, `COGMASTER_BOARD_ROM_ONLY`, `COGMASTER_BOARD_SEGA`,
 `COGMASTER_BOARD_CODEMASTERS`, `COGMASTER_SPACE_BUS`, the five `COGMASTER_FAULT_KIND_*` and six `COGMASTER_FAULT_DEVICE_*` values
 above, the nine `COGMASTER_STATUS_*` values above and the
@@ -484,8 +528,8 @@ crop with 6:5 pixels (4:3 display); the square-pixel option gives 10:9.
 The full-field option reveals normally hidden VDP content using the selected pixel
 aspect without changing native emulation or its hashes. These options take effect
 on the next frame. Machine, region/timing and Game Gear mode options require content
-reload. SMS PAL uses PAR 2950000:2128137 and exact rational silence pacing (965 or
-966 stereo frames at 48 kHz); NTSC delivers 801 or 802.
+reload. SMS PAL uses PAR 2950000:2128137. The adapter drains `cogmaster_get_audio`
+every frame before the video work and keeps no pacing state of its own.
 
 ## Battery media
 

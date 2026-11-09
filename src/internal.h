@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include "cogmaster.h"
+#include "opll.h"
 #include "z80.h"
 
 /* The field buffer is 256 dots wide and up to 240 lines tall; the test card
@@ -161,10 +162,94 @@ struct cogmaster__io {
     uint8_t mem_ctrl; /* $3E: active-low enables, b6 cartridge, b4 work RAM, b2 I/O chip */
     uint8_t io_ctrl;  /* $3F: b3-0 TR/TH directions (1 = input), b7-4 their output levels */
     uint8_t gg[6];    /* Game Gear $01-$06 */
+    /* $F2 as written, below 4: 0 PSG, 1 FM, 2 neither, 3 both; 0 with no FM unit */
+    uint8_t audio_ctrl;
 };
 
 /* The Master System's work RAM, mirrored over $C000-$FFFF. */
 #define COGMASTER__RAM_SIZE 8192u
+
+/* Audio leaves the core at 48 kHz. Per bus tick a frame's sample count grows
+   by inc / mod of a sample: the per-Z80-cycle rates 176 / 13,125 (NTSC) and
+   9,600 / 709,379 (PAL) with the modulus tripled for three ticks a cycle
+   (SMS-AUDIO section 1). Exact, so every frame is 801 or 802 samples (965 or
+   966 on PAL) and F frames total floor(F x 3,504,512 / 4,375) (PAL
+   floor(F x 685,094,400 / 709,379)). */
+#define COGMASTER__AUDIO_INC_NTSC 176u
+#define COGMASTER__AUDIO_MOD_NTSC 39375u
+#define COGMASTER__AUDIO_INC_PAL 9600u
+#define COGMASTER__AUDIO_MOD_PAL 2128137u
+
+/* The most sample frames one video frame produces: the PAL count. */
+#define COGMASTER__AUDIO_MAX_FRAMES 966u
+
+/* The most records a host may ask the trace log to hold: 16 MiB. */
+#define COGMASTER__TRACE_MAX (1u << 20)
+
+/* Band-limited step synthesis. A level change adds a kernel (16 taps) into an
+   impulse ring of 1,024 slots per output channel; each sample integrates one
+   slot. Ring slots at and after head are saved: an event lands at most a
+   sample past the frame's end, so the 32 saved slots hold every pending tap. */
+#define COGMASTER__SYNTH_RING 1024u
+#define COGMASTER__SYNTH_TAPS 16u
+#define COGMASTER__SYNTH_SAVED 32u
+#define COGMASTER__SYNTH_SOURCES 7u
+
+/* Bounds that keep every int64 sum inside range, from the kernel table and
+   the mixer (synth.c states the derivation next to its static assertions). A
+   slot and the integrator are held at or below 2^56 in magnitude; the DC
+   estimate in Q16 sample units at or below the integrator over 2^15. */
+#define COGMASTER__SYNTH_SLOT_MAX (INT64_C(1) << 56)
+#define COGMASTER__SYNTH_INTEG_MAX (INT64_C(1) << 56)
+#define COGMASTER__SYNTH_DC_MAX (COGMASTER__SYNTH_INTEG_MAX / 32768)
+
+/* Counters the cost tests read; never state. */
+struct cogmaster__synth_stats {
+    uint32_t kernel_apps; /* taps added to a ring */
+    uint32_t clamps;      /* samples that left the int16 range */
+    uint32_t max_index;   /* the largest sample index plus taps an event reached */
+    uint32_t psg_steps;   /* PSG steps taken */
+    uint32_t psg_writes;  /* bytes written to the PSG */
+};
+
+/* The synthesiser's saved and transient state. The phase is the fraction of
+   a sample carried between frames, in [0, mod); the PCM is the last frame's
+   output waiting for the host, channels interleaved. level is each source's
+   last raw level and gained[source][channel] the gained level last fed to
+   the ring, so only the difference enters it. */
+struct cogmaster__synth {
+    int64_t ring[2][COGMASTER__SYNTH_RING];
+    int64_t integ[2];
+    int64_t dc[2];
+    uint32_t phase;
+    uint32_t pcm_frames;    /* sample frames the last frame produced */
+    uint32_t pcm_read;      /* of those, the frames the host has taken */
+    uint32_t trace_pending; /* records waiting in the instance's trace log */
+    uint32_t trace_dropped; /* appends the full log refused since the last drain */
+    uint32_t head;          /* ring index of the sample the next frame starts with */
+    uint32_t level[COGMASTER__SYNTH_SOURCES];
+    uint32_t gained[COGMASTER__SYNTH_SOURCES][2];
+    struct cogmaster__synth_stats stats;
+    int16_t pcm[COGMASTER__AUDIO_MAX_FRAMES * 2u];
+};
+
+/* The Sega PSG's registers and counters (psg.c). at is the tick of the last
+   step taken, a multiple of 48. period holds the three 10-bit tone periods;
+   counter the three tone down-counters and, in [3], the noise rate counter;
+   out the tone flip-flops and, in [3], the noise output bit; noise_div the
+   noise divider's flip-flop; latch the register index (channel x 2, plus 1
+   for an attenuation) the next data byte writes. */
+struct cogmaster__psg {
+    uint64_t at;
+    uint16_t period[3];
+    uint16_t counter[4];
+    uint16_t lfsr;
+    uint8_t out[4];
+    uint8_t att[4];
+    uint8_t noise;
+    uint8_t noise_div;
+    uint8_t latch;
+};
 
 struct cogmaster {
     cogmaster_allocator allocator; /* the caller's, copied at create */
@@ -172,9 +257,11 @@ struct cogmaster {
     uint64_t ticks;                /* ticks run since load */
     uint32_t machine;              /* resolved machine: SMS1, SMS2 or GG; valid while loaded */
     uint32_t video_mode;
-    uint32_t region; /* resolved region: EXPORT or JAPAN; valid while loaded */
-    uint32_t tv;     /* resolved TV: NTSC or PAL; valid while loaded */
-    uint32_t loaded; /* 1 after a successful load */
+    uint32_t region;  /* resolved region: EXPORT or JAPAN; valid while loaded */
+    uint32_t tv;      /* resolved TV: NTSC or PAL; valid while loaded */
+    uint32_t loaded;  /* 1 after a successful load */
+    uint32_t fm_unit; /* resolved fm: 1 when the YM2413 is attached, else 0; valid while loaded */
+    uint32_t fm_mask; /* the $F2 bits the profile keeps: 3 with the unit, else 0 */
     struct cogmaster__counters counters;
     uint32_t fault_present;        /* 1 once a fault is recorded */
     struct cogmaster__fault fault; /* valid while fault_present */
@@ -188,6 +275,14 @@ struct cogmaster {
     uint32_t render_x; /* next unrendered dot of render_line */
     cogmaster_input pending_input, input;
     uint8_t input_read;
+    struct cogmaster__synth synth;
+    struct cogmaster__psg psg;
+    /* The YM2413, reset at every load and reset and run only with fm_unit; fm_next is the tick
+       its next sample completes at, a multiple of 216. */
+    struct cogmaster__opll opll;
+    uint64_t fm_next;
+    uint32_t trace_cap;                /* the host's trace_records, kept across loads */
+    cogmaster_audio_record *trace_log; /* trace_cap records, allocated by the first load */
     uint8_t ram[COGMASTER__RAM_SIZE];
     uint16_t field[COGMASTER__FIELD_MAX_H][COGMASTER__FIELD_W]; /* RGB444 per dot */
     struct {
@@ -231,7 +326,10 @@ _Static_assert(sizeof(cogmaster_allocator) == 3 * COGMASTER__P, "allocator size"
 
 _Static_assert(offsetof(cogmaster_config, size) == 0, "config.size");
 _Static_assert(offsetof(cogmaster_config, allocator) == COGMASTER__P, "config.allocator");
-_Static_assert(sizeof(cogmaster_config) == 4 * COGMASTER__P, "config size");
+_Static_assert(offsetof(cogmaster_config, trace_records) == 4 * COGMASTER__P,
+               "config.trace_records");
+/* The field after the allocator, and on 64-bit an explicit pad to a multiple of P. */
+_Static_assert(sizeof(cogmaster_config) == 5 * COGMASTER__P, "config size");
 
 _Static_assert(offsetof(cogmaster_versions, size) == 0, "versions.size");
 _Static_assert(offsetof(cogmaster_versions, library_major) == 4, "versions.library_major");
@@ -249,8 +347,11 @@ _Static_assert(offsetof(cogmaster_media, image_size) == 2 * COGMASTER__P, "media
 _Static_assert(offsetof(cogmaster_media, machine) == 3 * COGMASTER__P, "media.machine");
 _Static_assert(offsetof(cogmaster_media, region) == 3 * COGMASTER__P + 4, "media.region");
 _Static_assert(offsetof(cogmaster_media, tv) == 3 * COGMASTER__P + 8, "media.tv");
-/* 3P + 12 bytes rounded up to a multiple of P: 40 on 64-bit, 24 on 32-bit. */
-_Static_assert(sizeof(cogmaster_media) == (COGMASTER__P == 8 ? 48 : 28), "media size");
+_Static_assert(offsetof(cogmaster_media, video_mode) == (COGMASTER__P == 8 ? 40 : 24),
+               "media.video_mode");
+/* Explicit pad to the next word, so fm starts at 48 on 64-bit and 28 on 32-bit. */
+_Static_assert(offsetof(cogmaster_media, fm) == (COGMASTER__P == 8 ? 48 : 28), "media.fm");
+_Static_assert(sizeof(cogmaster_media) == (COGMASTER__P == 8 ? 56 : 32), "media size");
 
 _Static_assert(offsetof(cogmaster_info, size) == 0, "info.size");
 _Static_assert(offsetof(cogmaster_info, machine) == 4, "info.machine");
@@ -266,7 +367,10 @@ _Static_assert(offsetof(cogmaster_info, par_num) == 40, "info.par_num");
 _Static_assert(offsetof(cogmaster_info, par_den) == 44, "info.par_den");
 _Static_assert(offsetof(cogmaster_info, region) == 48, "info.region");
 _Static_assert(offsetof(cogmaster_info, tv) == 52, "info.tv");
-_Static_assert(sizeof(cogmaster_info) == 60, "info size");
+_Static_assert(offsetof(cogmaster_info, video_mode) == 56, "info.video_mode");
+_Static_assert(offsetof(cogmaster_info, audio_channels) == 60, "info.audio_channels");
+_Static_assert(offsetof(cogmaster_info, fm) == 64, "info.fm");
+_Static_assert(sizeof(cogmaster_info) == 68, "info size");
 
 _Static_assert(offsetof(cogmaster_frame, size) == 0, "frame.size");
 _Static_assert(offsetof(cogmaster_frame, pixels) == COGMASTER__P, "frame.pixels");
@@ -323,6 +427,32 @@ _Static_assert(offsetof(cogmaster_cart_info, region_guess) == 44, "cart_info.reg
 _Static_assert(offsetof(cogmaster_cart_info, board) == 48, "cart_info.board");
 _Static_assert(offsetof(cogmaster_cart_info, identified) == 52, "cart_info extension");
 
+/* cogmaster_audio: the buffer pointer first, then four counters. */
+_Static_assert(offsetof(cogmaster_audio, size) == 0, "audio.size");
+_Static_assert(offsetof(cogmaster_audio, samples) == COGMASTER__P, "audio.samples");
+_Static_assert(offsetof(cogmaster_audio, capacity) == 2 * COGMASTER__P, "audio.capacity");
+_Static_assert(offsetof(cogmaster_audio, written) == 2 * COGMASTER__P + 4, "audio.written");
+_Static_assert(offsetof(cogmaster_audio, channels) == 2 * COGMASTER__P + 8, "audio.channels");
+_Static_assert(offsetof(cogmaster_audio, dropped) == 2 * COGMASTER__P + 12, "audio.dropped");
+_Static_assert(sizeof(cogmaster_audio) == 2 * COGMASTER__P + 16, "audio size");
+
+/* One trace record is 16 bytes, never hashed as memory; the trace struct is
+   the buffer pointer between its size and three counters. */
+_Static_assert(offsetof(cogmaster_audio_record, tick) == 0, "audio_record.tick");
+_Static_assert(offsetof(cogmaster_audio_record, source) == 8, "audio_record.source");
+_Static_assert(offsetof(cogmaster_audio_record, level) == 12, "audio_record.level");
+_Static_assert(sizeof(cogmaster_audio_record) == 16, "audio_record size");
+_Static_assert(offsetof(cogmaster_audio_trace, size) == 0, "audio_trace.size");
+_Static_assert(offsetof(cogmaster_audio_trace, records) == COGMASTER__P, "audio_trace.records");
+_Static_assert(offsetof(cogmaster_audio_trace, capacity) == 2 * COGMASTER__P,
+               "audio_trace.capacity");
+_Static_assert(offsetof(cogmaster_audio_trace, written) == 2 * COGMASTER__P + 4,
+               "audio_trace.written");
+_Static_assert(offsetof(cogmaster_audio_trace, dropped) == 2 * COGMASTER__P + 8,
+               "audio_trace.dropped");
+/* 2P + 12 bytes rounded up to a multiple of P: 32 on 64-bit, 20 on 32-bit. */
+_Static_assert(sizeof(cogmaster_audio_trace) == (COGMASTER__P == 8 ? 32 : 20), "audio_trace size");
+
 /* The size of each struct as first released. A caller's size tag below it
    is refused; each is pinned to the layout above, so appending a field later
    cannot move it. */
@@ -334,7 +464,10 @@ _Static_assert(offsetof(cogmaster_cart_info, identified) == 52, "cart_info exten
 #define COGMASTER__FIRST_SIZE_RUN_RESULT 12u
 #define COGMASTER__FIRST_SIZE_FAULT 32u
 #define COGMASTER__FIRST_SIZE_CART_INFO 52u
-_Static_assert(COGMASTER__FIRST_SIZE_CONFIG == sizeof(cogmaster_config), "config first size");
+#define COGMASTER__FIRST_SIZE_AUDIO ((uint32_t)(2 * COGMASTER__P + 16))
+#define COGMASTER__FIRST_SIZE_AUDIO_TRACE ((uint32_t)(COGMASTER__P == 8 ? 32 : 20))
+_Static_assert(COGMASTER__FIRST_SIZE_CONFIG == offsetof(cogmaster_config, trace_records),
+               "config first size");
 _Static_assert(COGMASTER__FIRST_SIZE_MEDIA == 4 * COGMASTER__P, "media first size");
 _Static_assert(COGMASTER__FIRST_SIZE_FRAME == sizeof(cogmaster_frame), "frame first size");
 _Static_assert(COGMASTER__FIRST_SIZE_INFO == offsetof(cogmaster_info, region), "info first size");
@@ -344,6 +477,9 @@ _Static_assert(COGMASTER__FIRST_SIZE_RUN_RESULT == offsetof(cogmaster_run_result
 _Static_assert(COGMASTER__FIRST_SIZE_FAULT == sizeof(cogmaster_fault), "fault first size");
 _Static_assert(COGMASTER__FIRST_SIZE_CART_INFO == offsetof(cogmaster_cart_info, identified),
                "cart_info first size");
+_Static_assert(COGMASTER__FIRST_SIZE_AUDIO == sizeof(cogmaster_audio), "audio first size");
+_Static_assert(COGMASTER__FIRST_SIZE_AUDIO_TRACE == sizeof(cogmaster_audio_trace),
+               "audio_trace first size");
 
 /* Input structs: OK when the size tag at s is at least first and at most
    4096, and every byte past ours is zero; ERR_STRUCT_SIZE otherwise. */
@@ -453,6 +589,57 @@ void cogmaster__io_reset(cogmaster *m);
 /* The fast-boot hand-off: the CPU and RAM as the BIOS leaves them. power
    also clears work RAM first. */
 void cogmaster__boot_handoff(cogmaster *m, int power);
+
+/* The synthesiser. reset runs last in load and in both resets, after the bus,
+   hand-off, I/O and VDP resets: power zeroes everything, a soft reset keeps
+   the phase, ring, integrator, DC estimate, levels and the undrained PCM.
+   frame_end runs when a frame's ticks are final and replaces the pending PCM
+   with the frame's samples, counting any frames the host never took in the
+   dropped counter. */
+void cogmaster__synth_reset(cogmaster *m, int power);
+void cogmaster__synth_frame_end(cogmaster *m);
+
+/* Appends a level change to the host's trace log, if it asked for one, a full
+   log counts the append in its dropped total instead. Records of one source
+   are in tick order; across sources they are in the order the chips were
+   brought up to date, so a consumer sorts by tick, source and emission index.
+   Load and both resets empty the log, because ticks restart there. */
+void cogmaster__synth_trace(cogmaster *m, uint64_t tick, uint32_t source, uint32_t level);
+
+/* A sound source's level changed at tick (counted from the last load or reset)
+   in the frame being run. Traces the raw level, gains it, and feeds the change
+   to the ring as a band-limited step. Sources: 0 to 3 the PSG channels (bit 4
+   output, bits 3 to 0 attenuation), 4 the Game Gear stereo mask; 5 and 6 are
+   the FM unit's. Call only for frames already begun: state is saved between
+   frames. */
+void cogmaster__synth_level(cogmaster *m, uint64_t tick, uint32_t source, uint32_t level);
+
+/* The PSG. reset gives the power-on constants with the step origin at tick 0;
+   catch_up runs every step at a multiple of 48 ticks up to tick, inclusive;
+   write catches up to tick, applies one byte and stamps the level changes at
+   tick; level is what channel ch presents (bit 4 output, bits 3 to 0
+   attenuation); snapshot hands every active source's level to the synthesiser
+   at the current tick. */
+void cogmaster__psg_reset(cogmaster *m);
+void cogmaster__psg_catch_up(cogmaster *m, uint64_t tick);
+void cogmaster__psg_write(cogmaster *m, uint64_t tick, uint8_t v);
+uint32_t cogmaster__psg_level(const cogmaster *m, uint32_t ch);
+void cogmaster__psg_snapshot(cogmaster *m);
+
+/* The YM2413 unit, attached when fm_unit is set. A sample completes every 216 ticks
+   (72 Z80 clocks) from tick 216 at a load or a reset, counted like the PSG's steps;
+   catch_up runs every sample at or before tick, in order, and hands the sum, as 16 bits,
+   to the synthesiser as source 5 when it changes; reset gives the power-on chip, the next
+   sample at tick 216 and $F2 at 0. */
+void cogmaster__fm_catch_up(cogmaster *m, uint64_t tick);
+void cogmaster__fm_reset(cogmaster *m);
+
+/* The largest gained level a source may hold in this profile, for the state
+   bounds. */
+uint32_t cogmaster__synth_gained_max(const cogmaster *m, uint32_t source);
+
+/* One kernel table entry, Q15; every row sums to 32,768. For tests. */
+int32_t cogmaster__synth_kernel(uint32_t row, uint32_t tap);
 
 /* The test card's RGB444 colour at field dot (x, y) for a resolved machine. */
 uint16_t cogmaster__testcard_pixel(uint32_t x, uint32_t y, uint32_t machine);

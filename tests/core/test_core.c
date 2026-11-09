@@ -33,9 +33,10 @@
 
 static uint16_t pixels[FIELD_W * FIELD_MAX_H];
 static uint16_t pixels2[FIELD_W * FIELD_MAX_H];
-static uint16_t wide[336u * FIELD_MAX_H]; /* rows of 336 pixels */
-static uint64_t tag_buf[TAG_BUF / 8u];    /* aligned for every public struct */
-static cogmaster *shared;                 /* the instance the size-tag calls use */
+static uint16_t wide[336u * FIELD_MAX_H];                 /* rows of 336 pixels */
+static uint64_t tag_buf[TAG_BUF / 8u];                    /* aligned for every public struct */
+static cogmaster *shared;                                 /* the instance the size-tag calls use */
+static uint8_t instance_before[sizeof(struct cogmaster)]; /* a refused load changes nothing */
 
 /* The plain malloc allocator, as every host defines it. */
 static void *test_alloc(void *user, size_t size)
@@ -361,6 +362,8 @@ static void test_info(void)
     CHECK_EQ_U64(info.fps_den, 27379);
     CHECK_EQ_U64(info.par_num, 8);
     CHECK_EQ_U64(info.par_den, 7);
+    CHECK_EQ_U64(info.audio_channels, 1);
+    CHECK_EQ_U64(info.fm, COGMASTER_FM_OFF);
     cogmaster_destroy(m);
 
     m = make(COGMASTER_MACHINE_GG);
@@ -378,6 +381,30 @@ static void test_info(void)
     CHECK_EQ_U64(info.par_den, 5);
     CHECK_EQ_U64(info.region, COGMASTER_REGION_EXPORT);
     CHECK_EQ_U64(info.tv, COGMASTER_TV_NTSC);
+    CHECK_EQ_U64(info.audio_channels, 2);
+    CHECK_EQ_U64(info.fm, COGMASTER_FM_OFF);
+    cogmaster_destroy(m);
+
+    /* The Game Gear is stereo and has no FM unit in either video mode. */
+    cogmaster_config gcfg = make_config();
+    CHECK_EQ_U64(cogmaster_create(&gcfg, &m), COGMASTER_STATUS_OK);
+    cogmaster_media gmedia = make_media(COGMASTER_MACHINE_GG);
+    gmedia.video_mode = COGMASTER_VIDEO_SMS;
+    gmedia.region = COGMASTER_REGION_JAPAN;
+    CHECK_EQ_U64(cogmaster_load(m, &gmedia), COGMASTER_STATUS_OK);
+    info = info_of(m);
+    CHECK_EQ_U64(info.audio_channels, 2);
+    CHECK_EQ_U64(info.fm, COGMASTER_FM_OFF);
+    cogmaster_destroy(m);
+
+    /* The Japanese console reports the FM unit it was given, resolved. */
+    CHECK_EQ_U64(cogmaster_create(&gcfg, &m), COGMASTER_STATUS_OK);
+    gmedia = make_media(COGMASTER_MACHINE_SMS2);
+    gmedia.region = COGMASTER_REGION_JAPAN;
+    CHECK_EQ_U64(cogmaster_load(m, &gmedia), COGMASTER_STATUS_OK);
+    info = info_of(m);
+    CHECK_EQ_U64(info.audio_channels, 1);
+    CHECK_EQ_U64(info.fm, COGMASTER_FM_ON);
     cogmaster_destroy(m);
 
     /* A PAL Master System: 214,092 ticks of 53,203,424 / 5 Hz a frame. */
@@ -421,6 +448,24 @@ static void test_profile_rejected(void)
         CHECK_EQ_U64(info.machine, COGMASTER_MACHINE_GG);
         CHECK_EQ_U64(info.crop_w, 160);
     }
+    /* An FM value above ON, and ON with a Game Gear, are refused with the
+       instance unchanged. */
+    static const uint32_t bad_fm[] = {3u, 0xFFFFFFFFu, COGMASTER_FM_ON};
+    for (size_t i = 0; i < 3u; i++) {
+        cogmaster_media media = make_media(COGMASTER_MACHINE_GG);
+        media.fm = bad_fm[i];
+        memcpy(instance_before, m, sizeof instance_before);
+        CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_ERR_PROFILE_REJECTED);
+        CHECK(memcmp(instance_before, m, sizeof instance_before) == 0);
+    }
+    cogmaster_media sms = make_media(COGMASTER_MACHINE_SMS2);
+    sms.fm = 3u;
+    memcpy(instance_before, m, sizeof instance_before);
+    CHECK_EQ_U64(cogmaster_load(m, &sms), COGMASTER_STATUS_ERR_PROFILE_REJECTED);
+    CHECK(memcmp(instance_before, m, sizeof instance_before) == 0);
+    cogmaster_info after = info_of(m);
+    CHECK_EQ_U64(after.machine, COGMASTER_MACHINE_GG);
+    CHECK_EQ_U64(after.fm, COGMASTER_FM_OFF);
     cogmaster_frame io = frame_io(pixels, GG_W * 2u, 0u);
     CHECK_EQ_U64(cogmaster_get_frame(m, &io), COGMASTER_STATUS_OK);
     CHECK_EQ_U64(pixels[0], WHITE);
@@ -836,6 +881,11 @@ static void test_no_alloc_after_load(void)
    one byte less is refused and an output struct is left untouched. */
 static void test_first_released_sizes(void)
 {
+    CHECK_EQ_U64(sizeof(cogmaster_media), P == 8u ? 56u : 32u);
+    CHECK_EQ_U64(offsetof(cogmaster_media, fm), P == 8u ? 48u : 28u);
+    CHECK_EQ_U64(sizeof(cogmaster_info), 68u);
+    CHECK_EQ_U64(offsetof(cogmaster_info, audio_channels), 60u);
+    CHECK_EQ_U64(offsetof(cogmaster_info, fm), 64u);
     shared = make(COGMASTER_MACHINE_SMS2);
     run_frames(shared, 1);
     cogmaster_config cfg = make_config();
@@ -884,6 +934,29 @@ static void test_first_released_sizes(void)
         memcpy(before, b, TAG_BUF);
         expect_status(outputs[i].what, small, outputs[i].call(b), COGMASTER_STATUS_ERR_STRUCT_SIZE);
         CHECK(memcmp(before, b, TAG_BUF) == 0);
+    }
+
+    /* A media tag from API 8 (the size before fm) reads fm as AUTO, so ON
+       in the bytes is ignored; the current size reads it. */
+    cogmaster_media fm_on = make_media(COGMASTER_MACHINE_SMS2);
+    fm_on.fm = COGMASTER_FM_ON;
+    const uint32_t api8 = P == 8u ? 48u : 28u;
+    expect_status("media api 8", api8, call_load(tagged(&fm_on, (uint32_t)sizeof fm_on, api8)),
+                  COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(info_of(shared).fm, COGMASTER_FM_OFF);
+    expect_status("media current", (uint32_t)sizeof fm_on,
+                  call_load(tagged(&fm_on, (uint32_t)sizeof fm_on, (uint32_t)sizeof fm_on)),
+                  COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(info_of(shared).fm, COGMASTER_FM_ON);
+
+    /* An info tag from API 8 (60 bytes) still succeeds and keeps every byte
+       past it as the caller set it; the current size carries the new fields. */
+    memset(b, POISON, TAG_BUF);
+    uint32_t info8 = 60u;
+    memcpy(b, &info8, sizeof info8);
+    expect_status("info api 8", info8, call_get_info(b), COGMASTER_STATUS_OK);
+    for (uint32_t i = info8; i < 72u; i++) {
+        CHECK_EQ_U64(b[i], POISON);
     }
     cogmaster_destroy(shared);
     shared = NULL;
@@ -1017,7 +1090,6 @@ static uint64_t splitmix64(uint64_t *s)
     return z ^ (z >> 31);
 }
 
-static uint8_t instance_before[sizeof(struct cogmaster)];
 /* An image up to 1 MiB + 511 bytes with no copier header pads to 65 pages. */
 static uint8_t rom_before[1048576u + PAGE];
 
@@ -1249,6 +1321,34 @@ static void test_load_profiles(void)
         CHECK_EQ_U64(info.fps_den, pal ? 267615u : 27379u);
         run_frames(m, 1);
         CHECK_EQ_U64(m->ticks, pal ? 214092u : 179208u);
+    }
+
+    /* fm resolves against the resolved machine and region: AUTO attaches the
+       unit only on a Japanese Master System, ON on any Master System, OFF
+       never; the mask is 3 with the unit, else 0. */
+    static const struct {
+        uint32_t machine, region, fm, want_fm;
+    } fm_rows[] = {
+        {COGMASTER_MACHINE_SMS2, COGMASTER_REGION_JAPAN, COGMASTER_FM_AUTO, COGMASTER_FM_ON},
+        {COGMASTER_MACHINE_SMS2, COGMASTER_REGION_JAPAN, COGMASTER_FM_OFF, COGMASTER_FM_OFF},
+        {COGMASTER_MACHINE_SMS2, COGMASTER_REGION_JAPAN, COGMASTER_FM_ON, COGMASTER_FM_ON},
+        {COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT, COGMASTER_FM_AUTO, COGMASTER_FM_OFF},
+        {COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT, COGMASTER_FM_OFF, COGMASTER_FM_OFF},
+        {COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT, COGMASTER_FM_ON, COGMASTER_FM_ON},
+        {COGMASTER_MACHINE_SMS1, COGMASTER_REGION_JAPAN, COGMASTER_FM_AUTO, COGMASTER_FM_ON},
+        {COGMASTER_MACHINE_AUTO, COGMASTER_REGION_AUTO, COGMASTER_FM_AUTO, COGMASTER_FM_OFF},
+        {COGMASTER_MACHINE_GG, COGMASTER_REGION_JAPAN, COGMASTER_FM_AUTO, COGMASTER_FM_OFF},
+        {COGMASTER_MACHINE_GG, COGMASTER_REGION_EXPORT, COGMASTER_FM_OFF, COGMASTER_FM_OFF},
+    };
+    for (size_t i = 0; i < sizeof fm_rows / sizeof fm_rows[0]; i++) {
+        cogmaster_media fm_media = make_media(fm_rows[i].machine);
+        fm_media.region = fm_rows[i].region;
+        fm_media.fm = fm_rows[i].fm;
+        expect_status("fm row", (uint32_t)i, cogmaster_load(m, &fm_media), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(info_of(m).fm, fm_rows[i].want_fm);
+        CHECK_EQ_U64(m->fm_unit, fm_rows[i].want_fm == COGMASTER_FM_ON ? 1u : 0u);
+        CHECK_EQ_U64(m->fm_mask, fm_rows[i].want_fm == COGMASTER_FM_ON ? 3u : 0u);
+        run_frames(m, 1);
     }
 
     /* A size tag at the first released size reads region and tv as AUTO,

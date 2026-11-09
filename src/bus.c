@@ -244,7 +244,9 @@ uint8_t cogmaster__bus_in(cogmaster *m, uint16_t port)
     return m->bus.data;
 }
 
-/* Writes to $40-$7F go to the sound chip, which is not modelled yet. */
+/* Every write to $40-$7F reaches the PSG, stamped with the tick it is made
+   at; $7F is the usual port and some games use $7E (SMS-AUDIO section 2.1).
+   Reads of $7E and $7F stay the VDP's beam counters, so the PSG is write-only. */
 void cogmaster__bus_out(cogmaster *m, uint16_t port, uint8_t v)
 {
     cogmaster__bus_sync(m);
@@ -253,7 +255,9 @@ void cogmaster__bus_out(cogmaster *m, uint16_t port, uint8_t v)
     if (vp == COGMASTER__VDP_DATA || vp == COGMASTER__VDP_CONTROL) {
         m->bus.vdp_at = m->ticks;
         cogmaster__vdp_write(m, (uint32_t)vp, v);
-    } else if ((port & 0xC0u) != 0x40u) {
+    } else if ((port & 0xC0u) == 0x40u) {
+        cogmaster__psg_write(m, m->ticks, v);
+    } else {
         cogmaster__io_out(m, port, v);
     }
 }

@@ -57,7 +57,11 @@ add_library(cogmaster STATIC
   src/io.c
   src/frame.c
   src/mapper.c
+  src/opll.c
+  src/opll_reg.c
+  src/psg.c
   src/state.c
+  src/synth.c
   src/testcard.c
   src/vdp.c
   src/vdp_render.c
@@ -132,6 +136,7 @@ if(COGMASTER_BUILD_RUNNER)
   set(COGMASTER_RUNNER_SOURCES
     runner/main.c
     runner/args.c
+    runner/audio.c
     runner/expect.c
     runner/input.c
     runner/bench.c

@@ -28,7 +28,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: A test frame in RetroArch** - The library, runner and libretro core deliver a hashed test card on every platform, installed into RetroArch by the README line, released by merging (completed 2026-10-19)
 - [x] **Phase 2: The CPU matches the public vectors** - An own Z80 matches SingleStepTests on every cycle, with the tick-lattice bus, the Sega and Codemasters mappers, ports, Pause and the first-fault trace (completed 2026-10-20)
 - [x] **Phase 3: Games play in RetroArch** - VDP mode 4, the Game Gear window, two pads, regions and battery saves make fixtures playable on both machines, with the ledger ratcheting (completed 2026-10-20)
-- [ ] **Phase 4: Sound** - The PSG with Game Gear stereo and the YM2413 play through the runner and RetroArch with transition and PCM hashes identical on every platform
+- [x] **Phase 4: Sound** - The PSG with Game Gear stereo and the YM2413 play through the runner and RetroArch with transition and PCM hashes identical on every platform (completed 2026-11-09)
 
 ## Phase Details
 
@@ -206,13 +206,60 @@ Plans:
 **Depends on**: Phase 3
 **Requirements**: SND-01, SND-02, SND-03, SND-04, SND-05
 **Success Criteria** (what must be TRUE):
-  1. `ctest -L psg` passes every tone, volume and noise setting of the SN76489 model against SMS-AUDIO 1 and JoppyFurr's MIT test ROM, and the GG stereo register routes channels per SMS-AUDIO 2 (SND-01).
-  2. `ctest -L fm` passes JoppyFurr's MIT YM2413 test ROM checks for the Japanese profile at Z80/72 Hz, with port `$F2` selecting PSG, FM, none or both, and the OPLL seed's notice is present in `THIRD-PARTY-NOTICES.md` (SND-02).
-  3. `cogmaster-run --hash-audio` prints the same transition-stream and PCM hashes for the `psg_sweep` and `boot_to_play` fixtures on every platform, with exactly 3,504,512/4,375 samples per NTSC frame at 48 kHz and no clipping (SND-03).
+  1. `ctest -L psg` passes every tone, volume and noise setting of the SN76489 model against SMS-AUDIO 1 through closed-form unit oracles and the owned `psg_sweep` fixture judged by frozen transition and PCM hashes, and the GG stereo register routes channels per SMS-AUDIO 2 (SND-01); third-party ROM conformance is deferred (REQUIREMENTS, Sound).
+  2. `ctest -L fm` passes the lockstep test against the unmodified emu2413 upstream, the register-level units and the owned `fm_sweep` fixture judged by frozen hashes for the Japanese profile at Z80/72 Hz, with port `$F2` selecting PSG, FM, none or both, and the emu2413 notice is present in `THIRD-PARTY-NOTICES.md` (SND-02).
+  3. `cogmaster-run --hash-audio` prints the same transition-stream and PCM hashes for the `psg_sweep` and `boot_to_play` fixtures on every platform, with 801 or 802 samples per NTSC frame (965 or 966 PAL) at 48 kHz, cumulative total floor(F x 3,504,512 / 4,375) (PAL floor(F x 685,094,400 / 709,379)), and no clipping (SND-03).
   4. A test shows the libretro batch and single-sample audio paths deliver PCM equal to the runner's (stereo on GG, duplicated mono on SMS), and the hosted RetroArch session's recording is non-silent (SND-04).
   5. A test renders reference tones through the synthesiser and shows the largest non-harmonic peak below 16 kHz under −80 dB, and synthesis cost per output sample stays bounded under a register-hammering fixture (SND-05).
 
-**Plans**: TBD
+**Plans**: 15/15 plans complete, one sequential chain (waves 1–15; `parallelization` is off, and most adjacent plans share the test inventories, `tests/audio/tests.cmake`, the pin files or a source file, so the order is kept even where a pair shares none)
+
+Plans:
+**Wave 1**
+- [x] 04-01-PLAN.md — Requirement, roadmap, decision and preparation amendments (D-33 first) and the SOFT-reset rule
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 04-02-PLAN.md — API 9 door: exact-cadence PCM through the libretro adapter, cadence and drain tests, trace log
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [x] 04-03-PLAN.md — API 9 completion: fm profile field, info fields, state header byte, abi.api_v9, audio guide
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [x] 04-04-PLAN.md — Band-limited synthesis, mixer and DC blocker with spectral, headroom and ring proofs
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [x] 04-05-PLAN.md — SN76489 on the bus, reset snapshots and SOFT contract, PSG state, closed-form PSG units
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [x] 04-06-PLAN.md — GG stereo on $06, native-mode port decode, hostile-hammer cost bound
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [x] 04-07-PLAN.md — Runner --hash-audio and the psg_sweep fixture
+
+**Wave 8** *(blocked on Wave 7 completion)*
+- [x] 04-08-PLAN.md — psg_sweep Game Gear image, audio hash-matrix rows and frozen pins
+
+**Wave 9** *(blocked on Wave 8 completion)*
+- [x] 04-09-PLAN.md — boot_to_play chime, input notes and GG stereo, pinned without moving its picture
+
+**Wave 10** *(blocked on Wave 9 completion)*
+- [x] 04-10-PLAN.md — emu2413 port measured and matched to upstream by a one-shot oracle, notice and provenance
+
+**Wave 11** *(blocked on Wave 10 completion)*
+- [x] 04-11-PLAN.md — Frozen 2,000,000-sample lockstep and the YM2413 chip-level units
+
+**Wave 12** *(blocked on Wave 11 completion)*
+- [x] 04-12-PLAN.md — YM2413 on the Japanese profile: $F0-$F2, mixer, reset, FM state and cost
+
+**Wave 13** *(blocked on Wave 12 completion)*
+- [x] 04-13-PLAN.md — fm_sweep fixture, detection per profile and frozen FM hashes
+
+**Wave 14** *(blocked on Wave 13 completion)*
+- [x] 04-14-PLAN.md — libretro batch, single and both-registered sessions equal the runner; cogmaster_fm option
+
+**Wave 15** *(blocked on Wave 14 completion)*
+- [x] 04-15-PLAN.md — Hosted RetroArch recording against a silent control, perf exception, hosted evidence
+
 **UI hint**: no
 **Canonical refs:** `.planning/preparation/SMS-AUDIO.md`, `.planning/preparation/ARCHITECTURE.md`, `.planning/preparation/CONFORMANCE.md`
 
@@ -226,4 +273,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. A test frame in RetroArch | 12/12 | Complete    | 2026-10-19 |
 | 2. The CPU matches the public vectors | 17/17 | Complete    | 2026-10-20 |
 | 3. Games play in RetroArch | 18/18 | Complete    | 2026-10-20 |
-| 4. Sound | 0/TBD | Not started | - |
+| 4. Sound | 15/15 | Complete    | 2026-11-09 |

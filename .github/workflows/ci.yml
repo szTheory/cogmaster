@@ -218,6 +218,8 @@ jobs:
           path: |
             build/ci/fixtures/boot_to_play.sms
             build/ci/fixtures/boot_to_play.gg
+            build/ci/fixtures/psg_sweep.sms
+            build/ci/fixtures/psg_sweep.gg
             build/ci/tests/play.input
             build/ci/tests/play-gg.input
             build/ci/libretro/cogmaster_libretro_replay.dylib
@@ -386,7 +388,13 @@ jobs:
           cmake -DRETROARCH=build/RetroArch.app/Contents/MacOS/RetroArch
           -DCORE=build/libretro/cores/cogmaster_libretro.dylib -DINFO=build/libretro/info/cogmaster_libretro.info
           -DTEMPLATE=tests/retroarch/test.cfg.in "-DRA_DIR=$PWD/build/ra" -DFRAMES=60
-          "-DSHOT=$PWD/build/frames/shot.png" -P tests/retroarch/run_retroarch.cmake
+          "-DSHOT=$PWD/build/frames/shot.png"
+          "-DARGS=--record=$PWD/build/frames/control.mov;--recordconfig=$PWD/tests/retroarch/record.cfg"
+          -P tests/retroarch/run_retroarch.cmake
+      # The silent test card is the control: a recording with no sound at all,
+      # so the checks on the sound sessions below cannot pass on silence.
+      - name: RetroArch silent control recording
+        run: cmake "-DMOV=$PWD/build/frames/control.mov" -DMODE=control -P tests/retroarch/audio.cmake
       - name: The screenshot equals the runner's frame
         working-directory: build/frames
         run: |
@@ -401,8 +409,8 @@ jobs:
       - name: The compare's negative control
         working-directory: build/frames
         run: >-
-          cmake -DCOMPARE=./compare -DEXPECTED=shot.bmp -DBMP=runner.bmp -DFLIPPED=flipped.bmp
-          -P ../../tests/retroarch/flip.cmake
+          cmake "-DCMD=./compare;shot.bmp;runner.bmp;--flip" -DCODE=1
+          "-DREGEX=first difference at 7,3:" -P ../../tests/cmake/expect_fail.cmake
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: retroarch-owned-input
@@ -431,8 +439,8 @@ jobs:
           done
           EXPECT_SCROLL=0 build/frames/compare build/frames/expected-baseline.bmp build/frames/baseline.bmp
           EXPECT_SCROLL=2 build/frames/compare build/frames/expected-input.bmp build/frames/input.bmp
-          cmake -DCOMPARE=build/frames/compare -DEXPECTED=build/frames/expected-input.bmp \
-            -DBMP=build/frames/input.bmp -P tests/retroarch/flip.cmake
+          cmake "-DCMD=build/frames/compare;build/frames/expected-input.bmp;build/frames/input.bmp;--flip" \
+            -DCODE=1 "-DREGEX=first difference at 7,3:" -P tests/cmake/expect_fail.cmake
       - name: Game Gear native crop screenshot equality
         run: |
           for case in baseline input; do
@@ -456,8 +464,28 @@ jobs:
           done
           EXPECT_GG=1 EXPECT_SCROLL=0 build/frames/compare build/frames/gg-expected-baseline.bmp build/frames/gg-baseline.bmp
           EXPECT_GG=1 EXPECT_SCROLL=2 build/frames/compare build/frames/gg-expected-input.bmp build/frames/gg-input.bmp
-          cmake -DCOMPARE=build/frames/compare -DEXPECTED=build/frames/gg-expected-input.bmp \
-            -DBMP=build/frames/gg-input.bmp -P tests/retroarch/flip.cmake
+          cmake "-DCMD=build/frames/compare;build/frames/gg-expected-input.bmp;build/frames/gg-input.bmp;--flip" \
+            -DCODE=1 "-DREGEX=first difference at 7,3:" -P tests/cmake/expect_fail.cmake
+      - name: Master System sound recording is non-silent
+        run: |
+          cmake -DRETROARCH=build/RetroArch.app/Contents/MacOS/RetroArch \
+            -DCORE=build/libretro/cores/cogmaster_libretro.dylib \
+            -DINFO=build/libretro/info/cogmaster_libretro.info -DTEMPLATE=tests/retroarch/test.cfg.in \
+            "-DRA_DIR=$PWD/build/ra-sms-sound" -DFRAMES=60 "-DSHOT=$PWD/build/ra-audio/sms.png" \
+            -DCONTENT=build/owned/fixtures/psg_sweep.sms \
+            "-DARGS=--record=$PWD/build/ra-audio/sms.mov;--recordconfig=$PWD/tests/retroarch/record.cfg" \
+            -P tests/retroarch/run_retroarch.cmake
+          cmake "-DMOV=$PWD/build/ra-audio/sms.mov" -DMODE=sound -P tests/retroarch/audio.cmake
+      - name: Game Gear sound recording is non-silent
+        run: |
+          cmake -DRETROARCH=build/RetroArch.app/Contents/MacOS/RetroArch \
+            -DCORE=build/libretro/cores/cogmaster_libretro.dylib \
+            -DINFO=build/libretro/info/cogmaster_libretro.info -DTEMPLATE=tests/retroarch/test.cfg.in \
+            "-DRA_DIR=$PWD/build/ra-gg-sound" -DFRAMES=60 "-DSHOT=$PWD/build/ra-audio/gg.png" \
+            -DCONTENT=build/owned/fixtures/psg_sweep.gg \
+            "-DARGS=--record=$PWD/build/ra-audio/gg.mov;--recordconfig=$PWD/tests/retroarch/record.cfg" \
+            -P tests/retroarch/run_retroarch.cmake
+          cmake "-DMOV=$PWD/build/ra-audio/gg.mov" -DMODE=sound -P tests/retroarch/audio.cmake
       - name: Owned screenshots
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

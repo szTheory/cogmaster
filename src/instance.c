@@ -66,6 +66,20 @@ cogmaster_status cogmaster_get_versions(cogmaster_versions *out)
     return COGMASTER_STATUS_OK;
 }
 
+/* A uint32_t field of an input struct at off, or 0 (the default) when the
+   caller's size tag does not cover it. A tag at the first released size
+   reads every later field as 0, even one that sits in that struct's tail
+   padding. */
+static uint32_t tagged_field(const void *s, uint32_t first, size_t off)
+{
+    uint32_t size = size_tag(s);
+    uint32_t v = 0u;
+    if (size > first && off + sizeof v <= size) {
+        memcpy(&v, (const uint8_t *)s + off, sizeof v);
+    }
+    return v;
+}
+
 cogmaster_status cogmaster_create(const cogmaster_config *cfg, cogmaster **out)
 {
     if (cfg == NULL || out == NULL) {
@@ -81,12 +95,20 @@ cogmaster_status cogmaster_create(const cogmaster_config *cfg, cogmaster **out)
     if (a.alloc == NULL || a.free == NULL) {
         return COGMASTER_STATUS_ERR_ARGUMENT;
     }
+    /* The trace log's size is the caller's number: a cap keeps its byte count
+       inside a 32-bit size_t. Load allocates it. */
+    uint32_t records =
+        tagged_field(cfg, COGMASTER__FIRST_SIZE_CONFIG, offsetof(cogmaster_config, trace_records));
+    if (records > COGMASTER__TRACE_MAX) {
+        return COGMASTER_STATUS_ERR_ARGUMENT;
+    }
     cogmaster *m = (cogmaster *)a.alloc(a.user, sizeof *m);
     if (m == NULL) {
         return COGMASTER_STATUS_ERR_NO_MEMORY;
     }
     memset(m, 0, sizeof *m);
     m->allocator = a;
+    m->trace_cap = records;
     *out = m;
     return COGMASTER_STATUS_OK;
 }
@@ -100,20 +122,10 @@ void cogmaster_destroy(cogmaster *m)
     memset(&none, 0, sizeof none);
     cogmaster__cart_install(m, &none);
     cogmaster_allocator a = m->allocator;
-    a.free(a.user, m, sizeof *m);
-}
-
-/* A uint32_t media field at off, or 0 (AUTO) when the caller's size tag
-   does not cover it. A tag at the first released size reads every later
-   field as 0, even one that sits in that struct's tail padding. */
-static uint32_t media_field(const cogmaster_media *media, size_t off)
-{
-    uint32_t size = size_tag(media);
-    uint32_t v = 0u;
-    if (size > COGMASTER__FIRST_SIZE_MEDIA && off + sizeof v <= size) {
-        memcpy(&v, (const uint8_t *)media + off, sizeof v);
+    if (m->trace_log != NULL) {
+        a.free(a.user, m->trace_log, (size_t)m->trace_cap * sizeof *m->trace_log);
     }
-    return v;
+    a.free(a.user, m, sizeof *m);
 }
 
 cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
@@ -154,8 +166,9 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
         return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
     }
     /* AUTO is an export console on an NTSC set. */
-    uint32_t region = media_field(media, offsetof(cogmaster_media, region));
-    uint32_t tv = media_field(media, offsetof(cogmaster_media, tv));
+    uint32_t region =
+        tagged_field(media, COGMASTER__FIRST_SIZE_MEDIA, offsetof(cogmaster_media, region));
+    uint32_t tv = tagged_field(media, COGMASTER__FIRST_SIZE_MEDIA, offsetof(cogmaster_media, tv));
     if (region > COGMASTER_REGION_JAPAN || tv > COGMASTER_TV_PAL) {
         return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
     }
@@ -166,7 +179,8 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     uint32_t video = 0u;
     /* Previous media ended at 40/24 bytes, including its tail padding. */
     if (media->size > (sizeof(void *) == 8u ? 40u : 24u))
-        video = media_field(media, offsetof(cogmaster_media, video_mode));
+        video =
+            tagged_field(media, COGMASTER__FIRST_SIZE_MEDIA, offsetof(cogmaster_media, video_mode));
     if (video > COGMASTER_VIDEO_GG ||
         (video == COGMASTER_VIDEO_GG && machine != COGMASTER_MACHINE_GG))
         return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
@@ -174,6 +188,16 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
         video = machine == COGMASTER_MACHINE_GG
                     ? (probe.video_mode != 0u ? probe.video_mode : COGMASTER_VIDEO_GG)
                     : COGMASTER_VIDEO_SMS;
+    /* The FM unit is the Japanese console's YM2413; a Game Gear has none, and
+       the export console takes one only on request (SMS-AUDIO section 9).
+       A size tag at or below the previous struct reads fm as AUTO. */
+    uint32_t fm = tagged_field(media, COGMASTER__FIRST_SIZE_MEDIA, offsetof(cogmaster_media, fm));
+    if (fm > COGMASTER_FM_ON || (fm == COGMASTER_FM_ON && machine == COGMASTER_MACHINE_GG)) {
+        return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
+    }
+    uint32_t fm_unit =
+        fm == COGMASTER_FM_ON || (fm == COGMASTER_FM_AUTO && region == COGMASTER_REGION_JAPAN &&
+                                  machine != COGMASTER_MACHINE_GG);
     /* No Game Gear and no Japanese console was made for PAL (SMS-SYSTEM C6). */
     if (tv == COGMASTER_TV_PAL &&
         (machine == COGMASTER_MACHINE_GG || region == COGMASTER_REGION_JAPAN)) {
@@ -185,8 +209,16 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
         media->image_size - probe.body_offset == 8192u) {
         return COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD;
     }
-    /* Every check is done; only the copy can still fail, and it touches
-       nothing of the instance until it has succeeded. */
+    /* Every check is done; only the allocations can still fail, and they touch
+       nothing of the instance's state. The trace log is allocated by the first
+       load and reused by every later one. */
+    if (m->trace_cap > 0u && m->trace_log == NULL) {
+        size_t bytes = (size_t)m->trace_cap * sizeof *m->trace_log;
+        m->trace_log = (cogmaster_audio_record *)m->allocator.alloc(m->allocator.user, bytes);
+        if (m->trace_log == NULL) {
+            return COGMASTER_STATUS_ERR_NO_MEMORY;
+        }
+    }
     struct cogmaster__cart cart;
     memset(&cart, 0, sizeof cart);
     if (has_image) {
@@ -201,6 +233,8 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     m->video_mode = video;
     m->region = region;
     m->tv = tv;
+    m->fm_unit = fm_unit;
+    m->fm_mask = fm_unit ? 3u : 0u; /* plain data: a unit alone would keep bit 0 only */
     m->loaded = 1u;
     memset(&m->pending_input, 0, sizeof m->pending_input);
     memset(&m->input, 0, sizeof m->input);
@@ -212,6 +246,7 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     cogmaster__bus_origin(m);
     cogmaster__boot_handoff(m, 1);
     cogmaster__vdp_reset(m, 1);
+    cogmaster__synth_reset(m, 1);
     return COGMASTER_STATUS_OK;
 }
 
@@ -238,6 +273,8 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out)
     info.max_h = COGMASTER__FIELD_MAX_H;
     info.region = m->region;
     info.tv = m->tv;
+    info.audio_channels = m->machine == COGMASTER_MACHINE_GG ? 2u : 1u;
+    info.fm = m->fm_unit ? COGMASTER_FM_ON : COGMASTER_FM_OFF;
     /* NTSC: 179,208 ticks of 10,738,635 Hz per frame (ARCHITECTURE section
        2). PAL: 214,092 ticks of 53,203,424 / 5 Hz (SMS-SYSTEM C2), reduced. */
     if (m->tv == COGMASTER_TV_PAL) {
@@ -259,7 +296,9 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out)
 /* Both kinds return the beam to the frame origin with frame and ticks 0,
    apply the fast-boot hand-off again and clear the first fault (ARCHITECTURE
    section 9); POWER also clears work RAM, VRAM and CRAM and zeroes the
-   counters, which a power cycle resets (section 8). */
+   counters, which a power cycle resets (section 8). The synthesiser resets
+   last: POWER restarts the audio cadence, SOFT keeps its phase and any
+   samples the host has not taken. */
 cogmaster_status cogmaster_reset(cogmaster *m, uint32_t kind)
 {
     if (m == NULL || (kind != COGMASTER_RESET_SOFT && kind != COGMASTER_RESET_POWER)) {
@@ -276,5 +315,6 @@ cogmaster_status cogmaster_reset(cogmaster *m, uint32_t kind)
     if (kind == COGMASTER_RESET_POWER) {
         memset(&m->counters, 0, sizeof m->counters);
     }
+    cogmaster__synth_reset(m, kind == COGMASTER_RESET_POWER);
     return COGMASTER_STATUS_OK;
 }

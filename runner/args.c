@@ -22,6 +22,7 @@ static const char synopsis[] =
     "  --frames N           run N frames (N >= 1)\n"
     "  --bench N            run N frames and report the time per frame\n"
     "  --hash               print the SHA-256 of the last frame's crop\n"
+    "  --hash-audio         print the SHA-256 of the sound's level changes and of its samples\n"
     "  --expect FILE        judge bounded accepted frame/RAM/mailbox/boot predicates\n"
     "  --input FILE         absolute pad and console record per frame\n"
     "  --save-dir DIR       read and persist battery data in an existing directory\n"
@@ -169,8 +170,8 @@ static int check_combination(const cogmaster__run_options *o)
         if (o->file == NULL) {
             return usage("--probe needs a file");
         }
-        if (o->frames != 0u || o->hash || o->png_count != 0u || o->trace || o->mailbox ||
-            o->input || o->save_dir || o->expect) {
+        if (o->frames != 0u || o->hash || o->hash_audio || o->png_count != 0u || o->trace ||
+            o->mailbox || o->input || o->save_dir || o->expect) {
             return usage("--probe runs nothing, so it takes no run option");
         }
         return COGMASTER__EXIT_OK;
@@ -180,6 +181,8 @@ static int check_combination(const cogmaster__run_options *o)
     }
     if (o->save_dir != NULL && o->file == NULL)
         return usage("--save-dir requires content");
+    if (o->hash_audio && o->bench)
+        return usage("--hash-audio needs --frames, not --bench");
     if (o->expect && (o->trace || o->mailbox || o->bench))
         return usage("--expect requires the complete --frames run");
     for (uint32_t k = 0; k < o->png_count; k++) {
@@ -247,6 +250,8 @@ int cogmaster__parse_options(int argc, char **argv, cogmaster__run_options *o)
             i++;
         } else if (strcmp(arg, "--hash") == 0) {
             o->hash = 1;
+        } else if (strcmp(arg, "--hash-audio") == 0) {
+            o->hash_audio = 1;
         } else if (strcmp(arg, "--png") == 0) {
             if (!parse_png(value, &o->pngs[o->png_count])) {
                 return usage("--png needs N:FILE with N >= 1");
