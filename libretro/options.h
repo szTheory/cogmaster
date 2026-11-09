@@ -43,8 +43,32 @@ static struct retro_core_option_v2_definition lr_definitions[] = {
                 {"pal", "Export PAL"},
                 {NULL, NULL}},
      .default_value = "auto"},
+    {.key = "cogmaster_fm",
+     .desc = "FM sound unit (reload content)",
+     .info =
+         "Automatic enables the YM2413 for Japanese Master System content only. Takes effect on "
+         "content load; On is Automatic for Game Gear content.",
+     .values = {{"auto", "Automatic"}, {"off", "Off"}, {"on", "On"}, {NULL, NULL}},
+     .default_value = "auto"},
     {0}};
+/* The options every table below must hold; the v2, v1 and v0 tables are separate, and the
+   host exercises only v2, so a later option cannot miss one without failing the build. */
+#define LR_OPTION_COUNT 6u
+_Static_assert(sizeof lr_definitions / sizeof lr_definitions[0] == LR_OPTION_COUNT + 1u,
+               "v2 option table");
 static struct retro_core_options_v2 lr_options = {NULL, lr_definitions};
+
+static struct retro_core_option_definition lr_v1_definitions[LR_OPTION_COUNT + 1u];
+static struct retro_variable lr_variables[] = {
+    {"cogmaster_machine", "Machine (reload content); auto|sms2|sms1|gg"},
+    {"cogmaster_gg_mode", "Game Gear mode (reload content); auto|gg|sms"},
+    {"cogmaster_gg_aspect", "Game Gear pixel aspect; 6:5|square"},
+    {"cogmaster_gg_view", "Game Gear view; native|full"},
+    {"cogmaster_region", "Region and timing (reload content); auto|ntsc-u|ntsc-j|pal"},
+    {"cogmaster_fm", "FM sound unit (reload content); auto|off|on"},
+    {NULL, NULL}};
+_Static_assert(sizeof lr_variables / sizeof lr_variables[0] == LR_OPTION_COUNT + 1u,
+               "v0 option table");
 
 static void lr_register_options(retro_environment_t cb)
 {
@@ -52,24 +76,17 @@ static void lr_register_options(retro_environment_t cb)
     if (cb(RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION, &version) && version >= 2u) {
         (void)cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2, &lr_options);
     } else if (version >= 1u) {
-        static struct retro_core_option_definition definitions[6];
-        for (unsigned i = 0u; i < 5u; i++) {
-            definitions[i].key = lr_definitions[i].key;
-            definitions[i].desc = lr_definitions[i].desc;
-            definitions[i].info = lr_definitions[i].info;
-            memcpy(definitions[i].values, lr_definitions[i].values, sizeof definitions[i].values);
-            definitions[i].default_value = lr_definitions[i].default_value;
+        for (unsigned i = 0u; i < LR_OPTION_COUNT; i++) {
+            lr_v1_definitions[i].key = lr_definitions[i].key;
+            lr_v1_definitions[i].desc = lr_definitions[i].desc;
+            lr_v1_definitions[i].info = lr_definitions[i].info;
+            memcpy(lr_v1_definitions[i].values, lr_definitions[i].values,
+                   sizeof lr_v1_definitions[i].values);
+            lr_v1_definitions[i].default_value = lr_definitions[i].default_value;
         }
-        (void)cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS, definitions);
+        (void)cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS, lr_v1_definitions);
     } else {
-        static struct retro_variable variables[] = {
-            {"cogmaster_machine", "Machine (reload content); auto|sms2|sms1|gg"},
-            {"cogmaster_gg_mode", "Game Gear mode (reload content); auto|gg|sms"},
-            {"cogmaster_gg_aspect", "Game Gear pixel aspect; 6:5|square"},
-            {"cogmaster_gg_view", "Game Gear view; native|full"},
-            {"cogmaster_region", "Region and timing (reload content); auto|ntsc-u|ntsc-j|pal"},
-            {NULL, NULL}};
-        (void)cb(RETRO_ENVIRONMENT_SET_VARIABLES, variables);
+        (void)cb(RETRO_ENVIRONMENT_SET_VARIABLES, lr_variables);
     }
 }
 

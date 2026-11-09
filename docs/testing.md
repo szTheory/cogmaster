@@ -530,6 +530,7 @@ batch callback only, single-sample callback only and both (the single one must s
 the runner's `--hash-audio` hash of the same image, taken in the same test. The host hashes little-endian bytes,
 mono on the Master System and interleaved on the Game Gear, requires 801 or 802 frames each and running totals
 equal to `floor(frames x 3,504,512 / 4,375)`, and the per-channel hashes equal across sessions.
+`libretro.host.fm_option` compares the FM option's three values with the runner's hashes on each profile.
 
 The save seeds include 0, 1, 32767, 32768 and 32769 bytes and each persistence refusal
 class. The ordinary CI and ASan replay runs include them. `battery.import` also covers

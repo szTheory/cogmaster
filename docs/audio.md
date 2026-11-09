@@ -103,6 +103,11 @@ export Master System with `COGMASTER_FM_ON` is the way to exercise the unit's de
 tell it from the Japanese console. The unit is fixed for the life of a load, and a saved state loads only into
 an instance with the same choice.
 
+The libretro core's option `cogmaster_fm` (Automatic, Off, On; reload content) sets `cogmaster_media.fm` at load
+to AUTO, OFF or ON. On with Game Gear content is read as Automatic, so the content loads without a unit. The core
+delivers each frame's samples as the library returns them, mono machines as equal left and right, through the batch
+callback when it is registered and otherwise one sample at a time; it never calls with zero frames.
+
 With the unit attached a game drives it through three ports, which answer ahead of the I/O chip, so they work
 whether or not a game has set bit 2 of port $3E to turn that chip off (the way games probe for the unit):
 

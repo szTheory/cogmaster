@@ -5,7 +5,9 @@ libretro core for RetroArch. One core covers the Mark III, both Master System re
 the Game Gear.
 
 **Status: experimental.** Cartridge code runs with Mode 4 background video and pad input in the runner and
-RetroArch. Video coverage is growing; audio is silent. With no content, the built-in test card still runs.
+RetroArch. Games play with sound: the SN76489 (with Game Gear stereo) and, on Japanese Master System content, the
+YM2413 FM unit; the core option `FM sound unit` turns that unit off or on. Video coverage is growing. With no content,
+the built-in test card still runs.
 
 ## Install in RetroArch (macOS, Apple Silicon)
 

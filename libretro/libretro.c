@@ -459,6 +459,13 @@ bool retro_load_game(const struct retro_game_info *game)
             media.tv = COGMASTER_TV_NTSC;
             media.region = COGMASTER_REGION_JAPAN;
         }
+        /* Automatic attaches the FM unit on Japanese content only; Off never does. On forces it
+           on a Master System, and on a Game Gear, which has none, stays automatic so the content
+           still loads. */
+        if (lr_option("cogmaster_fm", "off"))
+            media.fm = COGMASTER_FM_OFF;
+        if (lr_option("cogmaster_fm", "on") && media.machine != COGMASTER_MACHINE_GG)
+            media.fm = COGMASTER_FM_ON;
         media.image = game->data;
         media.image_size = game->size;
     }
