@@ -212,7 +212,7 @@ Plans:
   4. A test shows the libretro batch and single-sample audio paths deliver PCM equal to the runner's (stereo on GG, duplicated mono on SMS), and the hosted RetroArch session's recording is non-silent (SND-04).
   5. A test renders reference tones through the synthesiser and shows the largest non-harmonic peak below 16 kHz under −80 dB, and synthesis cost per output sample stays bounded under a register-hammering fixture (SND-05).
 
-**Plans**: 9/15 plans executed, one sequential chain (waves 1–15; `parallelization` is off, and most adjacent plans share the test inventories, `tests/audio/tests.cmake`, the pin files or a source file, so the order is kept even where a pair shares none)
+**Plans**: 10/15 plans executed, one sequential chain (waves 1–15; `parallelization` is off, and most adjacent plans share the test inventories, `tests/audio/tests.cmake`, the pin files or a source file, so the order is kept even where a pair shares none)
 
 Plans:
 **Wave 1**
@@ -243,7 +243,7 @@ Plans:
 - [x] 04-09-PLAN.md — boot_to_play chime, input notes and GG stereo, pinned without moving its picture
 
 **Wave 10** *(blocked on Wave 9 completion)*
-- [ ] 04-10-PLAN.md — emu2413 port measured and matched to upstream by a one-shot oracle, notice and provenance
+- [x] 04-10-PLAN.md — emu2413 port measured and matched to upstream by a one-shot oracle, notice and provenance
 
 **Wave 11** *(blocked on Wave 10 completion)*
 - [ ] 04-11-PLAN.md — Frozen 2,000,000-sample lockstep and the YM2413 chip-level units
@@ -273,4 +273,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. A test frame in RetroArch | 12/12 | Complete    | 2026-10-19 |
 | 2. The CPU matches the public vectors | 17/17 | Complete    | 2026-10-20 |
 | 3. Games play in RetroArch | 18/18 | Complete    | 2026-10-20 |
-| 4. Sound | 9/15 | In Progress | - |
+| 4. Sound | 10/15 | In Progress | - |
