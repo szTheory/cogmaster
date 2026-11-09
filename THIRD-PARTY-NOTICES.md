@@ -67,6 +67,45 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## emu2413
+
+- **Applies to:** `src/opll.c`, `src/opll_reg.c`, `src/opll.h`, `src/opll_tables.inc`
+- **Upstream:** https://github.com/digital-sound-antiques/emu2413, files `emu2413.c` and `emu2413.h` at
+  commit `a1d5120903b75f93d3eb7690e34a29c0b4add903`. The upstream source header reads "Copyright (C) 2026
+  Mitsutaka Okazaki" and its `LICENSE` reads "Copyright (c) 2001-2019 Mitsutaka Okazaki"; both are kept
+  here, and the licence is MIT.
+- **SHA-256:** `35d492c180320bd473ece0fddca771ef54d9b25884a094468560f865f540abe5` (the unmodified
+  `emu2413.c`)
+- **Changes:** integer-only C17 port that holds its state in one structure. The rate converter, pan, channel
+  mask, alternative instrument tables, allocation and memory-image save are removed; the tables are generated
+  as constants (`tests/audio/opll_oracle.c`, mode `tables`); every right shift of a value that can be negative
+  rounds toward negative infinity.
+- **Licence:** MIT
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2001-2019 Mitsutaka Okazaki
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ## MAME hash metadata
 
 Applies to the generated commercial records in `src/cartdb.inc`. Upstream: https://github.com/mamedev/mame, `hash/sms.xml`, `hash/gamegear.xml`, `hash/sg1000.xml`, commit `1d7a454ed79e97d35d2a9f127ac029ead94711d6`. Each file states `license:CC0-1.0` in its own header. SHA-256 values are pinned in `pins.txt`; no upstream XML is vendored. Changes: own bounded converter emits sorted whole-image identity and hardware facts, excluding compound/incomplete layouts.

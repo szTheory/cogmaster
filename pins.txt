@@ -27,3 +27,9 @@ sst-z80 ebe1875d48f3 https://github.com/SingleStepTests/z80/archive/ebe1875d48f3
 # wla-z80 and wlalink from this tarball at configure time to assemble the
 # test fixtures. Its source stays in the build tree.
 wla-dx 10.7 https://github.com/vhelin/wla-dx/archive/refs/tags/v10.7.tar.gz 38296a96bc20be873d17e0e88be0c5b20a15ef2ec4da5279600e56af30ad925a
+
+# emu2413 (MIT): the unmodified YM2413 model that src/opll*.c is ported from. Fetched for the
+# one-shot oracle tests/audio/opll_oracle.c only; its source stays in the build tree.
+emu2413-c a1d5120903b75f93d3eb7690e34a29c0b4add903 https://raw.githubusercontent.com/digital-sound-antiques/emu2413/a1d5120903b75f93d3eb7690e34a29c0b4add903/emu2413.c 35d492c180320bd473ece0fddca771ef54d9b25884a094468560f865f540abe5
+emu2413-h a1d5120903b75f93d3eb7690e34a29c0b4add903 https://raw.githubusercontent.com/digital-sound-antiques/emu2413/a1d5120903b75f93d3eb7690e34a29c0b4add903/emu2413.h 24d132a37fbc28426d24db90954f723b477d37277aae03db77c7dac8c4a637e3
+emu2413-license a1d5120903b75f93d3eb7690e34a29c0b4add903 https://raw.githubusercontent.com/digital-sound-antiques/emu2413/a1d5120903b75f93d3eb7690e34a29c0b4add903/LICENSE 8fb093f26ed0d78c8ca033bbec7063ac5b34c5d2475e6bd121d03ccfaaf2355f
