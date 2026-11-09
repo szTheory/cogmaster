@@ -342,6 +342,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-11-09 | Execute phase 4 plan 04-13 (gsd-execute-phase 04); fm_sweep with its own $F2 detection routine, fm.detect, three fixture profiles, runner.hash_audio.fm and three new pin rows per file; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Execute phase 4 plan 04-14 (gsd-execute-phase 04); libretro batch, single and both-callback audio sessions equal the runner's PCM, cogmaster_fm option in all three tables, .info and README say sound; 2 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Execute phase 4 plan 04-15 (gsd-execute-phase 04); hosted RetroArch records a silent control and psg_sweep on both consoles, flip.cmake gone for expect_fail.cmake, first hosted run of the phase head fixed (GCC, MSVC, UBSan, macOS x64 timeouts), perf allow line, hosted run 42714958262 green; 2 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 close-out (gsd-execute-phase 04); code review 0 critical, 2 warning, 4 info; verifier passed 5/5; ci workflow exit 0, 399 tests | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
