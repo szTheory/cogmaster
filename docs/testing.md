@@ -412,8 +412,8 @@ so it never skips itself off macOS. On `macos-15` it:
    `--max-frames=60 --max-frames-ss`. The launch is bounded at 50 seconds; a failure prints RetroArch's log;
 4. writes the runner's frame with `cogmaster-run --frames 60 --png 60:runner.png`, converts both PNGs to BMP with
    `sips`, builds `tests/retroarch/compare.c`, and requires successful equality with a tolerant diagnostic match;
-5. runs `tests/retroarch/flip.cmake`: the comparator inverts one channel of actual pixel (7,3) in memory,
-   and must exit 1 naming that pixel;
+5. runs the comparator with `--flip` through `tests/cmake/expect_fail.cmake`: it inverts one channel of actual
+   pixel (7,3) in memory and must exit 1 naming that pixel;
 6. downloads only the owned fixture, runner input and replay-only module from the same build. A 14-frame
    baseline records a replay in the released frontend. `replay.c` checks the observed v2 event layout and
    changes only port 0 RetroPad B: press, hold, release, press again. The frontend plays that stream into

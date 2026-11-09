@@ -32,11 +32,13 @@ if(TARGET cogmaster_libretro)
       $<TARGET_FILE:cogmaster-test-screenshot> ${screenshot} ${screenshot}
     LABELS libretro portable TIMEOUT 10)
   set_tests_properties(libretro.screenshot.oracle PROPERTIES DEPENDS libretro.screenshot.fixture)
+  # Fault prevented: a comparator accepting a changed pixel at (7,3).
+  set(flip_cmd ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:cogmaster-test-screenshot>
+    ${screenshot} ${screenshot} --flip)
+  string(REPLACE ";" "$<SEMICOLON>" flip_cmd "${flip_cmd}")
   cogmaster_add_test(NAME libretro.screenshot.pixel_control
-    COMMAND ${CMAKE_COMMAND} -DCOMPARE=$<TARGET_FILE:cogmaster-test-screenshot>
-      -DEXPECTED=${screenshot} -DBMP=${screenshot}
-      "-DEMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}"
-      -P ${PROJECT_SOURCE_DIR}/tests/retroarch/flip.cmake
+    COMMAND ${CMAKE_COMMAND} "-DCMD=${flip_cmd}" -DCODE=1 "-DREGEX=first difference at 7,3:"
+      -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
     LABELS libretro portable TIMEOUT 10)
   set_tests_properties(libretro.screenshot.pixel_control PROPERTIES DEPENDS libretro.screenshot.fixture)
   # The in-process frontend. It hashes the delivered frame with the runner's

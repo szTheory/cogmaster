@@ -10,10 +10,8 @@ static unsigned compare_hex(const uint8_t *p)
 }
 int main(int argc, char **argv)
 {
-    if (argc != 3 && !(argc == 4 && strcmp(argv[3], "--flip") == 0)) {
-        fprintf(stderr, "usage: compare EXPECTED.bmp ACTUAL.bmp\n");
+    if (argc != 3 && !(argc == 4 && strcmp(argv[3], "--flip") == 0))
         return 2;
-    }
     uint32_t w[2], h[2];
     uint8_t *rgb[2] = {NULL, NULL};
     int rc = 0;
@@ -26,8 +24,7 @@ int main(int argc, char **argv)
         }
     }
     if (rc == 0 && (w[0] != w[1] || h[0] != h[1])) {
-        printf("size differs: expected %ux%u, actual %ux%u\n", (unsigned)w[0], (unsigned)h[0],
-               (unsigned)w[1], (unsigned)h[1]);
+        puts("size differs");
         rc = 1;
     }
     if (rc == 0 && argc == 4 && w[1] > 7u && h[1] > 3u)

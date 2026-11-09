@@ -1,8 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#define BMP_FILE_LIMIT (16ul * 1024ul * 1024ul)
-#define BMP_DIM_LIMIT 16384u
 int bmp_read(const char *path, uint32_t *w, uint32_t *h, uint8_t **rgb);
 static uint32_t bmp_get(const uint8_t *b, size_t off, unsigned bytes)
 {
@@ -18,14 +16,10 @@ static int bmp_parse(const uint8_t *b, size_t n, uint32_t *w, uint32_t *h, uint8
     uint32_t offset = bmp_get(b, 10, 4), header = bmp_get(b, 14, 4);
     uint32_t width = bmp_get(b, 18, 4), height = bmp_get(b, 22, 4);
     uint32_t planes = bmp_get(b, 26, 2), bpp = bmp_get(b, 28, 2), comp = bmp_get(b, 30, 4);
-    if ((header != 40u && header != 108u && header != 124u) || planes != 1u ||
-        offset < 14u + header || offset > n)
-        return 2;
     int top_down = (height & 0x80000000u) != 0u;
     uint32_t rows = top_down ? 0u - height : height;
-    if (width == 0u || width > BMP_DIM_LIMIT || rows == 0u || rows > BMP_DIM_LIMIT)
-        return 2;
-    if (bpp != 24u || comp != 0u)
+    if (header != 40u || planes != 1u || bpp != 24u || comp != 0u || offset < 54u || offset > n ||
+        width == 0u || width > n || rows == 0u || rows > n)
         return 2;
     uint64_t stride = ((uint64_t)width * bpp + 31u) / 32u * 4u;
     if ((uint64_t)offset + stride * rows > (uint64_t)n)
@@ -54,10 +48,8 @@ int bmp_read(const char *path, uint32_t *w, uint32_t *h, uint8_t **rgb)
     if (f == NULL)
         return 2;
     int rc = 2;
-    long end = -1;
-    if (fseek(f, 0, SEEK_END) == 0)
-        end = ftell(f);
-    if (end > 0 && (unsigned long)end <= BMP_FILE_LIMIT && fseek(f, 0, SEEK_SET) == 0) {
+    long end = fseek(f, 0, SEEK_END) == 0 ? ftell(f) : -1;
+    if (end > 0 && fseek(f, 0, SEEK_SET) == 0) {
         size_t n = (size_t)end;
         uint8_t *buf = malloc(n);
         if (buf != NULL && fread(buf, 1, n, f) == n)
