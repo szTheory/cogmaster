@@ -318,6 +318,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-11-09 | Execute phase 4 plan 04-06 (gsd-execute-phase 04); Game Gear $06 stereo routing, native-mode port decode fix, audio.cost hammer bound; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Execute phase 4 plan 04-07 (gsd-execute-phase 04); cogmaster-run --hash-audio, runner.hash_audio, psg_sweep fixture with 38 judged records; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Execute phase 4 plan 04-08 (gsd-execute-phase 04); psg_sweep.gg, sound rows in hashes.txt, frozen tests/audio pins; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-09 (gsd-execute-phase 04); boot_to_play boot chime, input-edge notes, Game Gear stereo toggling, four pinned audio rows; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
