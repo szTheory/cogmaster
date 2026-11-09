@@ -106,7 +106,7 @@ notices)
   printf '%s\n' "$listing" | while IFS= read -r file; do printf '%s\0' "$file"; done | (cd "$ROOT" && xargs -0 awk '
   BEGIN {
     while((getline s < "THIRD-PARTY-NOTICES.md")>0) {
-      if(s ~ /^\*\*Applies to:\*\*/) while(match(s,/`[^`]+`/)) {p=substr(s,RSTART+1,RLENGTH-2); named[p]=1; if((getline line < p)<0) {print p " does not exist"; bad=1} close(p); s=substr(s,RSTART+RLENGTH)}
+      if(s ~ /^(- )?\*\*Applies to:\*\*/) while(match(s,/`[^`]+`/)) {p=substr(s,RSTART+1,RLENGTH-2); named[p]=1; if((getline line < p)<0) {print p " does not exist"; bad=1} close(p); s=substr(s,RSTART+RLENGTH)}
       if(s ~ /^\*\*Licence:\*\*/) {sub(/^\*\*Licence:\*\* /,"",s); licences[s]=1}
     }
     licences["MIT"]=1;
@@ -115,7 +115,7 @@ notices)
   /SPDX-License-Identifier:/ && !seen[FILENAME]++ {
     s=$0; sub(/^.*SPDX-License-Identifier: /,"",s); sub(/ \*\/$/,"",s);
     if(s !~ /^MIT( AND (BSD-2-Clause|BSD-3-Clause|Zlib|BSL-1\.0|ISC|CC0-1\.0))?$/) {print FILENAME ": SPDX is not MIT or MIT AND a PROVENANCE.md licence"; bad=1}
-    else if(s!="MIT") {sub(/^MIT AND /,"",s); licences[s]=1; if(!(FILENAME in named)) {print FILENAME " has no notices section"; bad=1}}
+    else {if(s!="MIT") {sub(/^MIT AND /,"",s); licences[s]=1} if(!(FILENAME in named)) {print FILENAME " has no notices section"; bad=1}}
   }
   END {for(s in licences) if(!(s in info)) {print ".info licence lacks " s; bad=1} for(s in info) if(!(s in licences)) {print ".info licence adds " s; bad=1} exit bad}') ;;
 check_junit)
