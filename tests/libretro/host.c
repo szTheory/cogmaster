@@ -184,7 +184,8 @@ static int content_mode;
 static int content_gg;
 static unsigned descriptors_calls, controllers_calls;
 static unsigned options_calls;
-static const char *option_machine, *option_mode, *option_region, *option_aspect, *option_view;
+static const char *option_machine, *option_mode, *option_region, *option_aspect, *option_view,
+    *option_fm;
 static bool option_update, running;
 static unsigned geometry_calls;
 static struct retro_game_geometry notified;
@@ -203,6 +204,8 @@ static bool RETRO_CALLCONV env(unsigned cmd, void *data)
             v->value = option_aspect;
         if (strcmp(v->key, "cogmaster_gg_view") == 0)
             v->value = option_view;
+        if (strcmp(v->key, "cogmaster_fm") == 0)
+            v->value = option_fm;
         return v->value != NULL;
     }
     if (cmd == RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE) {
@@ -532,6 +535,15 @@ int main(int argc, char **argv)
     cogmaster_versions v;
     unsigned run, aspect_w, aspect_h, bad_counts = 0;
     size_t total = 0;
+
+    if (argc == 8 && strcmp(argv[2], "fm_option") == 0) {
+        if (!module_open(argv[1]))
+            return 1;
+        resolve_all();
+        int rc = missing != NULL ? 1 : fm_test(argv[3], argv[4], argv[5], argv[6], argv[7]);
+        module_close();
+        return rc;
+    }
 
     if (argc == 7 && strcmp(argv[2], "audio") == 0) {
         if (!module_open(argv[1]))

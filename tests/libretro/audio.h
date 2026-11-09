@@ -200,3 +200,42 @@ static int audio_test(const char *path, const char *frames_arg, const char *mach
     audio_neither(image, n);
     return check_failures != 0 ? 1 : 0;
 }
+
+/* Loads the image with the region and FM options given, runs it and prints the
+   hash of the PCM the module delivered, one batch call per frame. A refused
+   load fails. The test script compares the hash with the runner's. */
+static int fm_test(const char *path, const char *frames_arg, const char *machine,
+                   const char *region, const char *fm)
+{
+    uint8_t image[32768];
+    char hex[65];
+    unsigned frames = parse(frames_arg), f;
+    FILE *file = fopen(path, "rb");
+    size_t n;
+    if (file == NULL || frames == 0u ||
+        (strcmp(machine, "sms") != 0 && strcmp(machine, "gg") != 0)) {
+        fprintf(stderr, "usage: fm_option <image> <frames> sms|gg <region> <fm>\n");
+        return 2;
+    }
+    n = fread(image, 1u, sizeof image, file);
+    CHECK_EQ_U64(n, sizeof image);
+    CHECK_EQ_U64(fclose(file), 0u);
+    want_w = strcmp(machine, "gg") == 0 ? 160u : 256u;
+    want_h = want_w == 160u ? 144u : 192u;
+    option_region = region;
+    option_fm = fm;
+    audio_begin(want_w == 160u);
+    if (audio_load(image, n, 1, 0) != 0) {
+        fprintf(stderr, "the module refused the content with fm %s\n", fm);
+        return 1;
+    }
+    for (f = 1u; f <= frames; f++) {
+        (void)run_one();
+    }
+    p_unload_game();
+    p_deinit();
+    CHECK_EQ_U64(aud.delivered, (uint64_t)frames * 3504512u / 4375u);
+    audio_hex(&aud.all, hex);
+    printf("%s\n", hex);
+    return check_failures != 0 ? 1 : 0;
+}

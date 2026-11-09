@@ -119,6 +119,17 @@ if(TARGET cogmaster_libretro)
           -P ${PROJECT_SOURCE_DIR}/tests/fixtures/tests.cmake
         LABELS libretro portable TIMEOUT 10)
     endforeach()
+    # Fault prevented: the FM option attaching, detaching or refusing the unit differently from the
+    # library's setting, or failing the load of Game Gear content.
+    cogmaster_add_test(NAME libretro.host.fm_option
+      COMMAND ${CMAKE_COMMAND} -DCASE=fm_option -DNAME=fm_sweep
+        -DIMAGE=${PROJECT_BINARY_DIR}/fixtures/fm_sweep.sms
+        -DGG_IMAGE=${PROJECT_BINARY_DIR}/fixtures/psg_sweep.gg
+        -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+        -DRUN=$<TARGET_FILE:cogmaster-run> -DHOST=$<TARGET_FILE:cogmaster-test-libretro-host>
+        -DMODULE=$<TARGET_FILE:cogmaster_libretro> "-DEMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}"
+        -P ${PROJECT_SOURCE_DIR}/tests/fixtures/tests.cmake
+      LABELS libretro portable TIMEOUT 10)
   endif()
   # Fault prevented: the core RetroArch loads shows a frame, rate, geometry
   # or audio length other than the library's, or needs content to start.
