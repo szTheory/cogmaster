@@ -43,7 +43,7 @@ arm64; "every platform" means all six plus the big-endian lane. Expected values 
 ### Sound
 
 - [x] **SND-01**: `ctest -L psg` steps every tone, volume and noise setting of the SN76489 model (16-bit LFSR, taps 0 and 3, reset on every noise-control byte, periods 0 and 1 held high, 2 dB steps) against SMS-AUDIO 1 through closed-form unit oracles and the owned `psg_sweep` fixture judged by frozen transition and PCM hashes, with the GG stereo register routing channels per SMS-AUDIO 2.
-- [ ] **SND-02**: The YM2413 plays for the Japanese profile at Z80/72 Hz with port `$F2` selecting PSG/FM/none/both, seeded from emu2413 (MIT, chosen at phase 4 planning, DEC.22) with its notice, and `ctest -L fm` passes the lockstep test against the unmodified upstream, the register-level units and the owned `fm_sweep` fixture judged by frozen hashes.
+- [x] **SND-02**: The YM2413 plays for the Japanese profile at Z80/72 Hz with port `$F2` selecting PSG/FM/none/both, seeded from emu2413 (MIT, chosen at phase 4 planning, DEC.22) with its notice, and `ctest -L fm` passes the lockstep test against the unmodified upstream, the register-level units and the owned `fm_sweep` fixture judged by frozen hashes.
 - [ ] **SND-03**: `cogmaster-run --hash-audio` prints transition-stream and PCM hashes for the `psg_sweep` and `boot_to_play` fixtures, identical on every platform, with 801 or 802 samples per NTSC frame (965 or 966 PAL) at 48 kHz, cumulative total floor(F x 3,504,512 / 4,375) (PAL floor(F x 685,094,400 / 709,379)), and no clipping.
 - [ ] **SND-04**: The libretro batch and single-sample audio paths deliver PCM equal to the runner's (stereo on GG, duplicated mono on SMS), and the hosted RetroArch session records non-silent audio.
 - [x] **SND-05**: A test renders reference tones through the synthesiser and shows the largest non-harmonic peak below 16 kHz under −80 dB; synthesis cost per output sample stays bounded under a register-hammering fixture.
@@ -119,7 +119,7 @@ Later milestones. Each has a seed in `.planning/seeds/` that says when it comes 
 | GAME-06 | Phase 3 | Complete |
 | GAME-07 | Phase 3 | Complete |
 | SND-01 | Phase 4 | Complete |
-| SND-02 | Phase 4 | Pending |
+| SND-02 | Phase 4 | Complete |
 | SND-03 | Phase 4 | Pending |
 | SND-04 | Phase 4 | Pending |
 | SND-05 | Phase 4 | Complete |

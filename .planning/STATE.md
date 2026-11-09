@@ -5,16 +5,16 @@ milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 04
 current_phase_name: Sound
 status: executing
-stopped_at: Completed 04-12-PLAN.md
-last_updated: "2026-11-09T22:02:45.362Z"
+stopped_at: Completed 04-13-PLAN.md
+last_updated: "2026-11-09T22:16:56.833Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 04 execution started
-state_head: eab02853fe48c14bc77083367fa4ddca8ae228a0
+state_head: 640943cb4784757df72b959a15489590aca238f4
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 62
-  completed_plans: 59
+  completed_plans: 60
   percent: 75
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 04 (Sound) — EXECUTING
-Plan: 13 of 15
+Plan: 14 of 15
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 04 execution started
 
@@ -123,6 +123,7 @@ Progress: [████████░░] 75%
 | Phase 04 P10 | 14min | 2 tasks | 11 files |
 | Phase 04 P11 | 9 min | 2 tasks | 7 files |
 | Phase 04 P12 | 29min | 2 tasks | 14 files |
+| Phase 04 P13 | 13 min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -280,6 +281,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 04]: 04-12: The source-5 record stays the original's 16-bit wrap of the exact sum and the mixer is a pure function of those 16 bits (top-bit flip, drop below the lowest sounding sum, saturate at twice COGMASTER__OPLL_SUM_MAX, scale to the PSG full scale, gain 1402/4096), so all 65,536 values give a gained level in 0..11,216 and no int16 assumption remains — Resolves ledger row 10 without changing the lockstep digest or the record's value; audio.fm_level proves it for every 16-bit value
 - [Phase 04]: 04-12: The YM2413 address latch is a byte of struct cogmaster__opll; $F0-$F2 are decoded ahead of the I/O chip whenever the unit is attached; a muted source holds gained level 0, so no reset needs a special level and a SOFT reset gates the sources off with the control — One copy of the latch, chip-off independence on smsj, power-on and resets need no special stored level
 - [Phase 04]: 04-12: The chip's state block is every field but slot_evals plus the user instrument, bounded by the tables the fields index; OPLL_UPDATE_ALL is 15; a loaded next-sample tick must be a multiple of 216, past the last frame's deadline and at most one sample past the tick count — Bounds the next catch-up to a frame's samples and gives every pending-request and phase field a bound narrower than its type
+- [Phase 04]: fm_sweep's detection routine reads $F2 first and restores it, compares bits 1-0 of four written values, and its script runs on every console so the no-unit runs prove the ports change nothing
 
 ### Pending Todos
 
@@ -332,6 +334,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-11-09 | Execute phase 4 plan 04-10 (gsd-execute-phase 04); YM2413 port of emu2413 (699 logic lines), one-shot oracle equal over 2,000,000 samples, emu2413 notice and provenance, notices check tightened; 2 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Execute phase 4 plan 04-11 (gsd-execute-phase 04); fm.lockstep against the frozen 2,000,000-sample digest, seven chip-level fm cases, sum bound of the sounding voices (returned sum can leave int16, ledger entry); 2 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Execute phase 4 plan 04-12 (gsd-execute-phase 04); the YM2413 on the Japanese console: $F0-$F2 ahead of the I/O chip, 216-tick catch-up, $F2 mixer gate, total 16-bit FM level (ledger row 10 fixed), chip state block, reset snapshot and cost bound; 2 tasks, 5 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Execute phase 4 plan 04-13 (gsd-execute-phase 04); fm_sweep with its own $F2 detection routine, fm.detect, three fixture profiles, runner.hash_audio.fm and three new pin rows per file; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -343,6 +346,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-09T22:02:45.034Z
-Stopped at: Completed 04-12-PLAN.md
+Last session: 2026-11-09T22:16:46.110Z
+Stopped at: Completed 04-13-PLAN.md
 Resume file: None
