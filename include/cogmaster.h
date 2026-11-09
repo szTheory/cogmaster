@@ -54,6 +54,10 @@ typedef struct cogmaster_battery {
 #define COGMASTER_TV_NTSC 1u
 #define COGMASTER_TV_PAL 2u
 
+#define COGMASTER_FM_AUTO 0u
+#define COGMASTER_FM_OFF 1u
+#define COGMASTER_FM_ON 2u
+
 #define COGMASTER_VIDEO_AUTO 0u
 #define COGMASTER_VIDEO_SMS 1u
 #define COGMASTER_VIDEO_GG 2u
@@ -143,6 +147,10 @@ typedef struct cogmaster_media {
     uint32_t reserved;
 #endif
     uint32_t video_mode; /* COGMASTER_VIDEO_* */
+#if UINTPTR_MAX > UINT32_MAX
+    uint32_t reserved2;
+#endif
+    uint32_t fm; /* COGMASTER_FM_* */
 } cogmaster_media;
 
 typedef struct cogmaster_info {
@@ -155,6 +163,8 @@ typedef struct cogmaster_info {
     uint32_t par_num, par_den;
     uint32_t region, tv;
     uint32_t video_mode;
+    uint32_t audio_channels; /* 1 or 2 */
+    uint32_t fm;             /* COGMASTER_FM_ON or COGMASTER_FM_OFF */
 } cogmaster_info;
 
 typedef struct cogmaster_frame {

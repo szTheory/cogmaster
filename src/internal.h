@@ -201,9 +201,11 @@ struct cogmaster {
     uint64_t ticks;                /* ticks run since load */
     uint32_t machine;              /* resolved machine: SMS1, SMS2 or GG; valid while loaded */
     uint32_t video_mode;
-    uint32_t region; /* resolved region: EXPORT or JAPAN; valid while loaded */
-    uint32_t tv;     /* resolved TV: NTSC or PAL; valid while loaded */
-    uint32_t loaded; /* 1 after a successful load */
+    uint32_t region;  /* resolved region: EXPORT or JAPAN; valid while loaded */
+    uint32_t tv;      /* resolved TV: NTSC or PAL; valid while loaded */
+    uint32_t loaded;  /* 1 after a successful load */
+    uint32_t fm_unit; /* resolved fm: 1 when the YM2413 is attached, else 0; valid while loaded */
+    uint32_t fm_mask; /* the $F2 bits the profile keeps: 3 with the unit, else 0 */
     struct cogmaster__counters counters;
     uint32_t fault_present;        /* 1 once a fault is recorded */
     struct cogmaster__fault fault; /* valid while fault_present */
@@ -284,8 +286,11 @@ _Static_assert(offsetof(cogmaster_media, image_size) == 2 * COGMASTER__P, "media
 _Static_assert(offsetof(cogmaster_media, machine) == 3 * COGMASTER__P, "media.machine");
 _Static_assert(offsetof(cogmaster_media, region) == 3 * COGMASTER__P + 4, "media.region");
 _Static_assert(offsetof(cogmaster_media, tv) == 3 * COGMASTER__P + 8, "media.tv");
-/* 3P + 12 bytes rounded up to a multiple of P: 40 on 64-bit, 24 on 32-bit. */
-_Static_assert(sizeof(cogmaster_media) == (COGMASTER__P == 8 ? 48 : 28), "media size");
+_Static_assert(offsetof(cogmaster_media, video_mode) == (COGMASTER__P == 8 ? 40 : 24),
+               "media.video_mode");
+/* Explicit pad to the next word, so fm starts at 48 on 64-bit and 28 on 32-bit. */
+_Static_assert(offsetof(cogmaster_media, fm) == (COGMASTER__P == 8 ? 48 : 28), "media.fm");
+_Static_assert(sizeof(cogmaster_media) == (COGMASTER__P == 8 ? 56 : 32), "media size");
 
 _Static_assert(offsetof(cogmaster_info, size) == 0, "info.size");
 _Static_assert(offsetof(cogmaster_info, machine) == 4, "info.machine");
@@ -301,7 +306,10 @@ _Static_assert(offsetof(cogmaster_info, par_num) == 40, "info.par_num");
 _Static_assert(offsetof(cogmaster_info, par_den) == 44, "info.par_den");
 _Static_assert(offsetof(cogmaster_info, region) == 48, "info.region");
 _Static_assert(offsetof(cogmaster_info, tv) == 52, "info.tv");
-_Static_assert(sizeof(cogmaster_info) == 60, "info size");
+_Static_assert(offsetof(cogmaster_info, video_mode) == 56, "info.video_mode");
+_Static_assert(offsetof(cogmaster_info, audio_channels) == 60, "info.audio_channels");
+_Static_assert(offsetof(cogmaster_info, fm) == 64, "info.fm");
+_Static_assert(sizeof(cogmaster_info) == 68, "info size");
 
 _Static_assert(offsetof(cogmaster_frame, size) == 0, "frame.size");
 _Static_assert(offsetof(cogmaster_frame, pixels) == COGMASTER__P, "frame.pixels");

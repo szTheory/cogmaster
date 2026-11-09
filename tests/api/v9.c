@@ -1,4 +1,4 @@
-/* API v9: the audio drain. Every name the version adds is used here. */
+/* API v9: the audio drain and the FM unit. Every name the version adds is used here. */
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,6 +41,21 @@ int main(void)
     CHECK_EQ_U64(offsetof(cogmaster_audio_trace, dropped), 2u * p + 8u);
     CHECK_EQ_U64(sizeof(cogmaster_audio_trace), p == 8u ? 32u : 20u);
 
+    CHECK_EQ_U64(COGMASTER_FM_AUTO, 0u);
+    CHECK_EQ_U64(COGMASTER_FM_OFF, 1u);
+    CHECK_EQ_U64(COGMASTER_FM_ON, 2u);
+    CHECK_EQ_U64(offsetof(cogmaster_media, video_mode), p == 8u ? 40u : 24u);
+    CHECK_EQ_U64(offsetof(cogmaster_media, fm), p == 8u ? 48u : 28u);
+    CHECK_EQ_U64(sizeof(cogmaster_media), p == 8u ? 56u : 32u);
+#if UINTPTR_MAX > UINT32_MAX
+    cogmaster_media pad = {0};
+    CHECK_EQ_U64(offsetof(cogmaster_media, reserved2), 44u);
+    CHECK_EQ_U64(pad.reserved2, 0u);
+#endif
+    CHECK_EQ_U64(offsetof(cogmaster_info, audio_channels), 60u);
+    CHECK_EQ_U64(offsetof(cogmaster_info, fm), 64u);
+    CHECK_EQ_U64(sizeof(cogmaster_info), 68u);
+
     cogmaster_config cfg = {0};
     cfg.size = sizeof cfg;
     cfg.allocator.alloc = allocate;
@@ -50,6 +65,18 @@ int main(void)
     cogmaster_media media = {0};
     media.size = sizeof media;
     CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    cogmaster_info info;
+    memset(&info, 0, sizeof info);
+    info.size = sizeof info;
+    CHECK_EQ_U64(cogmaster_get_info(m, &info), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(info.audio_channels, 1u);
+    CHECK_EQ_U64(info.fm, COGMASTER_FM_OFF);
+    media.region = COGMASTER_REGION_JAPAN;
+    media.fm = COGMASTER_FM_AUTO;
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster_get_info(m, &info), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(info.fm, COGMASTER_FM_ON);
+    media.region = COGMASTER_REGION_AUTO;
 
     /* A test card frame is 801 mono samples, all silent. */
     int16_t pcm[966u * 2u];

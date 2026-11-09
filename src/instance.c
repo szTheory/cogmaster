@@ -188,6 +188,16 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
         video = machine == COGMASTER_MACHINE_GG
                     ? (probe.video_mode != 0u ? probe.video_mode : COGMASTER_VIDEO_GG)
                     : COGMASTER_VIDEO_SMS;
+    /* The FM unit is the Japanese console's YM2413; a Game Gear has none, and
+       the export console takes one only on request (SMS-AUDIO section 9).
+       A size tag at or below the previous struct reads fm as AUTO. */
+    uint32_t fm = tagged_field(media, COGMASTER__FIRST_SIZE_MEDIA, offsetof(cogmaster_media, fm));
+    if (fm > COGMASTER_FM_ON || (fm == COGMASTER_FM_ON && machine == COGMASTER_MACHINE_GG)) {
+        return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
+    }
+    uint32_t fm_unit =
+        fm == COGMASTER_FM_ON || (fm == COGMASTER_FM_AUTO && region == COGMASTER_REGION_JAPAN &&
+                                  machine != COGMASTER_MACHINE_GG);
     /* No Game Gear and no Japanese console was made for PAL (SMS-SYSTEM C6). */
     if (tv == COGMASTER_TV_PAL &&
         (machine == COGMASTER_MACHINE_GG || region == COGMASTER_REGION_JAPAN)) {
@@ -223,6 +233,8 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     m->video_mode = video;
     m->region = region;
     m->tv = tv;
+    m->fm_unit = fm_unit;
+    m->fm_mask = fm_unit ? 3u : 0u; /* plain data: a unit alone would keep bit 0 only */
     m->loaded = 1u;
     memset(&m->pending_input, 0, sizeof m->pending_input);
     memset(&m->input, 0, sizeof m->input);
@@ -261,6 +273,8 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out)
     info.max_h = COGMASTER__FIELD_MAX_H;
     info.region = m->region;
     info.tv = m->tv;
+    info.audio_channels = m->machine == COGMASTER_MACHINE_GG ? 2u : 1u;
+    info.fm = m->fm_unit ? COGMASTER_FM_ON : COGMASTER_FM_OFF;
     /* NTSC: 179,208 ticks of 10,738,635 Hz per frame (ARCHITECTURE section
        2). PAL: 214,092 ticks of 53,203,424 / 5 Hz (SMS-SYSTEM C2), reduced. */
     if (m->tv == COGMASTER_TV_PAL) {

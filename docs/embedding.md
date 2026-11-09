@@ -132,6 +132,8 @@ First released sizes, where P is the pointer size (4 or 8):
 | `cogmaster_audio` (output) | 2 × P + 16 |
 | `cogmaster_audio_trace` (output) | 32 on 64-bit, 20 on 32-bit |
 
+Whole structs: `cogmaster_media` is 56 bytes (32 on 32-bit, `fm` at 28) and `cogmaster_info` is 68.
+
 Fields are fixed-width integers and pointers; enumerations travel as `uint32_t` and zero is the default of every
 input field. Statuses, constants and fields are only ever appended.
 
@@ -170,12 +172,17 @@ media.machine = COGMASTER_MACHINE_AUTO;   /* or COGMASTER_MACHINE_SMS2, COGMASTE
 media.region = COGMASTER_REGION_AUTO;     /* or COGMASTER_REGION_EXPORT, COGMASTER_REGION_JAPAN */
 media.tv = COGMASTER_TV_AUTO;             /* or COGMASTER_TV_NTSC, COGMASTER_TV_PAL */
 media.video_mode = COGMASTER_VIDEO_AUTO;  /* or COGMASTER_VIDEO_SMS, COGMASTER_VIDEO_GG */
+media.fm = COGMASTER_FM_AUTO;             /* or COGMASTER_FM_OFF, COGMASTER_FM_ON */
 media.image = rom;                        /* the image bytes, or NULL for the test card */
 media.image_size = rom_size;              /* 0 with a NULL image */
 cogmaster_load(m, &media);
 
 cogmaster_run_frame(m, NULL);             /* one frame; the result struct is optional */
 ```
+
+`fm` picks the YM2413 FM unit: AUTO attaches it only for a Japanese Master System, OFF never, ON on any Master
+System; a value above ON, or ON with a Game Gear, returns `COGMASTER_STATUS_ERR_PROFILE_REJECTED`. A size tag
+from before `fm` reads AUTO. See [audio](audio.md).
 
 `video_mode` defaults to native GG on a Game Gear and SMS on either Master System.
 Explicit GG video requires a Game Gear. Explicit SMS video on a Game Gear retains
@@ -307,7 +314,7 @@ those bytes, not the `uint16_t` array, or a big-endian host gets a different dig
 
 ## Audio
 
-`cogmaster_run_frame` makes one frame's samples at 48 kHz and `cogmaster_get_audio(m, io)` hands them over:
+The host contract is in [audio](audio.md). `cogmaster_run_frame` makes one frame's samples at 48 kHz and `cogmaster_get_audio(m, io)` hands them over:
 it copies the smaller of `capacity` and what is pending, in sample frames, into `samples` and sets `written`,
 `channels` and `dropped`. A sample frame is one `int16_t` when `channels` is 1 (the Master System) and a left
 and right pair when it is 2 (the Game Gear, in either video mode). Set `size` to `sizeof(cogmaster_audio)`.
@@ -424,6 +431,8 @@ answer returns a value above 255: a NULL instance, no successful `cogmaster_load
 | `par_num`, `par_den` | 8 / 7 | 6 / 5 |
 | `region` | the loaded region: `COGMASTER_REGION_EXPORT` or `COGMASTER_REGION_JAPAN` | the same |
 | `tv` | the loaded video standard: `COGMASTER_TV_NTSC` or `COGMASTER_TV_PAL` | `COGMASTER_TV_NTSC` |
+| `audio_channels` | 1 | 2 |
+| `fm` | `COGMASTER_FM_ON` or `COGMASTER_FM_OFF` | `COGMASTER_FM_OFF` |
 
 `region` and `tv` are never AUTO: they report what `load` resolved. The pixel aspect ratio is reported, never
 applied. `max_w` × `max_h` sizes a buffer for any frame.
@@ -485,9 +494,9 @@ header does not know stays at the zero you wrote.
 Every public name, for reference: the opaque instance `cogmaster`; the types `cogmaster_status`,
 `cogmaster_allocator` (`alloc`, `free`, `user`), `cogmaster_config` (`size`, `allocator`, `trace_records`, `reserved`), `cogmaster_versions`
 (`size`, `library_major`, `library_minor`, `library_patch`, `api`, `abi`, `behaviour`, `state`),
-`cogmaster_media` (`size`, `image`, `image_size`, `machine`, `region`, `tv`), `cogmaster_info` (`size`, `machine`,
+`cogmaster_media` (`size`, `image`, `image_size`, `machine`, `region`, `tv`, `video_mode`, `reserved2`, `fm`), `cogmaster_info` (`size`, `machine`,
 `crop_w`, `crop_h`, `field_w`, `field_h`, `max_w`, `max_h`, `fps_num`, `fps_den`, `par_num`, `par_den`, `region`,
-`tv`), `cogmaster_frame`
+`tv`, `video_mode`, `audio_channels`, `fm`), `cogmaster_frame`
 (`size`, `pixels`, `pitch_bytes`, `flags`, `x`, `y`, `w`, `h`, `field_h`, `backdrop_rgb444`),
 `cogmaster_audio` (`size`, `samples`, `capacity`, `written`, `channels`, `dropped`),
 `cogmaster_audio_record` (`tick`, `source`, `level`), `cogmaster_audio_trace` (`size`, `records`, `capacity`,
@@ -499,7 +508,7 @@ Every public name, for reference: the opaque instance `cogmaster`; the types `co
 `cogmaster_create`, `cogmaster_destroy`, `cogmaster_load`, `cogmaster_run_frame`, `cogmaster_get_frame`,
 `cogmaster_get_info`, `cogmaster_get_audio`, `cogmaster_get_audio_trace`, `cogmaster_reset`, `cogmaster_get_fault`, `cogmaster_probe` and `cogmaster_peek`; the constants `COGMASTER_MACHINE_AUTO`,
 `COGMASTER_MACHINE_SMS2`, `COGMASTER_MACHINE_GG`, `COGMASTER_REGION_AUTO`, `COGMASTER_REGION_EXPORT`,
-`COGMASTER_REGION_JAPAN`, `COGMASTER_TV_AUTO`, `COGMASTER_TV_NTSC`, `COGMASTER_TV_PAL`, `COGMASTER_STOP_FRAME`, `COGMASTER_FRAME_FULL_FIELD`,
+`COGMASTER_REGION_JAPAN`, `COGMASTER_FM_AUTO`, `COGMASTER_FM_OFF`, `COGMASTER_FM_ON`, `COGMASTER_TV_AUTO`, `COGMASTER_TV_NTSC`, `COGMASTER_TV_PAL`, `COGMASTER_STOP_FRAME`, `COGMASTER_FRAME_FULL_FIELD`,
 `COGMASTER_RESET_SOFT`, `COGMASTER_RESET_POWER`, `COGMASTER_BOARD_ROM_ONLY`, `COGMASTER_BOARD_SEGA`,
 `COGMASTER_BOARD_CODEMASTERS`, `COGMASTER_SPACE_BUS`, the five `COGMASTER_FAULT_KIND_*` and six `COGMASTER_FAULT_DEVICE_*` values
 above, the nine `COGMASTER_STATUS_*` values above and the
