@@ -77,6 +77,8 @@ and $7F stay the VDP's beam counters.
   is recorded as the unmapped write a Japanese Master System records, and every channel reaches both outputs.
   That mode also decodes $3E and $3F as a Master System does ($3E powers on at $AB), and keeps its pad, its full
   decode and Start as Pause.
+- **Cost.** However fast a game writes the sound ports, a frame takes at most one PSG step per 48 ticks and a
+  bounded number of kernel additions per level change, so the work per frame is bounded and no clock is read.
 - **Reset.** A load and both kinds of reset put the chip back to its power-on values: every attenuation off,
   periods and noise control 0, shift register $8000, counters and outputs clear, a data byte that follows no
   latch byte writing the volume of channel 1, and the step origin at tick 0, where the tick count restarts. The

@@ -21,6 +21,13 @@ foreach(case IN ITEMS cadence drain step spectral no_clip amplitude_bound ring_o
     LABELS audio portable TIMEOUT 10)
 endforeach()
 
+# Fault prevented: a ROM that hammers the sound ports at the Z80's fastest OUT rate and makes
+# a frame cost more PSG steps, kernel additions or ring reach than the counters bound.
+# Timeout: 10 s floor; 0.00 s slowest local run, no hosted run yet, so provisional. The be32
+# and wasm32 scales leave 80 s and 50 s; confirm against the first hosted run before freezing.
+cogmaster_add_test(NAME audio.cost COMMAND cogmaster-test-audio cost
+  LABELS audio portable TIMEOUT 10)
+
 # The Sega PSG through the bus: closed-form oracles over the drained trace and the chip's
 # registers.
 add_executable(cogmaster-test-psg ${CMAKE_CURRENT_LIST_DIR}/test_psg.c)

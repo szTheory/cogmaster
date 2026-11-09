@@ -20,6 +20,7 @@ abi.undefined	abi
 abi.undefined.self_test	abi
 audio.amplitude_bound	audio,portable
 audio.cadence	audio,portable
+audio.cost	audio,portable
 audio.drain	audio,portable
 audio.no_clip	audio,portable
 audio.ring_overshoot	audio,portable

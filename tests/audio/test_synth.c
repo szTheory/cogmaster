@@ -38,14 +38,16 @@ static cogmaster_media media_for(uint32_t machine, uint32_t tv, uint32_t video)
     return media;
 }
 
-/* A new instance with the test card of the profile loaded. */
-static cogmaster *make(uint32_t machine, uint32_t tv, uint32_t video)
+/* A new instance with the test card of the profile loaded and a trace log of
+   the given number of records (0 keeps none). */
+static cogmaster *make_logged(uint32_t machine, uint32_t tv, uint32_t video, uint32_t trace)
 {
     cogmaster_config cfg;
     memset(&cfg, 0, sizeof cfg);
     cfg.size = (uint32_t)sizeof cfg;
     cfg.allocator.alloc = test_alloc;
     cfg.allocator.free = test_free;
+    cfg.trace_records = trace;
     cogmaster *m = NULL;
     CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
     if (m == NULL) {
@@ -54,6 +56,11 @@ static cogmaster *make(uint32_t machine, uint32_t tv, uint32_t video)
     cogmaster_media media = media_for(machine, tv, video);
     CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
     return m;
+}
+
+static cogmaster *make(uint32_t machine, uint32_t tv, uint32_t video)
+{
+    return make_logged(machine, tv, video, 0u);
 }
 
 /* These tests set the synthesiser's levels directly, so the sound chip is
@@ -923,6 +930,72 @@ static void test_stereo_mask(void)
     CHECK_EQ_U64(right_differs, 0u);
 }
 
+/* A hostile ROM can write the sound ports as fast as the Z80 can issue OUT
+   (n),A, 11 T-states or 33 ticks apart. Over a whole frame the PSG still takes
+   at most one step per 48 ticks, and a level change costs a fixed number of
+   kernel additions: a step changes at most four channel levels (the three
+   tones toggle and the noise shifts together) and a Game Gear stereo write
+   re-routes at most four sources and records itself, so a write costs at most
+   five. Each addition lands on every output channel. No FM unit is attached
+   here, so the bound has no FM term. The log of the frame fits its records,
+   and no event reaches past the ring. */
+#define COST_SPACING 33u
+#define COST_TRACE 32768u
+
+static cogmaster_audio_record cost_log[COST_TRACE];
+
+static void cost_case(uint32_t machine, uint32_t tv, uint32_t video)
+{
+    static const uint8_t psg_bytes[16] = {0x82u, 0x00u, 0xA2u, 0x00u, 0xC2u, 0x00u, 0x90u, 0xB1u,
+                                          0xD2u, 0xF3u, 0xE4u, 0xE5u, 0x91u, 0xB2u, 0xD3u, 0xF0u};
+    static const uint8_t masks[4] = {0xFFu, 0x0Fu, 0xF0u, 0x55u};
+    int stereo = video == COGMASTER_VIDEO_GG;
+    uint32_t rings = machine == COGMASTER_MACHINE_GG ? 2u : 1u;
+    cogmaster *m = make_logged(machine, tv, video, COST_TRACE);
+    uint64_t frame_ticks = cogmaster__frame_ticks(m);
+    uint32_t writes = 0u, psg_writes = 0u;
+    for (uint64_t t = COST_SPACING; t < frame_ticks; t += COST_SPACING) {
+        m->ticks = t;
+        if (stereo && writes % 7u == 6u) {
+            cogmaster__bus_out(m, 0x0006u, masks[(writes / 7u) % 4u]);
+        } else {
+            cogmaster__bus_out(m, 0x007Fu, psg_bytes[psg_writes % 16u]);
+            psg_writes++;
+        }
+        writes++;
+    }
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+
+    const struct cogmaster__synth_stats *st = &m->synth.stats;
+    uint64_t max_steps = (frame_ticks + 47u) / 48u;
+    CHECK(st->psg_steps <= max_steps);
+    CHECK(st->psg_steps + 2u >= frame_ticks / 48u);
+    CHECK_EQ_U64(st->psg_writes, psg_writes);
+    uint64_t bound = (uint64_t)COGMASTER__SYNTH_TAPS * rings * (4u * st->psg_steps + 5u * writes);
+    CHECK(st->kernel_apps <= bound);
+    /* The hammer really did change levels: a bound that nothing approached
+       would hold for a chip that stopped. */
+    CHECK(st->kernel_apps > COGMASTER__SYNTH_TAPS * 1000u);
+    CHECK(st->max_index + 32u < COGMASTER__SYNTH_RING);
+
+    cogmaster_audio_trace t;
+    memset(&t, 0, sizeof t);
+    t.size = (uint32_t)sizeof t;
+    t.records = cost_log;
+    t.capacity = COST_TRACE;
+    CHECK_EQ_U64(cogmaster_get_audio_trace(m, &t), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(t.dropped, 0u);
+    CHECK(t.written > 0u && t.written <= COST_TRACE);
+    cogmaster_destroy(m);
+}
+
+static void test_cost(void)
+{
+    cost_case(COGMASTER_MACHINE_SMS2, COGMASTER_TV_NTSC, COGMASTER_VIDEO_SMS);
+    cost_case(COGMASTER_MACHINE_SMS2, COGMASTER_TV_PAL, COGMASTER_VIDEO_SMS);
+    cost_case(COGMASTER_MACHINE_GG, COGMASTER_TV_NTSC, COGMASTER_VIDEO_GG);
+}
+
 static int16_t *pcm_quiet_buffer(void)
 {
     static int16_t buf[COGMASTER__AUDIO_MAX_FRAMES * 2u];
@@ -1005,6 +1078,7 @@ static const struct {
     {"amplitude_bound", test_amplitude_bound},
     {"ring_overshoot", test_ring_overshoot},
     {"stereo_mask", test_stereo_mask},
+    {"cost", test_cost},
     {"state_continue", test_state_continue},
 };
 
