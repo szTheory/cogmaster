@@ -267,14 +267,9 @@ static void update_slots(struct cogmaster__opll *o)
     for (uint32_t i = 0u; i < COGMASTER__OPLL_SLOTS; i++) {
         struct cogmaster__opll_slot *slot = &o->slot[i];
         const struct cogmaster__opll_patch *p = &o->patch[slot->patch];
-        struct cogmaster__opll_slot *buddy = NULL;
+        /* The other slot of the voice; the single slots of the rhythm voices have none. */
+        struct cogmaster__opll_slot *buddy = slot->type <= 1u ? &o->slot[i ^ 1u] : NULL;
 
-        if (slot->type == 0u) {
-            buddy = &o->slot[i + 1u];
-        }
-        if (slot->type == 1u) {
-            buddy = &o->slot[i - 1u];
-        }
         if (slot->update_requests) {
             commit_slot_update(o, slot);
         }
