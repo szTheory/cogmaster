@@ -51,7 +51,13 @@ foreach(case IN ITEMS state.round_trip state.record_sweep state.rejects_header s
     fault.empty_after_create fault.first_wins fault.reset_clears fault.state_round_trip
     api.error_changes_nothing)
   # Timeout: 10 s floor; 2 x 0.26 s, slowest of 2 runs, run 39376644025, provisional.
+  # The two cases that run a whole sweep take 4.0 s and 1.6 s here with sound on
+  # (macOS x64 timed out at 10 s, run 42713186331), so they get 60 s, provisional.
+  set(state_timeout 10)
+  if(case STREQUAL "state.record_sweep" OR case STREQUAL "state.mapper")
+    set(state_timeout 60)
+  endif()
   cogmaster_add_test(NAME core.${case}
     COMMAND cogmaster-test-state ${case}
-    LABELS core portable TIMEOUT 10)
+    LABELS core portable TIMEOUT ${state_timeout})
 endforeach()

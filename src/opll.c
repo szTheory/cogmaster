@@ -215,7 +215,8 @@ static void calc_envelope(struct cogmaster__opll_slot *slot, struct cogmaster__o
         if (0u < slot->eg_out && 0u < slot->eg_rate_h && (counter & mask & ~3u) == 0u) {
             const uint32_t s = lookup_attack_step(slot, counter);
             if (0u < s) {
-                slot->eg_out = (uint8_t)(slot->eg_out - (slot->eg_out >> s) - 1u);
+                slot->eg_out =
+                    (uint8_t)((uint32_t)slot->eg_out - ((uint32_t)slot->eg_out >> s) - 1u);
             }
         }
     } else if (slot->eg_rate_h > 0u && (counter & mask) == 0u) {

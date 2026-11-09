@@ -773,7 +773,7 @@ static void test_no_clip_fm(void)
     for (uint64_t tick = 40000u; tick < 40000u + 224u; tick += 3u) {
         cogmaster *m = make_japan();
         cogmaster__synth_level(m, 0u, 6u, 3u);
-        cogmaster__synth_level(m, 0u, 5u, (uint16_t)(0u - COGMASTER__OPLL_SUM_MAX));
+        cogmaster__synth_level(m, 0u, 5u, (uint16_t)((0u - COGMASTER__OPLL_SUM_MAX) & 0xFFFFu));
         for (uint32_t src = 0u; src < 4u; src++) {
             cogmaster__synth_level(m, tick, src, PSG_FULL);
         }

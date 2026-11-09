@@ -692,7 +692,7 @@ static void check_noise(cogmaster *m, uint32_t control, uint32_t tone2)
     uint32_t bad_step = 0u, bad_state = 0u;
     for (uint32_t j = 0u; j < SHIFTS; j++) {
         bad_step += steps[j] != 1u + j * interval;
-        bad_state += after[j] != lfsr_after(j + 1u, white) && j < (white ? 15u : SHIFTS);
+        bad_state += j < (white ? 15u : SHIFTS) && after[j] != lfsr_after(j + 1u, white);
     }
     CHECK_EQ_U64(bad_step, 0u);
     CHECK_EQ_U64(bad_state, 0u);
