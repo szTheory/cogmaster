@@ -142,9 +142,10 @@ An instance can record every change a sound source makes, for tools that check t
 them. `cogmaster_config.trace_records` is the log's size in records; 0, the default, keeps none.
 
 - **Record.** `tick`, `source` and `level`. `tick` counts video-clock ticks (the unit a frame is counted in, 179,208 per
-  NTSC frame) since the last load or reset of either kind; the log is in causal order and the ticks never fall
-  within one run. `source` names what
-  changed: 0 to 3 are the PSG's three tone channels and its noise channel, 4 is the Game Gear stereo mask, 5 is the
+  NTSC frame) since the last load or reset of either kind; the records of one source are in tick order and
+  its ticks never go backwards. Across sources the log is in the order the chips were brought up to date, so sort by
+  `tick`, then `source`, then emission index before merging, as `cogmaster-run --hash-audio` does. `source` names
+  what changed: 0 to 3 are the PSG's three tone channels and its noise channel, 4 is the Game Gear stereo mask, 5 is the
   FM unit's output sum (as 16 bits) and 6 is the FM control register as the profile leaves it. `level` is the new
   raw value of that source, before any mixing gain, so a later change to the mix moves the samples and not the log.
   For sources 0 to 3 bit 4 is the channel's output and bits 3 to 0 its attenuation; for 4 and 6 it is the byte

@@ -599,8 +599,10 @@ void cogmaster__boot_handoff(cogmaster *m, int power);
 void cogmaster__synth_reset(cogmaster *m, int power);
 void cogmaster__synth_frame_end(cogmaster *m);
 
-/* Appends a level change to the host's trace log, if it asked for one: in
-   causal order, a full log counts the append in its dropped total instead.
+/* Appends a level change to the host's trace log, if it asked for one, a full
+   log counts the append in its dropped total instead. Records of one source
+   are in tick order; across sources they are in the order the chips were
+   brought up to date, so a consumer sorts by tick, source and emission index.
    Load and both resets empty the log, because ticks restart there. */
 void cogmaster__synth_trace(cogmaster *m, uint64_t tick, uint32_t source, uint32_t level);
 
