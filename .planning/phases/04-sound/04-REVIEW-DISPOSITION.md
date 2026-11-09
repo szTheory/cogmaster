@@ -9,7 +9,7 @@ findings:
     title: "The trace log is not \"in causal order\", and its ticks do fall within one run"
   - id: WR-02
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Impossible-state guard: `if (m->frame > 0u)` in `cogmaster__synth_frame_end`"
   - id: IN-01
     severity: info
@@ -27,7 +27,7 @@ findings:
     severity: info
     disposition: open
     title: "Loading a state keeps the previous timeline's pending trace records"
-open: 5
+open: 4
 total: 6
 recorded: 2026-11-09T23:18:42.643Z
 ---
