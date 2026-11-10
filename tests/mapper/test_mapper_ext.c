@@ -1,8 +1,7 @@
-/* The Korean, Korean no-bank, Hi-Com, Zemina, Nemesis and 4 PAK boards at register level: an image of
-   exactly the size under test is installed on the board, every register
-   value is written through the bus, and each bank and each read is compared
-   with a model kept here from the writes alone: cogmaster-test-mapper-ext
-   <case>. */
+/* The Korean, Korean no-bank, Hi-Com, Zemina, Nemesis and 4 PAK boards at register level: an image
+   of exactly the size under test is installed on the board, every register value is written through
+   the bus, and each bank and each read is compared with a model kept here from the writes alone:
+   cogmaster-test-mapper-ext <case>. */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -511,12 +510,8 @@ static const struct {
     const char *name;
     void (*run)(void);
 } cases[] = {
-    {"hes_4pak", test_hes_4pak},
-    {"hicom", test_hicom},
-    {"korean", test_korean},
-    {"korean_nb", test_korean_nb},
-    {"nemesis", test_nemesis},
-    {"state", test_state},
+    {"hes_4pak", test_hes_4pak},   {"hicom", test_hicom},     {"korean", test_korean},
+    {"korean_nb", test_korean_nb}, {"nemesis", test_nemesis}, {"state", test_state},
     {"zemina", test_zemina},
 };
 
