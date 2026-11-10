@@ -143,6 +143,8 @@ jobs:
           mkdir -p "$trusted/scripts" "$trusted/tests/compat" "$trusted/include"
           git rev-parse HEAD > "$trusted/sha"
           cp include/cogmaster.h "$trusted/include/"
+          # The size ratchet compares the head's limits with these.
+          if [ -f quality.json ]; then cp quality.json "$trusted/quality.json"; fi
           if [ -f scripts/compat-ratchet.sh ]; then
             cp scripts/compat-ratchet.sh scripts/compat-common.sh "$trusted/scripts/"
             cp tests/compat/ledger.csv "$trusted/tests/compat/"
@@ -163,6 +165,25 @@ jobs:
             ForEach-Object { if ($_ -match '^([^=]+)=(.*)$') { "$($Matches[1])=$($Matches[2])" >> $env:GITHUB_ENV } }
       - name: Build, test, package
         run: cmake --workflow --preset ${{ matrix.preset }}
+      # Prevents a package that grows past its measured size unseen: each leg's
+      # three zips against quality.json, then a control that an oversize value
+      # exits 1 naming the key. On Linux x64, where the trusted base copy
+      # exists, a ceiling raised with no new reason also fails.
+      - name: Size ceilings
+        shell: bash
+        run: |
+          dir=build/${{ matrix.preset }}
+          leg=${{ matrix.os }}-${{ matrix.arch }}
+          measured="size.zip.library=bytes:$dir/cogmaster-library-$leg.zip"
+          measured="$measured;size.zip.runner=bytes:$dir/cogmaster-runner-$leg.zip"
+          measured="$measured;size.zip.libretro=bytes:$dir/cogmaster-libretro-$leg.zip"
+          if [ "$leg" = linux-x64 ]; then
+            cmake -DQUALITY=quality.json "-DMEASURED=$measured" "-DBASE=$RUNNER_TEMP/compat-base/quality.json" -P tests/cmake/quality.cmake
+          else
+            cmake -DQUALITY=quality.json "-DMEASURED=$measured" -P tests/cmake/quality.cmake
+          fi
+          cmake "-DCMD=cmake;-DQUALITY=quality.json;-DMEASURED=size.zip.library=999999999;-P;tests/cmake/quality.cmake" \
+            -DCODE=1 -DREGEX=size.zip.library -P tests/cmake/expect_fail.cmake
       - name: Protected compatibility comparison
         if: matrix.os == 'linux' && matrix.arch == 'x64'
         run: |
@@ -325,6 +346,13 @@ jobs:
           sudo apt-get update && sudo apt-get install -y --no-install-recommends wasi-libc libclang-rt-21-dev-wasm32
           scripts/fetch-pin.sh wasmtime-x86_64-linux build/pins/wasmtime
       - run: cmake --workflow --preset wasm32
+      # Prevents the WebAssembly runner module growing past its measured size
+      # unseen, with a control that an oversize value exits 1 naming the key.
+      - name: Size ceiling
+        run: |
+          cmake -DQUALITY=quality.json -DMEASURED=size.wasm=bytes:build/wasm32/cogmaster-run -P tests/cmake/quality.cmake
+          cmake "-DCMD=cmake;-DQUALITY=quality.json;-DMEASURED=size.wasm=999999999;-P;tests/cmake/quality.cmake" \
+            -DCODE=1 -DREGEX=size.wasm -P tests/cmake/expect_fail.cmake
       - name: Every test ran
         run: >-
           cmake -DJUNIT=build/wasm32/junit.xml -DINVENTORY=tests/inventory/wasm32.txt

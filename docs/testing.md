@@ -347,8 +347,11 @@ library's version numbers, the core's `display_version` and `cogmaster-run --ver
 
 ## Budgets
 
-`docs.budgets` keeps `README.md` under 12 KB, `include/cogmaster.h` under 24 KB, each `docs/*.md` under 40 KB
-and `tests/fuzz` at most 512 KiB.
+`docs.budgets` keeps `README.md` under 12 KB, `include/cogmaster.h` under 24 KB, each `docs/*.md` under the
+`docs.max_bytes` ceiling in `quality.json` and `tests/fuzz` at most 512 KiB.
+`policy.quality` checks the two test-count floors in that file against the inventories, with controls for each
+failure and for the base-file ratchet; `policy.lessons_unique` fails a lesson ID that appears twice or not at all.
+The zip and wasm size ceilings are checked by the build legs and the `wasm32` lane, see [maintaining.md](maintaining.md).
 `docs.api_names` requires every public name in the header to appear in at least one of
 [embedding.md](embedding.md), [saves.md](saves.md) and [boards.md](boards.md), and those guides to name nothing the
 header lacks.

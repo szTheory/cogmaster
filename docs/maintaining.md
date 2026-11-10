@@ -151,6 +151,23 @@ line per difference and exits 1 if there was any (`no drift on <repository>` oth
 and after changing anything on the repository's settings page. Change a setting in the script, not by hand, then
 apply it.
 
+## Quality ceilings and floors
+
+`quality.json` holds the measured limits: ceilings `docs.max_bytes`, `size.zip.library`, `size.zip.runner`,
+`size.zip.libretro` and `size.wasm`, floors `tests.ci` and `tests.wasm32`, and a `reasons` list of `{key, reason}`
+entries. `tests/cmake/quality.cmake` checks a measured value against its key and fails naming it. Each limit is
+enforced in one place:
+
+- the `ci` preset checks `docs.max_bytes` (through `docs.budgets`) and the two test-count floors (`policy.quality`);
+- each build leg's `Size ceilings` step checks its three zips after packaging;
+- the `wasm32` lane's `Size ceiling` step checks the runner module.
+
+Each size step also runs a control that an oversize value exits 1 naming the key. Numbers are tightened by hand at a
+tune-up, to about 15 percent above the largest value measured over the six legs. On Linux x64 the build job compares
+the file with the base branch's copy: a ceiling that rises or goes, or a floor that falls or goes, fails unless the
+head's `reasons` holds an entry for that key whose text the base does not already hold. A pull request whose base
+has no `quality.json` passes. Tightening needs no reason.
+
 ## Pinned downloads
 
 Cartridge metadata comes only from the three per-file CC0 MAME hash lists at
