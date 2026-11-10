@@ -571,6 +571,24 @@ uint16_t cogmaster__vdp_backdrop(const cogmaster *m);
    only image[0, n). */
 cogmaster_status cogmaster__cart_probe(const void *image, size_t n, cogmaster_cart_info *out);
 
+/* Store sites to each board's registers found by the board scan: count[]
+   indexed by the family. Sega is the mapper registers; the others are the
+   boards the scan can tell from a store alone. */
+enum {
+    COGMASTER__SCAN_SEGA,
+    COGMASTER__SCAN_KOREAN,
+    COGMASTER__SCAN_ZEMINA,
+    COGMASTER__SCAN_4PAK,
+    COGMASTER__SCAN_JANGGUN,
+    COGMASTER__SCAN_FAMILIES
+};
+struct cogmaster__scan {
+    uint32_t count[COGMASTER__SCAN_FAMILIES];
+};
+/* Counts LD (nn),A stores at instruction boundaries over the first 32 KiB of
+   b[0, body), by family. Reads only that span; no allocation. */
+void cogmaster__cart_scan(const uint8_t *b, size_t body, struct cogmaster__scan *out);
+
 /* Copies a probed image into a new allocator buffer described by out, which
    the caller installs with cogmaster__cart_install. ERR_NO_MEMORY changes
    nothing. */
