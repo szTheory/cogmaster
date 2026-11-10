@@ -3,6 +3,7 @@ created: 2026-10-19
 title: Post-merge ci follow-ups after phase 1 lands on main
 area: ci
 severity: minor
+resolves_phase: 5
 files:
   - .github/workflows/ci.yml
   - .github/workflows/nightly.yml

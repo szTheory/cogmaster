@@ -11,6 +11,20 @@ researchers who need frame-exact, reproducible runs; and porters who need an int
 handhelds and in the browser. The owner tries every release on a Mac in RetroArch and tests with a large
 collection of physical cartridges.
 
+## Current Milestone: v2.0 The whole library
+
+**Goal:** The cartridges and peripherals a collector owns all play, with saves and the PAL and Japan profiles,
+checked against the whole CC0 MAME ledger.
+
+**Target features:**
+- Tune-up first (SEED-007): the v1.0 debt, measured CI timeouts, the perf gate armed, the README's ROM step, the weekly triage digest and `quality.json`
+- The remaining mappers (Korean boards) with hash-database detection
+- Saves: 93C46 EEPROM, `.srm` interop, runner `--save-dir` with atomic writes
+- Peripherals: Light Phaser, Sports Pad, Paddle, 3-D glasses, and the BIOS boot path with the user's own dump
+- Full PAL and Japanese FM profiles over the ledger, and the ledger over the whole CC0 MAME lists, after which `is_experimental` goes
+
+Browser (SEED-008) and SG-1000/SC-3000 (SEED-006) stay dormant.
+
 ## Core Value
 
 Master System and Game Gear games behave as they do on the console, identically on every platform, from a small
@@ -27,7 +41,13 @@ MIT-licensed C library that any host can embed.
 
 ### Active
 
-(None yet: the next milestone's requirements are defined by `/gsd-new-milestone`; candidates are the seeds in `.planning/seeds/`.)
+Milestone v2.0 (scoped in `.planning/REQUIREMENTS.md`):
+
+- [ ] A tune-up that clears the v1.0 CI, perf-gate, review and README debt and adds the triage digest and `quality.json` ratchet
+- [ ] The remaining cartridge mappers detected and played
+- [ ] Saves that round-trip: 93C46 EEPROM, `.srm` interop and atomic `--save-dir` writes
+- [ ] Light Phaser, Sports Pad, Paddle and 3-D glasses at pin level, and the BIOS boot path
+- [ ] PAL and Japanese FM over the ledger, and the ledger over the whole CC0 MAME lists
 
 ### Out of Scope
 
@@ -120,4 +140,4 @@ After each milestone:
 3. Lessons are exported to `.planning/LESSONS.md`.
 
 ---
-*Last updated: 2026-11-10 after v1.0 milestone*
+*Last updated: 2026-11-10 after starting milestone v2.0*

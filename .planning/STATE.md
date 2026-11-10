@@ -1,20 +1,16 @@
 ---
 gsd_state_version: "1.0"
-milestone: v1.0
-milestone_name: SMS and Game Gear games play with sound in RetroArch
-status: Awaiting next milestone
-stopped_at: Milestone v1.0 completed and archived; shipped as v0.4.0
-last_updated: "2026-11-10T00:20:29.894Z"
-last_activity: 2026-11-10
-last_activity_desc: Milestone v1.0 completed and archived
-state_head: 1a75a2bfe75432c3a79eb7fca47a9112df38ff03
+milestone: v2.0
+milestone_name: The whole library
+status: planning
+last_updated: "2026-11-10T01:44:25.100Z"
+last_activity: 2026-11-09
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 62
-  completed_plans: 62
-  percent: 100
-current_phase: 04
+  total_phases: 8
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -24,16 +20,16 @@ current_phase: 04
 See: .planning/PROJECT.md (updated 2026-11-10)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Planning the next milestone
+**Current focus:** Milestone v2.0 The whole library — Phase 5 (Tune-up) next
 
 ## Current Position
 
-Phase: Milestone v1.0 complete
+Phase: 5 of 12 (Tune-up); v2.0 spans phases 5 to 12
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-11-10 — Milestone v1.0 completed and archived (shipped as v0.4.0)
+Status: Roadmap created; ready to discuss phase 5
+Last activity: 2026-11-10 — v2.0 roadmap created (8 phases, 49 of 49 requirements mapped)
 
-Next command: `/gsd-new-milestone`. The archive is in `.planning/milestones/` (v1.0-ROADMAP.md, v1.0-REQUIREMENTS.md, v1.0-MILESTONE-AUDIT.md, v1.0-PRODUCT-ROADMAP.md, v1.0-phases/).
+Progress: [░░░░░░░░░░] 0% of v2.0
 
 ## Performance Metrics
 
@@ -188,6 +184,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-09 | Ship phase 4 (gsd-ship 04, requested by the owner); PR #11 squash-merged on green CI, release PR #12 merged, v0.4.0 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Audit milestone v1.0 (gsd-audit-milestone); integration checker 18/18 wired, 6/6 flows, status tech_debt | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Complete milestone v1.0 (gsd-complete-milestone) | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | New milestone v2.0 The whole library (gsd-new-milestone) | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -215,4 +212,4 @@ Resume file: None
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Branch `phase/05-tune-up` off `origin/main` after the roadmap merges, then run /gsd-discuss-phase 5
