@@ -157,7 +157,7 @@ add keys at the end. Integers are decimal and digests lowercase hexadecimal.
 | `rom_size_code` | the header's size code, 0 to 15 |
 | `machine_guess` | `sms` or `gg`: the machine `--machine auto` runs the file on |
 | `region_guess` | `ntsc-j` for a Japanese region code, else `ntsc-u` |
-| `mapper_guess` | `none` (no mapper, 48 KiB or less), `sega`, `codemasters`, or `unsupported` for an image the core will not load |
+| `mapper_guess` | the board: `none` (no mapper, 48 KiB or less), `sega`, `codemasters`, `korean`, `korean_nb`, `hicom`, `zemina`, `nemesis`, `hes_4pak`, or `unsupported` for an image the core will not load |
 | `sha1`, `sha256`, `crc32`, `md5` | digests of the whole file |
 | `sha1_headerless`, `sha256_headerless`, `crc32_headerless`, `md5_headerless` | the same digests of the file after its copier header, or `none` when it has none |
 | `identified`, `public_identity` | whole-body metadata match, and whether that match is public CC0 data (1) rather than an owned fixture (0) |
@@ -166,13 +166,19 @@ add keys at the end. Integers are decimal and digests lowercase hexadecimal.
 | `persistence_geometry` | 0 no battery geometry, 1 supported power-of-two layout, 2 unsupported persistence geometry |
 | `video_mode` | verified metadata mode: 0 unspecified, 1 SMS, 2 native GG |
 | `identity_sha1`, `title` | body identity, empty on a miss; `title` is always empty since titles left the table |
+| `board_source` | where the board came from: `db` (a database row), `header` (a Codemasters or valid ROM header), `heuristic` (the store-site scan), `default` (a size or an empty scan decided it) or `none` |
+| `board_candidate` | the board the scan pointed at, or `none` |
+| `scan_sega`, `scan_candidate`, `scan_runner_up` | store sites counted for the Sega board, for the leading other family and for the runner-up |
+| `unsupported_id` | the number of the named unsupported board a database row or the scan matched, 0 for none |
+| `unsupported_reason` | that board's name and the reason, empty for none |
 
 Each header field from `checksum` to `rom_size_code` is `none` when the image has no ROM header. `md5` is the
 RetroAchievements hash for both machines: the MD5 of the whole file, copier header included. `crc32` is the value
 RetroArch's playlist scanner matches.
 
 `--probe` runs no emulation. It exits 0, or 77 after printing every key for an image the core will not load
-because of its size or its board.
+because of its size or its board. A run of such an image also exits 77 and its message names the board and the
+reason: the unsupported board's name and reason, or the scan's candidate and its counts when it was not sure.
 
 ## First fault
 
