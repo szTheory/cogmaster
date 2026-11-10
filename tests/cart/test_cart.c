@@ -36,12 +36,13 @@ static cogmaster_status probe(size_t n, cogmaster_cart_info *info)
     return cogmaster_probe(image, n, info);
 }
 
-/* n bytes of a pattern with no $32 byte, so the opcode scan sees no
-   stores. */
+/* n bytes of single-byte Z80 opcodes (LD r,r' at $40 to $64) with no $32
+   byte, so the instruction-aware scan stays aligned and sees no stores; every
+   store written by stores() lies on an instruction boundary. */
 static void fill(size_t n)
 {
     for (size_t i = 0; i < n; i++) {
-        image[i] = (uint8_t)(i % 37u);
+        image[i] = (uint8_t)(0x40u + i % 37u);
     }
 }
 
@@ -176,8 +177,10 @@ static void test_branches(void)
     CHECK_EQ_U64(info.machine_guess, 0);
     CHECK_EQ_U64(info.region_guess, 0);
 
-    /* Above 48 KiB, stores to $A000 (the Korean board's register) outnumber
-       stores to the Sega registers: refused, every other field filled. */
+    /* Above 48 KiB with a header whose checksum is bad (it is not sealed),
+       four stores to $A000 (the Korean board's register) against two to the
+       Sega registers are neither three times the Sega count nor beyond it:
+       the doubt zone refuses, every other field filled. */
     fill(64u * KIB);
     put_header(0u, 0x7FF0u, 4u, 0xEu);
     stores(0xA000u, 4u, 0x100u);
@@ -186,8 +189,12 @@ static void test_branches(void)
                  &info);
     CHECK_EQ_U64(info.region_code, 4);
     CHECK_EQ_U64(info.machine_guess, COGMASTER_MACHINE_SMS2);
-    /* Stores to the Sega registers win: the Sega board. */
+    /* The Sega registers win only at twice the other count plus two (here 10
+       against 4); 6 against 4 is a refusal now. */
     stores(0xFFFFu, 6u, 0x200u);
+    expect_board("$FFFF stores few", 64u * KIB, COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD, 0u, 0x7FF0u,
+                 &info);
+    stores(0xFFFFu, 10u, 0x200u);
     expect_board("$FFFF stores", 64u * KIB, COGMASTER_STATUS_OK, COGMASTER_BOARD_SEGA, 0x7FF0u,
                  &info);
     /* Stores past the first 32 KiB are not scanned. */
@@ -205,6 +212,180 @@ static void test_branches(void)
     put_header(0u, 0x1FF0u, 4u, 0xAu);
     expect_board("8 KiB Master System", 8u * KIB, COGMASTER_STATUS_OK, COGMASTER_BOARD_ROM_ONLY,
                  0x1FF0u, &info);
+}
+
+/* The expected result of one probe: status, board, source, candidate. */
+static void expect_scan(const char *what, size_t n, cogmaster_status status, uint32_t board,
+                        uint32_t source, uint32_t candidate)
+{
+    cogmaster_cart_info info;
+    cogmaster_status st = probe(n, &info);
+    if (st != status || info.board != board || info.board_source != source ||
+        info.board_candidate != candidate) {
+        fprintf(stderr, "%s: status %lu board %lu source %lu candidate %lu\n", what,
+                (unsigned long)st, (unsigned long)info.board, (unsigned long)info.board_source,
+                (unsigned long)info.board_candidate);
+        check_failures++;
+    }
+}
+
+/* The three scan counts of the last probe. */
+static void expect_counts(const char *what, size_t n, uint32_t sega, uint32_t cand, uint32_t runner)
+{
+    cogmaster_cart_info info;
+    (void)probe(n, &info);
+    if (info.scan_sega != sega || info.scan_candidate != cand || info.scan_runner_up != runner) {
+        fprintf(stderr, "%s: counts %lu %lu %lu\n", what, (unsigned long)info.scan_sega,
+                (unsigned long)info.scan_candidate, (unsigned long)info.scan_runner_up);
+        check_failures++;
+    }
+}
+
+/* Zemina stores: targets $0001 to $0003 in turn, count of them. */
+static void zemina_stores(uint32_t count, size_t from)
+{
+    for (uint32_t i = 0; i < count; i++) {
+        stores(1u + i % 3u, 1u, from + 3u * i);
+    }
+}
+
+/* 4 PAK stores: targets $3FFE, $7FFF, $BFFF in turn. */
+static void pak_stores(uint32_t count, size_t from)
+{
+    static const uint32_t t[3] = {0x3FFEu, 0x7FFFu, 0xBFFFu};
+    for (uint32_t i = 0; i < count; i++) {
+        stores(t[i % 3u], 1u, from + 3u * i);
+    }
+}
+
+/* The scan rule: the database, then the Codemasters header, then a valid
+   header, then at most 48 KiB, then store sites at instruction boundaries
+   with a threshold, margins and a fitting geometry; doubt refuses with the
+   candidate named. */
+static void test_scan(void)
+{
+    cogmaster_cart_info info;
+    const cogmaster_status refused = COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD;
+
+    /* A sealed valid header outranks ten Korean-looking stores. */
+    fill(128u * KIB);
+    stores(0xA000u, 10u, 0x100u);
+    put_header(0u, 0x7FF0u, 4u, 0xFu);
+    seal(0u, 0x7FF0u, 0x20000u);
+    expect_scan("decoy", 128u * KIB, COGMASTER_STATUS_OK, COGMASTER_BOARD_SEGA,
+                COGMASTER_BOARD_SOURCE_HEADER, 0u);
+    /* A header whose range reaches past the body is no valid header. */
+    fill(64u * KIB);
+    stores(0xA000u, 10u, 0x100u);
+    put_header(0u, 0x7FF0u, 4u, 0xFu);
+    seal(0u, 0x7FF0u, 0x10000u);
+    expect_scan("range past body", 64u * KIB, COGMASTER_STATUS_OK, COGMASTER_BOARD_KOREAN,
+                COGMASTER_BOARD_SOURCE_HEURISTIC, COGMASTER_BOARD_KOREAN);
+    /* A bad checksum, two Sega and four Korean stores: doubt. */
+    fill(128u * KIB);
+    stores(0xA000u, 4u, 0x100u);
+    stores(0xFFFFu, 2u, 0x200u);
+    put_header(0u, 0x7FF0u, 4u, 0xFu);
+    expect_scan("bad checksum", 128u * KIB, refused, 0u, COGMASTER_BOARD_SOURCE_HEURISTIC,
+                COGMASTER_BOARD_KOREAN);
+    expect_counts("bad checksum counts", 128u * KIB, 2u, 4u, 0u);
+    /* Below the threshold. */
+    fill(128u * KIB);
+    stores(0xA000u, 2u, 0x100u);
+    expect_scan("below threshold", 128u * KIB, refused, 0u, COGMASTER_BOARD_SOURCE_HEURISTIC,
+                COGMASTER_BOARD_KOREAN);
+    /* Ties: five and five against another family, five against the Sega. */
+    fill(128u * KIB);
+    stores(0xA000u, 5u, 0x100u);
+    zemina_stores(5u, 0x200u);
+    expect_scan("tie", 128u * KIB, refused, 0u, COGMASTER_BOARD_SOURCE_HEURISTIC,
+                COGMASTER_BOARD_KOREAN);
+    expect_counts("tie counts", 128u * KIB, 0u, 5u, 5u);
+    fill(128u * KIB);
+    stores(0xA000u, 5u, 0x100u);
+    stores(0xFFFFu, 5u, 0x200u);
+    expect_scan("tie with Sega", 128u * KIB, refused, 0u, COGMASTER_BOARD_SOURCE_HEURISTIC,
+                COGMASTER_BOARD_KOREAN);
+    /* A $32 operand of a load is no store: 3E 32 00 A0 repeated. */
+    for (size_t i = 0; i + 4u <= 64u * KIB; i += 4u) {
+        image[i] = 0x3Eu;
+        image[i + 1u] = 0x32u;
+        image[i + 2u] = 0x00u;
+        image[i + 3u] = 0xA0u;
+    }
+    expect_scan("operand decoy", 64u * KIB, COGMASTER_STATUS_OK, COGMASTER_BOARD_SEGA,
+                COGMASTER_BOARD_SOURCE_DEFAULT, 0u);
+    expect_counts("operand decoy counts", 64u * KIB, 0u, 0u, 0u);
+
+    /* The families, headerless. */
+    fill(128u * KIB);
+    stores(0xA000u, 10u, 0x100u);
+    expect_scan("korean", 128u * KIB, COGMASTER_STATUS_OK, COGMASTER_BOARD_KOREAN,
+                COGMASTER_BOARD_SOURCE_HEURISTIC, COGMASTER_BOARD_KOREAN);
+    expect_counts("korean counts", 128u * KIB, 0u, 10u, 0u);
+    fill(128u * KIB);
+    zemina_stores(10u, 0x100u);
+    expect_scan("zemina", 128u * KIB, COGMASTER_STATUS_OK, COGMASTER_BOARD_ZEMINA,
+                COGMASTER_BOARD_SOURCE_HEURISTIC, COGMASTER_BOARD_ZEMINA);
+    /* The Nemesis signature: DI at the first byte of the last 8 KiB bank and
+       not at byte 0. */
+    image[120u * KIB] = 0xF3u;
+    expect_scan("nemesis", 128u * KIB, COGMASTER_STATUS_OK, COGMASTER_BOARD_NEMESIS,
+                COGMASTER_BOARD_SOURCE_HEURISTIC, COGMASTER_BOARD_NEMESIS);
+    image[0] = 0xF3u;
+    expect_scan("nemesis byte 0", 128u * KIB, COGMASTER_STATUS_OK, COGMASTER_BOARD_ZEMINA,
+                COGMASTER_BOARD_SOURCE_HEURISTIC, COGMASTER_BOARD_ZEMINA);
+    fill(128u * KIB);
+    pak_stores(10u, 0x100u);
+    expect_scan("4 PAK", 128u * KIB, COGMASTER_STATUS_OK, COGMASTER_BOARD_4PAK,
+                COGMASTER_BOARD_SOURCE_HEURISTIC, COGMASTER_BOARD_4PAK);
+    /* Janggun is named, not played. */
+    fill(128u * KIB);
+    stores(0x6000u, 10u, 0x100u);
+    expect_scan("janggun", 128u * KIB, refused, 0u, COGMASTER_BOARD_SOURCE_HEURISTIC, 0u);
+    (void)probe(128u * KIB, &info);
+    CHECK(info.unsupported_id != 0u);
+    CHECK(strstr(info.unsupported_reason, "reverse bit") != NULL);
+    /* A Game Gear region header, bad checksum, never selects a Korean board. */
+    fill(128u * KIB);
+    stores(0xA000u, 10u, 0x100u);
+    put_header(0u, 0x7FF0u, 6u, 0xFu);
+    expect_scan("game gear", 128u * KIB, refused, 0u, COGMASTER_BOARD_SOURCE_HEURISTIC,
+                COGMASTER_BOARD_KOREAN);
+    /* Geometry: 136 KiB is not whole 16 KiB pages, 64 KiB is not over 64 KiB. */
+    fill(136u * KIB);
+    stores(0xA000u, 10u, 0x100u);
+    expect_scan("korean geometry", 136u * KIB, refused, 0u, COGMASTER_BOARD_SOURCE_HEURISTIC,
+                COGMASTER_BOARD_KOREAN);
+    fill(64u * KIB);
+    zemina_stores(10u, 0x100u);
+    expect_scan("zemina geometry", 64u * KIB, refused, 0u, COGMASTER_BOARD_SOURCE_HEURISTIC,
+                COGMASTER_BOARD_ZEMINA);
+    /* Ten Sega and four Korean stores: the Sega board by the margin. */
+    fill(128u * KIB);
+    stores(0xFFFFu, 10u, 0x100u);
+    stores(0xA000u, 4u, 0x200u);
+    expect_scan("sega margin", 128u * KIB, COGMASTER_STATUS_OK, COGMASTER_BOARD_SEGA,
+                COGMASTER_BOARD_SOURCE_HEURISTIC, COGMASTER_BOARD_KOREAN);
+
+    /* A copier header in front of a Korean image. */
+    fill(128u * KIB + 512u);
+    stores(0xA000u, 10u, 512u + 0x100u);
+    expect_scan("copier korean", 128u * KIB + 512u, COGMASTER_STATUS_OK, COGMASTER_BOARD_KOREAN,
+                COGMASTER_BOARD_SOURCE_HEURISTIC, COGMASTER_BOARD_KOREAN);
+    (void)probe(128u * KIB + 512u, &info);
+    CHECK_EQ_U64(info.body_offset, 512);
+    /* A body of exactly 1 MiB with a copier header is probed. */
+    fill(MIB + 512u);
+    (void)probe(MIB + 512u, &info);
+    CHECK_EQ_U64(info.board, COGMASTER_BOARD_SEGA);
+    CHECK_EQ_U64(info.board_source, COGMASTER_BOARD_SOURCE_DEFAULT);
+    /* Prefix bytes only: the sweep takes one byte per prefix and returns. */
+    memset(image, 0xDD, MIB);
+    CHECK_EQ_U64(probe(MIB, &info), COGMASTER_STATUS_OK);
+    memset(image, 0xED, MIB);
+    CHECK_EQ_U64(probe(MIB, &info), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(info.scan_candidate, 0);
 }
 
 /* splitmix64 (Steele, Lea and Flood, 2014): a seeded sequence the same on
@@ -331,6 +512,7 @@ static const struct {
 } cases[] = {
     {"probe.branches", test_branches},
     {"probe.pure", test_pure},
+    {"probe.scan", test_scan},
     {"probe.sizes", test_sizes},
 };
 
