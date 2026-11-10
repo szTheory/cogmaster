@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 5
 current_phase_name: Tune-up
 status: executing
-stopped_at: Completed 05-05-PLAN.md
-last_updated: "2026-11-10T04:40:06.983Z"
+stopped_at: Completed 05-08-PLAN.md (runtime Claude Code, model Sonnet 5.5)
+last_updated: "2026-11-10T04:42:32.321Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 5 execution started
-state_head: bf31c18693cf6499b2cf4d52dcfab0dcfff60d3e
+state_head: 02274334b60bcae9167ce5e095df257896ace193
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 14
-  completed_plans: 6
+  completed_plans: 7
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 5 (Tune-up) — EXECUTING
-Plan: 7 of 14
+Plan: 8 of 14
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 5 execution started
 
@@ -129,6 +129,7 @@ Progress: [░░░░░░░░░░] 0% of v2.0
 | Phase 05 P07 | 20min | 1 tasks | 6 files |
 | Phase 05 P04 | 12min | 2 tasks | 6 files |
 | Phase 05 P05 | 8min | 2 tasks | 10 files |
+| Phase 05 P08 | 10min | 1 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -144,6 +145,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 05]: 05-04: wasm32 is in hash-equality (COUNT 8) and CI required's needs after 12 equal main runs; the report-only exemption is deleted from ci_required, its tests and docs
 - [Phase 05]: quality.json floors set to 410 (ci) and 385 (wasm32) after plan 05-05's inventory additions; plan 05-14 sets final values
 - [Phase 05]: Added docs.budgets.no_quality control for budgets.cmake's missing quality.json failure path
+- [Phase 05]: 05-08: nightly report comment keeps only the true reason (needs.*.result); hardware comments cite preparation sections on one source line
 
 ### Pending Todos
 
@@ -231,8 +233,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T04:40:06.958Z
-Stopped at: Completed 05-05-PLAN.md
+Last session: 2026-11-10T04:42:32.170Z
+Stopped at: Completed 05-08-PLAN.md (runtime Claude Code, model Sonnet 5.5)
 Resume file: None
 
 ## Operator Next Steps
