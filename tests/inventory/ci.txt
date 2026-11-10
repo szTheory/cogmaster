@@ -230,6 +230,9 @@ policy.compat_doc_fresh.self_test	compat,policy
 policy.e2e_budget	hygiene,policy
 policy.e2e_budget.self_test	hygiene,policy
 policy.e2e_budget.shared_helper	hygiene,policy
+policy.lessons_unique	policy
+policy.lessons_unique.empty	policy
+policy.lessons_unique.self_test	policy
 policy.no_skip	policy
 policy.no_skip.self_test	policy
 policy.notices	policy

@@ -57,3 +57,23 @@ foreach(case below equal unclassified helper helper_unclassified doc_over no_qua
       LABELS ${budget_labels} TIMEOUT 10)
   endif()
 endforeach()
+
+# The lessons ledger holds unique IDs. This file is shared with the hygiene
+# lane, so a pull request that only touches .planning runs the check too.
+set(lessons_dir ${PROJECT_BINARY_DIR}/policy/lessons)
+file(REMOVE_RECURSE ${lessons_dir})
+file(WRITE ${lessons_dir}/duplicate.md "| XFER-001 | one |\n| XFER-002 | two |\n| XFER-001 | three |\n")
+file(WRITE ${lessons_dir}/empty.md "Lesson <ID> (the template line only)\n")
+set(lessons_command ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCHECK=lessons_unique)
+cogmaster_add_test(NAME policy.lessons_unique
+  COMMAND ${lessons_command} -DDOC=${PROJECT_SOURCE_DIR}/.planning/LESSONS.md -P ${policy_scripts}/repository.cmake
+  LABELS ${budget_labels} TIMEOUT 10)
+function(lessons_control name fixture regex)
+  set(command ${lessons_command} -DDOC=${lessons_dir}/${fixture}.md -P ${policy_scripts}/repository.cmake)
+  string(REPLACE ";" "$<SEMICOLON>" command "${command}")
+  cogmaster_add_test(NAME policy.lessons_unique.${name}
+    COMMAND ${CMAKE_COMMAND} "-DCMD=${command}" -DCODE=1 "-DREGEX=${regex}" -P ${policy_scripts}/expect_fail.cmake
+    LABELS ${budget_labels} TIMEOUT 10)
+endfunction()
+lessons_control(self_test duplicate "lessons_unique: XFER-001")
+lessons_control(empty empty "lessons_unique: no lesson IDs")

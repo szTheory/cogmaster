@@ -32,6 +32,9 @@ policy.compat_doc_fresh.self_test	compat,hygiene,policy
 policy.e2e_budget	hygiene,policy
 policy.e2e_budget.self_test	hygiene,policy
 policy.e2e_budget.shared_helper	hygiene,policy
+policy.lessons_unique	hygiene,policy
+policy.lessons_unique.empty	hygiene,policy
+policy.lessons_unique.self_test	hygiene,policy
 policy.pins	hygiene,policy
 policy.pins.self_test	hygiene,policy
 policy.publish_ref	hygiene,policy

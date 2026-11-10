@@ -143,5 +143,10 @@ exit_table)
   /^exit status:$/ {table=1; next}
   table && NF {n++; if(!($0 in doc)) {print "document lacks the exit status line: " $0; bad=1}}
   END {if(!n || n!=documented) {print "exit_table: mismatched exit status lines"; bad=1} exit bad}' "$RUN_HELP" ;;
+lessons_unique)
+  # A reused lesson ID makes a cross-project ledger ambiguous. IDs come from table rows and from exported-template lines.
+  [ -f "$DOC" ] || fail 'lessons_unique: DOC must name a file'
+  awk '/^\| (XFER-[0-9]+|CM-[A-Z]+-[0-9]+) \|/ || /^Lesson (XFER|CM)-/ { n++; if(seen[$2]++ == 1) {print "lessons_unique: " $2 " appears twice"; bad=1} }
+  END { if(!n) {print "lessons_unique: no lesson IDs in " ENVIRON["DOC"]; bad=1} else print "lessons_unique: " n " IDs"; exit bad }' "$DOC" ;;
 *) fail "unknown repository check: $1" ;;
 esac
