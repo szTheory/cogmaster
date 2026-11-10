@@ -165,7 +165,7 @@ add keys at the end. Integers are decimal and digests lowercase hexadecimal.
 | `persistent_size` | declared persistent byte count, independently of mapper allocation |
 | `persistence_geometry` | 0 no battery geometry, 1 supported power-of-two layout, 2 unsupported persistence geometry |
 | `video_mode` | verified metadata mode: 0 unspecified, 1 SMS, 2 native GG |
-| `identity_sha1`, `title` | body identity and metadata title; empty on a miss |
+| `identity_sha1`, `title` | body identity, empty on a miss; `title` is always empty since titles left the table |
 
 Each header field from `checksum` to `rom_size_code` is `none` when the image has no ROM header. `md5` is the
 RetroAchievements hash for both machines: the MD5 of the whole file, copier header included. `crc32` is the value

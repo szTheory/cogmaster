@@ -187,15 +187,17 @@ cogmaster_status cogmaster__cart_fact_to_info(const struct cogmaster__cart_fact 
     if (slot != NULL && slot->reason[0] != 0) {
         size_t k = 0u;
         out->unsupported_id = slot->id;
-        for (size_t i = 0u; i < sizeof slot->name && slot->name[i] != 0 &&
-                            k < sizeof out->unsupported_reason - 1u; i++)
+        for (size_t i = 0u;
+             i < sizeof slot->name && slot->name[i] != 0 && k < sizeof out->unsupported_reason - 1u;
+             i++)
             out->unsupported_reason[k++] = slot->name[i];
         if (k < sizeof out->unsupported_reason - 2u) {
             out->unsupported_reason[k++] = ':';
             out->unsupported_reason[k++] = ' ';
         }
         for (size_t i = 0u; i < sizeof slot->reason && slot->reason[i] != 0 &&
-                            k < sizeof out->unsupported_reason - 1u; i++)
+                            k < sizeof out->unsupported_reason - 1u;
+             i++)
             out->unsupported_reason[k++] = slot->reason[i];
         out->unsupported_reason[k] = 0;
     }

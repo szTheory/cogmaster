@@ -15,7 +15,7 @@ prints aggregate counts only. These bounded observations establish no playable, 
 To propose a public update, run `sh scripts/compat-update.sh build/library/results/public-facts.csv`.
 Stdout is a candidate ledger; review it before replacing `tests/compat/ledger.csv` and regenerating
 `docs/compatibility.md`. Only already seeded cases with a CC0 public identity and the exact accepted
-predicate, configuration and expectation can change. Titles come from `src/cartdb.inc`; filenames and
+predicate, configuration and expectation can change. Titles come from `tests/compat/catalog.tsv`; filenames and
 local evidence are discarded. The update permits only the fixed predicate status, valid date and current
 core commit. Unknown IDs, new predicates or golden values, changed profiles, and fixture updates are
 discarded; extra columns and invalid dates reject. Owned fixtures stay managed by the reproducible CI

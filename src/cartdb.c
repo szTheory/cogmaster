@@ -65,7 +65,8 @@ const struct cogmaster__cart_slot *cogmaster__cartdb_slot_named(const char *name
 {
     for (size_t i = 0; i < SLOT_COUNT; i++) {
         size_t k = 0;
-        while (k < sizeof cartdb_slots[i].name && cartdb_slots[i].name[k] == name[k] && name[k] != 0)
+        while (k < sizeof cartdb_slots[i].name && cartdb_slots[i].name[k] == name[k] &&
+               name[k] != 0)
             k++;
         if (k < sizeof cartdb_slots[i].name && cartdb_slots[i].name[k] == name[k])
             return &cartdb_slots[i];

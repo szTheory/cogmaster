@@ -10,8 +10,11 @@ How an image is probed and which cartridge board it gets. The calls and structs 
 `persistent_size` is the declared extent, independent of mapper decoding. `persistence_geometry` is
 `COGMASTER_GEOMETRY_NONE`, `COGMASTER_GEOMETRY_SUPPORTED` or `COGMASTER_GEOMETRY_UNSUPPORTED`.
 Unknown/unsupported geometry provides no persistent span. `identified` means a whole-body SHA-1 match;
-`public_identity` distinguishes public CC0 identities from owned fixture facts. `sha1` and `title` are
-zero-terminated identity strings, empty on a miss. `video_mode` carries a verified GG SMS-mode fact.
+`public_identity` distinguishes public CC0 identities from owned fixture facts. `sha1` is a zero-terminated
+identity string, empty on a miss. `title` is always empty: titles live in `tests/compat/catalog.tsv`, not in the
+core. A database hit sets `board_source` to `COGMASTER_BOARD_SOURCE_DB`. A database row may be unsupported by
+design: the probe returns `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD` with `board` 0, the row's slot id in
+`unsupported_id` and `<slot>: <reason>` in `unsupported_reason`. `video_mode` carries a verified GG SMS-mode fact.
 Old 52-byte output tags leave the appended fields untouched. AUTO machine/region use table/header facts
 before defaults; explicit choices win. These facts are independent of compatibility-ledger membership.
 The probe reads only the `n` bytes

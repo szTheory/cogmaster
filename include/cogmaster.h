@@ -242,7 +242,7 @@ typedef struct cogmaster_cart_info {
     uint32_t board_source;    /* COGMASTER_BOARD_SOURCE_*, 0 when no board was guessed */
     uint32_t board_candidate; /* board the scan pointed at, 0 for none */
     uint32_t scan_sega, scan_candidate, scan_runner_up; /* store-site counts */
-    uint32_t unsupported_id;  /* slot id of an unsupported-by-design row, 0 for none */
+    uint32_t unsupported_id;      /* slot id of an unsupported-by-design row, 0 for none */
     char unsupported_reason[128]; /* "<slot>: <reason>", empty for none */
 } cogmaster_cart_info;
 

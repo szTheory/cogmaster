@@ -44,6 +44,8 @@ int main(int argc, char **argv)
         CHECK_EQ_U64(cogmaster_probe(fixture, n, &p), COGMASTER_STATUS_OK);
         CHECK_EQ_U64(p.identified, 1u);
         CHECK_EQ_U64(p.public_identity, 0u);
+        CHECK_EQ_U64(p.title[0], 0u);
+        CHECK_EQ_U64(p.board_source, COGMASTER_BOARD_SOURCE_DB);
         CHECK_EQ_U64(p.persistence, COGMASTER_PERSISTENCE_BATTERY);
         CHECK_EQ_U64(p.persistent_size, 32768u);
         CHECK_EQ_U64(p.persistence_geometry, COGMASTER_GEOMETRY_SUPPORTED);
@@ -79,8 +81,7 @@ int main(int argc, char **argv)
         CHECK_EQ_U64(p.body_offset, 512u);
         CHECK_DONE();
     }
-    const struct cogmaster__cart_fact *f =
-        find_hex("0dad260b5357b2f61d1452bb73d8321ca53d7262");
+    const struct cogmaster__cart_fact *f = find_hex("0dad260b5357b2f61d1452bb73d8321ca53d7262");
     CHECK(f != NULL);
     if (f) {
         CHECK_EQ_U64(f->persistence, COGMASTER_PERSISTENCE_BATTERY);
@@ -96,6 +97,73 @@ int main(int argc, char **argv)
         CHECK_EQ_U64(f->persistence, COGMASTER_PERSISTENCE_NONE);
         CHECK_EQ_U64(f->flags & 1u, 1u);
     }
+    /* The named unsupported rows probe through the real table: board 0, the slot id and a reason.
+     */
+    static const char *const named[3] = {"seojin", "korean_188in1", "janggun"};
+    static const char *const reason[3] = {"$FFF0", "menu entries 6 and 13", "reverse bit"};
+    for (size_t k = 0; k < 3u; k++) {
+        const struct cogmaster__cart_slot *slot = cogmaster__cartdb_slot_named(named[k]);
+        CHECK(slot != NULL);
+        const struct cogmaster__cart_fact *row = NULL;
+        for (size_t i = 0; slot != NULL && (row = cogmaster__cartdb_row(i)) != NULL; i++)
+            if (row->slot == slot->id)
+                break;
+        CHECK(row != NULL);
+        if (slot == NULL || row == NULL)
+            continue;
+        cogmaster_cart_info named_info = {0};
+        named_info.size = sizeof named_info;
+        CHECK_EQ_U64(cogmaster__cart_fact_to_info(row, &named_info),
+                     COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD);
+        CHECK_EQ_U64(named_info.board, 0u);
+        CHECK_EQ_U64(named_info.unsupported_id, slot->id);
+        CHECK(strncmp(named_info.unsupported_reason, named[k], strlen(named[k])) == 0);
+        CHECK(strstr(named_info.unsupported_reason, reason[k]) != NULL);
+        CHECK_EQ_U64(named_info.title[0], 0u);
+        CHECK_EQ_U64(named_info.board_source, COGMASTER_BOARD_SOURCE_DB);
+    }
+    /* A slot is a board or a reason, never both. */
+    for (uint32_t id = 1; id <= 20u; id++) {
+        const struct cogmaster__cart_slot *slot = cogmaster__cartdb_slot(id);
+        CHECK(slot != NULL);
+        if (slot != NULL)
+            CHECK_EQ_U64(slot->board == 0u, slot->reason[0] != 0);
+    }
+    CHECK(cogmaster__cartdb_slot(0) == NULL);
+    CHECK(cogmaster__cartdb_slot_named("zz_new") == NULL);
+    /* Every supported board owns at least one row, so a slot-to-board slip fails here. */
+    static const uint8_t supported[3] = {COGMASTER_BOARD_ROM_ONLY, COGMASTER_BOARD_SEGA,
+                                         COGMASTER_BOARD_CODEMASTERS};
+    uint32_t per_board[3] = {0, 0, 0};
+    uint32_t per_persistence[4] = {0, 0, 0, 0};
+    uint32_t per_ctrl1[5] = {0}, per_ctrl2[5] = {0};
+    for (size_t i = 0;; i++) {
+        const struct cogmaster__cart_fact *row = cogmaster__cartdb_row(i);
+        if (row == NULL)
+            break;
+        for (size_t b = 0; b < 3u; b++)
+            per_board[b] += row->board == supported[b];
+        CHECK(row->persistence < 4u && row->ctrl1 < 5u && row->ctrl2 < 5u);
+        if (row->persistence < 4u && row->ctrl1 < 5u && row->ctrl2 < 5u) {
+            per_persistence[row->persistence]++;
+            per_ctrl1[row->ctrl1]++;
+            per_ctrl2[row->ctrl2]++;
+        }
+    }
+    for (size_t b = 0; b < 3u; b++)
+        CHECK(per_board[b] > 0u);
+    /* Row counts from the pinned lists: EEPROM, battery, and the controller defaults. */
+    CHECK_EQ_U64(per_persistence[2], 63u);
+    CHECK_EQ_U64(per_persistence[3], 7u);
+    CHECK_EQ_U64(per_ctrl1[0], 1636u);
+    CHECK_EQ_U64(per_ctrl1[1], 13u);
+    CHECK_EQ_U64(per_ctrl1[2], 4u);
+    CHECK_EQ_U64(per_ctrl1[3], 3u);
+    CHECK_EQ_U64(per_ctrl1[4], 1u);
+    CHECK_EQ_U64(per_ctrl2[0], 1652u);
+    CHECK_EQ_U64(per_ctrl2[1], 1u);
+    CHECK_EQ_U64(per_ctrl2[2], 1u);
+    CHECK_EQ_U64(per_ctrl2[3], 3u);
     static const uint8_t magic[8] = {0x54, 0x4d, 0x52, 0x20, 0x53, 0x45, 0x47, 0x41};
     memcpy(image + 0x7ff0, magic, 8);
     image[0x7fff] = 0x6c;
