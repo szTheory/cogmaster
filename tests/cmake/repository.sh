@@ -78,7 +78,7 @@ api_version)
   awk 'BEGIN {
   while((getline s < ENVIRON["HEADER"])>0) h=h s "\n";
   v=h; sub(/^.*#define COGMASTER_API_VERSION /,"",v); sub(/[^0-9].*$/,"",v);
-  if(v !~ /^[0-9]+$/) {print "defines no COGMASTER_API_VERSION"; exit 1}
+  if(v !~ /^[0-9]+$/) {print "defines no COGMASTER_API_VERSION"; exit 1} v+=0;
   path=ENVIRON["API_DIR"] "/v" v ".c";
   if((getline s < path)<0) {print path " is missing for API version " v; exit 1} close(path);
   for(k=1;k<=v;k++) {path=ENVIRON["API_DIR"] "/v" k ".c"; while((getline s < path)>0) tests=tests " " s " "; close(path)}
