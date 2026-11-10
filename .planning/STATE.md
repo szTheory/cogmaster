@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 6
 current_phase_name: Korean cartridges play
 status: executing
-stopped_at: Completed 06-04-PLAN.md (runtime claude, model claude-sonnet-5-5)
-last_updated: "2026-11-10T08:26:33.276Z"
+stopped_at: Completed 06-05-PLAN.md (runtime claude, model claude-sonnet-5-5)
+last_updated: "2026-11-10T08:29:06.322Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 5 complete, transitioned to Phase 6
-state_head: c75ed9bfa95014e2b5f8412a248c66df1fe9e5fa
+state_head: da095b0b349373e82d6f7a92a1ad7e11b09818cb
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 25
-  completed_plans: 18
+  completed_plans: 19
   percent: 13
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 6 — Korean cartridges play
-Plan: 5 of 11
+Plan: 6 of 11
 Status: Ready to execute
 Last activity: 2026-11-10 — Completed 06-01 (cartridge generator slot table)
 
@@ -142,6 +142,7 @@ Progress: [█░░░░░░░░░] 13% of v2.0
 | Phase 06 P02 | 15min | 2 tasks | 8 files |
 | Phase 06 P03 | 40 min | 2 tasks | 11 files |
 | Phase 06 P04 | 40 min | 2 tasks | 5 files |
+| Phase 06 P05 | 12 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -172,6 +173,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 06]: 06-02: the cart_info appended block starts at the version 9 size 376 and adds 152 bytes; api_version compares the API number as a number because awk sub() leaves a string and k<=v stopped scanning older programs at API 10
 - [Phase 06]: 06-03: the library reads 36-byte rows by binary search with titles in tests/compat/catalog.tsv; the old table equals the new one outside the EEPROM persistence column; the slot-by-name lookup is a bounded loop because strcmp is not linkable
 - [Phase 06]: Mapper reset clears the whole struct; ext boards live behind the default arms in mapper_ext.c; boot_to_play delta_bp=0 vs main 8c97f8e (runs 42781709144, 42781713344)
+- [Phase 06]: size.cartdb starts at the 100 KB hard bound (102400); a follow-up replaces it with the first hosted Linux x64 value plus about 15 percent. The pin check is a mode of cart.generator so no inventory changes.
 
 ### Pending Todos
 
@@ -267,8 +269,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T08:26:33.212Z
-Stopped at: Completed 06-04-PLAN.md (runtime claude, model claude-sonnet-5-5)
+Last session: 2026-11-10T08:29:06.270Z
+Stopped at: Completed 06-05-PLAN.md (runtime claude, model claude-sonnet-5-5)
 Resume file: None
 
 ## Operator Next Steps

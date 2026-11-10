@@ -22,8 +22,8 @@ Requirements for this milestone. Each maps to one roadmap phase. Scope decisions
 
 ### Mappers
 
-- [ ] **MAP-01**: The cartridge generator maps every pinned MAME slot to a board or to an explicit unsupported-by-design list, fails on an unmapped slot, and prints a count per slot
-- [ ] **MAP-02**: The hash table row holds a binary SHA-1 and fixed-width facts with titles moved to the ledger side, and `cartdb.c.o` is under 100 KB
+- [x] **MAP-01**: The cartridge generator maps every pinned MAME slot to a board or to an explicit unsupported-by-design list, fails on an unmapped slot, and prints a count per slot
+- [x] **MAP-02**: The hash table row holds a binary SHA-1 and fixed-width facts with titles moved to the ledger side, and `cartdb.c.o` is under 100 KB
 - [ ] **MAP-03**: A Korean `$A000`, Hicom, Zemina, Nemesis or `korean_nb` cartridge in the CC0 lists loads and plays with no setting
 - [ ] **MAP-04**: A Janggun or 4PAK cartridge plays, or its ledger row is `unsupported` and names why
 - [ ] **MAP-05**: Seo Jin and 188-in-1 appear as `unsupported` rows that name what fails, and the runner exits 77 for them
@@ -119,8 +119,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TUNE-08 | Phase 5 | Complete |
 | TUNE-09 | Phase 5 | Complete |
 | TUNE-10 | Phase 5 | Complete |
-| MAP-01 | Phase 6 | Pending |
-| MAP-02 | Phase 6 | Pending |
+| MAP-01 | Phase 6 | Complete |
+| MAP-02 | Phase 6 | Complete |
 | MAP-03 | Phase 6 | Pending |
 | MAP-04 | Phase 6 | Pending |
 | MAP-05 | Phase 6 | Pending |
