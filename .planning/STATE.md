@@ -193,6 +193,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-10 | Complete milestone v1.0 (gsd-complete-milestone) | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | New milestone v2.0 The whole library (gsd-new-milestone) | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Discuss phase 5 (gsd-autonomous, owner-authorised override of rule 9); five advisors plus adversarial pass | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Execute phase 5 plan 05-01 (gsd-execute-phase 05); two zero-spread perf control runs on main (42752737395, 42752770307), docs split into hosted, perf-fuzz, saves and boards, docs.api_names reads a guide list; 2 tasks, 1 commit | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Plan phase 5 (gsd-plan-phase 5); 14 plans, checker 0 blockers after two revisions | Claude Code | claude-sonnet-5-5 (planner claude-opus-5-5) |
 
 ## Deferred Items
@@ -222,4 +223,3 @@ Resume file: None
 ## Operator Next Steps
 
 - Branch `phase/05-tune-up` off `origin/main` after the roadmap merges, then run /gsd-discuss-phase 5
-| 2026-11-10 | Execute phase 5 plan 05-01 (gsd-execute-phase 05); two zero-spread perf control runs on main (42752737395, 42752770307), docs split into hosted, perf-fuzz, saves and boards, docs.api_names reads a guide list; 2 tasks, 1 commit | Claude Code | claude-sonnet-5-5 |
