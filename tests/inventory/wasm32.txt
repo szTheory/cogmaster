@@ -124,8 +124,13 @@ fixtures.hello	fixtures,portable
 fixtures.judge.hang	fixtures,portable
 fixtures.judge.missing_row	fixtures,portable
 fixtures.judge.wrong_value	fixtures,portable
+fixtures.korean_probe	fixtures,portable
+fixtures.korean_probe_control	fixtures,portable
 fixtures.mapper_codemasters	fixtures,portable
+fixtures.mapper_hes_4pak	fixtures,portable
+fixtures.mapper_korean	fixtures,portable
 fixtures.mapper_sega	fixtures,portable
+fixtures.mapper_zemina	fixtures,portable
 fixtures.ports.gg	fixtures,portable
 fixtures.ports.sms-export	fixtures,portable
 fixtures.ports.sms-japan	fixtures,portable

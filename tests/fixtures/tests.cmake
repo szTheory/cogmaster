@@ -121,6 +121,26 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(NOT rc STREQUAL "0" OR NOT out MATCHES "(^|\n)checksum_ok=1\n")
       message(FATAL_ERROR "--probe ${IMAGE}: expected exit 0 and checksum_ok=1, got exit ${rc}\n${out}")
     endif()
+  elseif(CASE STREQUAL "probe")
+    # The runner's probe finds each board in BOARDS (comma separated) by the scan: board_source is
+    # SOURCE (default heuristic), the board is named for the image, and no ROM header was read.
+    if(NOT SOURCE)
+      set(SOURCE heuristic)
+    endif()
+    string(REPLACE "," ";" boards "${BOARDS}")
+    foreach(board IN LISTS boards)
+      execute_process(COMMAND ${EMULATOR} ${RUN} --probe ${DIR}/mapper_${board}.sms
+        RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+      if(NOT rc STREQUAL "0")
+        message(FATAL_ERROR "korean_probe: --probe ${board}: exit ${rc}\n${err}")
+      endif()
+      if(NOT out MATCHES "(^|\n)board_source=${SOURCE}\n")
+        message(FATAL_ERROR "korean_probe: board_source of ${board} is not ${SOURCE}\n${out}")
+      endif()
+      if(NOT out MATCHES "(^|\n)mapper_guess=${board}\n" OR NOT out MATCHES "(^|\n)header_magic=0\n")
+        message(FATAL_ERROR "korean_probe: ${board} is not found by the scan with no header\n${out}")
+      endif()
+    endforeach()
   elseif(CASE STREQUAL "mailbox")
     # The runner prints the image's mailbox, at most FRAMES frames in, into
     # OUT; mailbox.cmake (JUDGE) then judges it against CSV for PROFILE.
@@ -457,6 +477,38 @@ cogmaster_add_test(NAME fixtures.mapper_codemasters
     -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/mapper_codemasters.txt
     -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS fixtures portable TIMEOUT 10)
+# Fault prevented: a Korean-family board that pages the wrong bank, does not wrap, or answers the
+# Sega registers other than as documented, or an image the scan sends to another board.
+foreach(board IN ITEMS korean zemina hes_4pak)
+  # Timeout: 10 s floor; 0.02 s slowest local run, no hosted run yet, so provisional.
+  cogmaster_add_test(NAME fixtures.mapper_${board}
+    COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=mapper_${board} -DMACHINE=sms
+      -DIMAGE=${COGMASTER_FIXTURES_DIR}/mapper_${board}.sms -DFRAMES=120
+      -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/mapper_${board}.txt
+      -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures portable TIMEOUT 10)
+endforeach()
+# Fault prevented: a Korean-family image the scan does not find, or finds as another board, with
+# no header and no setting: each of the three must print board_source=heuristic and its own name.
+set(fixtures_probe -DCASE=probe -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+  -DNAME=mapper_korean -DIMAGE=${COGMASTER_FIXTURES_DIR}/mapper_korean.sms
+  -DDIR=${COGMASTER_FIXTURES_DIR} -DBOARDS=korean,zemina,hes_4pak -DRUN=$<TARGET_FILE:cogmaster-run>)
+# Timeout: 10 s floor; 0.02 s slowest local run, no hosted run yet, so provisional.
+cogmaster_add_test(NAME fixtures.korean_probe
+  COMMAND ${CMAKE_COMMAND} ${fixtures_probe} "-DEMULATOR=${fixtures_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 10)
+# Fault prevented: a probe check that passes whatever board_source the runner prints. The same
+# case expects database, which the scan never reports for these images, and must fail naming it.
+string(REPLACE ";" "\;" fixtures_probe_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
+set(cmd ${CMAKE_COMMAND} ${fixtures_probe} "-DEMULATOR=${fixtures_probe_emulator}" -DSOURCE=database
+  -P ${CMAKE_CURRENT_LIST_FILE})
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+# Timeout: 10 s floor; 0.02 s slowest local run, no hosted run yet, so provisional.
+cogmaster_add_test(NAME fixtures.korean_probe_control
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=korean_probe: board_source"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+  LABELS fixtures portable TIMEOUT 10)
+set_tests_properties(fixtures.korean_probe_control PROPERTIES DEPENDS fixtures.korean_probe)
 # Fault prevented: unjudged guest counter/IRQ/status measurements.
 foreach(tv IN ITEMS ntsc pal)
   set(region ntsc-u)

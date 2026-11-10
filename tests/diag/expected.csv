@@ -164,3 +164,39 @@ fm_sweep,04:rhythm_frames,*,007E,derived,owned ROM FM script segment
 fm_sweep,05:rhythm_writes,*,0027,derived,owned ROM FM script segment
 fm_sweep,06:control_frames,*,00D6,derived,owned ROM FM script segment
 fm_sweep,07:control_writes,*,002F,derived,owned ROM FM script segment
+mapper_korean,01:reset_banks_0_1,*,0100,doc,MAME rom.cpp sega8_korean_device at 1d7a454ed79e
+mapper_korean,02:reset_banks_2_3,*,0302,doc,MAME rom.cpp sega8_korean_device at 1d7a454ed79e
+mapper_korean,03:reset_banks_4_5,*,0504,doc,MAME rom.cpp sega8_korean_device at 1d7a454ed79e
+mapper_korean,04:a000_page_3,*,0706,doc,MAME rom.cpp sega8_korean_device at 1d7a454ed79e
+mapper_korean,05:a000_page_7,*,0F0E,doc,MAME rom.cpp sega8_korean_device at 1d7a454ed79e
+mapper_korean,06:a000_wrap_10,*,0504,doc,SMS-CARTRIDGES section 2.4
+mapper_korean,07:a000_wrap_ff,*,0F0E,doc,SMS-CARTRIDGES section 2.4
+mapper_korean,08:slots_0_1_fixed,*,0100,doc,MAME rom.cpp sega8_korean_device at 1d7a454ed79e
+mapper_korean,09:slots_2_3_fixed,*,0302,doc,MAME rom.cpp sega8_korean_device at 1d7a454ed79e
+mapper_korean,0A:fffc_ffff_slots_0_1,*,0100,doc,MAME rom.cpp sega8_korean_device at 1d7a454ed79e
+mapper_korean,0B:fffc_ffff_slots_2_3,*,0302,doc,MAME rom.cpp sega8_korean_device at 1d7a454ed79e
+mapper_korean,0C:fffc_ffff_slot_2,*,0B0A,doc,MAME rom.cpp sega8_korean_device at 1d7a454ed79e
+mapper_korean,0D:page_sum,*,4038,doc,MAME rom.cpp sega8_korean_device at 1d7a454ed79e
+mapper_zemina,01:reset_banks_0_1,*,0100,doc,MAME rom.cpp sega8_zemina_device at 1d7a454ed79e
+mapper_zemina,02:reset_banks_2_3,*,0302,doc,MAME rom.cpp sega8_zemina_device at 1d7a454ed79e
+mapper_zemina,03:reset_banks_4_5,*,0504,doc,MAME rom.cpp sega8_zemina_device at 1d7a454ed79e
+mapper_zemina,04:select_8000_a000,*,0706,doc,MAME rom.cpp sega8_zemina_device at 1d7a454ed79e
+mapper_zemina,05:select_4000_6000,*,0908,doc,MAME rom.cpp sega8_zemina_device at 1d7a454ed79e
+mapper_zemina,06:wrap_8000_a000,*,0F0B,doc,SMS-CARTRIDGES section 2.4
+mapper_zemina,07:wrap_4000_6000,*,0D0C,doc,SMS-CARTRIDGES section 2.4
+mapper_zemina,08:slots_0_1_fixed,*,0100,doc,MAME rom.cpp sega8_zemina_device at 1d7a454ed79e
+mapper_zemina,09:fffc_ffff_slots_0_1,*,0100,doc,MAME rom.cpp sega8_zemina_device at 1d7a454ed79e
+mapper_zemina,0A:fffc_ffff_slots_2_3,*,0D0C,doc,MAME rom.cpp sega8_zemina_device at 1d7a454ed79e
+mapper_zemina,0B:fffc_ffff_slots_4_5,*,0F0B,doc,MAME rom.cpp sega8_zemina_device at 1d7a454ed79e
+mapper_zemina,0C:bank_sum,*,7878,doc,MAME rom.cpp sega8_zemina_device at 1d7a454ed79e
+mapper_hes_4pak,01:reset_slot_0,*,0100,doc,MAME rom.cpp sega8_4pak_device at 1d7a454ed79e
+mapper_hes_4pak,02:reset_slot_1,*,0100,doc,MAME rom.cpp sega8_4pak_device at 1d7a454ed79e
+mapper_hes_4pak,03:reset_slot_2,*,0100,doc,MAME rom.cpp sega8_4pak_device at 1d7a454ed79e
+mapper_hes_4pak,04:reg_7fff_page_5,*,0B0A,doc,MAME rom.cpp sega8_4pak_device at 1d7a454ed79e
+mapper_hes_4pak,05:reg_bfff_page_3,*,0706,doc,MAME rom.cpp sega8_4pak_device at 1d7a454ed79e
+mapper_hes_4pak,06:reg_3ffe_page_4,*,0908,doc,MAME rom.cpp sega8_4pak_device at 1d7a454ed79e
+mapper_hes_4pak,07:reg_3ffe_wrap_14,*,0D0C,doc,SMS-CARTRIDGES section 2.4
+mapper_hes_4pak,08:reg_7fff_wrap_10,*,0504,doc,SMS-CARTRIDGES section 2.4
+mapper_hes_4pak,09:reg_bfff_wrap_ff,*,0F0E,doc,SMS-CARTRIDGES section 2.4
+mapper_hes_4pak,0A:ffff_moves_slot_2,*,0B0A,doc,MAME sega8_rom_device::write_mapper inherited by sega8_4pak_device at 1d7a454ed79e
+mapper_hes_4pak,0B:bfff_page_sum,*,4038,doc,MAME rom.cpp sega8_4pak_device at 1d7a454ed79e
