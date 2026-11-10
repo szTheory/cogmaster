@@ -403,7 +403,7 @@ jobs:
             sips --deleteColorManagementProperties "$f.png" > /dev/null
             sips -s format bmp "$f.png" --out "$f.bmp" > /dev/null
           done
-          cc -std=c17 -O2 -Wall -Wextra -Werror -o compare ../../tests/retroarch/bmp.c ../../tests/retroarch/compare.c
+          cc -std=c17 -O2 -Wall -Wextra -Werror -o compare ../../tests/retroarch/compare.c
           ./compare runner.bmp shot.bmp | tee compare.txt
           grep -Eq '256x192.*pixel.*equal' compare.txt
       - name: The compare's negative control
