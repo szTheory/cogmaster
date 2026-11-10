@@ -210,6 +210,27 @@ foreach(height IN ITEMS 192 224 240)
       ${fixtures_src}/header.inc ${fixtures_src}/mailbox.inc VERBATIM)
   list(APPEND fixtures_images ${image})
 endforeach()
+# One source builds the Korean, Zemina and 4 PAK images, as vdp_lines does: FIXTURE_BOARD picks
+# the board and each image gets its own link file.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${fixtures_src}/mapper_korean.link)
+file(READ ${fixtures_src}/mapper_korean.link korean_link)
+foreach(spec IN ITEMS korean:1 zemina:2 hes_4pak:3)
+  string(REPLACE ":" ";" spec "${spec}")
+  list(GET spec 0 board)
+  list(GET spec 1 board_number)
+  string(REPLACE "mapper_korean.o" "mapper_${board}.o" link "${korean_link}")
+  set(image ${COGMASTER_FIXTURES_DIR}/mapper_${board}.sms)
+  file(GENERATE OUTPUT ${COGMASTER_FIXTURES_DIR}/mapper_${board}.link CONTENT "${link}")
+  add_custom_command(OUTPUT ${image}
+    COMMAND ${COGMASTER_WLA_Z80} -q -D FIXTURE_BOARD=${board_number}
+      -o ${COGMASTER_FIXTURES_DIR}/mapper_${board}.o mapper_korean.asm
+    COMMAND ${CMAKE_COMMAND} -E chdir ${COGMASTER_FIXTURES_DIR}
+      ${COGMASTER_WLALINK} -r mapper_${board}.link ${image}
+    WORKING_DIRECTORY ${fixtures_src}
+    DEPENDS ${fixtures_src}/mapper_korean.asm ${fixtures_src}/mapper_korean.link
+      ${fixtures_src}/mailbox.inc VERBATIM)
+  list(APPEND fixtures_images ${image})
+endforeach()
 add_custom_target(cogmaster-fixtures ALL DEPENDS ${fixtures_images})
 
 add_executable(cogmaster-test-lines ${CMAKE_CURRENT_LIST_DIR}/lines.c
