@@ -2,13 +2,18 @@
 gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: The whole library
-status: planning
-last_updated: "2026-11-10T01:44:25.100Z"
+current_phase: 5
+current_phase_name: Tune-up
+status: executing
+stopped_at: Milestone v1.0 audited; phase 04 shipped and released as v0.4.0
+last_updated: "2026-11-10T03:56:38.886Z"
 last_activity: 2026-11-09
+last_activity_desc: Phase 5 execution started
+state_head: 7b6d70a170ad78203c601c67d14468a9f56ca33f
 progress:
   total_phases: 8
   completed_phases: 0
-  total_plans: 0
+  total_plans: 14
   completed_plans: 0
   percent: 0
 ---
@@ -20,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-10)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Milestone v2.0 The whole library — Phase 5 (Tune-up) next
+**Current focus:** Phase 5 — Tune-up
 
 ## Current Position
 
-Phase: 5 of 12 (Tune-up); v2.0 spans phases 5 to 12
-Plan: —
-Status: Roadmap created; ready to discuss phase 5
-Last activity: 2026-11-10 — v2.0 roadmap created (8 phases, 49 of 49 requirements mapped)
+Phase: 5 (Tune-up) — EXECUTING
+Plan: 1 of 14
+Status: Executing Phase 5
+Last activity: 2026-11-09 — Phase 5 execution started
 
 Progress: [░░░░░░░░░░] 0% of v2.0
 
@@ -185,6 +190,8 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-09 | Audit milestone v1.0 (gsd-audit-milestone); integration checker 18/18 wired, 6/6 flows, status tech_debt | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Complete milestone v1.0 (gsd-complete-milestone) | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | New milestone v2.0 The whole library (gsd-new-milestone) | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Discuss phase 5 (gsd-autonomous, owner-authorised override of rule 9); five advisors plus adversarial pass | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Plan phase 5 (gsd-plan-phase 5); 14 plans, checker 0 blockers after two revisions | Claude Code | claude-sonnet-5-5 (planner claude-opus-5-5) |
 
 ## Deferred Items
 
