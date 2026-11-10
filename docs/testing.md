@@ -217,6 +217,7 @@ matches the expected message; a crash or a missing file does not count as the ex
 | `policy.title.self_test` | The title `Phase 1: A test frame in RetroArch`. |
 | `policy.publish_set.self_test` | 17 of the 18 release zips; `publish.sh prepare` must name the missing one. |
 | `policy.ci_required.self_test` | A copy of `ci.yml` whose roll-up ignores `heavy`, so a skipped build would pass. |
+| `policy.ci_required.actor_self_test` | A copy of `ci.yml` whose roll-up accepts a skipped rehearsal from any author. |
 | `policy.action_pins.self_test` | An action referenced by a tag. |
 | `policy.e2e_budget.self_test` | Two files totaling 301 lines under the RetroArch test budget. |
 | `docs.budgets.ratio_equal` | One physical check line against ten core lines, including unterminated final lines. |
@@ -298,7 +299,8 @@ lane's inventory and labels. Every action is pinned by full commit SHA.
 needs succeeded, except: the heavy jobs may be skipped when `changes` says `heavy=false`, which happens only when
 every changed path is under `.planning/`; `title`, `perf`, `rehearsal` and `cleanup` may be skipped outside pull
 requests; `perf`, `rehearsal` and `cleanup` in a nested call that passes `ref`; and `rehearsal` and `cleanup`
-when no release input changed.
+when no release input changed or the pull request's author is `dependabot[bot]`, whose read-only token cannot run
+the rehearsal.
 
 **Tests of CI itself** (hygiene lane). `policy.ci_required` runs the roll-up's `jq` program from `ci.yml` on
 synthetic job results, and fails when any job is missing from its needs. `ci.classify` runs the

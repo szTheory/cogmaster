@@ -367,6 +367,24 @@ cogmaster_add_test(NAME policy.ci_required.self_test
     -P ${hygiene_scripts}/expect_fail.cmake
   LABELS hygiene policy TIMEOUT 30)
 
+# Fault prevented: the Dependabot exception in CI required widened to every
+# author. The self test runs on a copy of ci.yml whose author clause accepts
+# any author, which must let a person's skipped rehearsal through and so fail
+# the case that names it.
+string(REPLACE "$actor == \"dependabot[bot]\"" "true" hygiene_any_actor "${hygiene_yml}")
+if(hygiene_any_actor STREQUAL hygiene_yml)
+  message(FATAL_ERROR "policy.ci_required.actor_self_test: ci.yml's program no longer tests $actor == \"dependabot[bot]\"")
+endif()
+file(WRITE ${CMAKE_BINARY_DIR}/hygiene/ci_required_actor_fixture/ci.yml "${hygiene_any_actor}")
+set(hygiene_cmd ${CMAKE_COMMAND} -DCI_YML=${CMAKE_BINARY_DIR}/hygiene/ci_required_actor_fixture/ci.yml
+  -DJQ=${COGMASTER_JQ} -P ${hygiene_scripts}/ci_required.cmake)
+string(REPLACE ";" "$<SEMICOLON>" hygiene_cmd "${hygiene_cmd}")
+cogmaster_add_test(NAME policy.ci_required.actor_self_test
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${hygiene_cmd}" -DCODE=1
+    "-DREGEX=rehearsal skipped when a release input changed: want fail"
+    -P ${hygiene_scripts}/expect_fail.cmake
+  LABELS hygiene policy TIMEOUT 30)
+
 # Fault prevented: a job timeout guessed rather than measured. Every
 # timeout-minutes line carries twice its slowest measured run and that run's
 # ID, or the five-minute floor for a workflow with no runs yet. The self test

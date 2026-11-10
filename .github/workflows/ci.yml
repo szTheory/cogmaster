@@ -623,12 +623,15 @@ jobs:
   # the merge commit, SHA256SUMS, attestations that verify and a tampered copy
   # that does not, then the published release downloaded and checked. Direct
   # runs only (a nested call passes ref). A fork's pull request has no secrets
-  # and skips it. docs/testing.md describes the rehearsal.
+  # and skips it, and so does Dependabot's: its pull_request token is
+  # read-only, so attestations and release writes cannot run.
+  # docs/testing.md describes the rehearsal.
   rehearsal:
     needs: [changes, build]
     if: >-
       github.event_name == 'pull_request' && !inputs.ref &&
       github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
       needs.changes.outputs.release_inputs == 'true'
     runs-on: ubuntu-26.04
     timeout-minutes: 13  # 2 x 387 s, slowest of 4 runs, run 42721125470
@@ -737,7 +740,9 @@ jobs:
   # heavy=false; title, perf, rehearsal and cleanup skipped outside pull
   # requests; perf, rehearsal and cleanup skipped in a nested call that
   # passes ref (release.yml's); and rehearsal and cleanup skipped when no
-  # release input changed.
+  # release input changed, or the pull request's author is dependabot[bot],
+  # whose read-only token cannot run the rehearsal (a rehearsal that runs must
+  # still succeed).
   ci-required:
     name: CI required
     if: always()
@@ -752,11 +757,12 @@ jobs:
           HEAVY: ${{ needs.changes.outputs.heavy }}
           CALLED: ${{ inputs.ref && 'true' || 'false' }}
           RELEASE_INPUTS: ${{ needs.changes.outputs.release_inputs }}
+          ACTOR: ${{ github.event.pull_request.user.login }}
         run: |
-          echo "$NEEDS" | jq -e --arg event "$EVENT" --arg heavy "$HEAVY" --arg called "$CALLED" --arg release_inputs "$RELEASE_INPUTS" 'to_entries | all(
+          echo "$NEEDS" | jq -e --arg event "$EVENT" --arg heavy "$HEAVY" --arg called "$CALLED" --arg release_inputs "$RELEASE_INPUTS" --arg actor "$ACTOR" 'to_entries | all(
             .value.result == "success"
             or (.key == "title" and .value.result == "skipped" and $event != "pull_request")
             or (.key == "perf" and .value.result == "skipped" and ($event != "pull_request" or $called == "true"))
             or ((.key | IN("rehearsal", "cleanup")) and .value.result == "skipped"
-              and ($release_inputs != "true" or $event != "pull_request" or $called == "true"))
+              and ($release_inputs != "true" or $event != "pull_request" or $called == "true" or $actor == "dependabot[bot]"))
             or ($heavy == "false" and .value.result == "skipped" and (.key | IN("changes", "hygiene", "title") | not)))'

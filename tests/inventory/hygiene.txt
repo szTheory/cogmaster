@@ -26,6 +26,7 @@ hygiene.tree.self_test	hygiene
 policy.action_pins	hygiene,policy
 policy.action_pins.self_test	hygiene,policy
 policy.ci_required	hygiene,policy
+policy.ci_required.actor_self_test	hygiene,policy
 policy.ci_required.self_test	hygiene,policy
 policy.compat_doc_fresh	compat,hygiene,policy
 policy.compat_doc_fresh.self_test	compat,hygiene,policy
