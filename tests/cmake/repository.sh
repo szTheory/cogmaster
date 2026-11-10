@@ -31,6 +31,16 @@ dependabot)
     if(!ok || !seen["minor"] || !seen["patch"]) bad(d, "no group named minor-and-patch holding minor and patch")
     if(!title) bad(a, "the title match lacks the text the minor-and-patch group"); if(!guard) bad(a, "the job guard does not name dependabot[bot]")
     exit(n!=0) }' "$DIR/dependabot.yml" "$DIR/workflows/dependabot-automerge.yml" ;;
+digest)
+  # A reporter that gains write access or a token beyond the four it needs, or runs on a schedule nobody asked for.
+  awk 'function bad(m) { print "digest: " m; n++ }
+  { t=$0; sub(/(^|[ \t]+)#.*$/,"",t); e=t; sub(/^ +/,"",e); match(t,/^ */); i=RLENGTH; if(e!="" && blk!="" && i<=bi) blk="" }
+  e=="permissions:" { blk=(i ? "job" : "top"); bi=i; next }
+  blk=="top" && e!="contents: read" { bad("workflow permission " e " is not contents: read") }
+  blk=="job" { if(e ~ /^((actions|pull-requests): read|issues: write)$/) seen[e]=1; else if(e!="contents: read") bad("job permission " e " is outside actions: read, pull-requests: read, issues: write") }
+  e ~ /^- cron:/ { cron=e; c++ } e ~ /^dry_run:/ { dry=1 } e ~ /create-github-app-token|pull_request_target/ { bad("uses " e) }
+  END { if(c!=1 || cron !~ /^- cron: "[0-9]+ [0-9]+ \* \* 1"$/) bad("cron " cron " is not one weekly Monday schedule"); if(!dry) bad("no dry_run input")
+    split("actions: read|pull-requests: read|issues: write", want, "|"); for(k in want) if(!(want[k] in seen)) bad("job permission " want[k] " is missing"); exit(n!=0) }' "$DOC" ;;
 pins)
   awk 'NF && $1 !~ /^#/ {
     n++; if(NF!=4) { print "line " NR ": " NF " fields, not 4"; bad=1; next }

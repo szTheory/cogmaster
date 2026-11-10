@@ -458,7 +458,7 @@ cogmaster_add_test(NAME digest.timeouts
   LABELS hygiene TIMEOUT 30)
 set(hygiene_digest_format [=[
 sh "$1" < "$2" > "$3" || exit 1
-for want in '^Slowest job: build .*200 s' '^Flaky: build' '^- timeout margin: CI required' '^- nightly issue #12' '^attention: [1-9]'
+for want in '^Slowest job: build, 200 s, run 2' '^Flaky: build' '^- timeout margin: CI required' '^- nightly issue #12' '^attention: [1-9]'
 do
   grep -Eq "$want" "$3" || { echo "digest.format: no line matching $want"; cat "$3"; exit 1; }
 done

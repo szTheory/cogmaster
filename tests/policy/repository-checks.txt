@@ -41,3 +41,4 @@ check|scripts/compat-ratchet.sh|Trusted compatibility judge entry point with adj
 check|scripts/compat-update.sh|Explicit public ledger projection reuses the fully counted CSV parser and immutable CC0 identities
 operation|scripts/library.sh|Enumerates private local files and orchestrates bounded executable observations without asserting repository content
 operation|scripts/library.cmake|Probes and executes each local image against accepted expectations and writes private local results
+operation|scripts/digest.sh|Formats remote run data for the weekly digest and reads workflow timeouts; never fails on repository content
