@@ -1,5 +1,5 @@
 /* Classified persistence is independent of mapper enable registers and RAM
-   decoding. See docs/hardware/cartridges.md and docs/embedding.md. */
+   decoding. See docs/hardware/cartridges.md and docs/saves.md. */
 #include <string.h>
 #include "internal.h"
 

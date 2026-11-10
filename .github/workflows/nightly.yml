@@ -1,6 +1,6 @@
 # Nightly bench: 300,000 scripted playing frames per platform, as
-# trend data, never a gate (docs/testing.md, "Performance"), and libFuzzer
-# over the loader and a two-frame run (docs/testing.md, "Fuzzing"). The runner
+# trend data, never a gate (docs/perf-fuzz.md, "Performance"), and libFuzzer
+# over the loader and a two-frame run (docs/perf-fuzz.md, "Fuzzing"). The runner
 # reports its own frame-time percentiles and max_rss_kib. The vectors job
 # runs the full z80 vector set (docs/conformance.md). Reports go to job
 # summaries and artifacts, never to commits. A failed night opens or updates
@@ -155,8 +155,8 @@ jobs:
       - name: Every test ran
         run: cmake -DJUNIT=build/vectors-full/junit.xml -DINVENTORY=tests/inventory/vectors-full.txt -DCHECK=check_junit -P tests/cmake/repository.cmake
 
-  # Decides from the jobs' results, never from a piped exit status: the
-  # default shell has no pipefail.
+  # Decides from the jobs' results (needs.*.result), not from a command's
+  # exit status.
   report:
     needs: [bench, bench-wasm32, fuzz, vectors]
     if: always() && github.event_name != 'pull_request'

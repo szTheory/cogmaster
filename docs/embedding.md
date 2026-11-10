@@ -219,7 +219,7 @@ Gear and no Japanese console was made for PAL, so `COGMASTER_TV_PAL` with either
 `COGMASTER_STATUS_ERR_PROFILE_REJECTED`. Each
 `load` restarts the frame count and clears the fault record.
 
-`cogmaster_run_frame` runs one frame: 262 lines, 179,208 ticks of the 10,738,635 Hz video clock, on NTSC, and
+`cogmaster_run_frame` runs one frame: 262 lines, 179,208 ticks of the 315/88 MHz × 3 (about 10,738,636 Hz) tick clock, on NTSC, and
 313 lines, 214,092 ticks of the 10,640,684.8 Hz (53,203,424 / 5) clock, on PAL. The CPU runs whole instructions,
 so a frame stops at the first instruction boundary at or after its end, at most 69 ticks late, and the next frame
 ends one frame length after this one should have: the frames never drift. If `out`, a
