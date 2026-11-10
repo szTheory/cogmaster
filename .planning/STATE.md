@@ -6,7 +6,7 @@ status: planning
 last_updated: "2026-11-10T01:44:25.100Z"
 last_activity: 2026-11-09
 progress:
-  total_phases: 0
+  total_phases: 8
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-10)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Planning the next milestone
+**Current focus:** Milestone v2.0 The whole library — Phase 5 (Tune-up) next
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 5 of 12 (Tune-up); v2.0 spans phases 5 to 12
 Plan: —
-Status: Defining requirements
-Last activity: 2026-11-09 — Milestone v2.0 started
+Status: Roadmap created; ready to discuss phase 5
+Last activity: 2026-11-10 — v2.0 roadmap created (8 phases, 49 of 49 requirements mapped)
+
+Progress: [░░░░░░░░░░] 0% of v2.0
 
 ## Performance Metrics
 
@@ -210,4 +212,4 @@ Resume file: None
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Branch `phase/05-tune-up` off `origin/main` after the roadmap merges, then run /gsd-discuss-phase 5

@@ -109,13 +109,61 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (filled by the roadmapper) | | Pending |
+| TUNE-01 | Phase 5 | Pending |
+| TUNE-02 | Phase 5 | Pending |
+| TUNE-03 | Phase 5 | Pending |
+| TUNE-04 | Phase 5 | Pending |
+| TUNE-05 | Phase 5 | Pending |
+| TUNE-06 | Phase 5 | Pending |
+| TUNE-07 | Phase 5 | Pending |
+| TUNE-08 | Phase 5 | Pending |
+| TUNE-09 | Phase 5 | Pending |
+| TUNE-10 | Phase 5 | Pending |
+| MAP-01 | Phase 6 | Pending |
+| MAP-02 | Phase 6 | Pending |
+| MAP-03 | Phase 6 | Pending |
+| MAP-04 | Phase 6 | Pending |
+| MAP-05 | Phase 6 | Pending |
+| MAP-06 | Phase 6 | Pending |
+| MAP-07 | Phase 6 | Pending |
+| MAP-08 | Phase 6 | Pending |
+| SAVE-01 | Phase 7 | Pending |
+| SAVE-02 | Phase 7 | Pending |
+| SAVE-03 | Phase 7 | Pending |
+| SAVE-04 | Phase 7 | Pending |
+| SAVE-05 | Phase 7 | Pending |
+| SAVE-06 | Phase 7 | Pending |
+| PAD-01 | Phase 8 | Pending |
+| PAD-02 | Phase 8 | Pending |
+| PAD-03 | Phase 8 | Pending |
+| PAD-04 | Phase 8 | Pending |
+| PAD-05 | Phase 8 | Pending |
+| PAD-06 | Phase 8 | Pending |
+| PAD-07 | Phase 8 | Pending |
+| GUN-01 | Phase 9 | Pending |
+| GUN-02 | Phase 9 | Pending |
+| GUN-03 | Phase 9 | Pending |
+| GUN-04 | Phase 9 | Pending |
+| BIOS-01 | Phase 10 | Pending |
+| BIOS-02 | Phase 10 | Pending |
+| BIOS-03 | Phase 10 | Pending |
+| BIOS-04 | Phase 10 | Pending |
+| BIOS-05 | Phase 10 | Pending |
+| REG-01 | Phase 11 | Pending |
+| REG-02 | Phase 11 | Pending |
+| REG-03 | Phase 11 | Pending |
+| REG-04 | Phase 11 | Pending |
+| LEDG-01 | Phase 12 | Pending |
+| LEDG-02 | Phase 12 | Pending |
+| LEDG-03 | Phase 12 | Pending |
+| LEDG-04 | Phase 12 | Pending |
+| LEDG-05 | Phase 12 | Pending |
 
 **Coverage:**
 - v2.0 requirements: 49 total
-- Mapped to phases: 0
-- Unmapped: 49 ⚠️
+- Mapped to phases: 49
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-11-10*
-*Last updated: 2026-11-10 after initial definition*
+*Last updated: 2026-11-10 after roadmap creation (phases 5 to 12)*
