@@ -213,7 +213,7 @@ matches the expected message; a crash or a missing file does not count as the ex
 | `release.single_version_source.self_test` | A repository whose second tracked file repeats its version. |
 | `hygiene.tree.self_test` | An untracked file holding a home directory path. |
 | `hygiene.no_float.self_test` | Six floating-point lines beside two that only look like them. |
-| `hygiene.timeout_comments.self_test` | A workflow with a bare timeout and one whose comment is a guess. |
+| `hygiene.timeout_comments.self_test` | Five timeouts that are bare, a guess, provisional, under twice their run or a floor under 5 minutes. |
 | `policy.pins.self_test` | A pins row whose digest does not match its file; `fetch-pin.sh` must stop before touching the destination. |
 | `policy.title.self_test` | The title `Phase 1: A test frame in RetroArch`. |
 | `policy.publish_set.self_test` | 17 of the 18 release zips; `publish.sh prepare` must name the missing one. |
@@ -304,10 +304,13 @@ when no release input changed. `wasm32` is not among its needs.
 **Tests of CI itself** (hygiene lane). `policy.ci_required` runs the roll-up's `jq` program from `ci.yml` on
 synthetic job results, and fails when a job other than `wasm32` is missing from its needs. `ci.classify` runs the
 classifier on mixed, renamed, empty, planning-only and over-long path lists. `policy.action_pins` rejects an
-action not pinned by SHA. `hygiene.timeout_comments` requires each `timeout-minutes` to carry a run ID or the word
-`provisional`. A timeout is twice the job's slowest successful run on this repository, rounded up to minutes,
-with a 5-minute floor for network-bound and roll-up jobs; its comment names the run and the sample count, and it
-stays `provisional` until ten successful runs exist.
+action not pinned by SHA. `hygiene.timeout_comments` requires each `timeout-minutes` comment to read `2 x S s,
+slowest of N runs, run <id>` with the timeout at least twice S, or `5-minute floor; no runs yet` at 5 minutes or
+more, and rejects the word `provisional`. A timeout is twice the slowest of the last 40 successful runs, or all of
+them if fewer, rounded up to minutes, with N stated (matrix lanes of one run count once). Get the numbers from
+`sh scripts/ci-durations.sh <workflow>`, which lists the jobs slowest first and needs `gh` and `jq`. Network-bound
+and roll-up jobs have a 5-minute floor. A workflow with no runs yet uses `5-minute floor; no runs yet` until its
+first run is recorded.
 
 **The title.** The squash commit on `main` takes the pull request's title and body, and release-please reads its
 type. `title` passes a Conventional Commit title with a lower-case subject, such as `fix(runner): exit 2 on a
