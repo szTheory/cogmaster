@@ -52,4 +52,12 @@ jobs:
                 exit 0
               fi ;;
           esac
+          # A release input changed: the rehearsal is skipped for Dependabot, so a
+          # person or the agent merges it. The list matches scripts/classify-changes.sh.
+          # An unreadable or empty file list is treated as a release input too.
+          if ! gh pr diff "$PR" --repo "$GITHUB_REPOSITORY" --name-only > "$RUNNER_TEMP/files.txt" || [ ! -s "$RUNNER_TEMP/files.txt" ] ||
+            grep -Eqx '\.github/workflows/(release|ci)\.yml|scripts/publish\.sh|release-please-config\.json|cmake/packaging\.cmake' "$RUNNER_TEMP/files.txt"; then
+            echo "dependabot-automerge: not merging: the pull request changes a release input (or its file list is unreadable); it needs the release rehearsal"
+            exit 0
+          fi
           gh pr merge --auto --squash "$PR" --repo "$GITHUB_REPOSITORY"

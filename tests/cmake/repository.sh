@@ -25,11 +25,11 @@ dependabot)
     if(ing && t ~ /^      [A-Za-z0-9_-]+:$/) { if(g=="minor-and-patch") ok=1; else bad(f, "group " g " is not named minor-and-patch") }
     if(ing && t ~ /^ +- (major|minor|patch)$/) { seen[u]=1; if(u=="major") bad(f, "update-types lists major") } }
   f=="dependabot-automerge.yml" { if(t ~ /(pull_request_target|workflow_run)/) bad(f, "trigger " (t ~ /workflow_run/ ? "workflow_run" : "pull_request_target") " runs with a privileged token")
-    if(t ~ /actions\/checkout/) bad(f, "uses actions/checkout"); if(t ~ /the minor-and-patch group/) title=1; if(t ~ /if:.*dependabot\[bot\]/) guard=1 }
+    if(t ~ /actions\/checkout/) bad(f, "uses actions/checkout"); if(t ~ /the minor-and-patch group/) title=1; if(t ~ /if:.*dependabot\[bot\]/) guard=1; if(t ~ /gh pr diff .*--name-only/) diff=1 }
   END { d="dependabot.yml"; a="dependabot-automerge.yml"
     if(iv!="weekly") bad(d, "interval " iv " is not weekly"); if(px!="ci") bad(d, "prefix " px " is not ci"); if(cd!=7) bad(d, "cooldown " cd " is not 7 days")
     if(!ok || !seen["minor"] || !seen["patch"]) bad(d, "no group named minor-and-patch holding minor and patch")
-    if(!title) bad(a, "the title match lacks the text the minor-and-patch group"); if(!guard) bad(a, "the job guard does not name dependabot[bot]")
+    if(!title) bad(a, "the title match lacks the text the minor-and-patch group"); if(!guard) bad(a, "the job guard does not name dependabot[bot]"); if(!diff) bad(a, "the merge does not first list the changed files with gh pr diff --name-only")
     exit(n!=0) }' "$DIR/dependabot.yml" "$DIR/workflows/dependabot-automerge.yml" ;;
 digest)
   # A reporter that gains write access or a token beyond the four it needs, or runs on a schedule nobody asked for.
