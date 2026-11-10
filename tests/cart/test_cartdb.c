@@ -16,6 +16,19 @@ static void release(void *u, void *p, size_t n)
     (void)n;
     free(p);
 }
+static const struct cogmaster__cart_fact *find_hex(const char *hex)
+{
+    uint8_t digest[20];
+    for (size_t i = 0; i < 20u; i++) {
+        unsigned int v = 0;
+        for (size_t j = 0; j < 2u; j++) {
+            char c = hex[2u * i + j];
+            v = v * 16u + (unsigned int)(c <= '9' ? c - '0' : c - 'a' + 10);
+        }
+        digest[i] = (uint8_t)v;
+    }
+    return cogmaster__cartdb_find(digest);
+}
 int main(int argc, char **argv)
 {
     if (argc == 2) {
@@ -67,21 +80,21 @@ int main(int argc, char **argv)
         CHECK_DONE();
     }
     const struct cogmaster__cart_fact *f =
-        cogmaster__cartdb_find("0dad260b5357b2f61d1452bb73d8321ca53d7262");
+        find_hex("0dad260b5357b2f61d1452bb73d8321ca53d7262");
     CHECK(f != NULL);
     if (f) {
         CHECK_EQ_U64(f->persistence, COGMASTER_PERSISTENCE_BATTERY);
-        CHECK_EQ_U64(f->declared, 24576u);
+        CHECK_EQ_U64(f->ram_bytes, 24576u);
         CHECK_EQ_U64(f->geometry, COGMASTER_GEOMETRY_UNSUPPORTED);
     }
-    CHECK(cogmaster__cartdb_find("0000000000000000000000000000000000000000") == NULL);
-    f = cogmaster__cartdb_find("c3305d745792a931ea92da6e6457c43d7cc45cf2");
+    CHECK(find_hex("0000000000000000000000000000000000000000") == NULL);
+    f = find_hex("c3305d745792a931ea92da6e6457c43d7cc45cf2");
     CHECK(f != NULL);
     if (f) {
         CHECK_EQ_U64(f->machine, COGMASTER_MACHINE_GG);
         CHECK_EQ_U64(f->video, COGMASTER_VIDEO_SMS);
         CHECK_EQ_U64(f->persistence, COGMASTER_PERSISTENCE_NONE);
-        CHECK_EQ_U64(f->public_identity, 1u);
+        CHECK_EQ_U64(f->flags & 1u, 1u);
     }
     static const uint8_t magic[8] = {0x54, 0x4d, 0x52, 0x20, 0x53, 0x45, 0x47, 0x41};
     memcpy(image + 0x7ff0, magic, 8);

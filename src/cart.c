@@ -155,6 +155,53 @@ static int other_board(const uint8_t *b, size_t body)
     return other > sega;
 }
 
+/* Copies one database row into the probe result. A row of board 0 is unsupported by
+   design and names its slot and reason. Titles live in tests/compat/catalog.tsv, not
+   in the table. EEPROM has no public persistence value yet, so it reads as unknown. */
+cogmaster_status cogmaster__cart_fact_to_info(const struct cogmaster__cart_fact *fact,
+                                              cogmaster_cart_info *out)
+{
+    static const char digits[] = "0123456789abcdef";
+    out->identified = 1u;
+    out->public_identity = fact->flags & 1u;
+    out->board = fact->board;
+    out->board_source = COGMASTER_BOARD_SOURCE_DB;
+    out->machine_guess = fact->machine;
+    if (fact->region != 0u)
+        out->region_guess = fact->region;
+    out->video_mode = fact->video;
+    out->persistence = fact->persistence > COGMASTER_PERSISTENCE_BATTERY
+                           ? (uint32_t)COGMASTER_PERSISTENCE_UNKNOWN
+                           : fact->persistence;
+    out->persistent_size = fact->ram_bytes;
+    out->persistence_geometry = fact->geometry;
+    for (size_t i = 0u; i < 20u; i++) {
+        out->sha1[2u * i] = digits[fact->sha1[i] >> 4];
+        out->sha1[2u * i + 1u] = digits[fact->sha1[i] & 15u];
+    }
+    out->sha1[40] = 0;
+    out->title[0] = 0;
+    if (fact->board != 0u)
+        return COGMASTER_STATUS_OK;
+    const struct cogmaster__cart_slot *slot = cogmaster__cartdb_slot(fact->slot);
+    if (slot != NULL && slot->reason[0] != 0) {
+        size_t k = 0u;
+        out->unsupported_id = slot->id;
+        for (size_t i = 0u; i < sizeof slot->name && slot->name[i] != 0 &&
+                            k < sizeof out->unsupported_reason - 1u; i++)
+            out->unsupported_reason[k++] = slot->name[i];
+        if (k < sizeof out->unsupported_reason - 2u) {
+            out->unsupported_reason[k++] = ':';
+            out->unsupported_reason[k++] = ' ';
+        }
+        for (size_t i = 0u; i < sizeof slot->reason && slot->reason[i] != 0 &&
+                            k < sizeof out->unsupported_reason - 1u; i++)
+            out->unsupported_reason[k++] = slot->reason[i];
+        out->unsupported_reason[k] = 0;
+    }
+    return COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD;
+}
+
 cogmaster_status cogmaster__cart_probe(const void *image, size_t n, cogmaster_cart_info *out)
 {
     memset(out, 0, sizeof *out);
@@ -175,20 +222,7 @@ cogmaster_status cogmaster__cart_probe(const void *image, size_t n, cogmaster_ca
     read_header(b, body, out);
     const struct cogmaster__cart_fact *fact = cogmaster__cartdb_image(b, body);
     if (fact != NULL) {
-        out->identified = 1u;
-        out->public_identity = fact->public_identity;
-        out->board = fact->board;
-        out->machine_guess = fact->machine;
-        if (fact->region != 0u)
-            out->region_guess = fact->region;
-        out->video_mode = fact->video;
-        out->persistence = fact->persistence;
-        out->persistent_size = fact->declared;
-        out->persistence_geometry = fact->geometry;
-        memcpy(out->sha1, fact->sha1, 41u);
-        for (size_t i = 0u; fact->title[i] != 0; i++)
-            out->title[i] = fact->title[i];
-        return out->board == 0u ? COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD : COGMASTER_STATUS_OK;
+        return cogmaster__cart_fact_to_info(fact, out);
     }
     if (codemasters_header(b, body)) {
         out->board = COGMASTER__BOARD_CODEMASTERS;
