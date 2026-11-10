@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 5
 current_phase_name: Tune-up
 status: executing
-stopped_at: Completed 05-06-PLAN.md (runtime Claude Code, model Sonnet 5.5)
-last_updated: "2026-11-10T05:08:47.635Z"
+stopped_at: Completed 05-09-PLAN.md (runtime Claude Code, model Sonnet 5.5)
+last_updated: "2026-11-10T05:12:20.123Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 5 execution started
-state_head: 59aaf53af22dfd95bfa1c1756df42475c3bc48fe
+state_head: b50ce5b41a58b25994b18d4f5b1c6f80974e5b1b
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 14
-  completed_plans: 8
+  completed_plans: 9
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 5 (Tune-up) — EXECUTING
-Plan: 9 of 14
+Plan: 10 of 14
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 5 execution started
 
@@ -131,6 +131,7 @@ Progress: [░░░░░░░░░░] 0% of v2.0
 | Phase 05 P05 | 8min | 2 tasks | 10 files |
 | Phase 05 P08 | 10min | 1 tasks | 6 files |
 | Phase 05 P06 | 70min | 3 tasks | 8 files |
+| Phase 05 P09 | 12min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -149,6 +150,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 05]: 05-08: nightly report comment keeps only the true reason (needs.*.result); hardware comments cite preparation sections on one source line
 - [Phase 05]: 05-06: size ceilings are 15 percent above the largest measured value, rounded up to a whole kibibyte; the ratchet needs a new reasons entry to loosen
 - [Phase 05]: 05-06: ratchet fixtures are measured in lines because a file written on Windows has CRLF line ends
+- [Phase 05]: 05-09: P1 WR-02 and IN-04 deferred to SEED-007 under AGENTS rule 7, P1 WR-04 accepted risk, no script changed; P4 WR-02 recorded fixed from 04-REVIEW-FIX.md
 
 ### Pending Todos
 
@@ -215,6 +217,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-10 | Execute phase 5 plan 05-03 (gsd-execute-phase 05); scripts/ci-durations.sh counts runs not lanes, timeouts check verifies the arithmetic, 22 workflow timeouts re-derived from live runs, be32 C++ compiler kept on static evidence; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Execute phase 5 plan 05-07 (gsd-execute-phase 05); cart probe refuses a body over 1 MiB after the copier-header strip, core load oracle follows the rule, docs say body not total; 1 task, 4 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Execute phase 5 plan 05-04 (gsd-execute-phase 05); wasm32 promoted into hash-equality (eight files) and CI required after 12 equal main runs, report-only exemption deleted; 2 tasks, 1 commit | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Execute phase 5 plan 05-09 (gsd-execute-phase 05); phase 1, 2 and 4 review dispositions settled (open 0), deferred findings seeded in SEED-001, 002, 004 and 007, no script changed; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -236,8 +239,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T05:08:47.617Z
-Stopped at: Completed 05-06-PLAN.md (runtime Claude Code, model Sonnet 5.5)
+Last session: 2026-11-10T05:12:20.102Z
+Stopped at: Completed 05-09-PLAN.md (runtime Claude Code, model Sonnet 5.5)
 Resume file: None
 
 ## Operator Next Steps
