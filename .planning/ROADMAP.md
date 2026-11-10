@@ -82,10 +82,10 @@ Plans:
   3. `cogmaster-run --probe` reports `board_source`; a decoy with a valid `TMR SEGA` header and Korean-looking bytes stays a Sega board, a scan below threshold or margin does not pick a Korean board, and a tie refuses with the candidate named (MAP-06).
   4. Each new board passes an exhaustive register-write and address-read test under ASan, and a test shows its documented register writes record no fault (MAP-07).
   5. The eight-lane equality job shows every frame and audio hash that existed before the phase unchanged (MAP-08).
-**Plans**: 11 plans
+**Plans**: 1/11 plans executed
 
 Plans:
-- [ ] 06-01-PLAN.md — generator slot table, per-slot counts, unmapped-slot failure, compact rows and catalog output (MAP-01, MAP-02)
+- [x] 06-01-PLAN.md — generator slot table, per-slot counts, unmapped-slot failure, compact rows and catalog output (MAP-01, MAP-02)
 - [ ] 06-02-PLAN.md — API 10 surface: board and board-source constants, appended cart_info fields, v10 program (MAP-06, MAP-03, MAP-05)
 - [ ] 06-03-PLAN.md — table regenerated, library on compact rows, fact_to_info, named-unsupported rows, catalog-fed compat update (MAP-01, MAP-02, MAP-04, MAP-05)
 - [ ] 06-04-PLAN.md — mapper_ext.c behind default, 8 KiB bank state, early perf delta from dispatch runs (MAP-07, MAP-08)
@@ -177,7 +177,7 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 5. Tune-up | v2.0 | 14/14 | Complete    | 2026-11-10 |
-| 6. Korean cartridges play | v2.0 | 0/TBD | Not started | - |
+| 6. Korean cartridges play | v2.0 | 1/11 | In Progress | - |
 | 7. Saves survive a restart | v2.0 | 0/TBD | Not started | - |
 | 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 0/TBD | Not started | - |
 | 9. Light Phaser | v2.0 | 0/TBD | Not started | - |

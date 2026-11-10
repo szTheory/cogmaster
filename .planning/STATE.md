@@ -4,17 +4,17 @@ milestone: v2.0
 milestone_name: The whole library
 current_phase: 6
 current_phase_name: Korean cartridges play
-status: planning
-stopped_at: Phase 5 complete, ready to plan Phase 6
-last_updated: "2026-11-10T06:24:34.005Z"
+status: executing
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-11-10T08:08:58.445Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 5 complete, transitioned to Phase 6
-state_head: 20b71b129ad7a4d8be925818e76e382602f551dc
+state_head: cab60da2cdbde0764210e4cf0d65cd447ab63019
 progress:
   total_phases: 8
   completed_phases: 1
-  total_plans: 14
-  completed_plans: 14
+  total_plans: 25
+  completed_plans: 15
   percent: 13
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-10)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 5 — Tune-up
+**Current focus:** Phase 6 — Korean cartridges play
 
 ## Current Position
 
 Phase: 6 — Korean cartridges play
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-10 — Phase 5 complete, transitioned to Phase 6
+Plan: 2 of 11
+Status: Ready to execute
+Last activity: 2026-11-10 — Completed 06-01 (cartridge generator slot table)
 
 Progress: [█░░░░░░░░░] 13% of v2.0
 
@@ -138,6 +138,7 @@ Progress: [█░░░░░░░░░] 13% of v2.0
 | Phase 05 P12 | 4 min | 1 tasks | 7 files |
 | Phase 05 P13 | 17min | 3 tasks | 8 files |
 | Phase 05 P14 | 35 min | 3 tasks | 6 files |
+| Phase 06 P01 | 35 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -164,6 +165,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 05]: 05-13: a red pull request is read from the newest CI run on its head commit via actions/runs?head_sha, never statusCheckRollup; the sound-code nightly run is the plain post-merge dispatch 42762969470 on main (head f69ab03 contains 8faf841)
 - [Phase 05]: 05-14: the perf gate is armed in a ci.yml-only commit (950ff2c); a throwaway draft PR 18 failed perf (verdict=FAIL, +4.87 percent) with every other job green; final head 73547df passed pull_request run 42764989102
 - [Phase 05]: 05-14: quality.json floors tests.ci 422 and tests.wasm32 397 follow the inventory line counts, not a local macOS ctest count
+- [Phase 06]: 06-01: the six Korean-board slots stay board 0 with reason 'mapper arm not present' until each arm lands; slot ids equal row position plus one under a start-up self-check; emitted counts unique table rows so excluded records add to seen only
 
 ### Pending Todos
 
@@ -235,6 +237,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 
 | 2026-11-10 | Execute phase 5 close-out (gsd-autonomous); code review 0 critical, 5 warning, 7 info, WR-01/03/04 fixed and the rest seeded; verifier passed 5/5; ci workflow exit 0 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Ship phase 5 (gsd-ship 05); PR #19 squash-merged on green CI run 42768406155, release PR #20 merged, v0.5.0; digest dry run run 42769805382 exit 0 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Execute phase 6 plan 06-01 (gsd-execute-phase 06); cartdb slot table of 20 ids, per-slot counts, compact rows, catalog file and zz_new control; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -256,8 +259,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T06:04:42.115Z
-Stopped at: Phase 5 shipped as v0.5.0; phase 6 discuss next
+Last session: 2026-11-10T08:08:53.649Z
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
