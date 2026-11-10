@@ -18,7 +18,7 @@ Requirements for this milestone. Each maps to one roadmap phase. Scope decisions
 - [ ] **TUNE-07**: Each open review finding from phases 1, 2 and 4 (WR-02, WR-04, IN-01 to IN-06 and the phase 4 info items) is fixed, closed with a reason, or seeded
 - [ ] **TUNE-08**: The nightly lanes have run on the sound code, and the nightly report opens and closes an issue once on a forced failure
 - [ ] **TUNE-09**: Dependabot updates GitHub Actions weekly with minor and patch grouped, and a `policy.dependabot` test with a negative control guards its configuration
-- [ ] **TUNE-10**: The wasm32 lane is required by `CI required` once ten successful main runs show hashes equal to Linux x64's
+- [x] **TUNE-10**: The wasm32 lane is required by `CI required` once ten successful main runs show hashes equal to Linux x64's
 
 ### Mappers
 
@@ -118,7 +118,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TUNE-07 | Phase 5 | Pending |
 | TUNE-08 | Phase 5 | Pending |
 | TUNE-09 | Phase 5 | Pending |
-| TUNE-10 | Phase 5 | Pending |
+| TUNE-10 | Phase 5 | Complete |
 | MAP-01 | Phase 6 | Pending |
 | MAP-02 | Phase 6 | Pending |
 | MAP-03 | Phase 6 | Pending |

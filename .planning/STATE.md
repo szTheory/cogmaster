@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 5
 current_phase_name: Tune-up
 status: executing
-stopped_at: Completed 05-07-PLAN.md
-last_updated: "2026-11-10T04:29:56.083Z"
+stopped_at: Completed 05-04-PLAN.md
+last_updated: "2026-11-10T04:33:16.974Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 5 execution started
-state_head: 90bb31fd7ab9b5ab7bf3952ab40a30af4cb93979
+state_head: e34284f00599000b5b48fffe4df7f2707ec99940
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 14
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 5 (Tune-up) — EXECUTING
-Plan: 5 of 14
+Plan: 6 of 14
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 5 execution started
 
@@ -127,6 +127,7 @@ Progress: [░░░░░░░░░░] 0% of v2.0
 | Phase 05 P02 | 9 min | 2 tasks | 5 files |
 | Phase 05 P03 | 30min | 2 tasks | 8 files |
 | Phase 05 P07 | 20min | 1 tasks | 6 files |
+| Phase 05 P04 | 12min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -139,6 +140,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 05]: 05-02: the BMP top-down branch stays because sips writes a negative height (-192); compare.c holds the reader and hosted helpers sit at 273 of 300 lines
 - [Phase 05]: 05-03: be32 keeps its C++ cross compiler because every configure enables C++ for the header check (static evidence, no step time measured); floored timeout comments may carry a bracketed reason
 - [Phase 05]: 05-07: CART_BODY_MAX names the 1 MiB body limit and CART_MAX derives from it; the core seeded-load oracle computes the body after the copier-header strip
+- [Phase 05]: 05-04: wasm32 is in hash-equality (COUNT 8) and CI required's needs after 12 equal main runs; the report-only exemption is deleted from ci_required, its tests and docs
 
 ### Pending Todos
 
@@ -204,6 +206,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-10 | Execute phase 5 plan 05-02 (gsd-execute-phase 05); BMP reader folded into compare.c, sips writes top-down (height -192) so the branch stays, hosted helpers 299 to 273 lines; 2 tasks, 1 commit | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Execute phase 5 plan 05-03 (gsd-execute-phase 05); scripts/ci-durations.sh counts runs not lanes, timeouts check verifies the arithmetic, 22 workflow timeouts re-derived from live runs, be32 C++ compiler kept on static evidence; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Execute phase 5 plan 05-07 (gsd-execute-phase 05); cart probe refuses a body over 1 MiB after the copier-header strip, core load oracle follows the rule, docs say body not total; 1 task, 4 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Execute phase 5 plan 05-04 (gsd-execute-phase 05); wasm32 promoted into hash-equality (eight files) and CI required after 12 equal main runs, report-only exemption deleted; 2 tasks, 1 commit | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -225,8 +228,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T04:29:56.050Z
-Stopped at: Completed 05-07-PLAN.md
+Last session: 2026-11-10T04:33:16.941Z
+Stopped at: Completed 05-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
