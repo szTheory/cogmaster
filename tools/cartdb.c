@@ -28,6 +28,7 @@ struct slot {
     uint32_t id, board;
     const char *reason;
 };
+/* The reason a slot carries while its board is being built; no row may ship with it. */
 #define NOT_YET "mapper arm not present"
 #define SG1000 "SG-1000 board; the SG-1000 is not emulated"
 static const struct slot slots[] = {
@@ -42,15 +43,15 @@ static const struct slot slots[] = {
     {"level3", 9u, 0u, SG1000},
     {"othello", 10u, 0u, SG1000},
     {"terebi", 11u, 0u, SG1000},
-    {"4pak", 12u, 0u, NOT_YET},
+    {"4pak", 12u, COGMASTER_BOARD_4PAK, ""},
     {"hicom", 13u, COGMASTER_BOARD_HICOM, ""},
     {"janggun", 14u, 0u, "reverse bit 6 vs 7 unresolved (MAME and SMS Power disagree)"},
     {"korean", 15u, COGMASTER_BOARD_KOREAN, ""},
     {"korean_188in1", 16u, 0u, "menu entries 6 and 13 fail in MAME and ares"},
     {"korean_nb", 17u, COGMASTER_BOARD_KOREAN_NB, ""},
-    {"nemesis", 18u, 0u, NOT_YET},
+    {"nemesis", 18u, COGMASTER_BOARD_NEMESIS, ""},
     {"seojin", 19u, 0u, "game select at $FFF0 and data bit 7 inverted; no hardware dump evidence"},
-    {"zemina", 20u, 0u, NOT_YET},
+    {"zemina", 20u, COGMASTER_BOARD_ZEMINA, ""},
 };
 #define SLOTS (sizeof slots / sizeof slots[0])
 static uint32_t slot_seen[SLOTS], slot_emitted[SLOTS];
@@ -62,6 +63,9 @@ static const char *const board_names[] = {
     [COGMASTER_BOARD_KOREAN] = "korean",
     [COGMASTER_BOARD_KOREAN_NB] = "korean_nb",
     [COGMASTER_BOARD_HICOM] = "hicom",
+    [COGMASTER_BOARD_ZEMINA] = "zemina",
+    [COGMASTER_BOARD_NEMESIS] = "nemesis",
+    [COGMASTER_BOARD_4PAK] = "hes_4pak",
 };
 #define BOARD_NAMES (sizeof board_names / sizeof board_names[0])
 
@@ -116,7 +120,7 @@ static void check_table(void)
         const struct slot *s = &slots[i];
         size_t reason = strlen(s->reason);
         if (s->id != i + 1u || !*s->name || (s->board != 0u) != !reason || reason > 95u ||
-            s->board >= BOARD_NAMES)
+            s->board >= BOARD_NAMES || !strcmp(s->reason, NOT_YET))
             fail("slot table row is not consistent");
         for (const char *c = s->reason; *c; c++)
             if (*c < 32 || *c > 126 || *c == '"' || *c == '\\')

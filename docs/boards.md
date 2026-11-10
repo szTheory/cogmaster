@@ -32,7 +32,7 @@ every other field filled when no supported board fits.
 | `product_code`, `version` | the product number (decimal) and the version nibble |
 | `region_code`, `rom_size_code` | the header's region and size nibbles |
 | `machine_guess`, `region_guess` | the machine and region the region code names (`COGMASTER_MACHINE_*`, `COGMASTER_REGION_*`), or 0 |
-| `board` | `COGMASTER_BOARD_ROM_ONLY` (1), `COGMASTER_BOARD_SEGA` (2), `COGMASTER_BOARD_CODEMASTERS` (3), `COGMASTER_BOARD_KOREAN` (4), `COGMASTER_BOARD_KOREAN_NB` (5) or `COGMASTER_BOARD_HICOM` (6); 0 for none |
+| `board` | `COGMASTER_BOARD_ROM_ONLY` (1), `COGMASTER_BOARD_SEGA` (2), `COGMASTER_BOARD_CODEMASTERS` (3), `COGMASTER_BOARD_KOREAN` (4), `COGMASTER_BOARD_KOREAN_NB` (5), `COGMASTER_BOARD_HICOM` (6), `COGMASTER_BOARD_ZEMINA` (7), `COGMASTER_BOARD_NEMESIS` (8) or `COGMASTER_BOARD_4PAK` (9); 0 for none |
 
 Every header field is 0 when no header was found. The board is chosen in this order:
 
@@ -64,9 +64,33 @@ The boards:
 - **Hi-Com.** A write to `$FFFF` selects the 32 KiB bank of `$0000`-`$7FFF`; the bank starts at 0, and `$8000`-`$BFFF`
   always show the first 16 KiB of the image.
 
-The three boards bank in 8 KiB steps, and a bank number past the end wraps modulo the image. On an image whose
-size is not a power of two a register write past the end also records a `mapper_range` fault. Korean no-bank and
-Hi-Com are found by their hash only: nothing in the image names them.
+- **Zemina.** Writes to exactly `$0000`, `$0001`, `$0002` and `$0003` select the 8 KiB bank of `$8000`, `$A000`,
+  `$4000` and `$6000` (the value modulo twice the 16 KiB bank count); `$0000`-`$3FFF` stay fixed, and the banks start
+  at 0 to 5 in order. Any other write below `$C000` changes nothing.
+- **Nemesis.** The Zemina board with the last 8 KiB bank of the image at `$0000` after power-on.
+- **4 PAK.** Three registers pick 16 KiB banks, each modulo the bank count: `$3FFE` for `$0000`-`$3FFF`, `$7FFF` for
+  `$4000`-`$7FFF` and `$BFFF` for `$8000`-`$BFFF`, where bits 5 and 4 of the `$3FFE` value are added to the `$BFFF`
+  value. Every slot starts on bank 0. The Sega registers at `$FFFD`-`$FFFF` also page it, as MAME does.
+
+The six boards after Codemasters bank in 8 KiB steps, and a bank number past the end wraps modulo the image. On an
+image whose size is not a power of two a register write past the end also records a `mapper_range` fault. Korean
+no-bank and Hi-Com are found by their hash only: nothing in the image names them. Zemina, Nemesis and 4 PAK load
+from their table rows with no setting.
 
 The image is padded with `$FF` to whole 16 KiB banks, and a bank number past the end selects the bank number
 modulo the bank count. Cartridge RAM starts zeroed at load, is kept by both resets and is part of the saved state.
+
+## Unsupported by design
+
+A table row can name a cartridge this core does not run. The probe returns the unsupported-board status with
+`board` 0, the slot's number in `unsupported_id` and `<slot>: <reason>` in `unsupported_reason`, and the runner
+turns that status into exit 77. The slots and their reasons as the table states them:
+
+- **Janggun:** reverse bit 6 vs 7 unresolved (MAME and SMS Power disagree).
+- **Seo Jin:** game select at `$FFF0` and data bit 7 inverted; no hardware dump evidence.
+- **188-in-1:** menu entries 6 and 13 fail in MAME and ares.
+- **SG-1000 boards** (Card Catcher, Castle, both Dahjee types, Level 3, Othello, Terebi Oekaki): the SG-1000 is not
+  emulated.
+- **Master Gear:** a converter, not a game.
+- **X-Terminator:** a cheat device.
+- **Game Gear EEPROM boards:** the 93C46 save chip is not emulated until saves support it.

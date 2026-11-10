@@ -160,7 +160,7 @@ elseif(CMAKE_SCRIPT_MODE_FILE)
   string(REGEX MATCHALL "cartdb: slot [a-z0-9_]+ seen" count_lines "${err}")
   list(LENGTH count_lines count_total)
   list(LENGTH slots slot_total)
-  if(NOT count_total EQUAL slot_total OR NOT err MATCHES "cartdb: slot 4pak [^\n]*unsupported" OR NOT err MATCHES "cartdb: slot codemasters seen=1 emitted=1 -> codemasters")
+  if(NOT count_total EQUAL slot_total OR NOT err MATCHES "cartdb: slot 4pak [^\n]*hes_4pak" OR NOT err MATCHES "cartdb: slot codemasters seen=1 emitted=1 -> codemasters")
     message(FATAL_ERROR "per-slot lines: ${err}")
   endif()
   # A multipart record is seen and excluded.
