@@ -44,6 +44,10 @@ slots, dot cursor, scroll/display latches and last driven bus byte, so older sta
 bytes are refused. API version 6 appends the battery query; existing ABI layouts remain unchanged.
 API version 9 appends the audio drain `cogmaster_get_audio`. Behaviour revision 11 and state format 11
 cover the whole of the sound work, so older state bytes are refused. See [Audio](#audio).
+API version 10 appends the board constants `COGMASTER_BOARD_KOREAN`, `COGMASTER_BOARD_KOREAN_NB`, `COGMASTER_BOARD_HICOM`,
+`COGMASTER_BOARD_ZEMINA`, `COGMASTER_BOARD_NEMESIS` and `COGMASTER_BOARD_4PAK`, the board source constants
+`COGMASTER_BOARD_SOURCE_DB`, `COGMASTER_BOARD_SOURCE_HEADER`, `COGMASTER_BOARD_SOURCE_HEURISTIC` and `COGMASTER_BOARD_SOURCE_DEFAULT`, and the
+`cogmaster_cart_info` fields from `board_source` to `unsupported_reason`, with behaviour revision 12 and state format 12; [Boards](boards.md) says what they mean.
 
 ## Getting it
 
@@ -454,7 +458,8 @@ Every public name, for reference: the opaque instance `cogmaster`; the types `co
 `line`, `dot`, `pc`, `addr`, `opcode`, `width`, `device`, `kind`) and `cogmaster_cart_info` (`size`,
 `image_size`, `body_offset`, `header_at`, `checksum`, `checksum_ok`, `product_code`, `version`, `region_code`,
 `rom_size_code`, `machine_guess`, `region_guess`, `board`, `identified`, `public_identity`, `persistence`,
-`persistent_size`, `persistence_geometry`, `video_mode`, `sha1`, `title`); the functions `cogmaster_get_versions`,
+`persistent_size`, `persistence_geometry`, `video_mode`, `sha1`, `title`, `board_source`, `board_candidate`, `scan_sega`,
+`scan_candidate`, `scan_runner_up`, `unsupported_id`, `unsupported_reason`); the functions `cogmaster_get_versions`,
 `cogmaster_create`, `cogmaster_destroy`, `cogmaster_load`, `cogmaster_run_frame`, `cogmaster_get_frame`,
 `cogmaster_get_info`, `cogmaster_get_audio`, `cogmaster_get_audio_trace`, `cogmaster_reset`, `cogmaster_get_fault`, `cogmaster_probe` and `cogmaster_peek`; the constants `COGMASTER_MACHINE_AUTO`,
 `COGMASTER_MACHINE_SMS2`, `COGMASTER_MACHINE_GG`, `COGMASTER_REGION_AUTO`, `COGMASTER_REGION_EXPORT`,
