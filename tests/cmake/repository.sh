@@ -33,9 +33,10 @@ no_skip|no_float)
     printf '%s\n' "$ROOTS" | while IFS= read -r dir; do scan "$dir" '*.c' '*.h' || exit 1; done
   fi ;;
 api_names)
-  # Compare distinct identifier sets in both directions; trailing underscores are guide wildcards.
+  # Compare distinct identifier sets in both directions; trailing underscores are guide wildcards. DOC lists the guide files.
   awk 'function names(s,a, n) { while(match(s,/(cogmaster_[a-z0-9_]+|COGMASTER_[A-Z0-9_]+)/)) { n=substr(s,RSTART,RLENGTH); if(n!="COGMASTER_H") a[n]=1; s=substr(s,RSTART+RLENGTH) } }
-  BEGIN { while((getline s < ENVIRON["HEADER"])>0) names(s,declared); split(ENVIRON["OTHER"],files,"\n"); for(f in files) while((getline s < files[f])>0) names(s,cited) }
+  BEGIN { while((getline s < ENVIRON["HEADER"])>0) names(s,declared); split(ENVIRON["OTHER"],files,"\n"); for(f in files) while((getline s < files[f])>0) names(s,cited)
+    n=split(ENVIRON["DOC"],guides,"\n"); for(i=1;i<=n;i++) ARGV[ARGC++]=guides[i] }
   { names($0,written) }
   END {
     for(n in declared) if(n !~ /_$/ && !(n in written)) {print n " is declared in the header but the guide never names it"; bad=1}
@@ -43,7 +44,7 @@ api_names)
       known=(n in declared || n in cited); if(n ~ /_$/) for(d in declared) if(index(d,n)==1) known=1;
       if(!known) {print n " is named in the guide but the header does not declare it"; bad=1}
     } exit bad
-  }' "$DOC" ;;
+  }' ;;
 api_version)
   awk 'BEGIN {
   while((getline s < ENVIRON["HEADER"])>0) h=h s "\n";

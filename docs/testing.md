@@ -1,23 +1,9 @@
 # Testing
 
-`runner.save.continuation.normal`, `.term` and `.int` verify fresh-process numeric
-continuation, missing and exact-size wrong-save controls, full save bytes and unchanged
-oversize rejection; see [conformance](conformance.md). `libretro.battery.sms2` and
-`.gg` restore the real classified battery fixture through the frontend's SAVE_RAM
-pointer, continue 7 to 8, Restart to 9, unload/reload and restore again. They check
-pre-enable and post-frame span stability, fresh FF bytes, invalidation, unknown and
-no-content NULL/0 controls. `battery.continuation` independently checks both SOFT
-and POWER resets with real media on SMS2 and GG: pointer, size, all bytes and generation
-are unchanged, direct host writes and API imports are generation-neutral, and the
-next guest write increments generation once. `battery.excluded` covers known-none,
-unknown and unsupported geometry at the public battery-query boundary; mapper tests
-keep volatile RAM separate. In-process tests load the production module and do not
-count toward the hosted RetroArch code budget. They do not establish the deferred
-hosted save-file or cross-emulator interoperability claims.
-
 Every check CI runs, a contributor can run with one command. This page covers that command, the lanes, the test
-inventories, the negative controls, the pinned hashes, the hosted RetroArch check, the performance job and how to
-reproduce a CI failure. Releases and repository settings are in [maintaining.md](maintaining.md).
+inventories, the negative controls, the pinned hashes and how to reproduce a CI failure. The hosted RetroArch check
+is in [hosted.md](hosted.md), the performance job and fuzzing in [perf-fuzz.md](perf-fuzz.md), and the save tests in
+[saves.md](saves.md). Releases and repository settings are in [maintaining.md](maintaining.md).
 
 ## The entry point
 
@@ -82,7 +68,7 @@ Each lane is one workflow preset, `cmake --workflow --preset <name>`, building i
 | `hygiene` | The repository is clean: tree scan, formatting, the integer-only text scan, the analyzer, the pins file, and the tests of CI itself. | `hygiene` | `hygiene` |
 | `be32` | The same hashes on a big-endian, 32-bit target with unsigned `char`: 32-bit PowerPC (`cmake/toolchains/ppc-linux-gnu.cmake`) under `qemu-ppc`. | `ci` | `portable` |
 | `wasm32` | The same hashes in WebAssembly: clang-21 for `wasm32-wasi` (`cmake/toolchains/wasm32-wasi.cmake`) under the pinned wasmtime. WASI cannot load a libretro core, so this lane builds none. | `wasm32` | `portable` |
-| `fuzz` | The nightly libFuzzer runs of the loader, two-frame execution and raw save import under clang-21's ASan and UBSan (see [Fuzzing](#fuzzing)). No fixtures, no libretro core. | `fuzz` | `fuzz` |
+| `fuzz` | The nightly libFuzzer runs of the loader, two-frame execution and raw save import under clang-21's ASan and UBSan (see [Fuzzing](perf-fuzz.md#fuzzing)). No fixtures, no libretro core. | `fuzz` | `fuzz` |
 | `vectors-full` | The nightly run of all 1,604,000 Z80 vectors, and that the committed sample is what the converter writes from the pinned archive (see [conformance.md](conformance.md#the-nightly-full-run)). Fetch the archive first. | `vectors-full` | `vectors` |
 | `bench` | A Release runner for the bench and the instructions-per-frame job. Configure and build only, with no tests and no fixtures. | none | none |
 
@@ -304,8 +290,8 @@ lane's inventory and labels. Every action is pinned by full commit SHA.
 | `be32` | `ubuntu-26.04` | preset `be32`; uploads `hashes-be32` |
 | `hash-equality` | `ubuntu-26.04` | exactly seven `hashes.txt` files byte-identical |
 | `wasm32` | `ubuntu-26.04` | preset `wasm32`; reports whether its `hashes.txt` equals Linux x64's |
-| `retroarch` | `macos-15` | the built core in RetroArch (below) |
-| `perf` | `ubuntu-26.04` | pull requests and dispatches: Cachegrind instructions per frame (below) |
+| `retroarch` | `macos-15` | the built core in RetroArch ([hosted.md](hosted.md)) |
+| `perf` | `ubuntu-26.04` | pull requests and dispatches: Cachegrind instructions per frame ([perf-fuzz.md](perf-fuzz.md)) |
 | `rehearsal`, `cleanup` | `ubuntu-26.04` | every publish step against a throwaway prerelease ([maintaining.md](maintaining.md#the-rehearsal)) |
 | `CI required` | `ubuntu-26.04` | the roll-up below |
 
@@ -332,131 +318,8 @@ to pipeline work, and any CI skip token in the title or body. Editing the title 
 **Concurrency.** A new push to a pull request cancels that pull request's run in progress. Runs on `main` are
 never cancelled, and a call from `release.yml` does not queue behind the push run on the same commit.
 
-## Performance
-
-**Instructions per frame.** The `perf` job counts instructions while `cogmaster-run` executes the owned
-`boot_to_play.sms` fixture under Cachegrind: Ir/frame = (Ir at 360 frames − Ir at 60) / 300, in integers, with `--cache-sim=no`, an
-empty environment and runner paths of equal length, so the count repeats exactly. It measures the pull request's
-head commit once and its merge base with the base branch twice, then `tests/cmake/perf_compare.cmake` prints one
-line to the log and the job summary:
-
-```text
-perf boot_to_play head=2146896 base=2146896 delta_bp=0 verdict=PASS
-```
-
-`delta_bp` is the change in basis points. `PASS` means at most 1.00 % slower (exactly +1.00 % passes); `FAIL`
-more than that or more than the allow file permits; `UNSTABLE` the two base measurements differ; `NO_BASE` the
-merge base lacks comparable rendering/input support. An empty or non-numeric measurement is an input error, never a pass.
-Head and base load the same head-built fixture and input files with explicit SMS2, SMS video and NTSC export
-configuration. Input presses button 1 at frames 5, 6 and 8, then releases it. The comparison requires a base
-with API at least 5, behaviour revision at least 8 and the playing fixture source; an older phase's card-only
-path cannot provide a meaningful base. `perf.playing` checks this bench path against the independent pixel oracle.
-
-**Report mode.** The job runs with `COGMASTER_PERF_MODE: report` in `ci.yml`: it prints the verdict and succeeds
-whatever the verdict. It is armed by one `ci:` pull request that sets the mode to `gate`, after two control runs
-dispatched on `main` show zero spread; on `workflow_dispatch` the job measures one commit three times and prints
-`perf control boot_to_play runs=<a>,<b>,<c> spread=<n>`. Once armed, `FAIL`, `UNSTABLE` and `NO_BASE` fail it.
-
-**Exceptions.** A pull request that must be slower adds a line to `tests/perf/allow.txt`:
-`<rom> <max % × 100> <expiry YYYY-MM-DD> <reason>`. It raises that ROM's limit through its expiry, at most 60
-days away, and is removed after the pull request merges.
-
-**Nightly bench.** `.github/workflows/nightly.yml` runs the same owned fixture/profile/script with
-`--bench 300000` every night on
-`ubuntu-26.04`, `ubuntu-26.04-arm` and `macos-15`, and under wasmtime. Each report is the runner's nine lines
-(see [runner.md](runner.md#bench-report)), the input lag count and the runner's name; WASI has no resident set size, so wasm32's
-`max_rss_kib` reads 0. Reports are trend data in the job summaries and `bench-*` artifacts, never a gate and never
-committed. A failed night opens or comments on the one open issue labelled `nightly`; a good night closes it.
-Dispatching the workflow with `force_failure` fails a run on purpose, after the reports are uploaded. A pull
-request that changes the bench or the workflow runs the bench jobs but writes no issue.
-
-## Fuzzing
-
-Three fuzz targets each define `LLVMFuzzerTestOneInput`: `tests/fuzz/fuzz_loader.c` probes the bytes and loads them
-on the profile the probe guesses, and fails when the probe and the load disagree on accepting them;
-`tests/fuzz/fuzz_run.c` loads them with fast boot and runs two frames.
-`tests/fuzz/fuzz_save.c` imports the bytes against independently constructed physical RAM
-with known, none, unknown and unsupported persistence. It checks FF padding, exact bytes,
-generation-neutral repeated import and full-state equality after refusal, including SIZE_MAX
-without a large source buffer. `battery.continuation` separately runs production image
-classification and the owned guest: two same-size accepted inputs continue from different counters.
-Their starting inputs are the images
-`tests/fuzz/seeds.c` writes into `build/<preset>/tests/seeds` at build time; no corpus is committed.
-
-**Replay, every pull request.** `fuzz.regress.loader`, `fuzz.regress.run` and `fuzz.regress.save` link each entry with a plain `main`
-(`tests/fuzz/replay.c`) and replay every seed, and every file in `tests/fuzz/regress` when it exists, on every
-lane that runs the `portable` label. Each prints `replayed N` and fails when N is 0. No libFuzzer is needed.
-
-**libFuzzer, nightly.** The `fuzz` job in `nightly.yml` runs `cmake --workflow --preset fuzz` on `ubuntu-26.04`:
-clang-21 with `-fsanitize=fuzzer-no-link,address,undefined`, the three targets linked with `-fsanitize=fuzzer`, each
-run for 60 s over a fresh copy of the seeds with `-timeout=2 -max_len=1049089` (1 MiB, a copier header and one
-byte, so the size-reject path is reachable). A crashing input is uploaded as the `fuzz-artifacts` artifact. The
-job is `continue-on-error` until ten green nightly runs. A finding is a harness or core bug to triage, never a
-release gate of its own.
-
-**Adding a regression.** Minimise the input (`cogmaster-fuzz-<target> -minimize_crash=1 -runs=10000 <file>`), fix
-the bug, commit the minimised file under `tests/fuzz/regress/` and add its `tests/roms/manifest.txt` row
-(`scripts/hygiene.sh` rejects a binary file without one). Reconfigure: the replay tests then read the directory.
-`docs.budgets` keeps `tests/fuzz` at most 512 KiB.
-
-## Hosted RetroArch
-
-The `retroarch` job proves that a real frontend shows the frame the runner hashes. It is a CI step, not a CTest,
-so it never skips itself off macOS. On `macos-15` it:
-
-1. unzips the core and the runner from the macOS arm64 `build` leg's archives;
-2. fetches the pinned RetroArch Metal disk image with `scripts/fetch-pin.sh retroarch-dmg`, which checks its
-   SHA-256 before anything opens it, copies the app out and checks its bundle version against `pins.txt`;
-3. runs `tests/retroarch/run_retroarch.cmake`: RetroArch gets its own `HOME`, `CFFIXED_USER_HOME` and the
-   configuration from `tests/retroarch/test.cfg.in`, and starts with `--verbose -L <core>`, no content and
-   `--max-frames=60 --max-frames-ss`. The launch is bounded at 50 seconds and a failure prints its log;
-4. writes the runner's frame with `cogmaster-run --frames 60 --png 60:runner.png`, converts both PNGs to BMP with
-   `sips`, builds `tests/retroarch/compare.c`, and requires equality;
-5. runs the comparator with `--flip` through `tests/cmake/expect_fail.cmake`: it inverts one channel of actual
-   pixel (7,3) in memory and must exit 1 naming that pixel;
-6. downloads only the owned fixture, runner input and replay-only module from the same build. A 14-frame
-   baseline records a replay in the released frontend. `replay.c` checks the observed v2 event layout and
-   changes only port 0 RetroPad B: press, hold, release, press again. The frontend plays that stream into
-   the adapter's normal input callback in a fresh session. The final released frames remain at counter 2;
-7. compares both screenshots with runner frames and, independently, every coordinate with `play_pixel`
-   (baseline counter/scroll 0, input 2), runs the pixel control on the changed frame and uploads only the PNGs;
-8. records sound with `--record` and `tests/retroarch/record.cfg` (mov, 16-bit PCM): the no-content session is a
-   silent control, and `psg_sweep.sms` and `psg_sweep.gg` are the sound sessions. `tests/retroarch/audio.cmake`
-   requires the movie, `afinfo` exit 0, 188,000 to 196,000 audio bytes, no non-zero byte in the control and at
-   least 8,192 in each sound session. It reads no log text.
-
-The shared driver, helpers, checker, synthetic comparator fixture and pixel oracle total at most 300 physical
-lines; `policy.e2e_budget` counts them. The BMP reader accepts the uncompressed RGB24 output from `sips`.
-The test-only replay module compiles the production adapter unchanged and forwards only its three state
-entrypoints to the core state visitor, which enables the frontend's mandatory initial checkpoint; it supplies
-no input and is never packaged. The production module still refuses save states.
-`libretro.host.content` and `libretro.host.replay` run the same callback/pixel sequence against both modules.
-The portable screenshot tests prove that matching pixels pass and that wrong scroll or a changed pixel fails. The replay layout was measured from the released 1.22.2 binary; no emulator source was read.
-The hosted Game Gear case holds Start on frames 5, 6 and 8 and compares the native 160×144 crop at field
-origin (48,24) with the shared coordinate oracle.
-
-**Rerunning it.** Rerun the job from the run page, or `gh run rerun <run-id> --failed`. On a Mac with a desktop
-session the same steps run locally from the job's commands, with `-DRETROARCH` pointing at an installed
-`RetroArch.app/Contents/MacOS/RetroArch`.
-
-## Content rendering and input
-
-`fixtures.boot_to_play` compares every native crop coordinate with a hand-expanded
-diamond and bar construction, then compares its independently calculated digest with
-the runner. `fixtures.boot_to_play.wrong_hash` proves that a changed expected digest
-fails. The image digest is checked after assembly. The mailbox test checks eight
-released samples and their CRC. `fixtures.boot_to_play.input` checks press in frame 5,
-hold in 6, release in 7 and another press in 8, with independently expected counter,
-scroll and final pixels. `runner.input` exercises the bounded grammar, both newline
-forms, optional final newline, missing/surplus records and invalid fields.
-
-`libretro.host.content` loads those same bytes into the production module with
-`need_fullpath=false`. Its frontend supplies the same script, checks one poll before
-each frame, reconstructs every callback pixel as RGB444 and checks each coordinate
-from frame 4 against the independent oracle. Its final digest equals the runner's.
-It also checks descriptor and pad/none claims, disconnected pads and missing input
-callbacks. This is in-process integration evidence; the real RetroArch job
-described above remains the separate frontend check.
+Performance and fuzzing are in [perf-fuzz.md](perf-fuzz.md). The hosted RetroArch check and the content, rendering
+and input tests are in [hosted.md](hosted.md).
 
 ## Release archives
 
@@ -484,8 +347,9 @@ library's version numbers, the core's `display_version` and `cogmaster-run --ver
 
 `docs.budgets` keeps `README.md` under 12 KB, `include/cogmaster.h` under 24 KB, each `docs/*.md` under 40 KB
 and `tests/fuzz` at most 512 KiB.
-`docs.api_names` requires every public name in the header to appear in [embedding.md](embedding.md), and the
-guide to name nothing the header lacks.
+`docs.api_names` requires every public name in the header to appear in at least one of
+[embedding.md](embedding.md), [saves.md](saves.md) and [boards.md](boards.md), and those guides to name nothing the
+header lacks.
 
 ## Reproducing a CI failure locally
 

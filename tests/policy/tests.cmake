@@ -61,15 +61,16 @@ include(${CMAKE_CURRENT_LIST_DIR}/budget_cases.cmake)
 # a call its header lacks, and expects both named.
 cogmaster_add_test(NAME docs.api_names
   COMMAND ${CMAKE_COMMAND} -DHEADER=${PROJECT_SOURCE_DIR}/include/cogmaster.h
-    -DDOC=${PROJECT_SOURCE_DIR}/docs/embedding.md
+    "-DDOC=${PROJECT_SOURCE_DIR}/docs/embedding.md$<SEMICOLON>${PROJECT_SOURCE_DIR}/docs/saves.md$<SEMICOLON>${PROJECT_SOURCE_DIR}/docs/boards.md"
     "-DOTHER=${PROJECT_SOURCE_DIR}/cmake/version.h.in$<SEMICOLON>${PROJECT_SOURCE_DIR}/CMakeLists.txt"
     -DCHECK=api_names -P ${policy_scripts}/repository.cmake
   LABELS policy TIMEOUT 10)
 set(policy_names ${PROJECT_BINARY_DIR}/policy/api_names_fixture)
 file(WRITE ${policy_names}/cogmaster.h "#define COGMASTER_KEPT 1\nint cogmaster_added(void);\n")
-file(WRITE ${policy_names}/embedding.md "Use `COGMASTER_KEPT` and `cogmaster_removed`.\n")
+file(WRITE ${policy_names}/guide_a.md "Use `COGMASTER_KEPT`.\n")
+file(WRITE ${policy_names}/guide_b.md "Use `cogmaster_removed`.\n")
 set(policy_cmd ${CMAKE_COMMAND} -DHEADER=${policy_names}/cogmaster.h
-  -DDOC=${policy_names}/embedding.md -DCHECK=api_names -P ${policy_scripts}/repository.cmake)
+  "-DDOC=${policy_names}/guide_a.md\\$<SEMICOLON>${policy_names}/guide_b.md" -DCHECK=api_names -P ${policy_scripts}/repository.cmake)
 string(REPLACE ";" "$<SEMICOLON>" policy_cmd "${policy_cmd}")
 cogmaster_add_test(NAME docs.api_names.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${policy_cmd}" -DCODE=1
