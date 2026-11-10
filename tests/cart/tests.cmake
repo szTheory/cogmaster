@@ -27,6 +27,7 @@ cogmaster_add_test(NAME cart.fixture_wrong_hash COMMAND ${CMAKE_COMMAND}
 cogmaster_add_test(NAME cart.generator COMMAND ${CMAKE_COMMAND}
   -DGEN=$<TARGET_FILE:cogmaster-cartdb> -DOUT=${PROJECT_BINARY_DIR}/tests/cartdb
   -DFACT=${CMAKE_CURRENT_LIST_DIR}/fixture_facts.txt
+  -DPINS=${PROJECT_SOURCE_DIR}/pins.txt -DTABLE=${PROJECT_SOURCE_DIR}/src/cartdb.inc
   "-DEMULATOR=${cartdb_emulator}" -P ${CMAKE_CURRENT_LIST_DIR}/generator.cmake
   LABELS cart portable TIMEOUT 10)
 add_executable(cogmaster-test-cart ${CMAKE_CURRENT_LIST_DIR}/test_cart.c)

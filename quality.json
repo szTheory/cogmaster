@@ -1,6 +1,7 @@
 {
   "ceilings": {
     "docs.max_bytes": 38912,
+    "size.cartdb": 102400,
     "size.zip.libretro": 198656,
     "size.zip.library": 228352,
     "size.zip.runner": 253952,
@@ -11,6 +12,10 @@
     "tests.wasm32": 397
   },
   "reasons": [
+    {
+      "key": "size.cartdb",
+      "reason": "The hard bound the compact hash table object must stay under (100 KB), set before any hosted measurement can exist because the key arrives in this pull request; a follow-up replaces it with the first hosted Linux x64 value plus about 15 percent."
+    },
     {
       "key": "size.zip.library",
       "reason": "Measured from the main push run 42741490263: the largest library zip over six legs was 198021 bytes (windows-x64); the ceiling is that plus 15 percent, rounded up to a whole kilobyte."
