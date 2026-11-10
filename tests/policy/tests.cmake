@@ -84,6 +84,39 @@ quality_control(missing_key "{\"ceilings\": {}, \"floors\": {}}\n"
 quality_control(malformed "{\"ceilings\": "
   "tests.fixture=lines:${quality_dir}/three.txt" "malformed\\.json[ \n]+is[ \n]+not[ \n]+valid")
 
+# The ratchet compares the file with the one on the base branch: a limit that
+# loosens needs a reasons entry for its key that the base does not already
+# hold. Each control writes a head and a base fixture; an absent base passes.
+function(quality_ratchet name code head base regex)
+  file(WRITE ${quality_dir}/${name}.json "${head}")
+  if(base STREQUAL "ABSENT")
+    set(base_file ${quality_dir}/${name}.absent.json)
+  else()
+    set(base_file ${quality_dir}/${name}.base.json)
+    file(WRITE ${base_file} "${base}")
+  endif()
+  set(command ${CMAKE_COMMAND} -DQUALITY=${quality_dir}/${name}.json -DBASE=${base_file}
+    "-DMEASURED=size.fixture=bytes:${quality_dir}/three.txt" -P ${policy_scripts}/quality.cmake)
+  if(code EQUAL 0)
+    cogmaster_add_test(NAME policy.quality.${name} COMMAND ${command} LABELS policy TIMEOUT 10)
+    set_tests_properties(policy.quality.${name} PROPERTIES PASS_REGULAR_EXPRESSION "${regex}")
+  else()
+    string(REPLACE ";" "$<SEMICOLON>" command "${command}")
+    cogmaster_add_test(NAME policy.quality.${name}
+      COMMAND ${CMAKE_COMMAND} "-DCMD=${command}" -DCODE=1 "-DREGEX=${regex}" -P ${policy_scripts}/expect_fail.cmake
+      LABELS policy TIMEOUT 10)
+  endif()
+endfunction()
+set(quality_16 "{\"ceilings\": {\"size.fixture\": 16}}\n")
+set(quality_20 "{\"ceilings\": {\"size.fixture\": 20}}\n")
+set(quality_16_grew "{\"ceilings\": {\"size.fixture\": 16}, \"reasons\": [{\"key\": \"size.fixture\", \"reason\": \"grew\"}]}\n")
+set(quality_20_grew "{\"ceilings\": {\"size.fixture\": 20}, \"reasons\": [{\"key\": \"size.fixture\", \"reason\": \"grew\"}]}\n")
+quality_ratchet(base_absent 0 "${quality_20}" ABSENT "quality: no base file")
+quality_ratchet(tightened 0 "${quality_16}" "${quality_20}" "size\\.fixture measured=15")
+quality_ratchet(new_reason 0 "${quality_20_grew}" "${quality_16}" "size\\.fixture measured=15")
+quality_ratchet(loosened 1 "${quality_20}" "${quality_16}"
+  "quality:[ \n]+size\\.fixture:[ \n]+loosened[ \n]+from[ \n]+16[ \n]+to[ \n]+20")
+quality_ratchet(reused_reason 1 "${quality_20_grew}" "${quality_16_grew}" "quality:[ \n]+size\\.fixture")
 
 # Every public name in the header appears in the embedding guide, and the
 # guide names nothing the header, the version header or the build lacks. The

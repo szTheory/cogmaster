@@ -214,10 +214,15 @@ policy.no_skip	policy
 policy.no_skip.self_test	policy
 policy.notices	policy
 policy.quality	policy
+policy.quality.base_absent	policy
 policy.quality.ceiling	policy
 policy.quality.floor	policy
+policy.quality.loosened	policy
 policy.quality.malformed	policy
 policy.quality.missing_key	policy
+policy.quality.new_reason	policy
+policy.quality.reused_reason	policy
+policy.quality.tightened	policy
 psg.frame_flush	portable,psg
 psg.gg.port06_sms_mode	portable,psg
 psg.gg.routing	portable,psg
