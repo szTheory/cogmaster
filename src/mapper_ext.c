@@ -176,10 +176,14 @@ void cogmaster__mapext_reset(cogmaster *m)
             p->bank8[0] = ext_bank(m, 2u * m->cart.pages - 1u);
         }
         break;
+    case COGMASTER__BOARD_4PAK:
+        /* All three registers power up at 0 (sega8_4pak_device::device_reset,
+           MAME rom.cpp), so each 16 KiB slot shows page 0: banks 0 and 1. */
+        for (uint32_t i = 0; i < EXT_SLOTS; i++) {
+            p->bank8[i] = ext_bank(m, i & 1u);
+        }
+        break;
     default:
-        /* The caller cleared every bank. All three registers of the 4 PAK
-           and its slots power up at 0 (sega8_4pak_device::device_reset, MAME
-           rom.cpp), which is the cleared state. */
         break;
     }
 }

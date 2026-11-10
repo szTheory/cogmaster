@@ -58,7 +58,7 @@ static void model_reset(struct model *g)
         uint32_t window = g->board == COGMASTER__BOARD_HICOM && i >= 4u ? i - 4u : i;
         g->bank[i] = window % (2u * g->pages);
         if (g->board == COGMASTER__BOARD_4PAK) {
-            g->bank[i] = 0u;
+            g->bank[i] = i & 1u;
         }
     }
     if (g->board == COGMASTER__BOARD_NEMESIS) {
