@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 5
 current_phase_name: Tune-up
 status: executing
-stopped_at: Milestone v1.0 audited; phase 04 shipped and released as v0.4.0
-last_updated: "2026-11-10T03:56:38.886Z"
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-11-10T04:05:45.697Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 5 execution started
-state_head: 7b6d70a170ad78203c601c67d14468a9f56ca33f
+state_head: fc56cee41de8bb4f1b79f630d13bc5254c58d08f
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 14
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 5 (Tune-up) — EXECUTING
-Plan: 1 of 14
-Status: Executing Phase 5
+Plan: 2 of 14
+Status: Ready to execute
 Last activity: 2026-11-09 — Phase 5 execution started
 
 Progress: [░░░░░░░░░░] 0% of v2.0
@@ -123,6 +123,7 @@ Progress: [░░░░░░░░░░] 0% of v2.0
 | Phase 04 P13 | 13 min | 2 tasks | 14 files |
 | Phase 04 P14 | 9min | 2 tasks | 11 files |
 | Phase 04 P15 | 22min | 2 tasks | 15 files |
+| Phase 05 P01 | 9 min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -131,6 +132,7 @@ Progress: [░░░░░░░░░░] 0% of v2.0
 The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milestone close); the full list with sources is
 `.planning/preparation/DECISIONS.md`; per-plan decisions are in the archived summaries under
 `.planning/milestones/v1.0-phases/`.
+- [Phase 05]: 05-01: the opening battery-test paragraph of testing.md moved to saves.md under Testing saves; docs.api_names takes a newline-separated DOC list through awk ARGV
 
 ### Pending Todos
 
@@ -213,10 +215,11 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-09T22:51:53.837Z
-Stopped at: Milestone v1.0 audited; phase 04 shipped and released as v0.4.0
+Last session: 2026-11-10T04:05:45.642Z
+Stopped at: Completed 05-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
 
 - Branch `phase/05-tune-up` off `origin/main` after the roadmap merges, then run /gsd-discuss-phase 5
+| 2026-11-10 | Execute phase 5 plan 05-01 (gsd-execute-phase 05); two zero-spread perf control runs on main (42752737395, 42752770307), docs split into hosted, perf-fuzz, saves and boards, docs.api_names reads a guide list; 2 tasks, 1 commit | Claude Code | claude-sonnet-5-5 |
