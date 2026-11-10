@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/szTheory/cogmaster/compare/v0.4.0...v0.5.0) (2026-11-10)
+
+
+### Features
+
+* tune up the pipeline and tell players how to load a ROM ([#19](https://github.com/szTheory/cogmaster/issues/19)) ([1851760](https://github.com/szTheory/cogmaster/commit/1851760cb4d5b474006b5210c77d12ee09fc4d94))
+
 ## [0.4.0](https://github.com/szTheory/cogmaster/compare/v0.3.0...v0.4.0) (2026-11-09)
 
 
