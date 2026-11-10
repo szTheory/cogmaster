@@ -122,6 +122,26 @@ int main(int argc, char **argv)
         CHECK_EQ_U64(named_info.title[0], 0u);
         CHECK_EQ_U64(named_info.board_source, COGMASTER_BOARD_SOURCE_DB);
     }
+    /* The first row of each Korean-family slot probes OK on its board, from the table. */
+    static const char *const korean_slot[3] = {"korean", "korean_nb", "hicom"};
+    static const uint8_t korean_board[3] = {COGMASTER_BOARD_KOREAN, COGMASTER_BOARD_KOREAN_NB,
+                                            COGMASTER_BOARD_HICOM};
+    for (size_t k = 0; k < 3u; k++) {
+        const struct cogmaster__cart_slot *slot = cogmaster__cartdb_slot_named(korean_slot[k]);
+        CHECK(slot != NULL);
+        const struct cogmaster__cart_fact *row = NULL;
+        for (size_t i = 0; slot != NULL && (row = cogmaster__cartdb_row(i)) != NULL; i++)
+            if (row->slot == slot->id)
+                break;
+        CHECK(row != NULL);
+        if (slot == NULL || row == NULL)
+            continue;
+        cogmaster_cart_info korean_info = {0};
+        korean_info.size = sizeof korean_info;
+        CHECK_EQ_U64(cogmaster__cart_fact_to_info(row, &korean_info), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(korean_info.board, korean_board[k]);
+        CHECK_EQ_U64(korean_info.board_source, COGMASTER_BOARD_SOURCE_DB);
+    }
     /* A slot is a board or a reason, never both. */
     for (uint32_t id = 1; id <= 20u; id++) {
         const struct cogmaster__cart_slot *slot = cogmaster__cartdb_slot(id);
@@ -132,16 +152,17 @@ int main(int argc, char **argv)
     CHECK(cogmaster__cartdb_slot(0) == NULL);
     CHECK(cogmaster__cartdb_slot_named("zz_new") == NULL);
     /* Every supported board owns at least one row, so a slot-to-board slip fails here. */
-    static const uint8_t supported[3] = {COGMASTER_BOARD_ROM_ONLY, COGMASTER_BOARD_SEGA,
-                                         COGMASTER_BOARD_CODEMASTERS};
-    uint32_t per_board[3] = {0, 0, 0};
+    static const uint8_t supported[6] = {COGMASTER_BOARD_ROM_ONLY,    COGMASTER_BOARD_SEGA,
+                                         COGMASTER_BOARD_CODEMASTERS, COGMASTER_BOARD_KOREAN,
+                                         COGMASTER_BOARD_KOREAN_NB,   COGMASTER_BOARD_HICOM};
+    uint32_t per_board[6] = {0, 0, 0, 0, 0, 0};
     uint32_t per_persistence[4] = {0, 0, 0, 0};
     uint32_t per_ctrl1[5] = {0}, per_ctrl2[5] = {0};
     for (size_t i = 0;; i++) {
         const struct cogmaster__cart_fact *row = cogmaster__cartdb_row(i);
         if (row == NULL)
             break;
-        for (size_t b = 0; b < 3u; b++)
+        for (size_t b = 0; b < 6u; b++)
             per_board[b] += row->board == supported[b];
         CHECK(row->persistence < 4u && row->ctrl1 < 5u && row->ctrl2 < 5u);
         if (row->persistence < 4u && row->ctrl1 < 5u && row->ctrl2 < 5u) {
@@ -150,7 +171,7 @@ int main(int argc, char **argv)
             per_ctrl2[row->ctrl2]++;
         }
     }
-    for (size_t b = 0; b < 3u; b++)
+    for (size_t b = 0; b < 6u; b++)
         CHECK(per_board[b] > 0u);
     /* Row counts from the pinned lists: EEPROM, battery, and the controller defaults. */
     CHECK_EQ_U64(per_persistence[2], 63u);

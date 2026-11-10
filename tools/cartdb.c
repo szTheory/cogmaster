@@ -43,11 +43,11 @@ static const struct slot slots[] = {
     {"othello", 10u, 0u, SG1000},
     {"terebi", 11u, 0u, SG1000},
     {"4pak", 12u, 0u, NOT_YET},
-    {"hicom", 13u, 0u, NOT_YET},
+    {"hicom", 13u, COGMASTER_BOARD_HICOM, ""},
     {"janggun", 14u, 0u, "reverse bit 6 vs 7 unresolved (MAME and SMS Power disagree)"},
-    {"korean", 15u, 0u, NOT_YET},
+    {"korean", 15u, COGMASTER_BOARD_KOREAN, ""},
     {"korean_188in1", 16u, 0u, "menu entries 6 and 13 fail in MAME and ares"},
-    {"korean_nb", 17u, 0u, NOT_YET},
+    {"korean_nb", 17u, COGMASTER_BOARD_KOREAN_NB, ""},
     {"nemesis", 18u, 0u, NOT_YET},
     {"seojin", 19u, 0u, "game select at $FFF0 and data bit 7 inverted; no hardware dump evidence"},
     {"zemina", 20u, 0u, NOT_YET},
@@ -59,6 +59,9 @@ static const char *const board_names[] = {
     [COGMASTER_BOARD_ROM_ONLY] = "none",
     [COGMASTER_BOARD_SEGA] = "sega",
     [COGMASTER_BOARD_CODEMASTERS] = "codemasters",
+    [COGMASTER_BOARD_KOREAN] = "korean",
+    [COGMASTER_BOARD_KOREAN_NB] = "korean_nb",
+    [COGMASTER_BOARD_HICOM] = "hicom",
 };
 #define BOARD_NAMES (sizeof board_names / sizeof board_names[0])
 

@@ -32,7 +32,7 @@ every other field filled when no supported board fits.
 | `product_code`, `version` | the product number (decimal) and the version nibble |
 | `region_code`, `rom_size_code` | the header's region and size nibbles |
 | `machine_guess`, `region_guess` | the machine and region the region code names (`COGMASTER_MACHINE_*`, `COGMASTER_REGION_*`), or 0 |
-| `board` | `COGMASTER_BOARD_ROM_ONLY` (1), `COGMASTER_BOARD_SEGA` (2) or `COGMASTER_BOARD_CODEMASTERS` (3); 0 for none |
+| `board` | `COGMASTER_BOARD_ROM_ONLY` (1), `COGMASTER_BOARD_SEGA` (2), `COGMASTER_BOARD_CODEMASTERS` (3), `COGMASTER_BOARD_KOREAN` (4), `COGMASTER_BOARD_KOREAN_NB` (5) or `COGMASTER_BOARD_HICOM` (6); 0 for none |
 
 Every header field is 0 when no header was found. The board is chosen in this order:
 
@@ -56,6 +56,17 @@ The boards:
   RAM, so `$DFFC`-`$DFFF` read them back. Fast boot leaves the banks at 0, 1 and 2.
 - **Codemasters.** Writes to `$0000`, `$4000` and `$8000` select the bank in those slots; they start at 0, 1 and
   0. Bit 7 of the `$4000` write maps 8 KiB of cartridge RAM at `$A000`-`$BFFF`.
+- **Korean.** A write to exactly `$A000` selects the 16 KiB bank of `$8000`-`$BFFF` (the value modulo the bank
+  count); `$0000`-`$7FFF` stay on banks 0 and 1, and the banks start at 0, 1 and 2. Any other write below `$C000`
+  changes nothing.
+- **Korean no-bank.** No register: the image sits at `$0000` in 8 KiB banks 0 to 5, so a 32 KiB image shows its first
+  16 KiB again at `$8000`. Writes change nothing.
+- **Hi-Com.** A write to `$FFFF` selects the 32 KiB bank of `$0000`-`$7FFF`; the bank starts at 0, and `$8000`-`$BFFF`
+  always show the first 16 KiB of the image.
+
+The three boards bank in 8 KiB steps, and a bank number past the end wraps modulo the image. On an image whose
+size is not a power of two a register write past the end also records a `mapper_range` fault. Korean no-bank and
+Hi-Com are found by their hash only: nothing in the image names them.
 
 The image is padded with `$FF` to whole 16 KiB banks, and a bank number past the end selects the bank number
 modulo the bank count. Cartridge RAM starts zeroed at load, is kept by both resets and is part of the saved state.
