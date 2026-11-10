@@ -6,7 +6,7 @@ up and checked, and how the pinned downloads move. Tests and CI are in [testing.
 Execution hands off to code review before phase verification. Keep review fixes to at most two rounds and
 allow one gap round only when new evidence warrants it. Test/tooling review findings become later seeds.
 Automate owned-fixture and frontend checks; no routine owner UAT is required. Performance remains report-only;
-arming it and promoting wasm32 remain the separate post-merge CI follow-up. Do not chain GSD steps.
+arming it remains the separate post-merge CI follow-up. Do not chain GSD steps.
 
 ## How a release happens
 

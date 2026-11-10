@@ -108,13 +108,12 @@ assembled fixture image, with Unix newlines on every host. CI collects the
 file from each lane, and the `hash-equality` job compares them:
 
 ```sh
-cmake "-DFILES=<file>;<file>;..." -DCOUNT=7 -DMODE=compare -P tests/cmake/hashes.cmake
+cmake "-DFILES=<file>;<file>;..." -DCOUNT=8 -DMODE=compare -P tests/cmake/hashes.cmake
 ```
 
 It passes only for exactly `COUNT` files, all present and byte-identical, and otherwise names the first file that
 differs. The fixed count means a lane that stops uploading fails the job instead of silently dropping out. The
-seven files are the six `build` legs and `be32`. wasm32 compares its own file with Linux x64's and only reports;
-once it is promoted, the count becomes eight.
+eight files are the six `build` legs, `be32` and `wasm32`.
 
 The file also carries the sound rows: 300 frames of `cogmaster-run --hash-audio` over `psg_sweep.sms` (Master System
 on NTSC, PAL and Japan, and the Game Gear in Master System mode), `psg_sweep.gg` (native) and `fm_sweep.sms` (Master
@@ -288,8 +287,8 @@ lane's inventory and labels. Every action is pinned by full commit SHA.
 | `asan` | `ubuntu-26.04` | preset `asan` |
 | `nofp` ×2 | `ubuntu-26.04`, `ubuntu-26.04-arm` | preset `nofp` |
 | `be32` | `ubuntu-26.04` | preset `be32`; uploads `hashes-be32` |
-| `hash-equality` | `ubuntu-26.04` | exactly seven `hashes.txt` files byte-identical |
-| `wasm32` | `ubuntu-26.04` | preset `wasm32`; reports whether its `hashes.txt` equals Linux x64's |
+| `hash-equality` | `ubuntu-26.04` | exactly eight `hashes.txt` files byte-identical |
+| `wasm32` | `ubuntu-26.04` | preset `wasm32`; uploads `hashes-wasm32` for `hash-equality` |
 | `retroarch` | `macos-15` | the built core in RetroArch ([hosted.md](hosted.md)) |
 | `perf` | `ubuntu-26.04` | pull requests and dispatches: Cachegrind instructions per frame ([perf-fuzz.md](perf-fuzz.md)) |
 | `rehearsal`, `cleanup` | `ubuntu-26.04` | every publish step against a throwaway prerelease ([maintaining.md](maintaining.md#the-rehearsal)) |
@@ -299,10 +298,10 @@ lane's inventory and labels. Every action is pinned by full commit SHA.
 needs succeeded, except: the heavy jobs may be skipped when `changes` says `heavy=false`, which happens only when
 every changed path is under `.planning/`; `title`, `perf`, `rehearsal` and `cleanup` may be skipped outside pull
 requests; `perf`, `rehearsal` and `cleanup` in a nested call that passes `ref`; and `rehearsal` and `cleanup`
-when no release input changed. `wasm32` is not among its needs.
+when no release input changed.
 
 **Tests of CI itself** (hygiene lane). `policy.ci_required` runs the roll-up's `jq` program from `ci.yml` on
-synthetic job results, and fails when a job other than `wasm32` is missing from its needs. `ci.classify` runs the
+synthetic job results, and fails when any job is missing from its needs. `ci.classify` runs the
 classifier on mixed, renamed, empty, planning-only and over-long path lists. `policy.action_pins` rejects an
 action not pinned by SHA. `hygiene.timeout_comments` requires each `timeout-minutes` comment to read `2 x S s,
 slowest of N runs, run <id>` with the timeout at least twice S, or `5-minute floor; no runs yet` at 5 minutes or

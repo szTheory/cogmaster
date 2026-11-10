@@ -345,11 +345,10 @@ cogmaster_add_test(NAME policy.publish_signer
 # Fault prevented: a CI required roll-up that passes a failed or wrongly
 # skipped job, or a job missing from its needs. The self test runs it on a
 # copy of ci.yml whose program ignores heavy, which must let a skipped build
-# through and so fail the case that names it. wasm32 reports on its own, so
-# it may stay out of the needs.
+# through and so fail the case that names it.
 set(hygiene_ci ${CMAKE_SOURCE_DIR}/.github/workflows/ci.yml)
 cogmaster_add_test(NAME policy.ci_required
-  COMMAND ${CMAKE_COMMAND} -DCI_YML=${hygiene_ci} -DJQ=${COGMASTER_JQ} -DREPORT_ONLY=wasm32
+  COMMAND ${CMAKE_COMMAND} -DCI_YML=${hygiene_ci} -DJQ=${COGMASTER_JQ}
     -P ${hygiene_scripts}/ci_required.cmake
   LABELS hygiene policy TIMEOUT 30)
 file(READ ${hygiene_ci} hygiene_yml)
@@ -360,7 +359,7 @@ endif()
 file(WRITE ${CMAKE_BINARY_DIR}/hygiene/ci_required_fixture/ci.yml "${hygiene_ignores_heavy}")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${hygiene_ci})
 set(hygiene_cmd ${CMAKE_COMMAND} -DCI_YML=${CMAKE_BINARY_DIR}/hygiene/ci_required_fixture/ci.yml
-  -DJQ=${COGMASTER_JQ} -DREPORT_ONLY=wasm32 -P ${hygiene_scripts}/ci_required.cmake)
+  -DJQ=${COGMASTER_JQ} -P ${hygiene_scripts}/ci_required.cmake)
 string(REPLACE ";" "$<SEMICOLON>" hygiene_cmd "${hygiene_cmd}")
 cogmaster_add_test(NAME policy.ci_required.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${hygiene_cmd}" -DCODE=1
