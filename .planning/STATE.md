@@ -265,6 +265,8 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-10 | Execute phase 6 plan 06-08 (gsd-execute-phase 06); cart_scan and guess_board replace other_board, cart.probe.scan decoys and families, row geometry property, boards prose, SEED-009 for the threshold measurement; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Execute phase 6 plan 06-09 (gsd-execute-phase 06); probe board_source and scan keys, every board named in mapper_guess, refusal message naming board and reason, Janggun-looking seed; 2 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 
+| 2026-11-10 | Discuss, plan, execute, verify and ship phase 6 (gsd-autonomous); 11 plans, review 0 critical (WR-01 fixed, rest SEED-009), verifier passed 5/5, hosted run 42787536409, PR #21 squash-merged on green PR run 42789733748 (eight-lane hash-equality, perf delta_bp 0), release PR #22 merged, v0.6.0 | Claude Code | claude-sonnet-5-5 (planner claude-opus-5-5) |
+
 ## Deferred Items
 
 Items acknowledged and deferred at milestone close, most recent first:
@@ -286,7 +288,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-11-10T09:09:15.688Z
-Stopped at: Phase 6 complete, ready to plan Phase 7
+Stopped at: Phase 6 shipped as v0.6.0; phase 7 discuss next, ready to plan Phase 7
 Resume file: None
 
 ## Operator Next Steps
