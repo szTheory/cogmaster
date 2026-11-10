@@ -233,6 +233,9 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-10 | Execute phase 5 plan 05-09 (gsd-execute-phase 05); phase 1, 2 and 4 review dispositions settled (open 0), deferred findings seeded in SEED-001, 002, 004 and 007, no script changed; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Execute phase 5 plan 05-11 (gsd-execute-phase 05); rehearsal skip and CI required clause for the Dependabot author with an actor control; 1 task, 1 commit | Claude Code | claude-sonnet-5-5 |
 
+| 2026-11-10 | Execute phase 5 close-out (gsd-autonomous); code review 0 critical, 5 warning, 7 info, WR-01/03/04 fixed and the rest seeded; verifier passed 5/5; ci workflow exit 0 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Ship phase 5 (gsd-ship 05); PR #19 squash-merged on green CI run 42768406155, release PR #20 merged, v0.5.0; digest dry run run 42769805382 exit 0 | Claude Code | claude-sonnet-5-5 |
+
 ## Deferred Items
 
 Items acknowledged and deferred at milestone close, most recent first:
@@ -254,9 +257,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-11-10T06:04:42.115Z
-Stopped at: Phase 5 complete, ready to plan Phase 6
+Stopped at: Phase 5 shipped as v0.5.0; phase 6 discuss next
 Resume file: None
 
 ## Operator Next Steps
 
-- Branch `phase/05-tune-up` off `origin/main` after the roadmap merges, then run /gsd-discuss-phase 5
+- Phase 6 on branch `phase/06-korean-cartridges-play`: discuss (fan-out), plan, execute, verify, ship; owner authorised /gsd-autonomous for v2.0 on 2026-11-10 (overrides AGENTS rule 9)
