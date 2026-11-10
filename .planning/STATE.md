@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 6
 current_phase_name: Korean cartridges play
 status: executing
-stopped_at: Completed 06-08-PLAN.md (runtime claude, model claude-sonnet-5-5)
-last_updated: "2026-11-10T08:48:59.263Z"
+stopped_at: Completed 06-09-PLAN.md (runtime claude, model claude-sonnet-5-5)
+last_updated: "2026-11-10T08:52:13.079Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 5 complete, transitioned to Phase 6
-state_head: 8b2245d373246cf9c60b3de4a75dd2276c12e37a
+state_head: 99317e34bbcf3f7ef5ea06eac5aa5f1f88d6074d
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 25
-  completed_plans: 22
+  completed_plans: 23
   percent: 13
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 6 — Korean cartridges play
-Plan: 9 of 11
+Plan: 10 of 11
 Status: Ready to execute
 Last activity: 2026-11-10 — Completed 06-01 (cartridge generator slot table)
 
@@ -146,6 +146,7 @@ Progress: [█░░░░░░░░░] 13% of v2.0
 | Phase 06 P06 | 35 min | 2 tasks | 10 files |
 | Phase 06 P07 | 35 min | 2 tasks | 11 files |
 | Phase 06 P08 | 25 min | 3 tasks | 11 files |
+| Phase 06 P09 | 12 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -180,6 +181,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 06]: Ext boards fault with mapper_range only when the highest selected 8 KiB bank is at or past twice the page count and the page count is not a power of two
 - [Phase 06]: 06-07: 4 PAK writes to $FFFD-$FFFF page slots 0-2 as MAME's inherited Sega write_mapper does (register-only reading cited, not implemented); Zemina and Nemesis share one write arm; the generator self-check refuses the temporary slot reason
 - [Phase 06]: 06-08: scan thresholds stay T=3 with margins 2s+2 and 2y+2 (no private library, SEED-009 holds the measurement); the Sega wins only at s >= 2x+2 and no store sites at all means Sega by default; a family failing its size rule or under a Game Gear header falls to the doubt zone naming the candidate
+- [Phase 06]: 06-09: the refusal text lives in probe.c beside the board names and main.c makes one call; no test name added, three existing runner cases extended
 
 ### Pending Todos
 
@@ -256,6 +258,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-10 | Execute phase 6 plan 06-03 (gsd-execute-phase 06); table regenerated as 1657 compact rows with 20 slot rows, binary search, catalog.tsv titles, named unsupported rows proven through fact_to_info, old table equal outside EEPROM persistence; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Execute phase 6 plan 06-07 (gsd-execute-phase 06); Zemina, Nemesis and 4 PAK arms, three exhaustive model-checked tests, slot rows flipped and regenerated, boards docs with the unsupported list; 2 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Execute phase 6 plan 06-08 (gsd-execute-phase 06); cart_scan and guess_board replace other_board, cart.probe.scan decoys and families, row geometry property, boards prose, SEED-009 for the threshold measurement; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Execute phase 6 plan 06-09 (gsd-execute-phase 06); probe board_source and scan keys, every board named in mapper_guess, refusal message naming board and reason, Janggun-looking seed; 2 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -277,8 +280,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T08:48:59.211Z
-Stopped at: Completed 06-08-PLAN.md (runtime claude, model claude-sonnet-5-5)
+Last session: 2026-11-10T08:52:13.014Z
+Stopped at: Completed 06-09-PLAN.md (runtime claude, model claude-sonnet-5-5)
 Resume file: None
 
 ## Operator Next Steps

@@ -82,7 +82,7 @@ Plans:
   3. `cogmaster-run --probe` reports `board_source`; a decoy with a valid `TMR SEGA` header and Korean-looking bytes stays a Sega board, a scan below threshold or margin does not pick a Korean board, and a tie refuses with the candidate named (MAP-06).
   4. Each new board passes an exhaustive register-write and address-read test under ASan, and a test shows its documented register writes record no fault (MAP-07).
   5. The eight-lane equality job shows every frame and audio hash that existed before the phase unchanged (MAP-08).
-**Plans**: 8/11 plans executed
+**Plans**: 9/11 plans executed
 
 Plans:
 - [x] 06-01-PLAN.md — generator slot table, per-slot counts, unmapped-slot failure, compact rows and catalog output (MAP-01, MAP-02)
@@ -93,7 +93,7 @@ Plans:
 - [x] 06-06-PLAN.md — Korean $A000, korean_nb and Hi-Com boards with exhaustive tests; rows flipped (MAP-03, MAP-07)
 - [x] 06-07-PLAN.md — Zemina, Nemesis and 4 PAK boards with exhaustive tests; rows flipped; unsupported list documented (MAP-03, MAP-04, MAP-07)
 - [x] 06-08-PLAN.md — guess_board and the instruction-aware scan with threshold, margin, geometry and decoys (MAP-06, MAP-03)
-- [ ] 06-09-PLAN.md — runner probe keys, board names and refusal messages with exit 77 (MAP-05, MAP-06)
+- [x] 06-09-PLAN.md — runner probe keys, board names and refusal messages with exit 77 (MAP-05, MAP-06)
 - [ ] 06-10-PLAN.md — parameterised WLA-DX Korean-family fixture through the runner and one libretro load (MAP-03, MAP-08)
 - [ ] 06-11-PLAN.md — wording amendments, final hosted run and perf delta, MAP-08 local proof, ship-time list (MAP-08, MAP-04, MAP-05)
 
@@ -177,7 +177,7 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 5. Tune-up | v2.0 | 14/14 | Complete    | 2026-11-10 |
-| 6. Korean cartridges play | v2.0 | 8/11 | In Progress | - |
+| 6. Korean cartridges play | v2.0 | 9/11 | In Progress | - |
 | 7. Saves survive a restart | v2.0 | 0/TBD | Not started | - |
 | 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 0/TBD | Not started | - |
 | 9. Light Phaser | v2.0 | 0/TBD | Not started | - |
