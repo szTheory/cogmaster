@@ -108,7 +108,7 @@ SOFTWARE.
 
 ## MAME hash metadata
 
-Applies to the generated commercial records in `src/cartdb.inc`. Upstream: https://github.com/mamedev/mame, `hash/sms.xml`, `hash/gamegear.xml`, `hash/sg1000.xml`, commit `1d7a454ed79e97d35d2a9f127ac029ead94711d6`. Each file states `license:CC0-1.0` in its own header. SHA-256 values are pinned in `pins.txt`; no upstream XML is vendored. Changes: own bounded converter emits sorted whole-image identity and hardware facts, excluding compound/incomplete layouts.
+Applies to the generated commercial records in `src/cartdb.inc` and to the titles in `tests/compat/catalog.tsv` (CC0 metadata). Upstream: https://github.com/mamedev/mame, `hash/sms.xml`, `hash/gamegear.xml`, `hash/sg1000.xml`, commit `1d7a454ed79e97d35d2a9f127ac029ead94711d6`. Each file states `license:CC0-1.0` in its own header. SHA-256 values are pinned in `pins.txt`; no upstream XML is vendored. Changes: own bounded converter emits sorted whole-image identity and hardware facts, excluding compound/incomplete layouts.
 
 Licence: CC0-1.0.
 
