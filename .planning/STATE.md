@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 5
 current_phase_name: Tune-up
 status: executing
-stopped_at: Completed 05-08-PLAN.md (runtime Claude Code, model Sonnet 5.5)
-last_updated: "2026-11-10T04:42:32.321Z"
+stopped_at: Completed 05-06-PLAN.md (runtime Claude Code, model Sonnet 5.5)
+last_updated: "2026-11-10T05:08:47.635Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 5 execution started
-state_head: 02274334b60bcae9167ce5e095df257896ace193
+state_head: 59aaf53af22dfd95bfa1c1756df42475c3bc48fe
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 14
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 5 (Tune-up) — EXECUTING
-Plan: 8 of 14
+Plan: 9 of 14
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 5 execution started
 
@@ -130,6 +130,7 @@ Progress: [░░░░░░░░░░] 0% of v2.0
 | Phase 05 P04 | 12min | 2 tasks | 6 files |
 | Phase 05 P05 | 8min | 2 tasks | 10 files |
 | Phase 05 P08 | 10min | 1 tasks | 6 files |
+| Phase 05 P06 | 70min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -146,6 +147,8 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 05]: quality.json floors set to 410 (ci) and 385 (wasm32) after plan 05-05's inventory additions; plan 05-14 sets final values
 - [Phase 05]: Added docs.budgets.no_quality control for budgets.cmake's missing quality.json failure path
 - [Phase 05]: 05-08: nightly report comment keeps only the true reason (needs.*.result); hardware comments cite preparation sections on one source line
+- [Phase 05]: 05-06: size ceilings are 15 percent above the largest measured value, rounded up to a whole kibibyte; the ratchet needs a new reasons entry to loosen
+- [Phase 05]: 05-06: ratchet fixtures are measured in lines because a file written on Windows has CRLF line ends
 
 ### Pending Todos
 
@@ -233,8 +236,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T04:42:32.170Z
-Stopped at: Completed 05-08-PLAN.md (runtime Claude Code, model Sonnet 5.5)
+Last session: 2026-11-10T05:08:47.617Z
+Stopped at: Completed 05-06-PLAN.md (runtime Claude Code, model Sonnet 5.5)
 Resume file: None
 
 ## Operator Next Steps
