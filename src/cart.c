@@ -226,7 +226,7 @@ static cogmaster_status scan_board(const uint8_t *b, size_t body, cogmaster_cart
         } else {
             out->board = family_board[f];
             /* Nemesis is a 128 KiB Zemina-family image with $00 $00 $00 at 0 and
-               DI; IM 1 (F3 ED 56) at $1E000, the start of its last 8 KiB bank
+               DI; IM 1 (F3 ED 56) at 120 KiB, the start of its last 8 KiB bank
                (SMS-CARTRIDGES-AND-PERIPHERALS.md section 2, scan step 5; the
                board itself is sega8_nemesis_device, MAME rom.cpp). One byte of
                that signature would also match an ordinary Zemina image. */
