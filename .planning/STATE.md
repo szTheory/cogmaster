@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 6
 current_phase_name: Korean cartridges play
 status: executing
-stopped_at: Completed 06-06-PLAN.md (runtime claude, model claude-sonnet-5-5)
-last_updated: "2026-11-10T08:35:13.526Z"
+stopped_at: Completed 06-07-PLAN.md (runtime claude, model claude-sonnet-5-5)
+last_updated: "2026-11-10T08:41:58.532Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 5 complete, transitioned to Phase 6
-state_head: 93d33dbd808b85a33a9fde4e4c256a560514fbcc
+state_head: 37448f621a280f66cc3bc05a0ab3b0715476fc52
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 25
-  completed_plans: 20
+  completed_plans: 21
   percent: 13
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 6 — Korean cartridges play
-Plan: 7 of 11
+Plan: 8 of 11
 Status: Ready to execute
 Last activity: 2026-11-10 — Completed 06-01 (cartridge generator slot table)
 
@@ -144,6 +144,7 @@ Progress: [█░░░░░░░░░] 13% of v2.0
 | Phase 06 P04 | 40 min | 2 tasks | 5 files |
 | Phase 06 P05 | 12 min | 2 tasks | 7 files |
 | Phase 06 P06 | 35 min | 2 tasks | 10 files |
+| Phase 06 P07 | 35 min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -176,6 +177,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 06]: Mapper reset clears the whole struct; ext boards live behind the default arms in mapper_ext.c; boot_to_play delta_bp=0 vs main 8c97f8e (runs 42781709144, 42781713344)
 - [Phase 06]: size.cartdb starts at the 100 KB hard bound (102400); a follow-up replaces it with the first hosted Linux x64 value plus about 15 percent. The pin check is a mode of cart.generator so no inventory changes.
 - [Phase 06]: Ext boards fault with mapper_range only when the highest selected 8 KiB bank is at or past twice the page count and the page count is not a power of two
+- [Phase 06]: 06-07: 4 PAK writes to $FFFD-$FFFF page slots 0-2 as MAME's inherited Sega write_mapper does (register-only reading cited, not implemented); Zemina and Nemesis share one write arm; the generator self-check refuses the temporary slot reason
 
 ### Pending Todos
 
@@ -250,6 +252,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-10 | Execute phase 6 plan 06-01 (gsd-execute-phase 06); cartdb slot table of 20 ids, per-slot counts, compact rows, catalog file and zz_new control; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Execute phase 6 plan 06-02 (gsd-execute-phase 06); API 10 constants and cart_info fields, abi.api_v10, api_version numeric-compare fix, embedding lines; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Execute phase 6 plan 06-03 (gsd-execute-phase 06); table regenerated as 1657 compact rows with 20 slot rows, binary search, catalog.tsv titles, named unsupported rows proven through fact_to_info, old table equal outside EEPROM persistence; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Execute phase 6 plan 06-07 (gsd-execute-phase 06); Zemina, Nemesis and 4 PAK arms, three exhaustive model-checked tests, slot rows flipped and regenerated, boards docs with the unsupported list; 2 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -271,8 +274,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T08:35:13.479Z
-Stopped at: Completed 06-06-PLAN.md (runtime claude, model claude-sonnet-5-5)
+Last session: 2026-11-10T08:41:58.457Z
+Stopped at: Completed 06-07-PLAN.md (runtime claude, model claude-sonnet-5-5)
 Resume file: None
 
 ## Operator Next Steps
