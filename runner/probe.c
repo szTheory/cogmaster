@@ -136,10 +136,11 @@ static void print_field(const char *key, uint32_t value, int header)
     }
 }
 
-/* The names the catalog uses for COGMASTER_BOARD_*; 0 and anything out of range read unsupported. */
+/* The names the catalog uses for COGMASTER_BOARD_*; 0 and anything out of range read unsupported.
+ */
 const char *cogmaster__board_name(uint32_t board)
 {
-    static const char *const names[] = {"unsupported", "none",   "sega",   "codemasters",
+    static const char *const names[] = {"unsupported", "none",      "sega",  "codemasters",
                                         "korean",      "korean_nb", "hicom", "zemina",
                                         "nemesis",     "hes_4pak"};
     return names[board < sizeof names / sizeof names[0] ? board : 0u];
@@ -154,12 +155,13 @@ int cogmaster__refusal_board(const uint8_t *image, size_t n)
     if (info.unsupported_reason[0] != '\0') {
         fprintf(stderr, "cogmaster-run: unsupported: board %s\n", info.unsupported_reason);
     } else if (info.board_candidate != 0u) {
-        fprintf(stderr,
-                "cogmaster-run: unsupported: the board scan is not sure about %s (sega %lu, %s %lu, "
-                "runner-up %lu)\n",
-                cogmaster__board_name(info.board_candidate), (unsigned long)info.scan_sega,
-                cogmaster__board_name(info.board_candidate), (unsigned long)info.scan_candidate,
-                (unsigned long)info.scan_runner_up);
+        fprintf(
+            stderr,
+            "cogmaster-run: unsupported: the board scan is not sure about %s (sega %lu, %s %lu, "
+            "runner-up %lu)\n",
+            cogmaster__board_name(info.board_candidate), (unsigned long)info.scan_sega,
+            cogmaster__board_name(info.board_candidate), (unsigned long)info.scan_candidate,
+            (unsigned long)info.scan_runner_up);
     } else {
         return 0;
     }
