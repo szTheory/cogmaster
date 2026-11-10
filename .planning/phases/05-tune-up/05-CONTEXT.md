@@ -54,9 +54,9 @@ Discuss method: five role-lens advisors (DevOps/SRE, performance, build/docs, su
 ### README and review triage (TUNE-06, TUNE-07)
 - README: replace "Quick start: RetroArch" with "Play a game", leading with "cogmaster ships no BIOS and no game; bring a `.sms` or `.gg` file you own, no BIOS is needed." RetroArch steps Load Core then Load Content; Start Core alone shows the test card. Runner: `bin/cogmaster-run --frames 600 --hash game.sms`, then `--png 600:shot.png`; exit 77 means unsupported (link to the runner doc). A `-P` check (about 40 lines, like `install_line.cmake`) runs the README's first runner command against a manifest fixture, compares to the README text block, requires the README ROM extensions to be a subset of `supported_extensions`, requires the no-BIOS sentence once, with a negative control.
 - Dispositions (edit the three `NN-REVIEW-DISPOSITION.md` files in place; verify with one grep that none is `open`, every `deferred` names a SEED, every `skipped` has a reason; record command and exit status in the phase summary):
-  - Fix now: P1 WR-02 (listing-failed sentinel in `classify-changes.sh`, flip the hygiene test), P1 IN-01 (clock figure 315/88 MHz x 3), IN-02, IN-03, IN-04 (`grep -qxF --` in `publish.sh`), P2 IN-03 (refuse a body over 1 MiB in `src/cart.c` with a test), P4 IN-01 (comment: PSG steps every 48 ticks).
+  - Fix now: P1 IN-01 (clock figure 315/88 MHz x 3), IN-02, IN-03, P2 IN-03 (refuse a body over 1 MiB in `src/cart.c` with a test), P4 IN-01 (comment: PSG steps every 48 ticks).
   - Closed with reason: P1 WR-01, WR-03, IN-05, IN-06, IN-08; P2 IN-04; P4 IN-02, IN-03.
-  - Seeds: P1 WR-04 (accepted risk; a reviewer-gated environment would break rules 6 and 8) into SEED-007; P1 IN-07, P2 IN-02, P2 IN-06, P4 IN-04 into SEED-002; P2 IN-01 into SEED-004; P2 IN-05 rides the Phase 6 plan (touches `probe.c`).
+  - Seeds (AGENTS rule 7: tooling findings become seeds; the adversarial pass's checker flagged the earlier fix-now choice for WR-02 and IN-04, so they are seeds): P1 WR-02 (`classify-changes.sh` listing-failed sentinel) and P1 IN-04 (`publish.sh` `grep -qxF --`) into SEED-007; P1 WR-04 (accepted risk; a reviewer-gated environment would break rules 6 and 8) into SEED-007; P1 IN-07, P2 IN-02, P2 IN-06, P4 IN-04 into SEED-002; P2 IN-01 into SEED-004; P2 IN-05 rides the Phase 6 plan (touches `probe.c`).
   - Do not reopen P2 IN-01, IN-04 or P4 IN-04 here. The audit's "IN-01..04" wording means each phase's own IDs.
 
 ### Claude's Discretion
@@ -85,6 +85,8 @@ Owner standing preferences: copy-paste over new dependencies; flat dependency tr
 <deferred>
 ## Deferred Ideas
 
+- Third-party SN76489 and YM2413 sound ROM conformance: deferred with no lane (carried from v1.0; recorded in SEED-007). Not a TUNE requirement.
+- Sound-code nightly: the existing scheduled nightly runs predate the sound merge (head dc3bf1e, 2026-10-20), so the TUNE-08 evidence run is the plain dispatch on main after the merge, with an ancestry check (`git merge-base --is-ancestor 8faf841 <headSha>`) that its head contains the sound merge.
 - Per-test ctest `provisional` Timeout comments (seed).
 - Absolute `ir_per_frame` ceiling in `quality.json` and a coverage lane (next tune-up).
 - ccache or build caching (no measured payoff).
