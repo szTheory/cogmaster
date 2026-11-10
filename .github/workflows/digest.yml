@@ -1,0 +1,109 @@
+# Weekly digest: CI duration, the slowest job, flaky jobs and open nightly
+# issues, written to the job summary and to the one open issue labelled digest.
+# It comments only when something needs attention, so a green week is silent.
+# Dispatch with dry_run to see the digest in the job summary and write nothing.
+name: Digest
+
+on:
+  schedule:
+    - cron: "23 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Write the job summary only, no issue and no comment"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  digest:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5  # 5-minute floor; no runs yet
+    # A job's permissions replace the workflow's, so contents is named again.
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Every answer goes to a file before jq reads it. The week's runs, each
+      # run's jobs, and the earlier attempts of runs that later succeeded.
+      - name: Read the week's runs and jobs
+        run: |
+          mkdir -p digest
+          since=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          gh api -X GET "repos/$GH_REPO/actions/runs" -f created=">=$since" -F per_page=100 --paginate \
+            --jq '.workflow_runs[] | {id, workflow: .name, event, conclusion, run_attempt, html_url}' > digest/runs.ndjson
+          jq -s . digest/runs.ndjson > digest/runs.json
+          : > digest/jobs.ndjson
+          : > digest/earlier.ndjson
+          jq -r '.[] | "\(.id) \(.run_attempt) \(.conclusion)"' digest/runs.json > digest/ids.txt
+          while read -r id attempt conclusion; do
+            gh api "repos/$GH_REPO/actions/runs/$id/jobs?per_page=100" \
+              --jq '.jobs[] | {run_id, name, conclusion, started_at, completed_at}' >> digest/jobs.ndjson
+            if [ "$attempt" -gt 1 ] && [ "$conclusion" = success ]; then
+              n=1
+              while [ "$n" -lt "$attempt" ]; do
+                gh api "repos/$GH_REPO/actions/runs/$id/attempts/$n/jobs?per_page=100" \
+                  --jq '.jobs[] | select(.conclusion == "failure") | {run_id, name, conclusion}' >> digest/earlier.ndjson
+                n=$((n + 1))
+              done
+            fi
+          done < digest/ids.txt
+          jq -s . digest/jobs.ndjson > digest/jobs.json
+          jq -s . digest/earlier.ndjson > digest/earlier.json
+      # A red pull request is read from the workflow runs on its head commit
+      # (Actions read, already granted), not from statusCheckRollup: that field
+      # aggregates check runs and commit statuses, whose REST equivalents need
+      # Checks read and Commit statuses read, and this workflow has neither.
+      - name: Read nightly issues and pull requests
+        run: |
+          gh issue list --label nightly --state open --json number,title,url > digest/nightly.json
+          gh pr list --state open --json number,title,updatedAt,headRefOid > digest/open-pulls.json
+          : > digest/pulls.ndjson
+          jq -r '.[] | "\(.number) \(.headRefOid)"' digest/open-pulls.json > digest/heads.txt
+          while read -r number sha; do
+            gh api "repos/$GH_REPO/actions/runs?head_sha=$sha&per_page=20" > "digest/head-$number.json"
+            jq -c --argjson number "$number" --slurpfile all digest/open-pulls.json --slurpfile head "digest/head-$number.json" -n '
+              ($all[0][] | select(.number == $number)) as $p
+              | {number: $p.number, title: $p.title, updated_at: $p.updatedAt,
+                 red: ([$head[0].workflow_runs[] | select(.name == "CI")] | sort_by(.created_at) | last | .conclusion == "failure")}' >> digest/pulls.ndjson
+          done < digest/heads.txt
+          jq -s . digest/pulls.ndjson > digest/pulls.json
+      - name: Format the digest
+        run: |
+          sh scripts/digest.sh timeouts .github/workflows/*.yml > digest/timeouts.json
+          jq -n --slurpfile runs digest/runs.json --slurpfile jobs digest/jobs.json \
+            --slurpfile failed digest/earlier.json --slurpfile timeouts digest/timeouts.json \
+            --slurpfile issues digest/nightly.json --slurpfile pulls digest/pulls.json \
+            '{runs: $runs[0], jobs: $jobs[0], failed_attempts: $failed[0], timeouts: $timeouts[0],
+              nightly_issues: $issues[0], pulls: $pulls[0]}' > digest/input.json
+          sh scripts/digest.sh < digest/input.json > digest/digest.md
+          cat digest/digest.md >> "$GITHUB_STEP_SUMMARY"
+      # Rewrite the one open digest issue, creating it when none is open.
+      - name: Write the digest issue
+        if: ${{ !inputs.dry_run }}
+        run: |
+          issue=$(gh issue list --label digest --state open --json number --jq '.[0].number // empty')
+          if [ -n "$issue" ]; then
+            gh issue edit "$issue" --body-file digest/digest.md
+          else
+            url=$(gh issue create --title "CI digest" --label digest --body-file digest/digest.md)
+            issue=${url##*/}
+          fi
+          attention=$(sed -n 's/^attention: //p' digest/digest.md)
+          if [ "${attention:-0}" -gt 0 ]; then
+            gh issue comment "$issue" --body "The digest needs attention ($attention items): $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          fi

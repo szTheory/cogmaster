@@ -32,6 +32,7 @@ policy.ci_required.actor_self_test	hygiene,policy
 policy.ci_required.self_test	hygiene,policy
 policy.compat_doc_fresh	compat,hygiene,policy
 policy.compat_doc_fresh.self_test	compat,hygiene,policy
+policy.digest	hygiene,policy
 policy.digest.self_test	hygiene,policy
 policy.e2e_budget	hygiene,policy
 policy.e2e_budget.self_test	hygiene,policy

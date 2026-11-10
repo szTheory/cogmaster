@@ -476,6 +476,10 @@ cogmaster_add_test(NAME digest.format
 # Fault prevented: the digest reporter gaining write access or a schedule
 # nobody asked for. The self test scans a fixture with a write-all workflow
 # permission, a daily cron and a job permission outside the four allowed.
+cogmaster_add_test(NAME policy.digest
+  COMMAND ${CMAKE_COMMAND} -DDOC=${CMAKE_SOURCE_DIR}/.github/workflows/digest.yml -DCHECK=digest
+    -P ${hygiene_scripts}/repository.cmake
+  LABELS hygiene policy TIMEOUT 30)
 file(WRITE ${hygiene_digest}/digest.yml [=[
 on:
   schedule:

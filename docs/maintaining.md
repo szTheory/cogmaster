@@ -137,6 +137,27 @@ still has to pass before the merge. It reuses the release App key and client ID 
 nothing to set up. `policy.dependabot` fails a group that holds majors or is renamed, and a workflow that uses a
 privileged trigger or a checkout.
 
+## Weekly digest
+
+`.github/workflows/digest.yml` runs on Monday and reports on CI without anyone asking. It reads the week's
+workflow runs, each run's jobs and the earlier attempts of runs that later passed, and `scripts/digest.sh` turns
+them into the digest: run count and job minutes per workflow, the slowest job, flaky jobs (a job that failed an
+earlier attempt of a run that then passed), open `nightly` issues, and the attention items. An attention item is
+an open nightly issue, a red or seven-day-idle pull request, or a job whose slowest run of the week is more than
+half its `timeout-minutes`, which means the 2x margin is spent. The timeout join uses the display name
+`scripts/ci-durations.sh` prints (a matrix suffix removed), so `CI required` is matched, not its key
+`ci-required`.
+
+The digest goes to the job summary and into the one open issue labelled `digest`, which is rewritten each week
+and created when none is open. A comment is added only when the `attention:` count is above 0; a green week
+stays silent. To see the digest without writing anything, dispatch the workflow with `dry_run`:
+`gh workflow run digest.yml -f dry_run=true`. GitHub dispatches only a workflow that is on the default branch.
+
+A red pull request is read from the workflow runs on its head commit, not from `statusCheckRollup`, which would
+need the Checks read and Commit statuses read permissions. The job holds only contents read, actions read,
+pull requests read and issues write, and uses no App token. `policy.digest` fails a widened permission, a
+schedule other than one Monday cron, a missing `dry_run` input, an App token or a privileged trigger.
+
 ## Repository settings
 
 `scripts/apply-repo-settings.sh` holds the repository's settings as code, and `.github/rulesets/main.json` holds

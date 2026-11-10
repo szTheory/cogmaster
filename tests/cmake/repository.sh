@@ -36,8 +36,8 @@ digest)
   awk 'function bad(m) { print "digest: " m; n++ }
   { t=$0; sub(/(^|[ \t]+)#.*$/,"",t); e=t; sub(/^ +/,"",e); match(t,/^ */); i=RLENGTH; if(e!="" && blk!="" && i<=bi) blk="" }
   e=="permissions:" { blk=(i ? "job" : "top"); bi=i; next }
-  blk=="top" && e!="contents: read" { bad("workflow permission " e " is not contents: read") }
-  blk=="job" { if(e ~ /^((actions|pull-requests): read|issues: write)$/) seen[e]=1; else if(e!="contents: read") bad("job permission " e " is outside actions: read, pull-requests: read, issues: write") }
+  blk=="top" && e!="" && e!="contents: read" { bad("workflow permission " e " is not contents: read") }
+  blk=="job" && e!="" { if(e ~ /^((actions|pull-requests): read|issues: write)$/) seen[e]=1; else if(e!="contents: read") bad("job permission " e " is outside actions: read, pull-requests: read, issues: write") }
   e ~ /^- cron:/ { cron=e; c++ } e ~ /^dry_run:/ { dry=1 } e ~ /create-github-app-token|pull_request_target/ { bad("uses " e) }
   END { if(c!=1 || cron !~ /^- cron: "[0-9]+ [0-9]+ \* \* 1"$/) bad("cron " cron " is not one weekly Monday schedule"); if(!dry) bad("no dry_run input")
     split("actions: read|pull-requests: read|issues: write", want, "|"); for(k in want) if(!(want[k] in seen)) bad("job permission " want[k] " is missing"); exit(n!=0) }' "$DOC" ;;
