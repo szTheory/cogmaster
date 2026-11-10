@@ -1,0 +1,26 @@
+{
+  "runs": [
+    {"id": 1, "workflow": "CI", "event": "push", "conclusion": "success", "run_attempt": 1, "html_url": "https://example.test/runs/1"},
+    {"id": 2, "workflow": "CI", "event": "pull_request", "conclusion": "success", "run_attempt": 1, "html_url": "https://example.test/runs/2"},
+    {"id": 3, "workflow": "CI", "event": "push", "conclusion": "success", "run_attempt": 2, "html_url": "https://example.test/runs/3"},
+    {"id": 4, "workflow": "Nightly", "event": "schedule", "conclusion": "failure", "run_attempt": 1, "html_url": "https://example.test/runs/4"}
+  ],
+  "jobs": [
+    {"run_id": 1, "name": "build (linux-x64)", "conclusion": "success", "started_at": "2026-11-02T10:00:00Z", "completed_at": "2026-11-02T10:03:00Z"},
+    {"run_id": 1, "name": "CI required", "conclusion": "success", "started_at": "2026-11-02T10:03:00Z", "completed_at": "2026-11-02T10:05:30Z"},
+    {"run_id": 2, "name": "build (macos-arm64)", "conclusion": "success", "started_at": "2026-11-03T10:00:00Z", "completed_at": "2026-11-03T10:03:20Z"},
+    {"run_id": 3, "name": "build (linux-x64)", "conclusion": "success", "started_at": "2026-11-04T10:00:00Z", "completed_at": "2026-11-04T10:02:00Z"},
+    {"run_id": 4, "name": "bench (linux-x64)", "conclusion": "failure", "started_at": "2026-11-05T04:17:00Z", "completed_at": "2026-11-05T04:30:00Z"}
+  ],
+  "failed_attempts": [
+    {"run_id": 3, "name": "build (linux-x64)", "conclusion": "failure"}
+  ],
+  "timeouts": {"CI required": 4, "build": 7},
+  "nightly_issues": [
+    {"number": 12, "title": "Nightly failed", "url": "https://example.test/issues/12"}
+  ],
+  "pulls": [
+    {"number": 7, "title": "fix: a quiet change", "updated_at": "2020-01-01T00:00:00Z", "red": false},
+    {"number": 8, "title": "feat: a red change", "updated_at": "2099-01-01T00:00:00Z", "red": true}
+  ]
+}

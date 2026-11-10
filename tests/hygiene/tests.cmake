@@ -426,5 +426,75 @@ cogmaster_add_test(NAME policy.action_pins.self_test
     -P ${hygiene_scripts}/expect_fail.cmake
   LABELS hygiene policy TIMEOUT 30)
 
+# Fault prevented: a weekly digest that names the wrong slowest job, misses a
+# flaky run, or never checks a job's timeout margin because its YAML key
+# differs from the name ci-durations prints (ci-required against CI required).
+# The timeouts fixture holds that key-differs-from-name job and a matrix job.
+set(hygiene_digest ${CMAKE_BINARY_DIR}/hygiene/digest_fixture)
+file(REMOVE_RECURSE ${hygiene_digest})
+file(WRITE ${hygiene_digest}/sample.yml [=[
+name: Sample
+on: push
+jobs:
+  ci-required:
+    name: CI required
+    timeout-minutes: 4  # 5-minute floor; no runs yet
+    steps:
+      - name: not a job name
+        run: true
+  build:
+    name: build (${{ matrix.os }})
+    timeout-minutes: 7
+  plain:
+    timeout-minutes: 9
+]=])
+set(hygiene_digest_timeouts [=[
+sh "$1" timeouts "$2" > "$3" || exit 1
+"$4" -e '."CI required" == 4 and .build == 7 and .plain == 9 and (has("ci-required") | not)' "$3"
+]=])
+cogmaster_add_test(NAME digest.timeouts
+  COMMAND ${COGMASTER_SH} -c "${hygiene_digest_timeouts}" sh ${CMAKE_SOURCE_DIR}/scripts/digest.sh
+    ${hygiene_digest}/sample.yml ${hygiene_digest}/timeouts.json ${COGMASTER_JQ}
+  LABELS hygiene TIMEOUT 30)
+set(hygiene_digest_format [=[
+sh "$1" < "$2" > "$3" || exit 1
+for want in '^Slowest job: build .*200 s' '^Flaky: build' '^- timeout margin: CI required' '^- nightly issue #12' '^attention: [1-9]'
+do
+  grep -Eq "$want" "$3" || { echo "digest.format: no line matching $want"; cat "$3"; exit 1; }
+done
+if grep -q 'timeout margin: build' "$3"
+then
+  echo "digest.format: build is inside its timeout margin but was flagged"
+  exit 1
+fi
+]=])
+cogmaster_add_test(NAME digest.format
+  COMMAND ${COGMASTER_SH} -c "${hygiene_digest_format}" sh ${CMAKE_SOURCE_DIR}/scripts/digest.sh
+    ${CMAKE_CURRENT_LIST_DIR}/fixtures/digest.json ${hygiene_digest}/digest.md
+  LABELS hygiene TIMEOUT 30)
+
+# Fault prevented: the digest reporter gaining write access or a schedule
+# nobody asked for. The self test scans a fixture with a write-all workflow
+# permission, a daily cron and a job permission outside the four allowed.
+file(WRITE ${hygiene_digest}/digest.yml [=[
+on:
+  schedule:
+    - cron: "0 6 * * *"
+permissions:
+  contents: write
+jobs:
+  digest:
+    permissions:
+      actions: read
+      checks: read
+]=])
+set(hygiene_cmd ${CMAKE_COMMAND} -DDOC=${hygiene_digest}/digest.yml -DCHECK=digest -P ${hygiene_scripts}/repository.cmake)
+string(REPLACE ";" "$<SEMICOLON>" hygiene_cmd "${hygiene_cmd}")
+cogmaster_add_test(NAME policy.digest.self_test
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${hygiene_cmd}" -DCODE=1
+    "-DREGEX=digest: workflow permission contents: write.*digest: job permission checks: read.*digest: cron"
+    -P ${hygiene_scripts}/expect_fail.cmake
+  LABELS hygiene policy TIMEOUT 30)
+
 include(${PROJECT_SOURCE_DIR}/tests/policy/e2e_cases.cmake)
 include(${PROJECT_SOURCE_DIR}/tests/compat/tests.cmake)
