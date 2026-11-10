@@ -327,13 +327,23 @@ static void test_scan(void)
     zemina_stores(10u, 0x100u);
     expect_scan("zemina", 128u * KIB, COGMASTER_STATUS_OK, COGMASTER_BOARD_ZEMINA,
                 COGMASTER_BOARD_SOURCE_HEURISTIC, COGMASTER_BOARD_ZEMINA);
-    /* The Nemesis signature: DI at the first byte of the last 8 KiB bank and
-       not at byte 0. */
+    /* A lone DI at the start of the last 8 KiB bank is no Nemesis signature. */
     image[120u * KIB] = 0xF3u;
+    expect_scan("lone DI", 128u * KIB, COGMASTER_STATUS_OK, COGMASTER_BOARD_ZEMINA,
+                COGMASTER_BOARD_SOURCE_HEURISTIC, COGMASTER_BOARD_ZEMINA);
+    /* DI; IM 1 there is still not enough while bytes 0 to 2 are not zero. */
+    image[120u * KIB + 1u] = 0xEDu;
+    image[120u * KIB + 2u] = 0x56u;
+    expect_scan("nemesis bytes 0 to 2", 128u * KIB, COGMASTER_STATUS_OK, COGMASTER_BOARD_ZEMINA,
+                COGMASTER_BOARD_SOURCE_HEURISTIC, COGMASTER_BOARD_ZEMINA);
+    /* The full signature: $00 $00 $00 at 0, F3 ED 56 at $1E000. */
+    image[0] = 0u;
+    image[1] = 0u;
+    image[2] = 0u;
     expect_scan("nemesis", 128u * KIB, COGMASTER_STATUS_OK, COGMASTER_BOARD_NEMESIS,
                 COGMASTER_BOARD_SOURCE_HEURISTIC, COGMASTER_BOARD_NEMESIS);
-    image[0] = 0xF3u;
-    expect_scan("nemesis byte 0", 128u * KIB, COGMASTER_STATUS_OK, COGMASTER_BOARD_ZEMINA,
+    image[2] = 0x56u;
+    expect_scan("nemesis byte 2", 128u * KIB, COGMASTER_STATUS_OK, COGMASTER_BOARD_ZEMINA,
                 COGMASTER_BOARD_SOURCE_HEURISTIC, COGMASTER_BOARD_ZEMINA);
     fill(128u * KIB);
     pak_stores(10u, 0x100u);

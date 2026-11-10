@@ -225,10 +225,14 @@ static cogmaster_status scan_board(const uint8_t *b, size_t body, cogmaster_cart
             name_unsupported(cogmaster__cartdb_slot_named("janggun"), out);
         } else {
             out->board = family_board[f];
-            /* Nemesis powers up with its last 8 KiB bank at $0000, so the
-               byte there is DI ($F3) and byte 0 is not (MAME sega8_nemesis_device). */
-            if (f == COGMASTER__SCAN_ZEMINA && body == 131072u && b[body - CART_BANK] == 0xF3u &&
-                b[0] != 0xF3u) {
+            /* Nemesis is a 128 KiB Zemina-family image with $00 $00 $00 at 0 and
+               DI; IM 1 (F3 ED 56) at $1E000, the start of its last 8 KiB bank
+               (SMS-CARTRIDGES-AND-PERIPHERALS.md section 2, scan step 5; the
+               board itself is sega8_nemesis_device, MAME rom.cpp). One byte of
+               that signature would also match an ordinary Zemina image. */
+            const uint8_t *last = b + (body - CART_BANK);
+            if (f == COGMASTER__SCAN_ZEMINA && body == 131072u && last[0] == 0xF3u &&
+                last[1] == 0xEDu && last[2] == 0x56u && b[0] == 0u && b[1] == 0u && b[2] == 0u) {
                 out->board = COGMASTER__BOARD_NEMESIS;
                 out->board_candidate = COGMASTER__BOARD_NEMESIS;
             }

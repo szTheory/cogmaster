@@ -57,8 +57,8 @@ It sorts the targets into families: Sega `$FFFC`-`$FFFF`, Korean `$A000`, Zemina
 4 PAK `$3FFE`, `$7FFF` and `$BFFF`, and Janggun `$6000`. A family wins with at least three sites, at least twice
 the Sega count plus two, at least twice the runner-up's count plus two, and a size that fits its board (Korean and
 4 PAK in whole 16 KiB pages; Zemina in whole 8 KiB banks and over 64 KiB). A Game Gear region in the header, valid
-or not, never selects one of them. A 128 KiB Zemina image whose last 8 KiB bank starts with `DI` and whose first
-byte does not is Nemesis. Janggun is named and refused. The Sega mapper wins when its count is at least twice the
+or not, never selects one of them. A 128 KiB Zemina image with `$00 $00 $00` at the start
+and `DI; IM 1` (`F3 ED 56`) at `$1E000` is Nemesis. Janggun is named and refused. The Sega mapper wins when its count is at least twice the
 leader's plus two. Anything in between, a tie included, is refused with the leader in `board_candidate`: a doubtful
 image never plays. With no store sites at all the image gets the Sega mapper.
 
