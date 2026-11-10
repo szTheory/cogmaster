@@ -1,4 +1,4 @@
-/* The Korean, Korean no-bank and Hi-Com boards at register level: an image of
+/* The Korean, Korean no-bank, Hi-Com, Zemina, Nemesis and 4 PAK boards at register level: an image of
    exactly the size under test is installed on the board, every register
    value is written through the bus, and each bank and each read is compared
    with a model kept here from the writes alone: cogmaster-test-mapper-ext
@@ -40,6 +40,7 @@ static uint8_t rom_byte(uint32_t i)
 struct model {
     uint32_t board, pages;
     uint32_t bank[6];
+    uint32_t raw[2];
 };
 
 static uint32_t reg_addr(uint32_t board)
@@ -47,35 +48,71 @@ static uint32_t reg_addr(uint32_t board)
     return board == COGMASTER__BOARD_HICOM ? 0xFFFFu : 0xA000u;
 }
 
+static int model_pow2(const struct model *g)
+{
+    return (g->pages & (g->pages - 1u)) == 0u;
+}
+
 static void model_reset(struct model *g)
 {
     for (uint32_t i = 0; i < 6u; i++) {
         uint32_t window = g->board == COGMASTER__BOARD_HICOM && i >= 4u ? i - 4u : i;
         g->bank[i] = window % (2u * g->pages);
+        if (g->board == COGMASTER__BOARD_4PAK) {
+            g->bank[i] = 0u;
+        }
     }
+    if (g->board == COGMASTER__BOARD_NEMESIS) {
+        g->bank[0] = 2u * g->pages - 1u;
+    }
+    g->raw[0] = 0u;
+    g->raw[1] = 0u;
 }
 
-/* A register write of v: Korean picks 16 KiB page v mod pages for $8000-$BFFF,
-   Hi-Com 32 KiB bank v for $0000-$7FFF, both modulo the image. */
-static void model_write(struct model *g, uint32_t v)
+/* 4 PAK: the 16 KiB slot s shows page val modulo the page count. */
+static int model_slot(struct model *g, uint32_t s, uint32_t val)
+{
+    g->bank[2u * s] = 2u * (val % g->pages);
+    g->bank[2u * s + 1u] = 2u * (val % g->pages) + 1u;
+    return val >= g->pages && !model_pow2(g);
+}
+
+/* A write of v to addr. Korean picks 16 KiB page v mod pages for $8000-$BFFF,
+   Hi-Com 32 KiB bank v for $0000-$7FFF, Zemina and Nemesis one 8 KiB bank of
+   four registers, the 4 PAK 16 KiB pages as its registers say; all modulo the
+   image. Returns 1 when the write selects a bank past an image whose page
+   count is not a power of two, which cannot wrap by dropping high bits. */
+static int model_write(struct model *g, uint32_t addr, uint32_t v)
 {
     if (g->board == COGMASTER__BOARD_KOREAN) {
-        uint32_t page = v % g->pages;
-        g->bank[4] = 2u * page;
-        g->bank[5] = 2u * page + 1u;
-    } else if (g->board == COGMASTER__BOARD_HICOM) {
+        g->bank[4] = 2u * (v % g->pages);
+        g->bank[5] = 2u * (v % g->pages) + 1u;
+        return v >= g->pages && !model_pow2(g);
+    }
+    if (g->board == COGMASTER__BOARD_HICOM) {
         for (uint32_t i = 0; i < 4u; i++) {
             g->bank[i] = (4u * v + i) % (2u * g->pages);
         }
+        return 4u * v + 3u >= 2u * g->pages && !model_pow2(g);
     }
-}
-
-/* The write selects a bank past the image, which cannot wrap by dropping
-   high bits because the page count is not a power of two. */
-static int model_over(const struct model *g, uint32_t v)
-{
-    uint32_t highest = g->board == COGMASTER__BOARD_KOREAN ? 2u * v + 1u : 4u * v + 3u;
-    return highest >= 2u * g->pages && (g->pages & (g->pages - 1u)) != 0u;
+    if (g->board == COGMASTER__BOARD_ZEMINA || g->board == COGMASTER__BOARD_NEMESIS) {
+        static const uint32_t window[4] = {4u, 5u, 2u, 3u};
+        g->bank[window[addr]] = v % (2u * g->pages);
+        return v >= 2u * g->pages && !model_pow2(g);
+    }
+    if (addr == 0x3FFEu) {
+        g->raw[0] = v;
+        int a = model_slot(g, 0u, v);
+        return model_slot(g, 2u, (g->raw[0] & 0x30u) + g->raw[1]) | a;
+    }
+    if (addr == 0x7FFFu) {
+        return model_slot(g, 1u, v);
+    }
+    if (addr == 0xBFFFu) {
+        g->raw[1] = v;
+        return model_slot(g, 2u, (g->raw[0] & 0x30u) + g->raw[1]);
+    }
+    return addr >= 0xFFFDu ? model_slot(g, addr - 0xFFFDu, v) : 0;
 }
 
 struct rig {
@@ -147,6 +184,10 @@ static void check_banks(const struct rig *r)
         CHECK(r->m->mapper.bank8[i] < 2u * r->g.pages);
         CHECK_EQ_U64(r->m->mapper.bank8[i], r->g.bank[i]);
     }
+    if (r->g.board == COGMASTER__BOARD_4PAK) {
+        CHECK_EQ_U64(r->m->mapper.raw[0], r->g.raw[0]);
+        CHECK_EQ_U64(r->m->mapper.raw[1], r->g.raw[1]);
+    }
 }
 
 /* The first and last byte of each 8 KiB window, through the bus. */
@@ -211,8 +252,7 @@ static void run_board(uint32_t board)
                 cogmaster__bus_write(r.m, 0xFFFFu, (uint8_t)v);
             } else {
                 cogmaster__bus_write(r.m, (uint16_t)reg_addr(board), (uint8_t)v);
-                model_write(&r.g, v);
-                seen_over |= model_over(&r.g, v);
+                seen_over |= model_write(&r.g, reg_addr(board), v);
             }
             if (board == COGMASTER__BOARD_KOREAN_NB) {
                 if (v == 0u) {
@@ -280,6 +320,149 @@ static void test_hicom(void)
     run_board(COGMASTER__BOARD_HICOM);
 }
 
+/* One write through the bus and the same write in the model; the first write
+   that selects a bank past the image fixes the address the fault must name. */
+static void write_reg(struct rig *r, uint32_t addr, uint32_t v, uint32_t *first_over)
+{
+    cogmaster__bus_write(r->m, (uint16_t)addr, (uint8_t)v);
+    if (model_write(&r->g, addr, v) && *first_over == 0xFFFFFFFFu) {
+        *first_over = addr;
+    }
+}
+
+/* Every value 0 to 255 written to each register of a board with several, with
+   the banks, the reads and the fault record checked after each write. The 4
+   PAK slot 2 depends on both $3FFE and $BFFF, so $BFFF is swept under each of
+   the four settings of the $3FFE bits 5 and 4. The write is a power-on away
+   from the previous register's, so a fault from one never hides another. */
+static void run_regs(uint32_t board)
+{
+    static const uint16_t zem[4] = {0x0000u, 0x0001u, 0x0002u, 0x0003u};
+    static const uint16_t pak[7] = {0x3FFEu, 0x7FFFu, 0xBFFFu, 0xFFFCu, 0xFFFDu, 0xFFFEu, 0xFFFFu};
+    int is_pak = board == COGMASTER__BOARD_4PAK;
+    const uint16_t *regs = is_pak ? pak : zem;
+    uint32_t nregs = is_pak ? 7u : 4u;
+    for (uint32_t k = 0; k < 6u; k++) {
+        struct rig r;
+        rig_open(&r, board, sizes_kib[k]);
+        int full = sizes_kib[k] == 128u || sizes_kib[k] == 432u;
+        uint32_t last = 2u * r.g.pages - 1u;
+        CHECK_EQ_U64(r.m->mapper.bank8[0], board == COGMASTER__BOARD_NEMESIS ? last : 0u);
+        check_banks(&r);
+        check_ends(&r);
+        if (full) {
+            sweep(&r);
+        }
+        for (uint32_t i = 0; i < nregs; i++) {
+            uint32_t settings = regs[i] == 0xBFFFu ? 4u : 1u;
+            for (uint32_t st = 0; st < settings; st++) {
+                CHECK_EQ_U64(cogmaster_reset(r.m, COGMASTER_RESET_POWER), COGMASTER_STATUS_OK);
+                model_reset(&r.g);
+                uint32_t first_over = 0xFFFFFFFFu;
+                if (settings == 4u) {
+                    write_reg(&r, 0x3FFEu, st << 4, &first_over);
+                }
+                for (uint32_t v = 0; v < 256u; v++) {
+                    write_reg(&r, regs[i], v, &first_over);
+                    if (first_over != 0xFFFFFFFFu) {
+                        expect_fault(r.m, COGMASTER__FAULT_MAPPER_RANGE, COGMASTER__DEVICE_MAPPER,
+                                     first_over);
+                    } else {
+                        CHECK_EQ_U64(fault_of(r.m).present, 0);
+                    }
+                    check_banks(&r);
+                    check_ends(&r);
+                    if (full) {
+                        sweep(&r);
+                    }
+                }
+            }
+        }
+
+        /* A power reset clears the fault and the banks. */
+        CHECK_EQ_U64(cogmaster_reset(r.m, COGMASTER_RESET_POWER), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(fault_of(r.m).present, 0);
+        model_reset(&r.g);
+        check_banks(&r);
+
+        /* Writes to ROM that are not a register change no bank; the first of
+           them, $1234, is the one the fault record names. Writes to $FFFC
+           (and on the Zemina boards $FFFD-$FFFF) are work RAM only. */
+        for (uint32_t a = 0xFFFCu; a <= 0xFFFFu; a++) {
+            if (!is_pak || a == 0xFFFCu) {
+                cogmaster__bus_write(r.m, (uint16_t)a, 3u);
+            }
+        }
+        check_banks(&r);
+        CHECK_EQ_U64(fault_of(r.m).present, 0);
+        static const uint16_t other[9] = {0x1234u, 0x0000u, 0x4000u, 0x8000u, 0xA000u,
+                                          0xBFFEu, 0x3FFFu, 0x7FFEu, 0x0004u};
+        for (uint32_t i = 0; i < 9u; i++) {
+            if (is_pak || other[i] != 0x0000u) {
+                cogmaster__bus_write(r.m, other[i], 3u);
+                check_banks(&r);
+            }
+        }
+        expect_fault(r.m, COGMASTER__FAULT_ROM_WRITE, COGMASTER__DEVICE_CART, 0x1234u);
+        rig_close(&r);
+    }
+}
+
+static void test_zemina(void)
+{
+    run_regs(COGMASTER__BOARD_ZEMINA);
+}
+
+static void test_nemesis(void)
+{
+    run_regs(COGMASTER__BOARD_NEMESIS);
+}
+
+/* The 4 PAK registers swept as above, then the $FFFD-$FFFF reading kept
+   apart: a write there changes no raw register, and a later $3FFE or $BFFF
+   write works slot 2 out from raw as usual. */
+static void test_hes_4pak(void)
+{
+    run_regs(COGMASTER__BOARD_4PAK);
+
+    struct rig r;
+    rig_open(&r, COGMASTER__BOARD_4PAK, 128u);
+    uint32_t none = 0xFFFFFFFFu;
+    write_reg(&r, 0xBFFFu, 5u, &none);
+    write_reg(&r, 0x3FFEu, 0x10u, &none);
+    CHECK_EQ_U64(r.m->mapper.bank8[4], 10);
+    CHECK_EQ_U64(r.m->mapper.bank8[5], 11);
+    write_reg(&r, 0xFFFFu, 2u, &none);
+    CHECK_EQ_U64(r.m->mapper.bank8[4], 4);
+    CHECK_EQ_U64(r.m->mapper.raw[0], 0x10);
+    CHECK_EQ_U64(r.m->mapper.raw[1], 5);
+    write_reg(&r, 0x3FFEu, 0x10u, &none);
+    CHECK_EQ_U64(r.m->mapper.bank8[4], 10);
+    CHECK_EQ_HEX(cogmaster__bus_read(r.m, 0x8000u), r.img[10u * SLOT]);
+    CHECK_EQ_U64(fault_of(r.m).present, 0);
+
+    /* The state round-trips raw: after a reload, slot 2 follows the saved
+       $3FFE and $BFFF values. */
+    size_t n = cogmaster__state_size(r.m);
+    uint8_t *buf = (uint8_t *)malloc(n);
+    if (n == 0u || buf == NULL) {
+        exit(1);
+    }
+    CHECK_EQ_U64(cogmaster__state_save(r.m, buf, n), COGMASTER_STATUS_OK);
+    write_reg(&r, 0x3FFEu, 0x30u, &none);
+    write_reg(&r, 0xBFFFu, 1u, &none);
+    CHECK_EQ_U64(cogmaster__state_load(r.m, buf, n), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(r.m->mapper.raw[0], 0x10);
+    CHECK_EQ_U64(r.m->mapper.raw[1], 5);
+    CHECK_EQ_U64(r.m->mapper.bank8[4], 10);
+    write_reg(&r, 0x7FFFu, 0u, &none);
+    CHECK_EQ_U64(r.m->mapper.bank8[4], 10);
+    cogmaster__bus_write(r.m, 0x3FFEu, 0x10u);
+    CHECK_EQ_U64(r.m->mapper.bank8[4], 10);
+    free(buf);
+    rig_close(&r);
+}
+
 /* The bank state round-trips, and a state whose bank is past the image is
    refused. */
 static void test_state(void)
@@ -328,10 +511,13 @@ static const struct {
     const char *name;
     void (*run)(void);
 } cases[] = {
+    {"hes_4pak", test_hes_4pak},
     {"hicom", test_hicom},
     {"korean", test_korean},
     {"korean_nb", test_korean_nb},
+    {"nemesis", test_nemesis},
     {"state", test_state},
+    {"zemina", test_zemina},
 };
 
 int main(int argc, char **argv)

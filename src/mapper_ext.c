@@ -34,12 +34,24 @@ static void ext_check(cogmaster *m, uint16_t addr, uint32_t highest)
     }
 }
 
+/* Points the 16 KiB slot s at page val modulo the page count, as two 8 KiB
+   banks. */
+static void ext_pak_slot(cogmaster *m, uint16_t addr, uint32_t s, uint32_t val)
+{
+    ext_check(m, addr, 2u * val + 1u);
+    m->mapper.bank8[2u * s] = ext_bank(m, 2u * val);
+    m->mapper.bank8[2u * s + 1u] = ext_bank(m, 2u * val + 1u);
+}
+
 uint8_t cogmaster__mapext_read(const cogmaster *m, uint16_t addr)
 {
     switch (m->cart.board) {
     case COGMASTER__BOARD_KOREAN:
     case COGMASTER__BOARD_KOREAN_NB:
     case COGMASTER__BOARD_HICOM:
+    case COGMASTER__BOARD_ZEMINA:
+    case COGMASTER__BOARD_NEMESIS:
+    case COGMASTER__BOARD_4PAK:
         return m->cart.rom[((uint32_t)m->mapper.bank8[addr >> EXT_BANK_BITS] << EXT_BANK_BITS) |
                            (addr & EXT_BANK_MASK)];
     default:
@@ -78,6 +90,50 @@ void cogmaster__mapext_write(cogmaster *m, uint16_t addr, uint8_t v)
             cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_CART, COGMASTER__FAULT_ROM_WRITE);
         }
         break;
+    case COGMASTER__BOARD_ZEMINA:
+    case COGMASTER__BOARD_NEMESIS:
+        /* Writes to exactly $0000-$0003 pick the 8 KiB banks of $8000, $A000,
+           $4000 and $6000, value modulo twice the page count; $0000-$3FFF
+           otherwise stay fixed. Nemesis is the same board (MAME rom.cpp,
+           sega8_zemina_device::write_cart, same pin). Every other write below
+           $C000 is a write to ROM. */
+        if (addr < 4u) {
+            static const uint8_t window[4] = {4u, 5u, 2u, 3u};
+            ext_check(m, addr, v);
+            p->bank8[window[addr]] = ext_bank(m, v);
+        } else if (addr < 0xC000u) {
+            cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_CART, COGMASTER__FAULT_ROM_WRITE);
+        }
+        break;
+    case COGMASTER__BOARD_4PAK:
+        /* Three registers hold 16 KiB page numbers, each modulo the page
+           count: $3FFE for $0000-$3FFF, $7FFF for $4000-$7FFF and $BFFF for
+           $8000-$BFFF, where the high bits of the $3FFE value are added to
+           the $BFFF value (MAME rom.cpp, sega8_4pak_device::write_cart, same
+           pin). raw[0] and raw[1] keep the $3FFE and $BFFF values.
+           $FFFD-$FFFF have two readings. MAME: the 4 PAK class overrides
+           only read_cart and write_cart, so the Sega registers it inherits
+           (sega8_rom_device::write_mapper) still set slots 0, 1 and 2 to the
+           value modulo the page count, and $FFFC drives only cartridge RAM,
+           which this board lacks. The other reading: the board decodes only
+           the three addresses above and the Sega registers do nothing. The
+           first is implemented; it is what the one reference that runs the
+           image does. */
+        if (addr == 0x3FFEu) {
+            p->raw[0] = v;
+            ext_pak_slot(m, addr, 0u, v);
+            ext_pak_slot(m, addr, 2u, (uint32_t)(p->raw[0] & 0x30u) + p->raw[1]);
+        } else if (addr == 0x7FFFu) {
+            ext_pak_slot(m, addr, 1u, v);
+        } else if (addr == 0xBFFFu) {
+            p->raw[1] = v;
+            ext_pak_slot(m, addr, 2u, (uint32_t)(p->raw[0] & 0x30u) + p->raw[1]);
+        } else if (addr >= 0xFFFDu) {
+            ext_pak_slot(m, addr, (uint32_t)addr - 0xFFFDu, v);
+        } else if (addr < 0xC000u) {
+            cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_CART, COGMASTER__FAULT_ROM_WRITE);
+        }
+        break;
     default:
         /* The no-bank Korean board has no register (MAME rom.cpp,
            sega8_korean_nb_device, same pin). Writes to ROM change nothing.
@@ -108,8 +164,22 @@ void cogmaster__mapext_reset(cogmaster *m)
             p->bank8[i] = ext_bank(m, i < 4u ? i : i - 4u);
         }
         break;
+    case COGMASTER__BOARD_ZEMINA:
+    case COGMASTER__BOARD_NEMESIS:
+        /* Banks 0 to 5 in order (sega8_zemina_device::late_bank_setup, MAME
+           rom.cpp). Nemesis starts with the last 8 KiB bank at $0000
+           (sega8_nemesis_device::late_bank_setup). */
+        for (uint32_t i = 0; i < EXT_SLOTS; i++) {
+            p->bank8[i] = ext_bank(m, i);
+        }
+        if (m->cart.board == COGMASTER__BOARD_NEMESIS) {
+            p->bank8[0] = ext_bank(m, 2u * m->cart.pages - 1u);
+        }
+        break;
     default:
-        /* The caller cleared every bank. */
+        /* The caller cleared every bank. All three registers of the 4 PAK
+           and its slots power up at 0 (sega8_4pak_device::device_reset, MAME
+           rom.cpp), which is the cleared state. */
         break;
     }
 }

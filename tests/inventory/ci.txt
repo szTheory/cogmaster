@@ -212,10 +212,13 @@ libretro.vendored	libretro
 mapper.codemasters.banks	mapper,portable
 mapper.codemasters.ram	mapper,portable
 mapper.codemasters.wrap	mapper,portable
+mapper.ext.hes_4pak	mapper,portable
 mapper.ext.hicom	mapper,portable
 mapper.ext.korean	mapper,portable
 mapper.ext.korean_nb	mapper,portable
+mapper.ext.nemesis	mapper,portable
 mapper.ext.state	mapper,portable
+mapper.ext.zemina	mapper,portable
 mapper.none.layout	mapper,portable
 mapper.pad_wrap	mapper,portable
 mapper.sega.banks	mapper,portable
