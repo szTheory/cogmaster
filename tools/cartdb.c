@@ -7,15 +7,60 @@
 #include <inttypes.h>
 #include <string.h>
 
+#include "cogmaster.h"
+
 #define CAP 4096u
 struct fact {
     char sha[41], title[256];
     uint32_t bytes, board, machine, region, video, persistence, declared, geometry;
-    uint32_t public_identity;
+    uint32_t public_identity, slot, ctrl1, ctrl2;
 };
 static struct fact facts[CAP];
 static size_t count, compound;
 static char input[4194305];
+
+/* Every MAME slot value in the pinned lists, with a stable id that is never
+   renumbered. A row maps to a board constant, or to board 0 with the reason
+   the game is not played. Ids are the row position plus one; id 0 means a
+   record without a slot feature. */
+struct slot {
+    const char *name;
+    uint32_t id, board;
+    const char *reason;
+};
+#define NOT_YET "mapper arm not present"
+#define SG1000 "SG-1000 board; the SG-1000 is not emulated"
+static const struct slot slots[] = {
+    {"codemasters", 1u, COGMASTER_BOARD_CODEMASTERS, ""},
+    {"eeprom", 2u, 0u, "93C46 EEPROM save chip not emulated"},
+    {"mgear", 3u, 0u, "Master Gear converter, not a game"},
+    {"xterminator", 4u, 0u, "X-Terminator cheat device"},
+    {"cardcatcher", 5u, 0u, SG1000},
+    {"castle", 6u, 0u, SG1000},
+    {"dahjee_typea", 7u, 0u, SG1000},
+    {"dahjee_typeb", 8u, 0u, SG1000},
+    {"level3", 9u, 0u, SG1000},
+    {"othello", 10u, 0u, SG1000},
+    {"terebi", 11u, 0u, SG1000},
+    {"4pak", 12u, 0u, NOT_YET},
+    {"hicom", 13u, 0u, NOT_YET},
+    {"janggun", 14u, 0u, "reverse bit 6 vs 7 unresolved (MAME and SMS Power disagree)"},
+    {"korean", 15u, 0u, NOT_YET},
+    {"korean_188in1", 16u, 0u, "menu entries 6 and 13 fail in MAME and ares"},
+    {"korean_nb", 17u, 0u, NOT_YET},
+    {"nemesis", 18u, 0u, NOT_YET},
+    {"seojin", 19u, 0u, "game select at $FFF0 and data bit 7 inverted; no hardware dump evidence"},
+    {"zemina", 20u, 0u, NOT_YET},
+};
+#define SLOTS (sizeof slots / sizeof slots[0])
+static uint32_t slot_seen[SLOTS], slot_emitted[SLOTS];
+static const char *const board_names[] = {
+    [0] = "unsupported",
+    [COGMASTER_BOARD_ROM_ONLY] = "none",
+    [COGMASTER_BOARD_SEGA] = "sega",
+    [COGMASTER_BOARD_CODEMASTERS] = "codemasters",
+};
+#define BOARD_NAMES (sizeof board_names / sizeof board_names[0])
 
 static void fail(const char *why)
 {
@@ -59,6 +104,87 @@ static int attr(const char *tag, const char *key, char *out, size_t cap)
     }
     out[0] = 0;
     return 0;
+}
+
+/* The table must be self-consistent before any input is read. */
+static void check_table(void)
+{
+    for (size_t i = 0; i < SLOTS; i++) {
+        const struct slot *s = &slots[i];
+        size_t reason = strlen(s->reason);
+        if (s->id != i + 1u || !*s->name || (s->board != 0u) != !reason || reason > 95u ||
+            s->board >= BOARD_NAMES)
+            fail("slot table row is not consistent");
+        for (const char *c = s->reason; *c; c++)
+            if (*c < 32 || *c > 126 || *c == '"' || *c == '\\')
+                fail("slot table reason is not plain ASCII");
+        for (size_t j = 0; j < i; j++)
+            if (!strcmp(slots[j].name, s->name))
+                fail("slot table has a duplicate name");
+    }
+}
+
+/* Slot rows in name order, for the listing and the counts. */
+static void by_name(size_t order[SLOTS])
+{
+    for (size_t i = 0; i < SLOTS; i++) {
+        size_t j = i;
+        for (; j && strcmp(slots[order[j - 1u]].name, slots[i].name) > 0; j--)
+            order[j] = order[j - 1u];
+        order[j] = i;
+    }
+}
+
+static const struct slot *find_slot(const char *name)
+{
+    for (size_t i = 0; i < SLOTS; i++)
+        if (!strcmp(slots[i].name, name))
+            return &slots[i];
+    fprintf(stderr, "cartdb: unmapped slot %s\n", name);
+    exit(1);
+}
+
+static uint32_t controller(const char *value)
+{
+    static const char *const names[] = {"lphaser", "paddle", "sports", "graphic"};
+    for (uint32_t i = 0; i < 4u; i++)
+        if (!strcmp(value, names[i]))
+            return i + 1u;
+    fprintf(stderr, "cartdb: unmapped controller %s\n", value);
+    exit(1);
+}
+
+/* Every slot and default-controller feature of one software record, before
+   any multipart or compound exclusion, so the counts see excluded records and
+   an unknown value stops the run. */
+static void scan_features(char *p, uint32_t *ctrl1, uint32_t *ctrl2)
+{
+    uint32_t counted = 0;
+    for (char *t = p; (t = strchr(t, '<')) != NULL; t++) {
+        char name[256], value[256];
+        if (!strncmp(t, "<!--", 4)) {
+            char *close = strstr(t, "-->");
+            if (!close)
+                fail("unterminated comment");
+            t = close + 2;
+            continue;
+        }
+        int shared = !strncmp(t, "<sharedfeat ", 12);
+        if (!shared && strncmp(t, "<feature ", 9))
+            continue;
+        (void)attr(t, "name", name, sizeof name);
+        (void)attr(t, "value", value, sizeof value);
+        if (!shared && !strcmp(name, "slot")) {
+            const struct slot *s = find_slot(value);
+            if (!(counted & 1u << s->id)) {
+                counted |= 1u << s->id;
+                slot_seen[s->id - 1u]++;
+            }
+        } else if (shared && !strcmp(name, "ctrl1_default"))
+            *ctrl1 = controller(value);
+        else if (shared && !strcmp(name, "ctrl2_default"))
+            *ctrl2 = controller(value);
+    }
 }
 
 static uint32_t number(const char *s)
@@ -124,6 +250,7 @@ static void parse(char *s)
         if (!desc || !de)
             fail("missing description");
         title(f.title, desc + 13, (size_t)(de - desc - 13));
+        scan_features(p, &f.ctrl1, &f.ctrl2);
         char *part = strstr(p, "<part ");
         if (!part || strstr(part + 1, "<part ")) {
             compound++;
@@ -199,14 +326,18 @@ static void parse(char *s)
         }
         if (strspn(f.sha, "0123456789abcdef") != 40u)
             fail("invalid SHA1");
+        if (f.declared > 65535u)
+            fail("invalid ram size");
         f.board = f.machine ? (f.bytes <= 49152u ? 1u : 2u) : 0u;
         if (f.machine == 2u && f.bytes == 8192u)
             f.board = 0u;
-        if (*slot)
-            f.board = !strcmp(slot, "codemasters") ? 3u
-                      : !strcmp(slot, "rom")       ? 1u
-                      : !strcmp(slot, "sega")      ? 2u
-                                                   : 0u;
+        if (*slot) {
+            const struct slot *row = find_slot(slot);
+            f.slot = row->id;
+            f.board = row->board;
+            if (row->id == 2u)
+                f.persistence = 3u;
+        }
         if (f.persistence == 2u && !*slot && f.machine)
             f.board = 2u;
         if (f.persistence == 2u) {
@@ -222,27 +353,88 @@ static void parse(char *s)
     }
 }
 
-static void quoted(const char *s)
+static int is_hex40(const char *s)
 {
-    putchar('"');
-    for (; *s; s++) {
-        unsigned char c = (unsigned char)*s;
-        if (c == '"' || c == '\\') {
-            putchar('\\');
-            putchar(c);
-        } else if (c < 32u || c >= 127u)
-            printf("\\%03o", (unsigned int)c);
-        else
-            putchar(c);
+    return strlen(s) == 40u && strspn(s, "0123456789abcdef") == 40u;
+}
+
+/* Merge two rows that share a SHA-1. Card and cart title aliases are not hardware
+   conflicts. A shared SMS image also distributed for GG SMS mode defaults to SMS.
+   A controller named on one alias and not the other keeps the device. */
+static void coalesce(struct fact *a, const struct fact *b)
+{
+    if (a->bytes != b->bytes || a->board != b->board || a->region != b->region ||
+        a->video != b->video || a->persistence != b->persistence || a->declared != b->declared ||
+        a->geometry != b->geometry || a->public_identity != b->public_identity ||
+        a->slot != b->slot || (a->ctrl1 && b->ctrl1 && a->ctrl1 != b->ctrl1) ||
+        (a->ctrl2 && b->ctrl2 && a->ctrl2 != b->ctrl2) ||
+        (a->machine != b->machine && a->video != 1u)) {
+        fprintf(stderr, "%s: %s / %s\n", a->sha, a->title, b->title);
+        fail("conflicting identity");
     }
-    putchar('"');
+    if (!a->ctrl1)
+        a->ctrl1 = b->ctrl1;
+    if (!a->ctrl2)
+        a->ctrl2 = b->ctrl2;
+}
+
+static void print_slots(void)
+{
+    size_t order[SLOTS];
+    by_name(order);
+    for (size_t i = 0; i < SLOTS; i++) {
+        const struct slot *s = &slots[order[i]];
+        fprintf(stderr, "cartdb: slot %s seen=%" PRIu32 " emitted=%" PRIu32 " -> ", s->name,
+                slot_seen[order[i]], slot_emitted[order[i]]);
+        if (s->board)
+            fprintf(stderr, "%s\n", board_names[s->board]);
+        else
+            fprintf(stderr, "unsupported (%s)\n", s->reason);
+    }
+}
+
+static void write_catalog(const char *path)
+{
+    static const char *const machines[] = {"sg", "sms", "gg"};
+    FILE *out = fopen(path, "wb");
+    if (!out)
+        fail("cannot open catalog");
+    for (size_t i = 0; i < count; i++) {
+        const struct fact *f = &facts[i];
+        if (!(f->public_identity & 1u))
+            continue;
+        if (strpbrk(f->title, "\t\r\n"))
+            fail("title holds a tab or newline");
+        fprintf(out, "%s\t%s\t%s\t%s\t%s\n", f->sha, machines[f->machine], board_names[f->board],
+                f->slot ? slots[f->slot - 1u].name : "-", f->title);
+    }
+    if (ferror(out) || fclose(out))
+        fail("cannot write catalog");
 }
 
 int main(int argc, char **argv)
 {
+    const char *pin = NULL, *catalog = NULL;
+    check_table();
+    for (int i = 1; i < argc; i++) {
+        if (!strcmp(argv[i], "--list-slots")) {
+            size_t order[SLOTS];
+            by_name(order);
+            for (size_t j = 0; j < SLOTS; j++)
+                puts(slots[order[j]].name);
+            return ferror(stdout) ? 1 : 0;
+        }
+    }
     if (argc < 2)
         fail("supply CC0 XML files");
     for (int i = 1; i < argc; i++) {
+        if (!strcmp(argv[i], "--pin") || !strcmp(argv[i], "--catalog")) {
+            const char **dest = argv[i][2] == 'p' ? &pin : &catalog;
+            if (++i == argc)
+                fail("missing option value");
+            *dest = argv[i];
+            continue;
+        }
         if (!strcmp(argv[i], "--fixture")) {
             if (++i == argc || count == CAP)
                 fail("missing fixture facts");
@@ -255,9 +447,8 @@ int main(int argc, char **argv)
                                 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %255[^\n]",
                                 f.sha, &f.bytes, &f.board, &f.machine, &f.region, &f.video,
                                 &f.persistence, &f.declared, &f.geometry, f.title);
-            if (fields != 10 || strlen(f.sha) != 40u || strspn(f.sha, "0123456789abcdef") != 40u ||
-                f.bytes != 65536u || f.board != 2u || f.persistence != 2u || f.declared != 32768u ||
-                f.geometry != 1u)
+            if (fields != 10 || !is_hex40(f.sha) || f.bytes != 65536u || f.board != 2u ||
+                f.persistence != 2u || f.declared != 32768u || f.geometry != 1u)
                 fail("invalid owned fixture facts");
             while (fgets(input, sizeof input, file)) {
                 if (strspn(input, " \t\r\n") != strlen(input))
@@ -281,31 +472,48 @@ int main(int argc, char **argv)
             fail("missing per-file CC0 license");
         parse(input);
     }
+    if (!pin || !is_hex40(pin))
+        fail("--pin needs the 40 hex digit MAME commit");
     qsort(facts, count, sizeof facts[0], compare);
-    puts("/* Generated from pinned MAME CC0 and optional owned MIT fixture facts; see "
-         "PROVENANCE.md. */");
+    size_t candidates = count, kept = 0;
     for (size_t i = 0; i < count; i++) {
-        if (i && !strcmp(facts[i - 1u].sha, facts[i].sha)) {
-            const struct fact *a = &facts[i - 1u], *b = &facts[i];
-            /* Card/cart title aliases are not hardware conflicts. A shared
-               SMS image also distributed for GG SMS mode defaults to SMS. */
-            if (a->bytes != b->bytes || a->board != b->board || a->region != b->region ||
-                a->video != b->video || a->persistence != b->persistence ||
-                a->declared != b->declared || a->geometry != b->geometry ||
-                a->public_identity != b->public_identity ||
-                (a->machine != b->machine && a->video != 1u)) {
-                fprintf(stderr, "%s: %s / %s\n", a->sha, a->title, b->title);
-                fail("conflicting identity");
-            }
-            continue;
-        }
-        struct fact *f = &facts[i];
-        printf("{\"%s\",", f->sha);
-        quoted(f->title);
-        printf(",%uu,%uu,%uu,%uu,%uu,%uu,%uu,%uu,%uu},\n", f->bytes, f->board, f->machine,
-               f->region, f->video, f->persistence, f->declared, f->geometry, f->public_identity);
+        if (kept && !strcmp(facts[kept - 1u].sha, facts[i].sha))
+            coalesce(&facts[kept - 1u], &facts[i]);
+        else
+            facts[kept++] = facts[i];
     }
+    count = kept;
+    printf("/* Generated by tools/cartdb.c from the MAME hash lists at %s; CC0 facts, see "
+           "PROVENANCE.md. */\n",
+           pin);
+    puts("static const struct cogmaster__cart_slot cartdb_slots[] = {");
+    for (size_t i = 0; i < SLOTS; i++)
+        printf("{%" PRIu32 "u, %" PRIu32 "u, \"%s\", \"%s\"},\n", slots[i].id, slots[i].board,
+               slots[i].name, slots[i].reason);
+    puts("};");
+    puts("static const struct cogmaster__cart_fact cartdb_facts[] = {");
+    for (size_t i = 0; i < count; i++) {
+        const struct fact *f = &facts[i];
+        fputs("{.sha1 = {", stdout);
+        for (size_t b = 0; b < 20u; b++) {
+            unsigned int v;
+            (void)sscanf(f->sha + 2u * b, "%2x", &v);
+            printf(b ? ",0x%02x" : "0x%02x", v);
+        }
+        printf("}, .bytes = %" PRIu32 "u, .ram_bytes = %" PRIu32 "u, .board = %" PRIu32
+               "u, .slot = %" PRIu32 "u, .machine = %" PRIu32 "u, .region = %" PRIu32
+               "u, .video = %" PRIu32 "u, .persistence = %" PRIu32 "u, .geometry = %" PRIu32
+               "u, .ctrl1 = %" PRIu32 "u, .ctrl2 = %" PRIu32 "u, .flags = %" PRIu32 "u},\n",
+               f->bytes, f->declared, f->board, f->slot, f->machine, f->region, f->video,
+               f->persistence, f->geometry, f->ctrl1, f->ctrl2, f->public_identity & 1u);
+        if (f->slot)
+            slot_emitted[f->slot - 1u]++;
+    }
+    puts("};");
+    if (catalog)
+        write_catalog(catalog);
+    print_slots();
     fprintf(stderr, "cartdb: %zu candidate facts; %zu compound/incomplete records excluded\n",
-            count, compound);
+            candidates, compound);
     return ferror(stdout) ? 1 : 0;
 }
