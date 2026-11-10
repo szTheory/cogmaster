@@ -23,10 +23,10 @@ on:
 permissions:
   contents: read
 
-# The instructions-per-frame gate reports only until two zero-spread control
-# runs arm it; arming is one ci: pull request setting this to "gate".
+# The instructions-per-frame gate was armed after two zero-spread control runs
+# on main: 42752737395 and 42752770307 (docs/perf-fuzz.md).
 env:
-  COGMASTER_PERF_MODE: report
+  COGMASTER_PERF_MODE: gate
   # A published and deleted tag name can never be reused under immutable
   # releases, so every rehearsal attempt gets its own.
   REHEARSAL_TAG: rehearsal-${{ github.run_id }}-${{ github.run_attempt }}
