@@ -9,9 +9,11 @@
 #define CART_PAGE 16384u
 #define CART_COPIER_HEADER 512u
 /* The smallest and largest images accepted: 1 KiB, and 1 MiB with a copier
-   header in front. */
+   header in front. The body after the strip is at most 1 MiB, the most the
+   largest Sega-mapper board addresses (SMS-CARTRIDGES section 1). */
 #define CART_MIN 1024u
-#define CART_MAX (1048576u + CART_COPIER_HEADER)
+#define CART_BODY_MAX 1048576u
+#define CART_MAX (CART_BODY_MAX + CART_COPIER_HEADER)
 /* A body of at most 48 KiB decodes linearly with no mapper; the BIOS
    assumes the Sega mapper above it (SMS-CARTRIDGES section 2.1). */
 #define CART_NO_MAPPER_MAX 49152u
@@ -164,8 +166,11 @@ cogmaster_status cogmaster__cart_probe(const void *image, size_t n, cogmaster_ca
         return COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE;
     }
     size_t off = body_offset(n);
-    const uint8_t *b = (const uint8_t *)image + off;
     size_t body = n - off;
+    if (body > CART_BODY_MAX) {
+        return COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE;
+    }
+    const uint8_t *b = (const uint8_t *)image + off;
     out->body_offset = (uint32_t)off;
     read_header(b, body, out);
     const struct cogmaster__cart_fact *fact = cogmaster__cartdb_image(b, body);

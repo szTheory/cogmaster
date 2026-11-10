@@ -17,7 +17,7 @@ before defaults; explicit choices win. These facts are independent of compatibil
 The probe reads only the `n` bytes
 at `image`, never changes them, and gives the same answer for the same bytes. It returns
 `COGMASTER_STATUS_ERR_ARGUMENT` for a NULL `image` or `out`, `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE` outside the
-load bounds (with only `image_size` filled), and `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD` with `board` 0 and
+load bounds, including a body above 1 MiB after any copier header (with only `image_size` filled), and `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD` with `board` 0 and
 every other field filled when no supported board fits.
 
 | Field | Meaning |

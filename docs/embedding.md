@@ -200,7 +200,8 @@ GG controller reads decode C0/C1 and DC/DD; native Start is active low at port 0
 In explicit SMS video mode Start instead raises the edge-detected Pause NMI.
 
 `cogmaster_media.image` with `image_size` 0 and a NULL `image` loads the built-in test card. Any other image must
-be 1,024 to 1,048,576 + 512 bytes; any other size returns `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE`, and a NULL
+be 1,024 bytes to a 1 MiB body, with an optional 512-byte copier header in front; any other size, or a body above
+1 MiB whatever the image's total size, returns `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE`, and a NULL
 `image` with a non-zero size returns `COGMASTER_STATUS_ERR_ARGUMENT`. When the size is 512 bytes past a multiple
 of 16 KiB the first 512 bytes are a copier's header and are skipped. The library copies the rest into one buffer
 from your allocator, padded with `$FF` to a multiple of 16 KiB, so you may free your copy once `load` returns.
@@ -400,7 +401,7 @@ changes no state; a failed `cogmaster_load` keeps the content that was loaded be
 | `COGMASTER_STATUS_ERR_BUFFER_TOO_SMALL` | 4 | `pitch_bytes` is below `w × 2` for the rectangle requested |
 | `COGMASTER_STATUS_ERR_NO_CONTENT` | 5 | `cogmaster_run_frame`, `cogmaster_get_frame`, `cogmaster_get_info`, `cogmaster_get_audio`, `cogmaster_get_audio_trace` or `cogmaster_reset` before a successful `cogmaster_load` |
 | `COGMASTER_STATUS_ERR_PROFILE_REJECTED` | 6 | `cogmaster_media.machine`, `region` or `tv` is not one of its `COGMASTER_MACHINE_*`, `COGMASTER_REGION_*` or `COGMASTER_TV_*` values, or the pair was never made: `COGMASTER_TV_PAL` with `COGMASTER_MACHINE_GG` or with `COGMASTER_REGION_JAPAN` |
-| `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE` | 7 | an image is below 1,024 or above 1,048,576 + 512 bytes; checked before every other load rule |
+| `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE` | 7 | an image is below 1,024 bytes, or its body after any copier header is above 1 MiB; checked before every other load rule |
 | `COGMASTER_STATUS_ERR_SAVE_SIZE` | 9 | raw save exceeds the classified persistent length |
 | `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD` | 8 | the image is on a cartridge board the library does not emulate, or is an 8 KiB Game Gear image (the X-Terminator cheat device) |
 
