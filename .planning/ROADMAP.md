@@ -49,7 +49,7 @@ pull request and one automated release.
 **Depends on**: Phase 4 (v1.0 shipped)
 **Requirements**: TUNE-01, TUNE-02, TUNE-03, TUNE-04, TUNE-05, TUNE-06, TUNE-07, TUNE-08, TUNE-09, TUNE-10
 **Success Criteria** (what must be TRUE):
-  1. Every job timeout in the CI workflow carries the run ID of the slowest of that job's last 40 successful runs and no timeout reads `provisional`; the wasm32 lane is required by `CI required` after ten successful main runs whose hashes equal Linux x64's (TUNE-01, TUNE-10).
+  1. Every job timeout in the CI workflow carries the run ID of the slowest of that job's last 40 successful runs (or all if fewer, N stated) and no timeout reads `provisional`; the wasm32 lane is required by `CI required` after ten successful main runs whose hashes equal Linux x64's (TUNE-01, TUNE-10).
   2. A control change that raises instructions per frame fails the armed perf gate on a pull request; the gate was armed after two zero-spread control runs, and the perf allow list has no `boot_to_play` line or one with a current reason (TUNE-02).
   3. `cmake --workflow --preset ci` enforces the `quality.json` ceilings (including zip and wasm size) and floors, `policy.lessons_unique` and `policy.dependabot`, each with a negative control that fails; the Dependabot configuration updates GitHub Actions weekly with minor and patch grouped (TUNE-04, TUNE-09).
   4. A scheduled weekly digest reports CI duration, flaky tests and open nightly issues and names the slowest job with no one asking; the nightly lanes have run on the sound code, and a forced nightly failure opens one issue that the next passing run closes, each recorded as a run URL (TUNE-03, TUNE-08).

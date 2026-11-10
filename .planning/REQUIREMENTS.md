@@ -9,7 +9,7 @@ Requirements for this milestone. Each maps to one roadmap phase. Scope decisions
 
 ### Tune-up
 
-- [ ] **TUNE-01**: Every CI job timeout is derived from the slowest of the last 40 successful runs with that run's ID beside it, and no timeout reads `provisional`
+- [ ] **TUNE-01**: Every CI job timeout is derived from the slowest of the last 40 successful runs (or all of them if fewer, with N stated) with that run's ID beside it, and no timeout reads `provisional`
 - [ ] **TUNE-02**: A pull request that raises instructions per frame fails the perf gate, which is armed after two zero-spread control runs, and the `boot_to_play` allow line is deleted or restated with a current reason
 - [ ] **TUNE-03**: A weekly digest reports CI duration, flaky tests and open nightly issues without anyone asking, and a CI-efficiency report names the slowest job
 - [ ] **TUNE-04**: `quality.json` holds measured ceilings (including zip and wasm size) and floors that a CMake check enforces, and a `policy.lessons_unique` check runs in `ci`
