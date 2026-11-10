@@ -34,7 +34,7 @@ first. PAL and Japanese FM rows need the ledger's `tv` split and an audio predic
 pull request and one automated release.
 
 - [x] **Phase 5: Tune-up** - The v1.0 debt merged away: measured timeouts, an armed perf gate, `quality.json`, budget headroom, the README's ROM step and the weekly digest (completed 2026-11-10)
-- [ ] **Phase 6: Korean cartridges play** - The remaining mapper boards load and play with no setting, detected hash-first, with no shipped hash moving
+- [x] **Phase 6: Korean cartridges play** - The remaining mapper boards load and play with no setting, detected hash-first, with no shipped hash moving (completed 2026-11-10)
 - [ ] **Phase 7: Saves survive a restart** - 93C46 EEPROM and battery saves persist through the runner and RetroArch, with `.srm` interop only in measured layouts
 - [ ] **Phase 8: Sports Pad, Paddle and 3-D glasses** - Pin-level ports and a grown input struct make the pad-device and 3-D titles play, with replays matching
 - [ ] **Phase 9: Light Phaser** - Light Phaser titles hit where the player aims, sensed from the emitted pixel at the beam
@@ -82,7 +82,7 @@ Plans:
   3. `cogmaster-run --probe` reports `board_source`; a decoy with a valid `TMR SEGA` header and Korean-looking bytes stays a Sega board, a scan below threshold or margin does not pick a Korean board, and a tie refuses with the candidate named (MAP-06).
   4. Each new board passes an exhaustive register-write and address-read test under ASan, and a test shows its documented register writes record no fault (MAP-07).
   5. The eight-lane equality job shows every frame and audio hash that existed before the phase unchanged (MAP-08).
-**Plans**: 11/11 plans executed
+**Plans**: 11/11 plans complete
 
 Plans:
 - [x] 06-01-PLAN.md — generator slot table, per-slot counts, unmapped-slot failure, compact rows and catalog output (MAP-01, MAP-02)
@@ -177,7 +177,7 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 5. Tune-up | v2.0 | 14/14 | Complete    | 2026-11-10 |
-| 6. Korean cartridges play | v2.0 | 11/11 | In Progress | - |
+| 6. Korean cartridges play | v2.0 | 11/11 | Complete    | 2026-11-10 |
 | 7. Saves survive a restart | v2.0 | 0/TBD | Not started | - |
 | 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 0/TBD | Not started | - |
 | 9. Light Phaser | v2.0 | 0/TBD | Not started | - |

@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: The whole library
-current_phase: 6
-current_phase_name: Korean cartridges play
-status: verifying
-stopped_at: Completed 06-11-PLAN.md (runtime claude, model claude-sonnet-5-5)
-last_updated: "2026-11-10T09:09:15.734Z"
+current_phase: 7
+current_phase_name: Saves survive a restart
+status: planning
+stopped_at: Phase 6 complete, ready to plan Phase 7
+last_updated: "2026-11-10T09:19:07.575Z"
 last_activity: 2026-11-10
-last_activity_desc: Phase 5 complete, transitioned to Phase 6
-state_head: 281420147d7971b5c81a3ec2b85b6a965c66aae6
+last_activity_desc: Phase 6 complete, transitioned to Phase 7
+state_head: d652bd5dfb07189df1464c83dab3953cdddae8b7
 progress:
   total_phases: 8
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 25
   completed_plans: 25
-  percent: 13
+  percent: 25
 ---
 
 # Project State
@@ -29,17 +29,17 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 
 ## Current Position
 
-Phase: 6 — Korean cartridges play
-Plan: 11 of 11
-Status: Phase complete — ready for verification
-Last activity: 2026-11-10 — Completed 06-01 (cartridge generator slot table)
+Phase: 7 — Saves survive a restart
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-10 — Phase 6 complete, transitioned to Phase 7
 
-Progress: [█░░░░░░░░░] 13% of v2.0
+Progress: [███░░░░░░░] 25% of v2.0
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 76
+- Total plans completed: 87
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -52,6 +52,7 @@ Progress: [█░░░░░░░░░] 13% of v2.0
 | 03 | 18 | - | - |
 | 04 | 15 | - | - |
 | 5 | 14 | - | - |
+| 6 | 11 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -285,7 +286,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-11-10T09:09:15.688Z
-Stopped at: Completed 06-11-PLAN.md (runtime claude, model claude-sonnet-5-5)
+Stopped at: Phase 6 complete, ready to plan Phase 7
 Resume file: None
 
 ## Operator Next Steps
