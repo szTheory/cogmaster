@@ -1052,7 +1052,8 @@ static void test_load_sizes(void)
     if (m == NULL) {
         return;
     }
-    static const size_t refused[] = {0u, 1u, IMAGE_MIN - 1u, 1048576u + 1u, IMAGE_MAX - 1u, IMAGE_MAX + 1u, IMAGE_MAX + 64u};
+    static const size_t refused[] = {
+        0u, 1u, IMAGE_MIN - 1u, 1048576u + 1u, IMAGE_MAX - 1u, IMAGE_MAX + 1u, IMAGE_MAX + 64u};
     for (size_t i = 0; i < sizeof refused / sizeof refused[0]; i++) {
         cogmaster_media media = image_media(big, refused[i], COGMASTER_MACHINE_SMS2);
         expect_status("load", (uint32_t)refused[i], cogmaster_load(m, &media),
