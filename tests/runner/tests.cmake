@@ -1153,3 +1153,33 @@ cogmaster_add_test(NAME runner.trace.fault
 cogmaster_add_test(NAME runner.trace.none
   COMMAND ${runner_check} -DCASE=trace_none -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS portable runner TIMEOUT 10)
+
+# Fault prevented: README play steps that no longer run, print another line, promise a ROM extension the
+# core does not load, or lose the legality sentence. The command runs against the built playable fixture,
+# so it has no ROM bytes and runs on every lane that builds fixtures, emulated ones included. The control
+# is a README copy that names .sg where it names .gg, which must be refused by name.
+# Timeout: 10 s floor; one 600 frame run of the fixture, no hosted run yet, so provisional.
+if(COGMASTER_FIXTURES)
+  file(READ ${PROJECT_SOURCE_DIR}/README.md readme_text)
+  string(REPLACE "`.gg`" "`.sg`" readme_sg "${readme_text}")
+  if(readme_sg STREQUAL readme_text)
+    message(FATAL_ERROR "docs.readme_play.self_test: README.md no longer names `.gg`")
+  endif()
+  file(WRITE ${PROJECT_BINARY_DIR}/tests/readme_sg/README.md "${readme_sg}")
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/README.md)
+  set(readme_args -DINFO=${PROJECT_SOURCE_DIR}/libretro/cogmaster_libretro.info.in
+    -DRUN=$<TARGET_FILE:cogmaster-run> -DIMAGE=${PROJECT_BINARY_DIR}/fixtures/boot_to_play.sms)
+  set(readme_script ${PROJECT_SOURCE_DIR}/tests/cmake/readme.cmake)
+  cogmaster_add_test(NAME docs.readme_play
+    COMMAND ${CMAKE_COMMAND} -DREADME=${PROJECT_SOURCE_DIR}/README.md ${readme_args}
+      "-DEMULATOR=${runner_emulator}" -P ${readme_script}
+    LABELS runner portable TIMEOUT 10)
+  string(REPLACE ";" "\;" readme_inner "${CMAKE_CROSSCOMPILING_EMULATOR}")
+  set(cmd ${CMAKE_COMMAND} -DREADME=${PROJECT_BINARY_DIR}/tests/readme_sg/README.md ${readme_args}
+    "-DEMULATOR=${readme_inner}" -P ${readme_script})
+  string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+  cogmaster_add_test(NAME docs.readme_play.self_test
+    COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=readme: [.]sg is not in supported_extensions"
+      -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+    LABELS runner portable TIMEOUT 10)
+endif()

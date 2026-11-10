@@ -96,6 +96,8 @@ docs.budgets.no_quality	policy
 docs.budgets.ratio_below	policy
 docs.budgets.ratio_equal	policy
 docs.budgets.unclassified	policy
+docs.readme_play	portable,runner
+docs.readme_play.self_test	portable,runner
 embed.subdirectory	install
 fault.ed_undefined	bus,portable
 fault.mapper_range	bus,portable

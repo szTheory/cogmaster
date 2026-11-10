@@ -336,6 +336,10 @@ refuse a copy with one byte changed:
 cmake -DREADME=README.md -DBASE_URL=file://$PWD/build/ci/ -P tests/cmake/install_line.cmake
 ```
 
+`docs.readme_play` runs the README's first runner command against the built `boot_to_play.sms` and compares the
+printed line with the README's text block. It also requires every ROM extension the README names to be in the
+core's `supported_extensions` and the no-BIOS sentence to appear once; its `.self_test` names a refused `.sg`.
+
 ## One version source
 
 `version.txt` is the only file a person or release-please edits to change the version. CMake generates the
