@@ -462,6 +462,7 @@ for want in '^Slowest job: build, 200 s, run 2' '^Flaky: build' '^- timeout marg
 do
   grep -Eq "$want" "$3" || { echo "digest.format: no line matching $want"; cat "$3"; exit 1; }
 done
+grep -Fq '#9 is red: `fix: name see http://evil.test/x x`' "$3" && ! grep -q '@name' "$3" || { echo "digest.format: a pull request title was not neutralised"; cat "$3"; exit 1; }
 if grep -q 'timeout margin: build' "$3"
 then
   echo "digest.format: build is inside its timeout margin but was flagged"

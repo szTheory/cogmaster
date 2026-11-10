@@ -40,12 +40,15 @@ sh "$here/ci-durations.sh" summarise < "$work/jobs.json" > "$work/slowest.tsv"
 jq -r --rawfile slowest "$work/slowest.tsv" '
   def tenth: . * 10 | round | . / 10;
   def secs: (.completed_at | fromdateiso8601) - (.started_at | fromdateiso8601);
+  # A pull request title is untrusted text: inside a code span, with "@" and backticks removed,
+  # it can neither mention a user nor render as a link.
+  def plain: "`" + gsub("[@`\\r\\n]"; "") + "`";
   ($slowest | split("\n") | .[1:] | map(select(. != "") | split("\t"))) as $rows
   | (.runs // []) as $runs | (.jobs // []) as $jobs | (.failed_attempts // []) as $earlier
   | (.timeouts // {}) as $limits | (.nightly_issues // []) as $issues | (.pulls // []) as $pulls
   | [ $issues[] | "- nightly issue #\(.number): \(.title)" ] as $open
   | [ $pulls[] | select(.red == true or (now - (.updated_at | fromdateiso8601)) > 604800)
-      | "- pull request #\(.number) is \(if .red == true then "red" else "idle for seven days" end): \(.title)" ] as $stuck
+      | "- pull request #\(.number) is \(if .red == true then "red" else "idle for seven days" end): \(.title | plain)" ] as $stuck
   | [ $rows[] | select($limits[.[0]] != null and (.[2] | tonumber) * 2 > $limits[.[0]] * 60)
       | "- timeout margin: \(.[0]), \(.[2]) s slowest against a \($limits[.[0]]) min timeout, run \(.[3])" ] as $spent
   | [ $runs[] | select(.run_attempt > 1 and .conclusion == "success") as $r

@@ -21,6 +21,7 @@
   ],
   "pulls": [
     {"number": 7, "title": "fix: a quiet change", "updated_at": "2020-01-01T00:00:00Z", "red": false},
-    {"number": 8, "title": "feat: a red change", "updated_at": "2099-01-01T00:00:00Z", "red": true}
+    {"number": 8, "title": "feat: a red change", "updated_at": "2099-01-01T00:00:00Z", "red": true},
+    {"number": 9, "title": "fix: @name see http://evil.test/x `x`", "updated_at": "2099-01-01T00:00:00Z", "red": true}
   ]
 }
