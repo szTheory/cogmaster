@@ -2,7 +2,7 @@
 title: "Product roadmap (rolling)"
 summary: "Immediate / Near / Mid / Long direction for cogmaster with the evidence and promotion trigger for each horizon; ROADMAP.md is the execution contract, seeds hold the source narratives."
 read_when: "At every new-milestone and complete-milestone step, and when a finding changes priorities."
-updated: 2026-10-18
+updated: 2026-11-10
 ---
 
 # Product roadmap (rolling)
@@ -18,16 +18,18 @@ visible, re-ranks the horizons, records why the order changed or stayed, present
 alternatives, and moves only owner-approved scope into Immediate. The file is snapshotted as
 `milestones/vX.Y-PRODUCT-ROADMAP.md` at close. Future horizons stay less detailed than the current one.
 
-## Immediate — v1.0 "SMS and Game Gear games play with sound in RetroArch" (committed)
+## Shipped — v1.0 "SMS and Game Gear games play with sound in RetroArch" (v0.1.0 to v0.4.0)
 
-Four phases, each merged by one pull request and released automatically: (1) a test frame in RetroArch with the
+Shipped 2026-11-09 with 26 of 26 requirements, audit status tech_debt and no gaps (`milestones/v1.0-MILESTONE-AUDIT.md`). Four phases, each merged by one pull request and released automatically: (1) a test frame in RetroArch with the
 whole delivery path (library, runner, libretro core, six-platform CI, big-endian and wasm32 lanes, attested
 releases, install line); (2) the Z80 matches the public SingleStepTests vectors on every cycle, with the bus,
 the Sega, no-mapper and Codemasters boards, ports and the Pause NMI; (3) games play in RetroArch: VDP mode 4 on both machines (SMS field
 and Game Gear window with its 12-bit palette), two pads, regions, battery saves, self-authored SMS and GG
 fixtures with boot-to-play checks, the owner's carts through a local preset, the compatibility ledger;
 (4) sound: the PSG with Game Gear stereo and the YM2413 for the Japanese profile, hashes identical on every
-platform. Requirements: `.planning/REQUIREMENTS.md` v1. Evidence: `.planning/research/SUMMARY.md`.
+platform. Requirements: `milestones/v1.0-REQUIREMENTS.md`. Evidence: `.planning/research/SUMMARY.md`.
+
+**Unresolved debt carried into the next milestone** (none blocking; SEED-007 holds the tune-up): provisional CI timeouts (windows-arm64 failed one main run), the perf gate still in report mode with the `boot_to_play` allow line to 2027-01-07, open review dispositions from phases 1, 2 and 4, the README's missing ROM step, nightly lanes not yet run on the sound code, and third-party sound ROM conformance with no lane.
 
 ## Near — v2.0 "The whole library" (SEED-001)
 
@@ -59,3 +61,4 @@ instructions-per-frame budget; each seed names its own.
 |---|---|---|
 | 2026-10-18 | Initial horizons set during preparation | Library shares from the CC0 MAME lists (653 SMS, 823 GG, 214 SG-1000 entries at `1d7a454ed79e`); sibling velocity evidence (every phase a release; fixtures chosen at kickoff); owner decisions: SMS + GG in v1.0, SG-1000 as a seed, repo created at preparation |
 | 2026-10-18 | The browser build is SEED-008 with a wasm32 hash lane already in phase 1 | Owner: running efficiently in the browser through WebAssembly is very important |
+| 2026-11-10 | v1.0 shipped and archived; horizons unchanged, nothing yet moved into Immediate | The order of v2.0 and later was not re-ranked: no new evidence at close, and the next scope needs owner approval at `/gsd-new-milestone` |

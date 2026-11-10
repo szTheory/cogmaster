@@ -5,6 +5,10 @@ planted: 2026-10-18
 planted_during: preparation, before milestone v1.0
 trigger_when: a port target is named (a handheld, a console homebrew SDK, the libretro buildbot) or the instructions-per-frame ratchet shows a low-power budget is met
 scope: medium
+audit_acknowledged:
+  milestone: v1.0
+  at: 2026-11-09
+  status: dormant
 ---
 
 # SEED-005: Everywhere — handhelds, console homebrew ports, the libretro buildbot, Playstead (v6.0)

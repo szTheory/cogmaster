@@ -2,42 +2,38 @@
 gsd_state_version: "1.0"
 milestone: v1.0
 milestone_name: SMS and Game Gear games play with sound in RetroArch
-current_phase: 04
-status: completed
-stopped_at: Milestone v1.0 audited; phase 04 shipped and released as v0.4.0
-last_updated: "2026-11-09T23:12:08.488Z"
-last_activity: 2026-11-09
-last_activity_desc: Milestone v1.0 audited (tech_debt, no gaps)
-state_head: f8dc704430c842a35020a5d138fd39a31a640e7b
+status: Awaiting next milestone
+stopped_at: Milestone v1.0 completed and archived; shipped as v0.4.0
+last_updated: "2026-11-10T00:20:29.894Z"
+last_activity: 2026-11-10
+last_activity_desc: Milestone v1.0 completed and archived
+state_head: 1a75a2bfe75432c3a79eb7fca47a9112df38ff03
 progress:
   total_phases: 4
   completed_phases: 4
   total_plans: 62
   completed_plans: 62
   percent: 100
+current_phase: 04
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-20)
+See: .planning/PROJECT.md (updated 2026-11-10)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 04 — Sound
+**Current focus:** Planning the next milestone
 
 ## Current Position
 
-Phase: 04
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-11-09 — Phase 04 complete
+Phase: Milestone v1.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-11-10 — Milestone v1.0 completed and archived (shipped as v0.4.0)
 
-Next command: `/gsd-complete-milestone v1.0`. Phase 04 shipped in https://github.com/szTheory/cogmaster/pull/11 (squash 8faf841) and released as v0.4.0 (https://github.com/szTheory/cogmaster/pull/12, merged b8d8706). The milestone audit (`.planning/v1.0-MILESTONE-AUDIT.md`) is `tech_debt`: 26 of 26 requirements, 18 of 18 connections, 6 of 6 flows, no gaps.
-
-Ship: https://github.com/szTheory/cogmaster/pull/8. `cmake --workflow --preset ci` exited 0 during ship. Hosted verification: https://github.com/szTheory/cogmaster/actions/runs/39514577638 (`gh run view 39514577638 --exit-status`, exit 0).
-
-Progress: [██████████] 100%
+Next command: `/gsd-new-milestone`. The archive is in `.planning/milestones/` (v1.0-ROADMAP.md, v1.0-REQUIREMENTS.md, v1.0-MILESTONE-AUDIT.md, v1.0-PRODUCT-ROADMAP.md, v1.0-phases/).
 
 ## Performance Metrics
 
@@ -131,162 +127,9 @@ Progress: [██████████] 100%
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table; the full list with sources is
-`.planning/preparation/DECISIONS.md`. Recent decisions affecting current work:
-
-- [Roadmap]: Four phases in the order delivery → CPU → play → sound; every phase ends in an automated release by merging its pull request.
-- [Roadmap]: The whole Z80 is proven against SingleStepTests on every cycle (Phase 2) before any game runs (Phase 3).
-- [Roadmap]: Self-authored WLA-DX fixtures with a RAM mailbox are the primary evidence; the OPLL seed is chosen at Phase 4 planning (DEC.22).
-- [Phase 01]: Status values settled: OK 0, ERR_ARGUMENT 1, ERR_STRUCT_SIZE 2, ERR_NO_MEMORY 3, ERR_BUFFER_TOO_SMALL 4, ERR_NO_CONTENT 5, ERR_PROFILE_REJECTED 6
-- [Phase 01]: get_info before a successful load returns ERR_NO_CONTENT
-- [Phase 01]: get_frame refuses pitch_bytes above 65536 with ERR_ARGUMENT
-- [Phase 01]: Pinned card hashes equal the planning oracle (SMS e14d77ce, GG 7404ed4a); wrong-pin control runs through expect_fail.cmake
-- [Phase 01]: State visitor header carries frame, ticks and the packed profile once; a state loads only into an instance of the same machine
-- [Phase 01]: Internal state load refuses everything with ERR_ARGUMENT (ERR_NO_CONTENT before a load) until the public state API brings state statuses
-- [Phase 01]: cogmaster_get_fault is OK with present 0 before a load; reset POWER also zeroes the counters, SOFT keeps them
-- [Phase 01]: PNG encoder fills a caller buffer (png_size, png_write); runner writes each PNG with one fwrite and removes a partial file
-- [Phase 01]: Host colour helpers build as the cogmaster-host static library inside the runner block, outside the hash
-- [Phase 01]: The bench report has exactly nine lines (frames, p50_us to p99.999_us, max_us, max_rss_kib); --bench caps N at 1073741823 and exits 2 above it
-- [Phase 01]: Signal handling is proven by a second runner build compiled with COGMASTER_RUN_RAISE_AT; the installed runner has no test hook
-- [Phase 01]: perf_compare.cmake takes MODE=gate|report; report mode prints the verdict and exits 0
-- [Phase 01]: libretro core: one instance from retro_init to retro_deinit; av_info and audio length from cogmaster_get_info (48000 x fps_den / fps_num per frame, carried as a remainder)
-- [Phase 01]: cogmaster-host builds for the runner or the libretro core, PIC and hidden
-- [Phase 01]: Test-only modules cogmaster_libretro_rgb565 and cogmaster_libretro_gg cover RGB565 with single-sample audio and the GG geometry; .info claims only supports_no_game, supported_extensions empty
-- [Phase 01]: API version rule kept from the seed: every header name must appear in tests/api/vK.c with K <= COGMASTER_API_VERSION (no git tag read)
-- [Phase 01]: docs.api_names drops header names ending in _ (comment wildcards) and lets the guide cite names from cmake/version.h.in and CMakeLists.txt via -DOTHER
-- [Phase 01]: Install rules and packaging register only at top level; an embedding project installs nothing of cogmaster's
-- [Phase 01]: install_line.cmake rewrites a file:// SHA256SUMS only when it names the libretro zip alone, so a release's full list is never touched
-- [Phase 01]: Hygiene preset finds clang-format and clang-tidy 21 from a fixed HINTS list with REQUIRED and checks both majors
-- [Phase 01]: release_inputs is forced true with heavy only for untrusted input (no paths, bad or over-3000 count)
-- [Phase 01]: check-title.sh and classify-changes.sh run in the C locale
-- [Phase 01]: 01-09: wasm32 stays out of CI required's needs (REPORT_ONLY=wasm32); its Linux x64 comparison only reports
-- [Phase 01]: 01-09: perf mode is the workflow env COGMASTER_PERF_MODE=report; arming changes it to gate in one ci: pull request
-- [Phase 01]: Rehearsal and release publish both use the App token as GH_TOKEN for every publish.sh step; actions/attest signs with the job's OIDC token
-- [Phase 01]: publish.sh verify honours SIGNER_WORKFLOW only for rehearsal-* tags; release tags always verify as release.yml
-- [Phase 01]: A fork pull request changing a release input skips the rehearsal and fails CI required; rehearse from a same-repository branch
-- [Phase 01]: release.yml keeps the seed's concurrency queue: max though actionlint 1.7.12 rejects it (green on muhtari run 38983378877)
-- [Phase 01]: MSVC's own constant names (??_C@_, __xmm@) and the x64 vectorizer's __isa_available pair are exempt from the link-surface checks on Windows only; __real@ stays forbidden
-- [Phase 01]: Hosted CI green on draft PR #3 (run 39335167905); the merge ref is accepted as the rehearsal's target_commitish
-- [Phase 01]: 01-12: Timeouts are twice the slowest successful run here; the 5-minute floor also covers asan and perf (apt) and cleanup (API); all provisional until ten samples
-- [Phase 01]: 01-12: be32 timeout scale 8 and wasm32 scale 5, measured against the Linux x64 leg
-- [Phase 01]: 01-12: workflow.test_gate_timeout 4 s, twice the slowest clean local ci workflow run (1.61 s)
-- [Phase 02]: Vector sample: access form with a 25-bit final-state change mask, 13,017,674 B; magic CGM-Z80V v1, per-file u16 index
-- [Phase 02]: Z80 bus primitives call the seam at T3 (M1, memory read and write) and T4 (I/O); the harness subtracts a per-kind offset
-- [Phase 02]: z80 sources enter the vector harness as an OBJECT library with the core's options, never through the cogmaster archive
-- [Phase 02]: Vector negative control re-encodes one test in a build-tree copy (an unchanged final field lives only in the initial state)
-- [Phase 02]: Allow-list lines quote the upstream file name and count as unmatched only when their file ran
-- [Phase 02]: Z80 accumulator, INC/DEC and flag helpers are static inline in z80_cycle.h for reuse by the CB and ED pages; stack, pair and condition helpers stay static in z80.c
-- [Phase 02]: A halted step runs one M1 at PC and steps PC back so R counts and the step stays bounded
-- [Phase 02]: Each DD/FD byte is its own step: step() returns after the prefix fetch with idx set and clears idx after any other opcode
-- [Phase 02]: Index remapping is centralised in hx/r8/mem_hl/rp_hi; EX DE,HL and EXX use the true HL pair
-- [Phase 02]: NMI is not delayed by EI; only /INT waits one instruction after EI; both wait for a pending prefix
-- [Phase 02]: Block instructions are one iteration per step; ED holes (176) are 8-T NOPs reaching the ed_undefined seam
-- [Phase 02]: Beam starts at the frame origin (line 192, tick 607, ticks 0) after load and reset; origin constants live in bus.c apart from any interrupt tick
-- [Phase 02]: bus.at (the tick line/t describe) is saved state; a state needs at <= ticks <= at + 69 and deadline = (frame + 1) x 179,208
-- [Phase 02]: API version checks in v1.c, header and consumer tests accept any version from 1 up
-- [Phase 02]: A first-size cogmaster_media tag reads region and tv as AUTO (region sits in the 64-bit tail padding)
-- [Phase 02]: State header profile word is machine, region, tv and a zero byte, each fixed to the instance
-- [Phase 02]: The V counter is computed from the beam at each read; no stored 604 step
-- [Phase 02]: The VDP access tick is m->bus.vdp_at, keeping the VDP struct free of 64-bit fields
-- [Phase 02]: The Game Gear profile raises no Pause NMI
-- [Phase 02]: VDP port decode: A7/A6/A0 mirrors on the export SMS, full decode on the Japanese SMS and Game Gear
-- [Phase 02]: 02-09: The opcode scan refuses only when stores to another board's registers outnumber stores to the Sega registers $FFFC-$FFFF; Codemasters $8000 stores count for neither
-- [Phase 02]: 02-09: Bank numbers are reduced modulo the page count at write time; the $FFFC shift is added before the reduction
-- [Phase 02]: 02-09: Cartridge RAM lives after the padded ROM in one allocation (32 KiB Sega, 8 KiB Codemasters) and is state; format version stays 2
-- [Phase 02]: 02-09: cogmaster_cart_info first size is 52; machine_guess and region_guess are 0 when no header names them
-- [Phase 02]: 02-09: Load refuses any 8 KiB body loaded as a Game Gear with ERR_UNSUPPORTED_BOARD (8)
-- [Phase 02]: Game Gear $00 bit 5 reads 0 on NTSC ($C0 export, $80 Japan), per SMS-SYSTEM section 8
-- [Phase 02]: The step stores the instruction address and first byte after DD/FD in the bus struct for the fault record; both are saved in the state
-- [Phase 02]: Game Gear: $3E not decoded (write is unmapped_write), $3F latches, $DD reads $FF
-- [Phase 02]: unmapped_write covers $00-$3F and $80-$BF on full-decode consoles; sound-chip and I/O-chip writes never fault
-- [Phase 02]: Probe header fields print none without a ROM header; machine_guess and region_guess report what auto resolves to
-- [Phase 02]: The probe exits 77 for an unsupported size or board after printing every key; exit 77 is named refused
-- [Phase 02]: The first-fault trace prints its line before any hash or bench output
-- [Phase 02]: COGMASTER_FIXTURES is declared in CMakeLists.txt so bench's OFF is a used variable
-- [Phase 02]: hashes.cmake globs FIXTURES/*.sms sorted, so new fixtures join hashes.txt without edits
-- [Phase 02]: MSVC x64 __ImageBase allowed in abi.undefined: linker-defined jump-table base
-- [Phase 02]: cogmaster_peek returns a value above 255 (256) for no answer; undriven addresses peek $FF without counting or faulting
-- [Phase 02]: Mailbox judge order: magic, then status (hang), then CRC; CSV test column is '<id hex>:<name>'
-- [Phase 02]: Fixtures finish no earlier than their second frame (wait for the VDP frame flag) so a one-frame run is a hang
-- [Phase 02]: mapper_codemasters has no TMR SEGA header; its mailbox test passes --machine sms through an optional MACHINE variable
-- [Phase 02]: A Codemasters slot-0 bank loop runs from a position-independent copy in work RAM at $C200
-- [Phase 02]: ports tv_loop rows span the documented approximate count to the frame-length count plus one loop: NTSC 1,923-1,928, PAL 2,287-2,303
-- [Phase 02]: A Game Gear fixture image is the SMS source assembled with FIXTURE_GG (region code 6), judged against the same rom's rows under profile gg
-- [Phase 02]: Fuzz loader entry loads on the probe's machine and region guess and aborts when probe and load disagree on accepting an image
-- [Phase 02]: libFuzzer nightly job stays continue-on-error until ten green runs; crash inputs uploaded as fuzz-artifacts
-- [Phase 02]: vectors-full lane: COGMASTER_VECTORS_FULL selects its own inventory; the build converts the fetched archive and registers seven full shards plus vectors.sample_equal; nightly job vectors joins report
-- [Phase 02]: Every phase-2 test takes the 10 s TIMEOUT floor (slowest Linux x64 0.28 s); libFuzzer runs 123 s; be32 and wasm32 scales stay 8 and 5 since every test fits with wide margin
-- [Phase 02]: The Codemasters $4000 bank comes from bits 6-0; bit 7 is only the RAM enable
-- [Phase 02]: Writes while $3E disables the cartridge are ignored and recorded as unmapped_write (hardware docs silent; stated in src/bus.c)
-- [Phase 02]: The Z80 is split into z80.c, z80_cb.c, z80_ed.c and z80_x3.c, each under the 800-line cap
-- [Phase 02]: A save state refuses CPU combinations the core cannot reach and ties the beam to bus.at
-- [Phase 03]: Save emitted pixels and the monotonic renderer cursor so partially rendered fields restore exactly.
-- [Phase 03]: Validate the canonical absolute input body and exact record count before running; seal eight fixture samples only after sampling.
-- [Phase 03]: Repository checks count complete source-policy, core ABI, JUnit, inventory, assertion and hook helpers by responsibility; packaged-output integration and operational exclusions are individual.
-- [Phase 03]: Classify packaged-output integration, bootstrap, administration, publication and CI routing individually by actual responsibility.
-- [Phase 03]: Share synthetic budget boundary cases between CI and hygiene while retaining their exact inventories.
-- [Phase 03]: Keep GAME-01 and GAME-07 pending until complete phase-wide behavior is demonstrated.
-- [Phase 03]: Use released frontend replay and an uninstalled initial-checkpoint module with unchanged production input/video source.
-- [Phase 03]: Count the shared pixel oracle within the 300-line hosted budget and register its gate in CI and hygiene.
-- [Phase 03]: GAME-07 has exact-SHA hosted input/scroll screenshot proof; GAME-04 remains pending for its full pad/profile/lag criteria.
-- [Phase 03]: Use a saved monotonic dot cursor, tick-600 line hscroll/display latches and final-physical-line per-frame vscroll latch.
-- [Phase 03]: Append SMS1=3; share VDP masks and retained-bus facts; R6 gates address A12/A11 (tile bits 7/6).
-- [Phase 03]: Prepare bounded next-line SAT slots at tick 600; SMS1 width requires slot i+4; observe active-dot flags before clearing status.
-- [Phase 03]: Retain 607/608 IRQ edges and independent pending sources; keep rolling NTSC-240 counter phase separate from fixed host deadlines.
-- [Phase 03]: H origin uses qualified 32-tick inference; share effective TH mixing for rising capture and stable held reads.
-- [Phase 03]: Latch height at final-line tick 600; publish separate bounded completed pixels and metadata without moving fixed host deadlines.
-- [Phase 03]: GAME-02 mailbox criterion proven; GAME-01 hosted portable playing hashes passed in run 39494627790 (plan 03-09 summary); requirement disposition remains with phase verification.
-- [Phase 03]: Append explicit video mode beyond previous media tail padding; save the held native LCD independently of full-field rendering.
-- [Phase 03]: Preserve GG 6:5 native crop; resolve automatic host machine/region through the public cartridge probe and keep presentation independent.
-- [Phase 03]: Reuse serialized pending/current absolute input for Pause reconnect arming; missing frontend callbacks are disconnected sources.
-- [Phase 03]: Moldorian retains known battery identity and 24576-byte declaration with unsupported persistence geometry; no guessed battery span.
-- [Phase 03]: Owned battery fixture is a fixed MIT hash fact consumed by production lookup and checked after linking independently of core targets.
-- [Phase 03]: Card/cartridge aliases coalesce only when hardware facts agree; the shared SMS and GG SMS-mode image defaults to SMS.
-- [Phase 03]: Battery spans use API 6 and transactional raw import API 7; existing ABI layouts and numeric values remain unchanged.
-- [Phase 03]: Persistent extent accounting follows physical mapper translation; same-value mapped persistent writes increment generation, while import and resets preserve it.
-- [Phase 03]: Raw import refuses known-none as no-content, unknown or unsupported persistence as unsupported-board, and supported oversize as save-size before reading bytes.
-- [Phase 03]: Runner saves use same-directory POSIX rename or Windows MoveFileExW, acknowledging dirty generations only after checked write, flush, synchronization and close; Windows uses wide paths.
-- [Phase 03]: Libretro SAVE_RAM delegates to the classified battery query only during the loaded lifetime; frontend restoration owns raw bytes and all filesystem I/O.
-- [Phase 03]: Keep libretro_saves false and experimental status until separate hosted save-file and compatibility proof contracts are met.
-- [Phase 03]: Reuse the existing classified battery fixture identity; its CRC-checked mailbox already reports the previous and incremented counter.
-- [Phase 03]: Use bounded accepted predicates and a shared quoted CSV normalizer; keep expected values outside identity and healthy HALT outside boot-smoke rejection.
-- [Phase 03]: Copy the base compatibility judge and adjacent shared parser before candidate checkout; compare eligible fresh fixture results in both directions.
-- [Phase 03]: Compatibility exceptions name one unique old pass, require the actual new behaviour revision, and expire inclusively within 60 supplied-date days; GAME-06 remains pending through plan 03-17.
-- [Phase 03]: Match fixtures by admitted SHA-256; run metadata misses as bounded unknown observations and restrict public updates to seeded CC0 cases with unchanged expectations.
-- [Phase 03]: Keep playing performance report-only; reuse identical owned fixture, script and profile on comparable bases and report NO_BASE for older contracts.
-- [Phase 03]: Use exclusive same-directory open for portable save temporaries, retaining private native permissions and untouched collision files.
-- [Phase 03]: Stop execution with all eighteen plans complete, ready for code review before formal verification; phase 04 remains pending.
-- [Phase 03]: Preserve every native and portable assertion while correcting actual inventories and measured host timeout bounds.
-- [Phase 04]: 04-01: Ticks and frames count from the last load or reset of either kind; one SOFT rule (synth keeps phase, ring, integrator, DC, levels, undrained PCM; chips return to power-on constants and step origin) is stated in D-01 and D-24
-- [Phase 04]: 04-01: Third-party SN76489 and YM2413 test ROM conformance is deferred; owned psg_sweep and fm_sweep fixtures, units and the lockstep test carry SND-01 and SND-02; SND-03 cadence is 801 or 802 per NTSC frame
-- [Phase 04]: 04-02: API 9, behaviour revision 11 and state format 11 are bumped once for the phase; the per-tick cadence is 176/39,375 NTSC and 9,600/2,128,137 PAL with a remainder in the synth, so every frame is 801 or 802 (965 or 966 PAL)
-- [Phase 04]: 04-02: The trace log is host-sized (trace_records, cap 1,048,576), allocated once at the first load before the cartridge copy, drained oldest first with overflow and uncopied records counted in dropped, and cleared by load and both resets
-- [Phase 04]: 04-02: The libretro adapter drains cogmaster_get_audio right after the frame runs, widens mono to L = R, and keeps no pacing state; core state tests drain frames like a host until plan 04-03 saves the synth phase
-- [Phase 04]: 04-03: media.fm resolves the FM unit at load (AUTO only for Japan on a non-GG machine, ON on any Master System, refused on a Game Gear); fm_unit and fm_mask live on the instance and info reports the resolved unit with the audio channels
-- [Phase 04]: 04-03: state header byte 52 is fm_unit fixed to the instance (11 reserved bytes remain); synth_io saves only the cadence phase, bounded by the TV modulus, and a state load drops undrained PCM; cogmaster__sio_i64 carries signed fields by a 2^63 bias
-- [Phase 04]: 04-04: Synthesis is the nesturbator 16 x 32 Q15 kernel through one unsigned division per change (t = (frac << 21) / mod for the 32-row table), a 1,024-slot int64 ring per channel, level-gaining Q12 gains (PSG 840; 491 and 1402 beside the FM unit) and a leaky DC blocker; the state saves the ring slots at and after the head, integrator, DC estimate, levels and gained levels, bounded at 2^56 with the integrator clamped per sample
-- [Phase 04]: 04-04: The sibling kernel passed the integer spectral test (18.6 kHz tone 85.0 dB under the reference, 111.9 kHz tone below the 16-bit rounding), so no kernel generator was added; four PSG channels stepping together peak at 28,944 against 29,204, and a rise followed by a fall can ring higher but does not saturate
-- [Phase 04]: 04-05: The PSG compares its own channel levels before and after each step or write and emits the differences; noise uses counter[3], noise_div and out[3] as rate counter, divider flip-flop and shifted-out bit, so the first shift is on the first step
-- [Phase 04]: 04-05: A saved PSG step origin must be a multiple of 48, not after the tick count and at most one frame plus 117 ticks behind it, so a hostile state cannot make the next catch-up run unbounded steps; state is saved between frames, so a mid-frame save restores the chip but not the synth taps the frame had placed
-- [Phase 04]: 04-05: A Game Gear console in Master System video mode routes every PSG channel to both outputs; the volume law oracle is derived in integers (ratio 213,225,862 over 2^28 on a Q20 value); the synth tests park the chip so their direct levels are not overwritten
-- [Phase 04]: 04-06: Only the Game Gear port block $00-$06 and the $3E/$3F decode follow the video mode (has_gg_ports); the console still decides full decode, pad pins, $DD and chip_in, so a Game Gear in Master System mode keeps its pad and Start as Pause
-- [Phase 04]: 04-06: A native $06 write catches the PSG up, stores the mask once in io.gg[5] and records source 4 at m->ticks; in Master System mode $00-$06 are undecoded (open bus reads, unmapped writes), $3E powers on at $AB, and no playing or fixture hash moved
-- [Phase 04]: 04-06: audio.cost bounds kernel additions by 16 x outputs x (4 x steps + 5 x writes) over a 33 tick OUT hammer on NTSC, PAL and native Game Gear; measured about 12 to 16 percent of the bound, ring reach 816, 981 and 816 against 992
-- [Phase 04]: 04-07: The runner's audio hashing is its own module (runner/audio.c); both drops, a count off 801 or 802 (965 or 966 PAL) and out-of-order source ticks fail the frame at once with exit 1, and levels are merged and serialised as 16 bits with a 0x10000 no-level sentinel
-- [Phase 04]: 04-07: psg_sweep is a 19-segment table player closing with 38 mailbox records (frames waited and PSG writes), with assemble-time guards on the segment count and the 60-record mailbox; the Game Gear $06 entries add no wait, record or count, so the SMS and GG images report identical records
-- [Phase 04]: 04-08: psg_sweep.gg is built through the fixtures loop with a second image special case (psg_sweep_gg to psg_sweep.gg) and judged by the same 38 rows under profile gg; the four psg_sweep sound rows in hashes.txt are tagged '<file> <profile> <region> baseline' after the keyword and frozen in tests/audio/transitions.txt and pcm.txt, compared inside runner.hashes_file; runner.hashes_file keeps TIMEOUT 30 (2.3 s inside the ci workflow) pending hosted be32 and wasm32 timings
-- [Phase 04]: boot_to_play sound: chime state at $C210, tone 1 note attenuation at $C212, jp forever on both images; four audio rows pinned in tests/audio
-- [Phase 04]: 04-10: The YM2413 is a 699 logic-line integer port of emu2413 (src/opll.c 424 lines, src/opll_reg.c 284), equal to the unmodified original sample for sample and channel for channel over 2,000,000 seeded stream samples; it returns the exact int32 channel sum, keeps the amplitude LFO phase below 13,440 and links slots and patches by index
-- [Phase 04]: 04-10: policy.notices reads the bulleted Applies to form and requires a notices section for every file with an SPDX line, plain MIT included; the emu2413 tables are generated by the oracle's tables mode, which fails if the integer key scale table differs from the original's float table
-- [Phase 04]: 04-11: COGMASTER__OPLL_SUM_MAX (32,688 = 6 tone + 5 drum peaks) bounds the sounding voices only; the returned sum also holds the silent group's last outputs, so it is bounded by all fourteen peaks (38,817) and can leave int16 (-36,095 measured with the test register); the source-5 level in plan 04-12 must keep the original's uint16 wrap or take the sounding voices only
-- [Phase 04]: 04-11: the lockstep digest is frozen in tests/audio/opll_lockstep.txt from the unmodified emu2413 at the pin (stream 2000000, re-run before freezing), so fm.lockstep fetches nothing
-- [Phase 04]: 04-12: The source-5 record stays the original's 16-bit wrap of the exact sum and the mixer is a pure function of those 16 bits (top-bit flip, drop below the lowest sounding sum, saturate at twice COGMASTER__OPLL_SUM_MAX, scale to the PSG full scale, gain 1402/4096), so all 65,536 values give a gained level in 0..11,216 and no int16 assumption remains — Resolves ledger row 10 without changing the lockstep digest or the record's value; audio.fm_level proves it for every 16-bit value
-- [Phase 04]: 04-12: The YM2413 address latch is a byte of struct cogmaster__opll; $F0-$F2 are decoded ahead of the I/O chip whenever the unit is attached; a muted source holds gained level 0, so no reset needs a special level and a SOFT reset gates the sources off with the control — One copy of the latch, chip-off independence on smsj, power-on and resets need no special stored level
-- [Phase 04]: 04-12: The chip's state block is every field but slot_evals plus the user instrument, bounded by the tables the fields index; OPLL_UPDATE_ALL is 15; a loaded next-sample tick must be a multiple of 216, past the last frame's deadline and at most one sample past the tick count — Bounds the next catch-up to a frame's samples and gives every pending-request and phase field a bound narrower than its type
-- [Phase 04]: fm_sweep's detection routine reads $F2 first and restores it, compares bits 1-0 of four written values, and its script runs on every console so the no-unit runs prove the ports change nothing
-- [Phase 04]: 04-14: The libretro adapter needed no audio change; host sessions with the batch, single-sample and both callbacks equal the runner's --hash-audio hash on SMS (mono as L = R) and GG (interleaved), with 801 or 802 frames and running totals on the cadence formula
-- [Phase 04]: 04-14: cogmaster_fm (auto, off, on) is in the v2, v1 and v0 option tables sized by one macro with compile-time checks; on with Game Gear content stays automatic so the content loads
-- [Phase 04]: 04-15: Hosted RetroArch records a silent control and psg_sweep.sms and .gg; audio.cmake (19 lines) holds every assertion with the length bounds, hosted code is 299 of 300 lines after flip.cmake gave way to expect_fail.cmake; the first hosted run of the phase head exposed GCC, MSVC, UBSan and macOS x64 timeout failures, fixed in 41b8f26; perf allow boot_to_play 357 to 2027-01-07 (+3.56 percent, base from a dispatch on main); docs/testing.md has 7 bytes of headroom
+The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milestone close); the full list with sources is
+`.planning/preparation/DECISIONS.md`; per-plan decisions are in the archived summaries under
+`.planning/milestones/v1.0-phases/`.
 
 ### Pending Todos
 
@@ -297,9 +140,8 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 - [Phase 3]: Research retains sourced 607/608 interrupt edges; H-counter coordinate is an explicit inference. Fixtures test the selected model; binary oracles only locate differences, hardware measurements remain v4.0.
 - [Phase 3]: devkitSMS crt0 linking exception to be quoted and judged at the first third-party fixture admission.
 - [Phase 3]: SMS Power! timing and GG port references were accessible during planning research; Moldorian's 24 KiB metadata is confirmed, physical bank decoding remains unresolved and must not be guessed.
-- [Phase 4]: OPLL seed choice and FM:PSG mix need research during planning.
 - [Phase 2]: Full sanitizer lanes are evidenced in CI; local Homebrew clang-21 ASan hangs at startup on macOS. Plan 03-12's focused battery replay and timed save fuzzing passed locally with the installed Apple sanitizer runtime.
-- [Phase 3]: Deferred review info items IN-01..IN-06 (fault-record precision, unread bus.vdp_at, odd-size padding, probe UX, saved fault validation); see 02-REVIEW-DISPOSITION.md.
+- [Phase 3]: Deferred review info items IN-01..IN-06 (fault-record precision, unread bus.vdp_at, odd-size padding, probe UX, saved fault validation); see `.planning/milestones/v1.0-phases/02-the-cpu-matches-the-public-vectors/02-REVIEW-DISPOSITION.md`.
 
 ## Runtime Log
 
@@ -345,6 +187,7 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-11-09 | Execute phase 4 close-out (gsd-execute-phase 04); code review 0 critical, 2 warning, 4 info; verifier passed 5/5; ci workflow exit 0, 399 tests | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Ship phase 4 (gsd-ship 04, requested by the owner); PR #11 squash-merged on green CI, release PR #12 merged, v0.4.0 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Audit milestone v1.0 (gsd-audit-milestone); integration checker 18/18 wired, 6/6 flows, status tech_debt | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Complete milestone v1.0 (gsd-complete-milestone) | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -352,10 +195,24 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
-| *(none)* | | | | |
+| todos | post-merge-ci-follow-ups.md | (presence-only) | 2026-11-10 | v1.0 |
+| seeds | SEED-001 | dormant | 2026-11-10 | v1.0 |
+| seeds | SEED-002 | dormant | 2026-11-10 | v1.0 |
+| seeds | SEED-003 | dormant | 2026-11-10 | v1.0 |
+| seeds | SEED-004 | dormant | 2026-11-10 | v1.0 |
+| seeds | SEED-005 | dormant | 2026-11-10 | v1.0 |
+| seeds | SEED-006 | dormant | 2026-11-10 | v1.0 |
+| seeds | SEED-007 | dormant | 2026-11-10 | v1.0 |
+| seeds | SEED-008 | dormant | 2026-11-10 | v1.0 |
+| deferred_items | 02/deferred-items.md: hygiene.format and hygiene.no_float findings found during 02-09 | acknowledged (resolved by commits 3834dff and 2cceac5) | 2026-11-10 | v1.0 |
+| deferred_items | 03/deferred-items.md: local actionlint does not know the Ubuntu 26.04 runner labels | acknowledged (local linter metadata limitation) | 2026-11-10 | v1.0 |
 
 ## Session Continuity
 
 Last session: 2026-11-09T22:51:53.837Z
 Stopped at: Milestone v1.0 audited; phase 04 shipped and released as v0.4.0
 Resume file: None
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone
