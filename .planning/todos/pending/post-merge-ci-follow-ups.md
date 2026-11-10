@@ -22,17 +22,17 @@ Phase 1 built the CI, release and nightly pipelines on a branch. Four follow-ups
 the phase is merged to `main` (ENGINEERING §4 budgets one `ci:` pull request for this tail), and they would be
 lost if they lived only in the phase 1 SUMMARY files:
 
-1. **Perf gate is in report mode.** `ci.yml` sets `COGMASTER_PERF_MODE: report`. Arming it needs two
+1. **Perf gate was in report mode.** Done, plan 05-14: `ci.yml` sets `COGMASTER_PERF_MODE: gate`. Arming needed two
    Cachegrind control runs, `workflow_dispatch` of `ci.yml` on `main`, each printing
-   `perf control testcard runs=<a>,<b>,<c> spread=0` (FRAME-09).
-2. **The nightly report has never written an issue.** `nightly.yml`'s `report` job is skipped on pull requests.
+   `perf control boot_to_play runs=<a>,<b>,<c> spread=0` (FRAME-09).
+2. **The nightly report has never written an issue.** Done, plan 05-13. `nightly.yml`'s `report` job is skipped on pull requests.
    It needs one forced-failure dispatch (`force_failure: true`) on `main` that opens the `nightly` issue, then a
    normal run that closes it (ENGINEERING §7).
-3. **No Dependabot yet.** `.github/dependabot.yml` (github-actions only, weekly, minor and patch grouped, majors
+3. **No Dependabot yet.** Done, plans 05-11 and 05-12. `.github/dependabot.yml` (github-actions only, weekly, minor and patch grouped, majors
    apart, `ci` prefix, 7-day cooldown) and `dependabot-automerge.yml` (App token, auto-merge patch and minor only,
    only when Dependabot triggered the run, with a `policy.dependabot` test) are not written (RESEARCH Open
    Question 5). `apply-repo-settings.sh --check` already expects the Dependabot copy of the App key.
-4. **wasm32 is report-only.** It is outside `CI required`'s needs and outside `hash-equality`'s count of seven.
+4. **wasm32 was report-only.** Done, plan 05-04. It is outside `CI required`'s needs and outside `hash-equality`'s count of seven.
    Promote it after ten green runs (DEC.53).
 
 ## Solution

@@ -22,10 +22,11 @@ configuration. Input presses button 1 at frames 5, 6 and 8, then releases it. Th
 with API at least 5, behaviour revision at least 8 and the playing fixture source; an older phase's card-only
 path cannot provide a meaningful base. `perf.playing` checks this bench path against the independent pixel oracle.
 
-**Report mode.** The job runs with `COGMASTER_PERF_MODE: report` in `ci.yml`: it prints the verdict and succeeds
-whatever the verdict. It is armed by one `ci:` pull request that sets the mode to `gate`, after two control runs
-dispatched on `main` show zero spread; on `workflow_dispatch` the job measures one commit three times and prints
-`perf control boot_to_play runs=<a>,<b>,<c> spread=<n>`. Once armed, `FAIL`, `UNSTABLE` and `NO_BASE` fail it.
+**The gate.** The job runs with `COGMASTER_PERF_MODE: gate` in `ci.yml`: `FAIL`, `UNSTABLE` and `NO_BASE` fail it,
+and so fail `CI required`. There is no stored baseline: the merge base is measured twice, so the comparison is
+between two commits built on the same runner, and the limit stays +1.00 %. On `workflow_dispatch` the job measures
+one commit three times and prints `perf control boot_to_play runs=<a>,<b>,<c> spread=<n>`, the control that a
+repeat run gives the same count.
 
 **Exceptions.** A pull request that must be slower adds a line to `tests/perf/allow.txt`:
 `<rom> <max % × 100> <expiry YYYY-MM-DD> <reason>`. It raises that ROM's limit through its expiry, at most 60
