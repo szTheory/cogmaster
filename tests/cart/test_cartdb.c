@@ -29,6 +29,37 @@ static const struct cogmaster__cart_fact *find_hex(const char *hex)
     }
     return cogmaster__cartdb_find(digest);
 }
+/* Whether a row's size fits its board's geometry, so a row on the wrong board
+   fails here and not as a bad bank at run time. Korean and 4 PAK page 16 KiB;
+   Zemina pages 8 KiB and has more than 64 KiB to page; Nemesis is 128 KiB;
+   Hi-Com pages 32 KiB; Korean no-bank is 8 KiB banks up to 48 KiB; no mapper
+   is at most 48 KiB. The Sega and Codemasters boards need no 8 KiB multiple:
+   17 Game Gear rows on the Sega board measure 514313 to 524282 bytes on the
+   pinned data. Every row is at most 1 MiB. */
+static int row_fits(const struct cogmaster__cart_fact *row)
+{
+    uint32_t n = row->bytes;
+    if (n > 1048576u)
+        return 0;
+    switch (row->board) {
+    case COGMASTER_BOARD_ROM_ONLY:
+        return n <= 49152u;
+    case COGMASTER_BOARD_KOREAN:
+    case COGMASTER_BOARD_4PAK:
+        return n % 16384u == 0u;
+    case COGMASTER_BOARD_KOREAN_NB:
+        return n % 8192u == 0u && n <= 49152u;
+    case COGMASTER_BOARD_HICOM:
+        return n % 32768u == 0u;
+    case COGMASTER_BOARD_ZEMINA:
+        return n % 8192u == 0u && n > 65536u;
+    case COGMASTER_BOARD_NEMESIS:
+        return n == 131072u;
+    default:
+        return 1;
+    }
+}
+
 int main(int argc, char **argv)
 {
     if (argc == 2) {
@@ -167,6 +198,11 @@ int main(int argc, char **argv)
             break;
         for (size_t b = 0; b < 9u; b++)
             per_board[b] += row->board == supported[b];
+        if (!row_fits(row)) {
+            fprintf(stderr, "row %lu: slot %u board %u size %lu does not fit\n", (unsigned long)i,
+                    (unsigned)row->slot, (unsigned)row->board, (unsigned long)row->bytes);
+            check_failures++;
+        }
         CHECK(row->persistence < 4u && row->ctrl1 < 5u && row->ctrl2 < 5u);
         if (row->persistence < 4u && row->ctrl1 < 5u && row->ctrl2 < 5u) {
             per_persistence[row->persistence]++;

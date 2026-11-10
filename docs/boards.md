@@ -33,19 +33,34 @@ every other field filled when no supported board fits.
 | `region_code`, `rom_size_code` | the header's region and size nibbles |
 | `machine_guess`, `region_guess` | the machine and region the region code names (`COGMASTER_MACHINE_*`, `COGMASTER_REGION_*`), or 0 |
 | `board` | `COGMASTER_BOARD_ROM_ONLY` (1), `COGMASTER_BOARD_SEGA` (2), `COGMASTER_BOARD_CODEMASTERS` (3), `COGMASTER_BOARD_KOREAN` (4), `COGMASTER_BOARD_KOREAN_NB` (5), `COGMASTER_BOARD_HICOM` (6), `COGMASTER_BOARD_ZEMINA` (7), `COGMASTER_BOARD_NEMESIS` (8) or `COGMASTER_BOARD_4PAK` (9); 0 for none |
+| `board_source` | what chose the board: `COGMASTER_BOARD_SOURCE_DB` (1, the table), `COGMASTER_BOARD_SOURCE_HEADER` (2), `COGMASTER_BOARD_SOURCE_HEURISTIC` (3, the scan) or `COGMASTER_BOARD_SOURCE_DEFAULT` (4, a size rule or no sign of another board); 0 when no board was chosen |
+| `board_candidate` | the board the scan pointed at, 0 for none; named even when the scan refused |
+| `scan_sega`, `scan_candidate`, `scan_runner_up` | store sites counted for the Sega registers, for the leading family and for the runner-up; 0 when the scan did not run |
 
-Every header field is 0 when no header was found. The board is chosen in this order:
+Every header field is 0 when no header was found. The board is chosen in this order, and `board_source` says which
+step decided:
 
 1. When the size is 512 bytes past a multiple of 16 KiB, the first 512 bytes are a copier's header and are skipped.
-2. The ROM header is looked for at `$7FF0`, then `$3FF0`, then `$1FF0`. Its region code names the machine and
-   region; its checksum is checked but a wrong one refuses nothing.
+2. The whole-image SHA-1 is looked up in the table (`board_source` database).
 3. A Codemasters header at `$7FE0` (page count, BCD date, checksum and its complement, `$7FEF` zero) gives the
-   Codemasters board.
-4. An 8 KiB image whose header names the Game Gear is refused, and so is any 8 KiB image loaded as a Game Gear.
-5. An image of at most 48 KiB has no mapper.
-6. Otherwise the first 32 KiB are scanned for `LD (nn),A` stores. When stores to another board's registers
-   (`$0002`-`$0004`, `$3FFE`, `$6000`, `$A000`) outnumber stores to the Sega registers (`$FFFC`-`$FFFF`), the
-   image is refused; else it has the Sega mapper.
+   Codemasters board (header).
+4. An 8 KiB image whose header names the Game Gear is refused, and so is any 8 KiB image loaded as a Game Gear
+   (default).
+5. A valid ROM header at `$7FF0`, `$3FF0` or `$1FF0` (the magic, a region code of 3 to 7, a matching checksum and a
+   checksum range inside the image) settles it: no mapper up to 48 KiB, else the Sega mapper (header). A header
+   with a wrong checksum counts for nothing here.
+6. An image of at most 48 KiB has no mapper (default).
+7. Otherwise the first 32 KiB are scanned (heuristic, or default when nothing points elsewhere).
+
+The scan counts `LD (nn),A` store sites at instruction boundaries, so a `$32` that is an operand does not count.
+It sorts the targets into families: Sega `$FFFC`-`$FFFF`, Korean `$A000`, Zemina and Nemesis `$0001`-`$0003`,
+4 PAK `$3FFE`, `$7FFF` and `$BFFF`, and Janggun `$6000`. A family wins with at least three sites, at least twice
+the Sega count plus two, at least twice the runner-up's count plus two, and a size that fits its board (Korean and
+4 PAK in whole 16 KiB pages; Zemina in whole 8 KiB banks and over 64 KiB). A Game Gear region in the header, valid
+or not, never selects one of them. A 128 KiB Zemina image whose last 8 KiB bank starts with `DI` and whose first
+byte does not is Nemesis. Janggun is named and refused. The Sega mapper wins when its count is at least twice the
+leader's plus two. Anything in between, a tie included, is refused with the leader in `board_candidate`: a doubtful
+image never plays. With no store sites at all the image gets the Sega mapper.
 
 The boards:
 
@@ -74,7 +89,7 @@ The boards:
 
 The six boards after Codemasters bank in 8 KiB steps, and a bank number past the end wraps modulo the image. On an
 image whose size is not a power of two a register write past the end also records a `mapper_range` fault. Korean
-no-bank and Hi-Com are found by their hash only: nothing in the image names them. Zemina, Nemesis and 4 PAK load
+no-bank, Hi-Com, Seo Jin and 188-in-1 are found by their hash only: nothing in the image names them. Zemina, Nemesis and 4 PAK load
 from their table rows with no setting.
 
 The image is padded with `$FF` to whole 16 KiB banks, and a bank number past the end selects the bank number
