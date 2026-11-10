@@ -57,6 +57,7 @@ add_library(cogmaster STATIC
   src/io.c
   src/frame.c
   src/mapper.c
+  src/mapper_ext.c
   src/opll.c
   src/opll_reg.c
   src/psg.c

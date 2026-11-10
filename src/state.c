@@ -55,7 +55,7 @@ _Static_assert(sizeof(struct cogmaster__counters) == 40u, "counters changed: upd
 _Static_assert(sizeof(struct cogmaster__z80) == 38u, "z80 changed: update z80_io");
 _Static_assert(sizeof(struct cogmaster__bus) == 40u, "bus changed: update bus_io");
 _Static_assert(sizeof(struct cogmaster__vdp) == 16510u, "vdp changed: update vdp_io");
-_Static_assert(sizeof(struct cogmaster__mapper) == 4u, "mapper changed: update mapper_io");
+_Static_assert(sizeof(struct cogmaster__mapper) == 12u, "mapper changed: update mapper_io");
 _Static_assert(sizeof(struct cogmaster__io) == 9u, "io changed: update io_io");
 /* The saved synth fields are the ring, integrator, DC estimate, head, levels,
    gained levels and the cadence phase. The trace counters, the stats and the
@@ -315,6 +315,15 @@ static void mapper_io(struct cogmaster__sio *io, cogmaster *m)
     uint8_t bank_max = (uint8_t)(m->cart.pages != 0u ? m->cart.pages - 1u : 0u);
     for (uint32_t i = 0; i < 3u; i++) {
         cogmaster__sio_u8(io, "mapper_bank", &p->bank[i], 0u, bank_max);
+    }
+    if (board >= COGMASTER__BOARD_KOREAN) {
+        uint8_t bank8_max = (uint8_t)(m->cart.pages != 0u ? 2u * m->cart.pages - 1u : 0u);
+        for (uint32_t i = 0; i < 6u; i++) {
+            cogmaster__sio_u8(io, "mapper_bank8", &p->bank8[i], 0u, bank8_max);
+        }
+        for (uint32_t i = 0; i < 2u; i++) {
+            cogmaster__sio_u8(io, "mapper_raw", &p->raw[i], 0u, UINT8_MAX);
+        }
     }
     for (uint32_t i = 0; i < m->cart.ram_size; i++) {
         cogmaster__sio_u8(io, "cart_ram", &m->cart.ram[i], 0u, UINT8_MAX);
