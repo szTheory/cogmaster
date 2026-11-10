@@ -54,6 +54,36 @@ cogmaster_add_test(NAME docs.budgets
 
 include(${CMAKE_CURRENT_LIST_DIR}/budget_cases.cmake)
 
+# quality.json holds the ceilings and floors; the real file is checked against
+# the two inventories' line counts. Each control is a fixture limit one step
+# past the measured value, an absent key or a malformed file, and expects the
+# key or the file named.
+cogmaster_add_test(NAME policy.quality
+  COMMAND ${CMAKE_COMMAND} -DQUALITY=${PROJECT_SOURCE_DIR}/quality.json
+    "-DMEASURED=tests.ci=lines:${PROJECT_SOURCE_DIR}/tests/inventory/ci.txt$<SEMICOLON>tests.wasm32=lines:${PROJECT_SOURCE_DIR}/tests/inventory/wasm32.txt"
+    -P ${policy_scripts}/quality.cmake
+  LABELS policy TIMEOUT 10)
+set(quality_dir ${PROJECT_BINARY_DIR}/policy/quality)
+file(REMOVE_RECURSE ${quality_dir})
+file(WRITE ${quality_dir}/three.txt "# header\na\nb\nc\n")
+function(quality_control name json measured regex)
+  file(WRITE ${quality_dir}/${name}.json "${json}")
+  set(command ${CMAKE_COMMAND} -DQUALITY=${quality_dir}/${name}.json "-DMEASURED=${measured}"
+    -P ${policy_scripts}/quality.cmake)
+  string(REPLACE ";" "$<SEMICOLON>" command "${command}")
+  cogmaster_add_test(NAME policy.quality.${name}
+    COMMAND ${CMAKE_COMMAND} "-DCMD=${command}" -DCODE=1 "-DREGEX=${regex}" -P ${policy_scripts}/expect_fail.cmake
+    LABELS policy TIMEOUT 10)
+endfunction()
+quality_control(ceiling "{\"ceilings\": {\"size.fixture\": 14}}\n"
+  "size.fixture=bytes:${quality_dir}/three.txt" "quality:[ \n]+size\\.fixture")
+quality_control(floor "{\"floors\": {\"tests.fixture\": 4}}\n"
+  "tests.fixture=lines:${quality_dir}/three.txt" "quality:[ \n]+tests\\.fixture")
+quality_control(missing_key "{\"ceilings\": {}, \"floors\": {}}\n"
+  "tests.absent=lines:${quality_dir}/three.txt" "quality:[ \n]+tests\\.absent.*3")
+quality_control(malformed "{\"ceilings\": "
+  "tests.fixture=lines:${quality_dir}/three.txt" "malformed\\.json[ \n]+is[ \n]+not[ \n]+valid")
+
 
 # Every public name in the header appears in the embedding guide, and the
 # guide names nothing the header, the version header or the build lacks. The

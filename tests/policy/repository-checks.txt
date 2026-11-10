@@ -4,6 +4,7 @@ check|tests/cmake/budgets.cmake|Document and repository source budgets
 check|tests/cmake/ci_required.cmake|Workflow required-job policy and its negative cases
 check|tests/cmake/expect_fail.cmake|Shared exact exit status and tolerant diagnostic negative-control helper
 behavior|tests/cmake/floor.cmake|Examines packaged deliverables for loader compatibility on supported operating systems
+check|tests/cmake/quality.cmake|Quality ceilings and floors read from quality.json with string(JSON)
 check|tests/cmake/repository.cmake|Shared check dispatch and environment forwarding
 check|tests/cmake/repository.sh|Shared scanners and repository policy predicate implementations
 check|cmake/CogmasterTests.cmake|Shared test registration and exact inventory checker, counted in full

@@ -89,8 +89,10 @@ core.testcard.static	core,portable
 docs.api_names	policy
 docs.api_names.self_test	policy
 docs.budgets	policy
+docs.budgets.doc_over	policy
 docs.budgets.helper	policy
 docs.budgets.helper_unclassified	policy
+docs.budgets.no_quality	policy
 docs.budgets.ratio_below	policy
 docs.budgets.ratio_equal	policy
 docs.budgets.unclassified	policy
@@ -208,6 +210,11 @@ policy.e2e_budget.shared_helper	hygiene,policy
 policy.no_skip	policy
 policy.no_skip.self_test	policy
 policy.notices	policy
+policy.quality	policy
+policy.quality.ceiling	policy
+policy.quality.floor	policy
+policy.quality.malformed	policy
+policy.quality.missing_key	policy
 psg.frame_flush	portable,psg
 psg.gg.port06_sms_mode	portable,psg
 psg.gg.routing	portable,psg

@@ -1,0 +1,10 @@
+{
+  "ceilings": {
+    "docs.max_bytes": 38912
+  },
+  "floors": {
+    "tests.ci": 410,
+    "tests.wasm32": 385
+  },
+  "reasons": []
+}
