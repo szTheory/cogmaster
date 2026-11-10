@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/szTheory/cogmaster/compare/v0.5.0...v0.6.0) (2026-11-10)
+
+
+### Features
+
+* play Korean-board cartridges and say why a board is unsupported ([#21](https://github.com/szTheory/cogmaster/issues/21)) ([29f0d84](https://github.com/szTheory/cogmaster/commit/29f0d8458866a1af4075877300feb0189d7a739d))
+
 ## [0.5.0](https://github.com/szTheory/cogmaster/compare/v0.4.0...v0.5.0) (2026-11-10)
 
 
