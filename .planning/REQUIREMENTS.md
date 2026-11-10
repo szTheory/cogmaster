@@ -29,7 +29,7 @@ Requirements for this milestone. Each maps to one roadmap phase. Scope decisions
 - [x] **MAP-05**: Seo Jin and 188-in-1 appear as `unsupported` catalog rows that name what fails, and the runner exits 77 for them
 - [x] **MAP-06**: A valid `TMR SEGA` header outranks the board scan, the scan needs a threshold and a margin, a tie refuses naming the candidate, and `--probe` reports `board_source`
 - [x] **MAP-07**: Every new board has an exhaustive register-write and address-read test under ASan, and a documented register write records no fault
-- [ ] **MAP-08**: No existing frame or audio hash changes, shown by the eight-lane equality job
+- [x] **MAP-08**: No existing frame or audio hash changes, shown by the eight-lane equality job
 
 ### Saves
 
@@ -126,7 +126,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MAP-05 | Phase 6 | Complete |
 | MAP-06 | Phase 6 | Complete |
 | MAP-07 | Phase 6 | Complete |
-| MAP-08 | Phase 6 | Pending |
+| MAP-08 | Phase 6 | Complete |
 | SAVE-01 | Phase 7 | Pending |
 | SAVE-02 | Phase 7 | Pending |
 | SAVE-03 | Phase 7 | Pending |
