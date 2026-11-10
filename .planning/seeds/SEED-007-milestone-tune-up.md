@@ -48,3 +48,24 @@ owner's recurring CI-efficiency audit and "weakest quality dimension" review hap
 
 The seeds are this project's rolling roadmap: the current milestone is `.planning/ROADMAP.md`; direction beyond it
 is `.planning/PRODUCT-ROADMAP.md`; SEED-001 to SEED-006 and SEED-008 hold each horizon's narrative.
+
+Deferred from the v2.0 tune-up (phase 5), for the next one:
+
+- P1 WR-02, a tooling finding deferred under AGENTS rule 7 (review findings about test or tooling code become
+  seeds), not fixed in Phase 5: `scripts/classify-changes.sh` treats the `(listing failed)` sentinel line as a known
+  path, so a PR whose file listing cannot be fetched yields `release_inputs=false` and a release-pipeline change may
+  merge without its rehearsal. Fix: let the sentinel set `unknown`, and add a hygiene test for it.
+- P1 IN-04, a tooling finding deferred under AGENTS rule 7, not fixed in Phase 5: `scripts/publish.sh prepare` matches
+  the expected asset names as regular expressions, so the `.` in `cogmaster-*.zip` is a wildcard and an oddly named
+  file is not reported as unexpected. Fix: `grep -qxF --`, which compares them literally.
+- P1 WR-04, accepted risk: the release App key is a plain repository secret that any same-repository branch
+  workflow can read. A reviewer-gated environment would break AGENTS rules 6 and 8 (the owner verifies nothing and no
+  second person is ever needed), so it stays accepted; revisit only if the App gains permissions beyond contents,
+  pull-requests and issues write, or a second maintainer joins.
+- Third-party SN76489 and YM2413 sound ROM conformance stays deferred with no lane (carried from v1.0; it is not a
+  tune-up requirement). A lane needs an admitted, permissively licensed ROM set first.
+- Per-test ctest `TIMEOUT` comments are still unmeasured. `hygiene.tree` exceeded its 60 s limit under heavy machine
+  load (observed in plans 05-03 and 05-07; it passes alone in 37 to 57 s), so a measured per-test timeout with the
+  run ID beside it would replace the guess.
+- An absolute `ir_per_frame` ceiling in `quality.json`, and a coverage lane next to it, so the ratchet also bounds
+  the interpreter's work per frame and not only its ratio to the base branch.

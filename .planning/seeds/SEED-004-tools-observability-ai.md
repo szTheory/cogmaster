@@ -36,3 +36,9 @@ Lua only when asked.
 - `.planning/preparation/HOSTS-AND-INTEGRATION.md` section 5.
 - `.planning/preparation/SMS-CARTRIDGES-AND-PERIPHERALS.md` section 5 (ROM hackers).
 - `.planning/preparation/ARCHITECTURE.md` section 8.
+
+## Notes
+
+Review finding deferred here: P2 IN-01, the fault record's PC and opcode are imprecise for prefixed ED holes and for
+interrupt acceptance. It is diagnostic precision only; revisit it with the trace and hook work, where a debugger view
+makes the exact PC matter.
