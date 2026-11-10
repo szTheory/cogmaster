@@ -10,7 +10,7 @@ Requirements for this milestone. Each maps to one roadmap phase. Scope decisions
 ### Tune-up
 
 - [x] **TUNE-01**: Every CI job timeout is derived from the slowest of the last 40 successful runs (or all of them if fewer, with N stated) with that run's ID beside it, and no timeout reads `provisional`
-- [ ] **TUNE-02**: A pull request that raises instructions per frame fails the perf gate, which is armed after two zero-spread control runs, and the `boot_to_play` allow line is deleted or restated with a current reason
+- [x] **TUNE-02**: A pull request that raises instructions per frame fails the perf gate, which is armed after two zero-spread control runs, and the `boot_to_play` allow line is deleted or restated with a current reason
 - [x] **TUNE-03**: A weekly digest reports CI duration, flaky tests and open nightly issues without anyone asking, and a CI-efficiency report names the slowest job
 - [x] **TUNE-04**: `quality.json` holds measured ceilings (including zip and wasm size) and floors that a CMake check enforces, and a `policy.lessons_unique` check runs in `ci`
 - [x] **TUNE-05**: Behaviour prose lives in topic files so no `docs/*.md` file is within 2 KiB of its cap, and `tests/retroarch` has at least 20 lines of headroom
@@ -110,7 +110,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | TUNE-01 | Phase 5 | Complete |
-| TUNE-02 | Phase 5 | Pending |
+| TUNE-02 | Phase 5 | Complete |
 | TUNE-03 | Phase 5 | Complete |
 | TUNE-04 | Phase 5 | Complete |
 | TUNE-05 | Phase 5 | Complete |

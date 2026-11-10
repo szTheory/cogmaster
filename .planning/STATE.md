@@ -4,17 +4,17 @@ milestone: v2.0
 milestone_name: The whole library
 current_phase: 5
 current_phase_name: Tune-up
-status: executing
-stopped_at: Completed 05-13-PLAN.md (runtime Claude Code, model Sonnet 5.5)
-last_updated: "2026-11-10T05:42:56.497Z"
+status: verifying
+stopped_at: Completed 05-14-PLAN.md (runtime Claude Code, model Sonnet 5.5)
+last_updated: "2026-11-10T06:04:42.140Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 5 execution started
-state_head: 2b7eeb0e6d1609f321d74d28ceaa4f9b870d8c17
+state_head: 73547dfcb1d8199b56a34f6356f1301415530e6c
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 14
-  completed_plans: 13
+  completed_plans: 14
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 
 Phase: 5 (Tune-up) — EXECUTING
 Plan: 14 of 14
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-09 — Phase 5 execution started
 
 Progress: [░░░░░░░░░░] 0% of v2.0
@@ -136,6 +136,7 @@ Progress: [░░░░░░░░░░] 0% of v2.0
 | Phase 05 P11 | 12 min | 1 tasks | 6 files |
 | Phase 05 P12 | 4 min | 1 tasks | 7 files |
 | Phase 05 P13 | 17min | 3 tasks | 8 files |
+| Phase 05 P14 | 35 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -160,6 +161,8 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 05]: 05-12: Dependabot auto-merge reads the PR title as data via gh into a file; single updates merge only on same-major dotted versions; policy.dependabot added 16 counted lines (719 of 745)
 - [Phase 05]: 05-13: the digest job restates contents read beside its three added permissions (a job's permissions replace the workflow's); policy.digest accepts contents read in the job block and nothing outside the decision's four
 - [Phase 05]: 05-13: a red pull request is read from the newest CI run on its head commit via actions/runs?head_sha, never statusCheckRollup; the sound-code nightly run is the plain post-merge dispatch 42762969470 on main (head f69ab03 contains 8faf841)
+- [Phase 05]: 05-14: the perf gate is armed in a ci.yml-only commit (950ff2c); a throwaway draft PR 18 failed perf (verdict=FAIL, +4.87 percent) with every other job green; final head 73547df passed pull_request run 42764989102
+- [Phase 05]: 05-14: quality.json floors tests.ci 422 and tests.wasm32 397 follow the inventory line counts, not a local macOS ctest count
 
 ### Pending Todos
 
@@ -249,8 +252,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T05:42:56.467Z
-Stopped at: Completed 05-13-PLAN.md (runtime Claude Code, model Sonnet 5.5)
+Last session: 2026-11-10T06:04:42.115Z
+Stopped at: Completed 05-14-PLAN.md (runtime Claude Code, model Sonnet 5.5)
 Resume file: None
 
 ## Operator Next Steps
