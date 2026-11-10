@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 6
 current_phase_name: Korean cartridges play
 status: executing
-stopped_at: Completed 06-03-PLAN.md
-last_updated: "2026-11-10T08:17:36.220Z"
+stopped_at: Completed 06-04-PLAN.md (runtime claude, model claude-sonnet-5-5)
+last_updated: "2026-11-10T08:26:33.276Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 5 complete, transitioned to Phase 6
-state_head: 1384815a13075984adc36339fbd1cef7333e69cc
+state_head: c75ed9bfa95014e2b5f8412a248c66df1fe9e5fa
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 25
-  completed_plans: 17
+  completed_plans: 18
   percent: 13
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 6 — Korean cartridges play
-Plan: 4 of 11
+Plan: 5 of 11
 Status: Ready to execute
 Last activity: 2026-11-10 — Completed 06-01 (cartridge generator slot table)
 
@@ -141,6 +141,7 @@ Progress: [█░░░░░░░░░] 13% of v2.0
 | Phase 06 P01 | 35 min | 2 tasks | 3 files |
 | Phase 06 P02 | 15min | 2 tasks | 8 files |
 | Phase 06 P03 | 40 min | 2 tasks | 11 files |
+| Phase 06 P04 | 40 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -170,6 +171,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 06]: 06-01: the six Korean-board slots stay board 0 with reason 'mapper arm not present' until each arm lands; slot ids equal row position plus one under a start-up self-check; emitted counts unique table rows so excluded records add to seen only
 - [Phase 06]: 06-02: the cart_info appended block starts at the version 9 size 376 and adds 152 bytes; api_version compares the API number as a number because awk sub() leaves a string and k<=v stopped scanning older programs at API 10
 - [Phase 06]: 06-03: the library reads 36-byte rows by binary search with titles in tests/compat/catalog.tsv; the old table equals the new one outside the EEPROM persistence column; the slot-by-name lookup is a bounded loop because strcmp is not linkable
+- [Phase 06]: Mapper reset clears the whole struct; ext boards live behind the default arms in mapper_ext.c; boot_to_play delta_bp=0 vs main 8c97f8e (runs 42781709144, 42781713344)
 
 ### Pending Todos
 
@@ -265,8 +267,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T08:17:36.178Z
-Stopped at: Completed 06-03-PLAN.md
+Last session: 2026-11-10T08:26:33.212Z
+Stopped at: Completed 06-04-PLAN.md (runtime claude, model claude-sonnet-5-5)
 Resume file: None
 
 ## Operator Next Steps
