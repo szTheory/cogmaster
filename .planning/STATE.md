@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 6
 current_phase_name: Korean cartridges play
 status: executing
-stopped_at: Completed 06-09-PLAN.md (runtime claude, model claude-sonnet-5-5)
-last_updated: "2026-11-10T08:52:13.079Z"
+stopped_at: Completed 06-10-PLAN.md (runtime claude, model claude-sonnet-5-5)
+last_updated: "2026-11-10T09:02:37.513Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 5 complete, transitioned to Phase 6
-state_head: 99317e34bbcf3f7ef5ea06eac5aa5f1f88d6074d
+state_head: 300f56ee9c8fbb2c88224394519a211e6f9eecdc
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 25
-  completed_plans: 23
+  completed_plans: 24
   percent: 13
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 6 — Korean cartridges play
-Plan: 10 of 11
+Plan: 11 of 11
 Status: Ready to execute
 Last activity: 2026-11-10 — Completed 06-01 (cartridge generator slot table)
 
@@ -147,6 +147,7 @@ Progress: [█░░░░░░░░░] 13% of v2.0
 | Phase 06 P07 | 35 min | 2 tasks | 11 files |
 | Phase 06 P08 | 25 min | 3 tasks | 11 files |
 | Phase 06 P09 | 12 min | 2 tasks | 6 files |
+| Phase 06 P10 | 20min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -182,6 +183,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 06]: 06-07: 4 PAK writes to $FFFD-$FFFF page slots 0-2 as MAME's inherited Sega write_mapper does (register-only reading cited, not implemented); Zemina and Nemesis share one write arm; the generator self-check refuses the temporary slot reason
 - [Phase 06]: 06-08: scan thresholds stay T=3 with margins 2s+2 and 2y+2 (no private library, SEED-009 holds the measurement); the Sega wins only at s >= 2x+2 and no store sites at all means Sega by default; a family failing its size rule or under a Game Gear header falls to the doubt zone naming the candidate
 - [Phase 06]: 06-09: the refusal text lives in probe.c beside the board names and main.c makes one call; no test name added, three existing runner cases extended
+- [Phase 06]: 06-10: the Korean, Zemina and 4 PAK images are detected by the scan (board_source heuristic), not by fixture_facts rows; a 4 PAK slot powers up on page 0 (banks 0 and 1)
 
 ### Pending Todos
 
@@ -280,8 +282,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T08:52:13.014Z
-Stopped at: Completed 06-09-PLAN.md (runtime claude, model claude-sonnet-5-5)
+Last session: 2026-11-10T09:02:37.459Z
+Stopped at: Completed 06-10-PLAN.md (runtime claude, model claude-sonnet-5-5)
 Resume file: None
 
 ## Operator Next Steps
