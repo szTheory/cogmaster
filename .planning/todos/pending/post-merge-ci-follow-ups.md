@@ -10,6 +10,9 @@ files:
   - .github/workflows/dependabot-automerge.yml
   - scripts/apply-repo-settings.sh
   - tests/hygiene/tests.cmake
+audit_acknowledged:
+  milestone: v1.0
+  at: 2026-11-09
 ---
 
 ## Problem

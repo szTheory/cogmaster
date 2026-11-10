@@ -5,6 +5,10 @@ planted: 2026-10-18
 planted_during: preparation, before milestone v1.0
 trigger_when: v2.0 is being scoped, or the owner inserts an SG-1000 or SC-3000 image and asks for it to run
 scope: medium
+audit_acknowledged:
+  milestone: v1.0
+  at: 2026-11-09
+  status: dormant
 ---
 
 # SEED-006: SG-1000 and SC-3000 mode — the TMS9918 legacy modes, the keyboard and the older mappers

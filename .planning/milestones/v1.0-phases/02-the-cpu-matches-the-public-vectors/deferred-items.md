@@ -12,3 +12,4 @@
     or teach `no_float.cmake` to skip comments. Either way, do it before `/gsd-ship`, because the hygiene lane
     runs in CI.
   - Resolved by commits 3834dff (clang-format 21 and single section numbers) and 2cceac5 (opcodes 0xC0-0xFF moved to the new `src/z80_x3.c` so `src/z80.c` stays under 800 lines).
+  status: acknowledged

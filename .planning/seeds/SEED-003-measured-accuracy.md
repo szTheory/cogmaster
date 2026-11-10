@@ -5,6 +5,10 @@ planted: 2026-10-18
 planted_during: preparation, before milestone v1.0
 trigger_when: the compatibility ledger has a stable failing set that documentation alone does not explain, or the owner wants hardware-measured timing
 scope: large
+audit_acknowledged:
+  milestone: v1.0
+  at: 2026-11-09
+  status: dormant
 ---
 
 # SEED-003: Measured accuracy — hardware diagnostics, oracles and the fitted constants settled (v4.0)
