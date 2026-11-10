@@ -4,10 +4,10 @@ milestone: v1.0
 milestone_name: SMS and Game Gear games play with sound in RetroArch
 current_phase: 04
 status: completed
-stopped_at: Phase 04 complete — all phases complete
+stopped_at: Milestone v1.0 audited; phase 04 shipped and released as v0.4.0
 last_updated: "2026-11-09T23:12:08.488Z"
 last_activity: 2026-11-09
-last_activity_desc: Phase 04 complete
+last_activity_desc: Milestone v1.0 audited (tech_debt, no gaps)
 state_head: f8dc704430c842a35020a5d138fd39a31a640e7b
 progress:
   total_phases: 4
@@ -33,7 +33,7 @@ Plan: Not started
 Status: All phases complete
 Last activity: 2026-11-09 — Phase 04 complete
 
-Next command: `/gsd-code-review 04`. All fifteen plans of phase 04 are executed; hosted run https://github.com/szTheory/cogmaster/actions/runs/42714958262 is green on head 9aaf378.
+Next command: `/gsd-complete-milestone v1.0`. Phase 04 shipped in https://github.com/szTheory/cogmaster/pull/11 (squash 8faf841) and released as v0.4.0 (https://github.com/szTheory/cogmaster/pull/12, merged b8d8706). The milestone audit (`.planning/v1.0-MILESTONE-AUDIT.md`) is `tech_debt`: 26 of 26 requirements, 18 of 18 connections, 6 of 6 flows, no gaps.
 
 Ship: https://github.com/szTheory/cogmaster/pull/8. `cmake --workflow --preset ci` exited 0 during ship. Hosted verification: https://github.com/szTheory/cogmaster/actions/runs/39514577638 (`gh run view 39514577638 --exit-status`, exit 0).
 
@@ -343,6 +343,8 @@ Decisions are logged in PROJECT.md Key Decisions table; the full list with sourc
 | 2026-11-09 | Execute phase 4 plan 04-14 (gsd-execute-phase 04); libretro batch, single and both-callback audio sessions equal the runner's PCM, cogmaster_fm option in all three tables, .info and README say sound; 2 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Execute phase 4 plan 04-15 (gsd-execute-phase 04); hosted RetroArch records a silent control and psg_sweep on both consoles, flip.cmake gone for expect_fail.cmake, first hosted run of the phase head fixed (GCC, MSVC, UBSan, macOS x64 timeouts), perf allow line, hosted run 42714958262 green; 2 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-09 | Execute phase 4 close-out (gsd-execute-phase 04); code review 0 critical, 2 warning, 4 info; verifier passed 5/5; ci workflow exit 0, 399 tests | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Ship phase 4 (gsd-ship 04, requested by the owner); PR #11 squash-merged on green CI, release PR #12 merged, v0.4.0 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-09 | Audit milestone v1.0 (gsd-audit-milestone); integration checker 18/18 wired, 6/6 flows, status tech_debt | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -355,5 +357,5 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-11-09T22:51:53.837Z
-Stopped at: Phase 04 complete — all phases complete
+Stopped at: Milestone v1.0 audited; phase 04 shipped and released as v0.4.0
 Resume file: None
