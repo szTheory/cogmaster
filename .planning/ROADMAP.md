@@ -107,7 +107,19 @@ Plans:
   3. The libretro core reports saves enabled, and a guard test shows the exported span equals the battery span (SAVE-04).
   4. `cogmaster-run --save-interval N` writes the save after every N completed frames; a kill test between flushes leaves the last complete save readable, stale temporary files are swept on the next run, and the directory is synced after the rename on POSIX (SAVE-05).
   5. A hosted RetroArch run writes a battery save and an EEPROM save, restarts and reads both back, and the budget test keeps `tests/retroarch` at or under 300 lines (SAVE-06).
-**Plans**: TBD
+**Plans**: 10 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — 93C46 device from the data sheet with closed-form and differential tests (SAVE-01)
+- [ ] 07-02-PLAN.md — API 11 surface: EEPROM board constant, versions 11/13/13, v11 program, probe name (SAVE-01, SAVE-02)
+- [ ] 07-03-PLAN.md — EEPROM board arm behind default, 128-byte cart RAM, bounded state and mid-command round trips (SAVE-01, SAVE-02)
+- [ ] 07-04-PLAN.md — eeprom slot flipped and table regenerated with equivalence proof; early perf delta (SAVE-01)
+- [ ] 07-05-PLAN.md — owned eeprom.gg fixture, second facts row and its validation (SAVE-01)
+- [ ] 07-06-PLAN.md — EEPROM fuzz entry and the runner continuation across two processes (SAVE-02, SAVE-01)
+- [ ] 07-07-PLAN.md — import length rules and matrix, one-time .srm measurement, libretro span guard and saves flag (SAVE-03, SAVE-04)
+- [ ] 07-08-PLAN.md — runner --save-interval with usage and periodic-failure tests, EEPROM length message (SAVE-05, SAVE-03)
+- [ ] 07-09-PLAN.md — stale-temporary sweep, POSIX directory sync on every lane's registration, kill test (SAVE-05)
+- [ ] 07-10-PLAN.md — hosted RetroArch save round trips, measured timeout, wording amendment, final run and ship list (SAVE-06, SAVE-03)
 
 ### Phase 8: Sports Pad, Paddle and 3-D glasses
 **Goal**: Sports Pad, Paddle and 3-D glasses titles play through the runner and the libretro core with the right device chosen per dump, peripheral input is recorded so replays match, and every pad-only hash stays fixed.
