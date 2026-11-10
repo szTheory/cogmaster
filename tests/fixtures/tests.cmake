@@ -121,6 +121,24 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(NOT rc STREQUAL "0" OR NOT out MATCHES "(^|\n)checksum_ok=1\n")
       message(FATAL_ERROR "--probe ${IMAGE}: expected exit 0 and checksum_ok=1, got exit ${rc}\n${out}")
     endif()
+  elseif(CASE STREQUAL "frame")
+    # The core, with no option set, shows the frame the runner shows for IMAGE after 120 runs. WRONG
+    # replaces the runner's digest with zeros of its length, for the negative control.
+    execute_process(COMMAND ${EMULATOR} ${RUN} ${IMAGE} --frames 120 --hash
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "0" OR NOT out MATCHES "sha256 ([0-9a-f]+)")
+      message(FATAL_ERROR "frame: the runner's hash of ${IMAGE}: exit ${rc}\n${out}${err}")
+    endif()
+    set(digest ${CMAKE_MATCH_1})
+    if(WRONG)
+      string(LENGTH "${digest}" digits)
+      string(REPEAT "0" ${digits} digest)
+    endif()
+    execute_process(COMMAND ${EMULATOR} ${HOST} ${MODULE} frame ${IMAGE} 120 ${digest}
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "0")
+      message(FATAL_ERROR "frame digest: the core's frame of ${IMAGE} is not the runner's: exit ${rc}\n${out}${err}")
+    endif()
   elseif(CASE STREQUAL "probe")
     # The runner's probe finds each board in BOARDS (comma separated) by the scan: board_source is
     # SOURCE (default heuristic), the board is named for the image, and no ROM header was read.

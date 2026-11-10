@@ -202,6 +202,8 @@ libretro.host.content	libretro,portable
 libretro.host.content.gg	libretro,portable
 libretro.host.fm_option	libretro,portable
 libretro.host.gg	libretro,portable
+libretro.host.korean	libretro,portable
+libretro.host.korean_control	libretro,portable
 libretro.host.replay	libretro,portable
 libretro.host.replay.gg	libretro,portable
 libretro.host.rgb565	libretro,portable
