@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 5
 current_phase_name: Tune-up
 status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-11-10T04:05:45.697Z"
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-11-10T04:09:18.551Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 5 execution started
-state_head: fc56cee41de8bb4f1b79f630d13bc5254c58d08f
+state_head: ec5acb92903b345ef69a109b228b7a6fb47cbebc
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 14
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 5 (Tune-up) — EXECUTING
-Plan: 2 of 14
+Plan: 3 of 14
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 5 execution started
 
@@ -124,6 +124,7 @@ Progress: [░░░░░░░░░░] 0% of v2.0
 | Phase 04 P14 | 9min | 2 tasks | 11 files |
 | Phase 04 P15 | 22min | 2 tasks | 15 files |
 | Phase 05 P01 | 9 min | 2 tasks | 10 files |
+| Phase 05 P02 | 9 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -133,6 +134,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 `.planning/preparation/DECISIONS.md`; per-plan decisions are in the archived summaries under
 `.planning/milestones/v1.0-phases/`.
 - [Phase 05]: 05-01: the opening battery-test paragraph of testing.md moved to saves.md under Testing saves; docs.api_names takes a newline-separated DOC list through awk ARGV
+- [Phase 05]: 05-02: the BMP top-down branch stays because sips writes a negative height (-192); compare.c holds the reader and hosted helpers sit at 273 of 300 lines
 
 ### Pending Todos
 
@@ -195,6 +197,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-10 | Discuss phase 5 (gsd-autonomous, owner-authorised override of rule 9); five advisors plus adversarial pass | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Execute phase 5 plan 05-01 (gsd-execute-phase 05); two zero-spread perf control runs on main (42752737395, 42752770307), docs split into hosted, perf-fuzz, saves and boards, docs.api_names reads a guide list; 2 tasks, 1 commit | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Plan phase 5 (gsd-plan-phase 5); 14 plans, checker 0 blockers after two revisions | Claude Code | claude-sonnet-5-5 (planner claude-opus-5-5) |
+| 2026-11-10 | Execute phase 5 plan 05-02 (gsd-execute-phase 05); BMP reader folded into compare.c, sips writes top-down (height -192) so the branch stays, hosted helpers 299 to 273 lines; 2 tasks, 1 commit | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -216,8 +219,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T04:05:45.642Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-11-10T04:09:18.523Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
