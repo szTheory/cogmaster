@@ -82,7 +82,20 @@ Plans:
   3. `cogmaster-run --probe` reports `board_source`; a decoy with a valid `TMR SEGA` header and Korean-looking bytes stays a Sega board, a scan below threshold or margin does not pick a Korean board, and a tie refuses with the candidate named (MAP-06).
   4. Each new board passes an exhaustive register-write and address-read test under ASan, and a test shows its documented register writes record no fault (MAP-07).
   5. The eight-lane equality job shows every frame and audio hash that existed before the phase unchanged (MAP-08).
-**Plans**: TBD
+**Plans**: 11 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — generator slot table, per-slot counts, unmapped-slot failure, compact rows and catalog output (MAP-01, MAP-02)
+- [ ] 06-02-PLAN.md — API 10 surface: board and board-source constants, appended cart_info fields, v10 program (MAP-06, MAP-03, MAP-05)
+- [ ] 06-03-PLAN.md — table regenerated, library on compact rows, fact_to_info, named-unsupported rows, catalog-fed compat update (MAP-01, MAP-02, MAP-04, MAP-05)
+- [ ] 06-04-PLAN.md — mapper_ext.c behind default, 8 KiB bank state, early perf delta from dispatch runs (MAP-07, MAP-08)
+- [ ] 06-05-PLAN.md — size.cartdb ceiling on Linux x64, table pin check, maintainer docs and notices (MAP-01, MAP-02)
+- [ ] 06-06-PLAN.md — Korean $A000, korean_nb and Hi-Com boards with exhaustive tests; rows flipped (MAP-03, MAP-07)
+- [ ] 06-07-PLAN.md — Zemina, Nemesis and 4 PAK boards with exhaustive tests; rows flipped; unsupported list documented (MAP-03, MAP-04, MAP-07)
+- [ ] 06-08-PLAN.md — guess_board and the instruction-aware scan with threshold, margin, geometry and decoys (MAP-06, MAP-03)
+- [ ] 06-09-PLAN.md — runner probe keys, board names and refusal messages with exit 77 (MAP-05, MAP-06)
+- [ ] 06-10-PLAN.md — parameterised WLA-DX Korean-family fixture through the runner and one libretro load (MAP-03, MAP-08)
+- [ ] 06-11-PLAN.md — wording amendments, final hosted run and perf delta, MAP-08 local proof, ship-time list (MAP-08, MAP-04, MAP-05)
 
 ### Phase 7: Saves survive a restart
 **Goal**: A Game Gear 93C46 game and a battery-backed game keep their progress across restarts in the runner and in RetroArch, saves survive a killed process, and `.srm` files cross between cogmaster and other released cores only in layouts that were measured.
