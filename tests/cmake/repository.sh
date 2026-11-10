@@ -15,6 +15,22 @@ action_pins|timeouts)
   END { if(mode=="action_pins" && bad) print "action_pins: " bad " uses: lines not pinned to a commit with a # v comment"; if(mode=="timeouts" && (bad || !n)) print "timeout_comments: " bad " lines not twice a measured slowest run with its run ID"; exit(bad || (mode=="timeouts" && !n)) }'
   export CHECK_MODE=$1
   scan "$DIR" '*.yml' '*.yaml' ;;
+dependabot)
+  # A group holding majors never auto-merges, a renamed group silently stops auto-merging, and a privileged trigger runs untrusted code with the App token.
+  awk 'function bad(file, m) { print "dependabot: " file ": " m; n++ }
+  FNR==1 { f=FILENAME; sub(/^.*\//,"",f); ing=0 }
+  { t=$0; sub(/(^|[ \t]+)#.*$/,"",t); gsub(/"/,"",t); v=t; sub(/^[^:]*:[ \t]*/,"",v); u=t; sub(/^ +- /,"",u); g=t; gsub(/[ :]/,"",g) }
+  f=="dependabot.yml" { if(t ~ /package-ecosystem:/ && v!="github-actions") bad(f, "ecosystem " v " is not github-actions")
+    if(t ~ /interval:/) iv=v; if(t ~ /prefix:/) px=v; if(t ~ /default-days:/) cd=v; if(t ~ /^ +groups:$/) ing=1
+    if(ing && t ~ /^      [A-Za-z0-9_-]+:$/) { if(g=="minor-and-patch") ok=1; else bad(f, "group " g " is not named minor-and-patch") }
+    if(ing && t ~ /^ +- (major|minor|patch)$/) { seen[u]=1; if(u=="major") bad(f, "update-types lists major") } }
+  f=="dependabot-automerge.yml" { if(t ~ /(pull_request_target|workflow_run)/) bad(f, "trigger " (t ~ /workflow_run/ ? "workflow_run" : "pull_request_target") " runs with a privileged token")
+    if(t ~ /actions\/checkout/) bad(f, "uses actions/checkout"); if(t ~ /the minor-and-patch group/) title=1; if(t ~ /if:.*dependabot\[bot\]/) guard=1 }
+  END { d="dependabot.yml"; a="dependabot-automerge.yml"
+    if(iv!="weekly") bad(d, "interval " iv " is not weekly"); if(px!="ci") bad(d, "prefix " px " is not ci"); if(cd!=7) bad(d, "cooldown " cd " is not 7 days")
+    if(!ok || !seen["minor"] || !seen["patch"]) bad(d, "no group named minor-and-patch holding minor and patch")
+    if(!title) bad(a, "the title match lacks the text the minor-and-patch group"); if(!guard) bad(a, "the job guard does not name dependabot[bot]")
+    exit(n!=0) }' "$DIR/dependabot.yml" "$DIR/workflows/dependabot-automerge.yml" ;;
 pins)
   awk 'NF && $1 !~ /^#/ {
     n++; if(NF!=4) { print "line " NR ": " NF " fields, not 4"; bad=1; next }

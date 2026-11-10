@@ -1,0 +1,55 @@
+# Auto-merge for Dependabot's minor and patch updates of pinned actions. The
+# trigger is pull_request only and the job never checks code out: a privileged
+# trigger or a checkout would run the pull request's code with the App token.
+# The title is read as data and never expanded into a script.
+name: Dependabot auto-merge
+
+on: pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  automerge:
+    name: Enable auto-merge
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5  # 5-minute floor; no runs yet
+    steps:
+      - name: The release App is configured
+        env:
+          CLIENT_ID: ${{ vars.COGMASTER_APP_CLIENT_ID }}
+        run: |
+          if [ -z "$CLIENT_ID" ]; then
+            echo "dependabot-automerge: the release App is not configured: set COGMASTER_APP_CLIENT_ID and the Dependabot secret COGMASTER_APP_PRIVATE_KEY (scripts/setup-release-app.sh)"
+            exit 1
+          fi
+      - id: app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.COGMASTER_APP_CLIENT_ID }}
+          private-key: ${{ secrets.COGMASTER_APP_PRIVATE_KEY }}
+          permission-pull-requests: write
+          permission-contents: write
+      # A grouped title reads "Bump the minor-and-patch group ...". A single
+      # update reads "Bump X from A to B" and merges only when both versions
+      # parse and share a major; a SHA-only title does not merge.
+      - name: Merge the minor-and-patch group or a non-major update
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json title --jq .title > "$RUNNER_TEMP/title.txt"
+          title=$(cat "$RUNNER_TEMP/title.txt")
+          case $title in
+            *"the minor-and-patch group"*) ;;
+            *)
+              majors=$(printf '%s\n' "$title" | sed -nE 's/.* from v?([0-9]+)(\.[0-9]+)+ to v?([0-9]+)(\.[0-9]+)+.*/\1 \3/p')
+              # shellcheck disable=SC2086
+              set -- $majors
+              if [ "$#" -ne 2 ] || [ "$1" != "$2" ]; then
+                echo "dependabot-automerge: not merging: the title is neither the minor-and-patch group nor a same-major version update: $title"
+                exit 0
+              fi ;;
+          esac
+          gh pr merge --auto --squash "$PR" --repo "$GITHUB_REPOSITORY"

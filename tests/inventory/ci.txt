@@ -229,6 +229,8 @@ perf.gate.unstable	perf
 perf.playing	perf,portable
 policy.compat_doc_fresh	compat,policy
 policy.compat_doc_fresh.self_test	compat,policy
+policy.dependabot	policy
+policy.dependabot.self_test	policy
 policy.e2e_budget	hygiene,policy
 policy.e2e_budget.self_test	hygiene,policy
 policy.e2e_budget.shared_helper	hygiene,policy

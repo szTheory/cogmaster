@@ -147,4 +147,29 @@ cogmaster_add_test(NAME policy.notices
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCHECK=notices -P ${policy_scripts}/repository.cmake
   LABELS policy TIMEOUT 10)
 
+# Faults prevented: a Dependabot group that holds majors, which never
+# auto-merges; a renamed group, which silently stops auto-merging; and a
+# privileged trigger or checkout in the auto-merge workflow, which would run
+# untrusted code with the App token. The self test scans a tree holding both
+# bad files and expects the named failure from each.
+cogmaster_add_test(NAME policy.dependabot
+  COMMAND ${CMAKE_COMMAND} -DDIR=${PROJECT_SOURCE_DIR}/.github -DCHECK=dependabot -P ${policy_scripts}/repository.cmake
+  LABELS policy TIMEOUT 30)
+set(policy_dependabot ${PROJECT_BINARY_DIR}/policy/dependabot_fixture)
+file(REMOVE_RECURSE ${policy_dependabot})
+file(WRITE ${policy_dependabot}/dependabot.yml
+  "version: 2\nupdates:\n  - package-ecosystem: github-actions\n    directory: /\n    schedule:\n      interval: daily\n"
+  "    commit-message:\n      prefix: ci\n    cooldown:\n      default-days: 7\n    groups:\n      all-actions:\n"
+  "        update-types:\n          - minor\n          - patch\n          - major\n")
+file(WRITE ${policy_dependabot}/workflows/dependabot-automerge.yml
+  "on: pull_request_target\njobs:\n  merge:\n    if: github.event.pull_request.user.login == 'dependabot[bot]'\n"
+  "    steps:\n      - uses: actions/checkout@v4\n      - run: echo \"$TITLE\" | grep -q 'the minor-patch group'\n")
+set(policy_cmd ${CMAKE_COMMAND} -DDIR=${policy_dependabot} -DCHECK=dependabot -P ${policy_scripts}/repository.cmake)
+string(REPLACE ";" "$<SEMICOLON>" policy_cmd "${policy_cmd}")
+cogmaster_add_test(NAME policy.dependabot.self_test
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${policy_cmd}" -DCODE=1
+    "-DREGEX=dependabot: dependabot.yml: group all-actions.*dependabot: dependabot.yml: update-types lists major.*dependabot: dependabot-automerge.yml: trigger pull_request_target.*dependabot: dependabot-automerge.yml: .*actions/checkout.*dependabot: dependabot.yml: interval daily.*dependabot: dependabot-automerge.yml: .*the minor-and-patch group"
+    -P ${policy_scripts}/expect_fail.cmake
+  LABELS policy TIMEOUT 30)
+
 include(${CMAKE_CURRENT_LIST_DIR}/e2e_cases.cmake)

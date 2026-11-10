@@ -124,6 +124,19 @@ installation. It stops early if the variable is already set; `--force` creates a
 and delete the key file. Only the owner handles the key. To replace the App itself, rerun
 `scripts/setup-release-app.sh --force` and uninstall the old App.
 
+## Dependabot
+
+`.github/dependabot.yml` updates the pinned GitHub Actions weekly, with a seven-day cooldown and the `ci` commit
+prefix. Minor and patch updates arrive as one pull request in the `minor-and-patch` group; each major update is
+its own pull request and waits for review.
+
+`.github/workflows/dependabot-automerge.yml` runs on `pull_request` only, never checks code out, and acts only
+for `dependabot[bot]`. It enables squash auto-merge for the `minor-and-patch` group and for a single update whose
+old and new versions share a major; any other title is left for review, and the log says why. A required check
+still has to pass before the merge. It reuses the release App key and client ID described above, so the owner has
+nothing to set up. `policy.dependabot` fails a group that holds majors or is renamed, and a workflow that uses a
+privileged trigger or a checkout.
+
 ## Repository settings
 
 `scripts/apply-repo-settings.sh` holds the repository's settings as code, and `.github/rulesets/main.json` holds
