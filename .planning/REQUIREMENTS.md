@@ -17,7 +17,7 @@ Requirements for this milestone. Each maps to one roadmap phase. Scope decisions
 - [x] **TUNE-06**: The README says how to load a ROM and states in one sentence that no BIOS or game is shipped
 - [x] **TUNE-07**: Each open review finding from phases 1, 2 and 4 (WR-02, WR-04, IN-01 to IN-06 and the phase 4 info items) is fixed, closed with a reason, or seeded
 - [ ] **TUNE-08**: The nightly lanes have run on the sound code, and the nightly report opens and closes an issue once on a forced failure
-- [ ] **TUNE-09**: Dependabot updates GitHub Actions weekly with minor and patch grouped, and a `policy.dependabot` test with a negative control guards its configuration
+- [x] **TUNE-09**: Dependabot updates GitHub Actions weekly with minor and patch grouped, and a `policy.dependabot` test with a negative control guards its configuration
 - [x] **TUNE-10**: The wasm32 lane is required by `CI required` once ten successful main runs show hashes equal to Linux x64's
 
 ### Mappers
@@ -117,7 +117,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TUNE-06 | Phase 5 | Complete |
 | TUNE-07 | Phase 5 | Complete |
 | TUNE-08 | Phase 5 | Pending |
-| TUNE-09 | Phase 5 | Pending |
+| TUNE-09 | Phase 5 | Complete |
 | TUNE-10 | Phase 5 | Complete |
 | MAP-01 | Phase 6 | Pending |
 | MAP-02 | Phase 6 | Pending |

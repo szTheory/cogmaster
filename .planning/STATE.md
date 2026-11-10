@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 5
 current_phase_name: Tune-up
 status: executing
-stopped_at: Completed 05-11-PLAN.md (runtime Claude Code, model Sonnet 5.5)
-last_updated: "2026-11-10T05:20:33.164Z"
+stopped_at: Completed 05-12-PLAN.md (runtime Claude Code, model Sonnet 5.5)
+last_updated: "2026-11-10T05:25:41.729Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 5 execution started
-state_head: 165f34497108d5c3e8aa39e4e62df89df6732480
+state_head: bff487403d1d7806136849804f3d991aeb853211
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 14
-  completed_plans: 11
+  completed_plans: 12
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 5 (Tune-up) — EXECUTING
-Plan: 12 of 14
+Plan: 13 of 14
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 5 execution started
 
@@ -134,6 +134,7 @@ Progress: [░░░░░░░░░░] 0% of v2.0
 | Phase 05 P09 | 12min | 2 tasks | 7 files |
 | Phase 05 P10 | 20 min | 2 tasks | 7 files |
 | Phase 05 P11 | 12 min | 1 tasks | 6 files |
+| Phase 05 P12 | 4 min | 1 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -155,6 +156,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 05]: 05-09: P1 WR-02 and IN-04 deferred to SEED-007 under AGENTS rule 7, P1 WR-04 accepted risk, no script changed; P4 WR-02 recorded fixed from 04-REVIEW-FIX.md
 - [Phase 05]: README check runs against the built boot_to_play.sms fixture (owned image, digest in tests/built/expected.txt), not a tests/roms fixture: present on every fixtures lane, no ROM bytes
 - [Phase 05]: 05-11: the Dependabot exception in CI required is keyed on the pull request author and pinned by a control that widens it to any author; the control matches the diagnostic up to 'want fail' because CMake wraps the full line
+- [Phase 05]: 05-12: Dependabot auto-merge reads the PR title as data via gh into a file; single updates merge only on same-major dotted versions; policy.dependabot added 16 counted lines (719 of 745)
 
 ### Pending Todos
 
@@ -244,8 +246,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T05:20:33.142Z
-Stopped at: Completed 05-11-PLAN.md (runtime Claude Code, model Sonnet 5.5)
+Last session: 2026-11-10T05:25:41.696Z
+Stopped at: Completed 05-12-PLAN.md (runtime Claude Code, model Sonnet 5.5)
 Resume file: None
 
 ## Operator Next Steps
