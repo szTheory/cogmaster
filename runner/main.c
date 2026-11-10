@@ -240,7 +240,7 @@ static void print_fault(const cogmaster_fault *f)
 
 /* The exit status for cogmaster_load's status, after a message: a refusal
    for what the core does not support, a failure for anything else. */
-static int load_status(cogmaster_status st, size_t image_size)
+static int load_status(cogmaster_status st, const uint8_t *image, size_t image_size)
 {
     switch (st) {
     case COGMASTER_STATUS_OK:
@@ -252,7 +252,9 @@ static int load_status(cogmaster_status st, size_t image_size)
                 (unsigned long)image_size);
         return COGMASTER__EXIT_REFUSED;
     case COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD:
-        fprintf(stderr, "cogmaster-run: unsupported: the cartridge's board\n");
+        if (image == NULL || !cogmaster__refusal_board(image, image_size)) {
+            fprintf(stderr, "cogmaster-run: unsupported: the cartridge's board\n");
+        }
         return COGMASTER__EXIT_REFUSED;
     case COGMASTER_STATUS_ERR_PROFILE_REJECTED:
         fprintf(stderr, "cogmaster-run: unsupported: no such console was made for this machine "
@@ -314,7 +316,7 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     media.region = opt->region;
     media.tv = opt->tv;
     media.video_mode = opt->video_mode;
-    int status = load_status(cogmaster_load(m, &media), image_size);
+    int status = load_status(cogmaster_load(m, &media), image, image_size);
     cogmaster__audio audio = {0};
     if (status == COGMASTER__EXIT_OK && opt->hash_audio) {
         cogmaster_info info = {0};

@@ -22,6 +22,13 @@ int cogmaster__read_file(const char *path, uint8_t **out, size_t *n);
    then a .gg file name, then the Master System. */
 uint32_t cogmaster__auto_machine(const char *path, const uint8_t *image, size_t n);
 
+/* The catalog's word for a COGMASTER_BOARD_* value ("unsupported" for 0 or out of range). */
+const char *cogmaster__board_name(uint32_t board);
+
+/* After a refused load, prints one line on stderr naming the board and why: the unsupported
+   row's slot and reason, or the scan's candidate and counts. Returns 1 when it printed, else 0. */
+int cogmaster__refusal_board(const uint8_t *image, size_t n);
+
 /* Prints the --probe report, one key=value per line in a fixed order.
    Returns 0, the refusal status for an image the core will not load, or
    the failure status. */
