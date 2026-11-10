@@ -35,3 +35,28 @@ the wrong board.
 - `src/cart.c` `scan_board`, `src/cart_scan.c`, `docs/boards.md` (how a board is chosen).
 - `tests/cart/test_cart.c` `probe.scan` (the decoys and family images).
 - `.planning/phases/06-korean-cartridges-play/06-CONTEXT.md`, "Detection and probe".
+
+## Deferred review findings (phase 6 code review, round 1)
+
+Each is a heuristic-quality or test-and-tooling item, so it waits here instead of becoming a requirement.
+
+- **Headerless Sega image counted as Korean or 4 PAK (review WR-02).** A headerless or bad-checksum Sega image of
+  64 KiB or more with three or more cartridge-RAM stores to `$8000-$BFFF` (`LD ($A000),A`, `LD ($BFFF),A`) can scan
+  as Korean or 4 PAK when it reaches its mapper through `LD (HL),A` or `LD ($FFFC)` stores that count few Sega
+  sites. A rare edge: database and header-valid images never reach the scan. Mitigations to try on real dumps: do
+  not count `$A000` or `$BFFF` stores that follow a store of a Sega `$FFFC` value with bit 3 set (cartridge RAM
+  enable), or raise the margin for those two targets.
+- **Prefix length decoding has no test (review WR-03).** Add images that place `32` as an operand of `DD 36 d n`,
+  `DD 21 nn nn`, `DD CB d op`, `ED 43 nn nn`, `FD 34 d` and `CB` forms and assert zero counts, each with a
+  positive control (a real `LD ($A000),A` right after) that is counted. Targets `length_at` and `uses_hl_memory`
+  in `src/cart_scan.c`.
+- **A `DD` or `FD` prefix hides a real `LD (nn),A` (review IN-01).** `DD 32 nn nn` is `LD (nn),A` on the Z80 but the
+  sweep skips it as one prefixed span, so it is not counted; `ED ED 43 ...` has the same shape. This only
+  undercounts toward refusal. Count `next == 0x32` in the `DD`/`FD` branch, or note it in the function comment.
+- **`pages != 0` guards for the extension boards (review IN-02).** `ext_bank` in `src/mapper_ext.c` and the limit in
+  `src/state.c` cannot see `pages == 0` for a board of 4 or more. Keep them as defence in depth, mirroring
+  `bank_of` and `bank_max` in `src/mapper.c`; revisit only if the three older boards drop theirs.
+- **Slot table limits in `tools/cartdb.c` (review IN-03).** `check_table` does not reject `id >= 32` (the
+  `counted` mask is 32 bits) or a name of 16 or more characters (the struct field is 16 bytes). The longest name is
+  13 characters and there are 20 slots, so nothing breaks today; add both conditions to the
+  "slot table row is not consistent" failure when a slot is added near either limit.
