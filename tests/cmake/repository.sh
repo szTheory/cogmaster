@@ -8,8 +8,11 @@ case $1 in
 action_pins|timeouts)
   program='BEGIN { mode=ENVIRON["CHECK_MODE"]; sha="[0-9a-f]"; for(i=1;i<40;i++) sha=sha "[0-9a-f]" }
   /^[ \t-]*uses:/ { if(mode!="action_pins") next; n++; sub(/^[ \t-]*/, ""); if($0 !~ /uses: \.\// && $0 !~ "uses: [A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+@" sha " +# v[0-9]") { file=FILENAME; sub(/^.*\//,"",file); print "action_pins: " file ": " $0; bad++ } }
-  /^[ \t-]*timeout-minutes:/ { if(mode!="timeouts") next; n++; if($0 !~ /timeout-minutes:[^#]*#.*(provisional|runs? [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9])/) { sub(/^[ \t]*/, ""); print FILENAME ": " $0; bad++ } }
-  END { if(mode=="action_pins" && bad) print "action_pins: " bad " uses: lines not pinned to a commit with a # v comment"; if(mode=="timeouts" && (bad || !n)) print "timeout_comments: " bad " lines without a run ID or provisional"; exit(bad || (mode=="timeouts" && !n)) }'
+  /^[ \t-]*timeout-minutes:/ { if(mode!="timeouts") next; n++; sub(/^[ \t]*/, ""); m=$0; sub(/^timeout-minutes:[ \t]*/,"",m); sub(/[^0-9].*$/,"",m); c=$0; sub(/^[^#]*#?[ \t]*/,"",c); ok=0
+    if(c ~ /^5-minute floor; no runs yet$/) ok=(m+0>=5)
+    else if(c !~ /provisional/ && c ~ /(^|; )2 x [0-9]+ s[^,]*, slowest of [0-9]+ runs?, run [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]+$/) { t=c; sub(/^.*2 x /,"",t); sub(/ s.*$/,"",t); ok=(m*60>=2*t) }
+    if(!ok) { print FILENAME ": " $0; bad++ } }
+  END { if(mode=="action_pins" && bad) print "action_pins: " bad " uses: lines not pinned to a commit with a # v comment"; if(mode=="timeouts" && (bad || !n)) print "timeout_comments: " bad " lines not twice a measured slowest run with its run ID"; exit(bad || (mode=="timeouts" && !n)) }'
   export CHECK_MODE=$1
   scan "$DIR" '*.yml' '*.yaml' ;;
 pins)

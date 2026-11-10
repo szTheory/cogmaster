@@ -10,6 +10,7 @@ check|cmake/CogmasterTests.cmake|Shared test registration and exact inventory ch
 check|scripts/hygiene.sh|Tree, commit and history privacy, licence, identity and branch policy
 check|scripts/check-title.sh|Conventional title, release classification and CI skip policy
 operation|scripts/classify-changes.sh|Routes CI jobs for changed input rather than asserting repository content
+operation|scripts/ci-durations.sh|Reads remote run data to size timeouts and never fails on repository content
 check|.githooks/pre-commit|Shared staged-tree policy entry point
 check|.githooks/pre-push|Shared history policy entry point
 build|cmake/WlaDx.cmake|Pinned external assembler bootstrap and fixture assembly operations

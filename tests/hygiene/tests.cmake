@@ -369,21 +369,25 @@ cogmaster_add_test(NAME policy.ci_required.self_test
   LABELS hygiene policy TIMEOUT 30)
 
 # Fault prevented: a job timeout guessed rather than measured. Every
-# timeout-minutes line names a run ID or says provisional. The self test
-# scans a fixture with two good lines and two bad ones.
+# timeout-minutes line carries twice its slowest measured run and that run's
+# ID, or the five-minute floor for a workflow with no runs yet. The self test
+# scans a fixture with two good lines and five bad ones.
 cogmaster_add_test(NAME hygiene.timeout_comments
   COMMAND ${CMAKE_COMMAND} -DDIR=${CMAKE_SOURCE_DIR}/.github/workflows -DCHECK=timeouts -P ${hygiene_scripts}/repository.cmake
   LABELS hygiene TIMEOUT 30)
 set(hygiene_timeouts ${CMAKE_BINARY_DIR}/hygiene/timeouts_fixture)
 file(REMOVE_RECURSE ${hygiene_timeouts})
-file(WRITE ${hygiene_timeouts}/sample.yml "jobs:\n  a:\n    timeout-minutes: 5  # provisional\n"
-  "  b:\n    timeout-minutes: 30\n  c:\n    timeout-minutes: 8  # 2 x 3 min, run 38935647258\n"
-  "  d:\n    timeout-minutes: 15  # a guess\n")
+file(WRITE ${hygiene_timeouts}/sample.yml "jobs:\n  a:\n    timeout-minutes: 5  # 5-minute floor; no runs yet\n"
+  "  b:\n    timeout-minutes: 8  # 2 x 180 s, slowest of 40 runs, run 38935647258\n"
+  "  c:\n    timeout-minutes: 30\n  d:\n    timeout-minutes: 15  # a guess\n"
+  "  e:\n    timeout-minutes: 6  # 2 x 3 s, slowest of 2 runs, run 38935647258, provisional\n"
+  "  f:\n    timeout-minutes: 1  # 2 x 40 s, slowest of 12 runs, run 39336389305\n"
+  "  g:\n    timeout-minutes: 3  # 5-minute floor; no runs yet\n")
 set(hygiene_cmd ${CMAKE_COMMAND} -DDIR=${hygiene_timeouts} -DCHECK=timeouts -P ${hygiene_scripts}/repository.cmake)
 string(REPLACE ";" "$<SEMICOLON>" hygiene_cmd "${hygiene_cmd}")
 cogmaster_add_test(NAME hygiene.timeout_comments.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${hygiene_cmd}" -DCODE=1
-    "-DREGEX=sample.yml: timeout-minutes: 30.*sample.yml: timeout-minutes: 15 .*a guess.*timeout_comments: 2 lines"
+    "-DREGEX=sample.yml: timeout-minutes: 30.*sample.yml: timeout-minutes: 15 .*a guess.*sample.yml: timeout-minutes: 6 .*provisional.*sample.yml: timeout-minutes: 1 .*sample.yml: timeout-minutes: 3 .*timeout_comments: 5 lines"
     -P ${hygiene_scripts}/expect_fail.cmake
   LABELS hygiene TIMEOUT 30)
 
