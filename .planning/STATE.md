@@ -2,15 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: The whole library
+current_phase: 6
+current_phase_name: Korean cartridges play
 status: planning
-last_updated: "2026-11-10T01:44:25.100Z"
-last_activity: 2026-11-09
+stopped_at: Phase 5 complete, ready to plan Phase 6
+last_updated: "2026-11-10T06:24:34.005Z"
+last_activity: 2026-11-10
+last_activity_desc: Phase 5 complete, transitioned to Phase 6
+state_head: 20b71b129ad7a4d8be925818e76e382602f551dc
 progress:
   total_phases: 8
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 14
+  completed_plans: 14
+  percent: 13
 ---
 
 # Project State
@@ -20,21 +25,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-10)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Milestone v2.0 The whole library — Phase 5 (Tune-up) next
+**Current focus:** Phase 5 — Tune-up
 
 ## Current Position
 
-Phase: 5 of 12 (Tune-up); v2.0 spans phases 5 to 12
-Plan: —
-Status: Roadmap created; ready to discuss phase 5
-Last activity: 2026-11-10 — v2.0 roadmap created (8 phases, 49 of 49 requirements mapped)
+Phase: 6 — Korean cartridges play
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-10 — Phase 5 complete, transitioned to Phase 6
 
-Progress: [░░░░░░░░░░] 0% of v2.0
+Progress: [█░░░░░░░░░] 13% of v2.0
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 62
+- Total plans completed: 76
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -46,6 +51,7 @@ Progress: [░░░░░░░░░░] 0% of v2.0
 | 02 | 17 | - | - |
 | 03 | 18 | - | - |
 | 04 | 15 | - | - |
+| 5 | 14 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -118,6 +124,20 @@ Progress: [░░░░░░░░░░] 0% of v2.0
 | Phase 04 P13 | 13 min | 2 tasks | 14 files |
 | Phase 04 P14 | 9min | 2 tasks | 11 files |
 | Phase 04 P15 | 22min | 2 tasks | 15 files |
+| Phase 05 P01 | 9 min | 2 tasks | 10 files |
+| Phase 05 P02 | 9 min | 2 tasks | 5 files |
+| Phase 05 P03 | 30min | 2 tasks | 8 files |
+| Phase 05 P07 | 20min | 1 tasks | 6 files |
+| Phase 05 P04 | 12min | 2 tasks | 6 files |
+| Phase 05 P05 | 8min | 2 tasks | 10 files |
+| Phase 05 P08 | 10min | 1 tasks | 6 files |
+| Phase 05 P06 | 70min | 3 tasks | 8 files |
+| Phase 05 P09 | 12min | 2 tasks | 7 files |
+| Phase 05 P10 | 20 min | 2 tasks | 7 files |
+| Phase 05 P11 | 12 min | 1 tasks | 6 files |
+| Phase 05 P12 | 4 min | 1 tasks | 7 files |
+| Phase 05 P13 | 17min | 3 tasks | 8 files |
+| Phase 05 P14 | 35 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -126,6 +146,24 @@ Progress: [░░░░░░░░░░] 0% of v2.0
 The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milestone close); the full list with sources is
 `.planning/preparation/DECISIONS.md`; per-plan decisions are in the archived summaries under
 `.planning/milestones/v1.0-phases/`.
+- [Phase 05]: 05-01: the opening battery-test paragraph of testing.md moved to saves.md under Testing saves; docs.api_names takes a newline-separated DOC list through awk ARGV
+- [Phase 05]: 05-02: the BMP top-down branch stays because sips writes a negative height (-192); compare.c holds the reader and hosted helpers sit at 273 of 300 lines
+- [Phase 05]: 05-03: be32 keeps its C++ cross compiler because every configure enables C++ for the header check (static evidence, no step time measured); floored timeout comments may carry a bracketed reason
+- [Phase 05]: 05-07: CART_BODY_MAX names the 1 MiB body limit and CART_MAX derives from it; the core seeded-load oracle computes the body after the copier-header strip
+- [Phase 05]: 05-04: wasm32 is in hash-equality (COUNT 8) and CI required's needs after 12 equal main runs; the report-only exemption is deleted from ci_required, its tests and docs
+- [Phase 05]: quality.json floors set to 410 (ci) and 385 (wasm32) after plan 05-05's inventory additions; plan 05-14 sets final values
+- [Phase 05]: Added docs.budgets.no_quality control for budgets.cmake's missing quality.json failure path
+- [Phase 05]: 05-08: nightly report comment keeps only the true reason (needs.*.result); hardware comments cite preparation sections on one source line
+- [Phase 05]: 05-06: size ceilings are 15 percent above the largest measured value, rounded up to a whole kibibyte; the ratchet needs a new reasons entry to loosen
+- [Phase 05]: 05-06: ratchet fixtures are measured in lines because a file written on Windows has CRLF line ends
+- [Phase 05]: 05-09: P1 WR-02 and IN-04 deferred to SEED-007 under AGENTS rule 7, P1 WR-04 accepted risk, no script changed; P4 WR-02 recorded fixed from 04-REVIEW-FIX.md
+- [Phase 05]: README check runs against the built boot_to_play.sms fixture (owned image, digest in tests/built/expected.txt), not a tests/roms fixture: present on every fixtures lane, no ROM bytes
+- [Phase 05]: 05-11: the Dependabot exception in CI required is keyed on the pull request author and pinned by a control that widens it to any author; the control matches the diagnostic up to 'want fail' because CMake wraps the full line
+- [Phase 05]: 05-12: Dependabot auto-merge reads the PR title as data via gh into a file; single updates merge only on same-major dotted versions; policy.dependabot added 16 counted lines (719 of 745)
+- [Phase 05]: 05-13: the digest job restates contents read beside its three added permissions (a job's permissions replace the workflow's); policy.digest accepts contents read in the job block and nothing outside the decision's four
+- [Phase 05]: 05-13: a red pull request is read from the newest CI run on its head commit via actions/runs?head_sha, never statusCheckRollup; the sound-code nightly run is the plain post-merge dispatch 42762969470 on main (head f69ab03 contains 8faf841)
+- [Phase 05]: 05-14: the perf gate is armed in a ci.yml-only commit (950ff2c); a throwaway draft PR 18 failed perf (verdict=FAIL, +4.87 percent) with every other job green; final head 73547df passed pull_request run 42764989102
+- [Phase 05]: 05-14: quality.json floors tests.ci 422 and tests.wasm32 397 follow the inventory line counts, not a local macOS ctest count
 
 ### Pending Todos
 
@@ -185,6 +223,15 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-09 | Audit milestone v1.0 (gsd-audit-milestone); integration checker 18/18 wired, 6/6 flows, status tech_debt | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Complete milestone v1.0 (gsd-complete-milestone) | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | New milestone v2.0 The whole library (gsd-new-milestone) | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Discuss phase 5 (gsd-autonomous, owner-authorised override of rule 9); five advisors plus adversarial pass | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Execute phase 5 plan 05-01 (gsd-execute-phase 05); two zero-spread perf control runs on main (42752737395, 42752770307), docs split into hosted, perf-fuzz, saves and boards, docs.api_names reads a guide list; 2 tasks, 1 commit | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Plan phase 5 (gsd-plan-phase 5); 14 plans, checker 0 blockers after two revisions | Claude Code | claude-sonnet-5-5 (planner claude-opus-5-5) |
+| 2026-11-10 | Execute phase 5 plan 05-02 (gsd-execute-phase 05); BMP reader folded into compare.c, sips writes top-down (height -192) so the branch stays, hosted helpers 299 to 273 lines; 2 tasks, 1 commit | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Execute phase 5 plan 05-03 (gsd-execute-phase 05); scripts/ci-durations.sh counts runs not lanes, timeouts check verifies the arithmetic, 22 workflow timeouts re-derived from live runs, be32 C++ compiler kept on static evidence; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Execute phase 5 plan 05-07 (gsd-execute-phase 05); cart probe refuses a body over 1 MiB after the copier-header strip, core load oracle follows the rule, docs say body not total; 1 task, 4 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Execute phase 5 plan 05-04 (gsd-execute-phase 05); wasm32 promoted into hash-equality (eight files) and CI required after 12 equal main runs, report-only exemption deleted; 2 tasks, 1 commit | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Execute phase 5 plan 05-09 (gsd-execute-phase 05); phase 1, 2 and 4 review dispositions settled (open 0), deferred findings seeded in SEED-001, 002, 004 and 007, no script changed; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Execute phase 5 plan 05-11 (gsd-execute-phase 05); rehearsal skip and CI required clause for the Dependabot author with an actor control; 1 task, 1 commit | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -206,8 +253,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-09T22:51:53.837Z
-Stopped at: Milestone v1.0 audited; phase 04 shipped and released as v0.4.0
+Last session: 2026-11-10T06:04:42.115Z
+Stopped at: Phase 5 complete, ready to plan Phase 6
 Resume file: None
 
 ## Operator Next Steps

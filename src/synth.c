@@ -79,9 +79,12 @@ static const uint16_t volume[16] = {32767, 26028, 20675, 16422, 13045, 10362, 82
    28,452 times 65,536 in magnitude, and the largest taps of the 33 rows
    (the 32 and phase 0 shifted right) sum to 70,842 at most. A slot receives
    at most SYNTH_EVENTS changes in each of the 16 sample positions that reach
-   it: a PSG step every 16 ticks changes four channels, a CPU write every 33
-   ticks at most four sources, an FM sample every 216 ticks, over about 224
-   ticks a sample, under 100. Each change is at most 32,767 in magnitude. */
+   it. The PSG divides the Z80 clock by 16, so it steps every 48 ticks and
+   changes up to four channels, about 19 per 224-tick sample (SMS-SYSTEM section 1).
+   A CPU port write takes at least 11 Z80 cycles, 33 ticks, and changes at most
+   five sources (the $F2 write). The YM2413 completes a sample every 72 Z80
+   cycles, 216 ticks (SMS-AUDIO section 5). That is about 50 changes in all,
+   under 128. Each change is at most 32,767 in magnitude. */
 #define SYNTH_EVENTS 128
 #define SYNTH_DELTA_MAX 32767
 #define SYNTH_TAP_SUM_MAX 70842

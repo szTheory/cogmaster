@@ -8,10 +8,39 @@ case $1 in
 action_pins|timeouts)
   program='BEGIN { mode=ENVIRON["CHECK_MODE"]; sha="[0-9a-f]"; for(i=1;i<40;i++) sha=sha "[0-9a-f]" }
   /^[ \t-]*uses:/ { if(mode!="action_pins") next; n++; sub(/^[ \t-]*/, ""); if($0 !~ /uses: \.\// && $0 !~ "uses: [A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+@" sha " +# v[0-9]") { file=FILENAME; sub(/^.*\//,"",file); print "action_pins: " file ": " $0; bad++ } }
-  /^[ \t-]*timeout-minutes:/ { if(mode!="timeouts") next; n++; if($0 !~ /timeout-minutes:[^#]*#.*(provisional|runs? [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9])/) { sub(/^[ \t]*/, ""); print FILENAME ": " $0; bad++ } }
-  END { if(mode=="action_pins" && bad) print "action_pins: " bad " uses: lines not pinned to a commit with a # v comment"; if(mode=="timeouts" && (bad || !n)) print "timeout_comments: " bad " lines without a run ID or provisional"; exit(bad || (mode=="timeouts" && !n)) }'
+  /^[ \t-]*timeout-minutes:/ { if(mode!="timeouts") next; n++; sub(/^[ \t]*/, ""); m=$0; sub(/^timeout-minutes:[ \t]*/,"",m); sub(/[^0-9].*$/,"",m); c=$0; sub(/^[^#]*#?[ \t]*/,"",c); ok=0
+    if(c ~ /^5-minute floor; no runs yet$/) ok=(m+0>=5)
+    else if(c !~ /provisional/ && c ~ /(^|; )2 x [0-9]+ s[^,]*, slowest of [0-9]+ runs?, run [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]+$/) { t=c; sub(/^.*2 x /,"",t); sub(/ s.*$/,"",t); ok=(m*60>=2*t) }
+    if(!ok) { print FILENAME ": " $0; bad++ } }
+  END { if(mode=="action_pins" && bad) print "action_pins: " bad " uses: lines not pinned to a commit with a # v comment"; if(mode=="timeouts" && (bad || !n)) print "timeout_comments: " bad " lines not twice a measured slowest run with its run ID"; exit(bad || (mode=="timeouts" && !n)) }'
   export CHECK_MODE=$1
   scan "$DIR" '*.yml' '*.yaml' ;;
+dependabot)
+  # A group holding majors never auto-merges, a renamed group silently stops auto-merging, and a privileged trigger runs untrusted code with the App token.
+  awk 'function bad(file, m) { print "dependabot: " file ": " m; n++ }
+  FNR==1 { f=FILENAME; sub(/^.*\//,"",f); ing=0 }
+  { t=$0; sub(/(^|[ \t]+)#.*$/,"",t); gsub(/"/,"",t); v=t; sub(/^[^:]*:[ \t]*/,"",v); u=t; sub(/^ +- /,"",u); g=t; gsub(/[ :]/,"",g) }
+  f=="dependabot.yml" { if(t ~ /package-ecosystem:/ && v!="github-actions") bad(f, "ecosystem " v " is not github-actions")
+    if(t ~ /interval:/) iv=v; if(t ~ /prefix:/) px=v; if(t ~ /default-days:/) cd=v; if(t ~ /^ +groups:$/) ing=1
+    if(ing && t ~ /^      [A-Za-z0-9_-]+:$/) { if(g=="minor-and-patch") ok=1; else bad(f, "group " g " is not named minor-and-patch") }
+    if(ing && t ~ /^ +- (major|minor|patch)$/) { seen[u]=1; if(u=="major") bad(f, "update-types lists major") } }
+  f=="dependabot-automerge.yml" { if(t ~ /(pull_request_target|workflow_run)/) bad(f, "trigger " (t ~ /workflow_run/ ? "workflow_run" : "pull_request_target") " runs with a privileged token")
+    if(t ~ /actions\/checkout/) bad(f, "uses actions/checkout"); if(t ~ /the minor-and-patch group/) title=1; if(t ~ /if:.*dependabot\[bot\]/) guard=1; if(t ~ /gh pr diff .*--name-only/) diff=1 }
+  END { d="dependabot.yml"; a="dependabot-automerge.yml"
+    if(iv!="weekly") bad(d, "interval " iv " is not weekly"); if(px!="ci") bad(d, "prefix " px " is not ci"); if(cd!=7) bad(d, "cooldown " cd " is not 7 days")
+    if(!ok || !seen["minor"] || !seen["patch"]) bad(d, "no group named minor-and-patch holding minor and patch")
+    if(!title) bad(a, "the title match lacks the text the minor-and-patch group"); if(!guard) bad(a, "the job guard does not name dependabot[bot]"); if(!diff) bad(a, "the merge does not first list the changed files with gh pr diff --name-only")
+    exit(n!=0) }' "$DIR/dependabot.yml" "$DIR/workflows/dependabot-automerge.yml" ;;
+digest)
+  # A reporter that gains write access or a token beyond the four it needs, or runs on a schedule nobody asked for.
+  awk 'function bad(m) { print "digest: " m; n++ }
+  { t=$0; sub(/(^|[ \t]+)#.*$/,"",t); e=t; sub(/^ +/,"",e); match(t,/^ */); i=RLENGTH; if(e!="" && blk!="" && i<=bi) blk="" }
+  e=="permissions:" { blk=(i ? "job" : "top"); bi=i; next }
+  blk=="top" && e!="" && e!="contents: read" { bad("workflow permission " e " is not contents: read") }
+  blk=="job" && e!="" { if(e ~ /^((actions|pull-requests): read|issues: write)$/) seen[e]=1; else if(e!="contents: read") bad("job permission " e " is outside actions: read, pull-requests: read, issues: write") }
+  e ~ /^- cron:/ { cron=e; c++ } e ~ /^dry_run:/ { dry=1 } e ~ /create-github-app-token|pull_request_target/ { bad("uses " e) }
+  END { if(c!=1 || cron !~ /^- cron: "[0-9]+ [0-9]+ \* \* 1"$/) bad("cron " cron " is not one weekly Monday schedule"); if(!dry) bad("no dry_run input")
+    split("actions: read|pull-requests: read|issues: write", want, "|"); for(k in want) if(!(want[k] in seen)) bad("job permission " want[k] " is missing"); exit(n!=0) }' "$DOC" ;;
 pins)
   awk 'NF && $1 !~ /^#/ {
     n++; if(NF!=4) { print "line " NR ": " NF " fields, not 4"; bad=1; next }
@@ -33,9 +62,10 @@ no_skip|no_float)
     printf '%s\n' "$ROOTS" | while IFS= read -r dir; do scan "$dir" '*.c' '*.h' || exit 1; done
   fi ;;
 api_names)
-  # Compare distinct identifier sets in both directions; trailing underscores are guide wildcards.
+  # Compare distinct identifier sets in both directions; trailing underscores are guide wildcards. DOC lists the guide files.
   awk 'function names(s,a, n) { while(match(s,/(cogmaster_[a-z0-9_]+|COGMASTER_[A-Z0-9_]+)/)) { n=substr(s,RSTART,RLENGTH); if(n!="COGMASTER_H") a[n]=1; s=substr(s,RSTART+RLENGTH) } }
-  BEGIN { while((getline s < ENVIRON["HEADER"])>0) names(s,declared); split(ENVIRON["OTHER"],files,"\n"); for(f in files) while((getline s < files[f])>0) names(s,cited) }
+  BEGIN { while((getline s < ENVIRON["HEADER"])>0) names(s,declared); split(ENVIRON["OTHER"],files,"\n"); for(f in files) while((getline s < files[f])>0) names(s,cited)
+    n=split(ENVIRON["DOC"],guides,"\n"); for(i=1;i<=n;i++) ARGV[ARGC++]=guides[i] }
   { names($0,written) }
   END {
     for(n in declared) if(n !~ /_$/ && !(n in written)) {print n " is declared in the header but the guide never names it"; bad=1}
@@ -43,7 +73,7 @@ api_names)
       known=(n in declared || n in cited); if(n ~ /_$/) for(d in declared) if(index(d,n)==1) known=1;
       if(!known) {print n " is named in the guide but the header does not declare it"; bad=1}
     } exit bad
-  }' "$DOC" ;;
+  }' ;;
 api_version)
   awk 'BEGIN {
   while((getline s < ENVIRON["HEADER"])>0) h=h s "\n";
@@ -139,5 +169,10 @@ exit_table)
   /^exit status:$/ {table=1; next}
   table && NF {n++; if(!($0 in doc)) {print "document lacks the exit status line: " $0; bad=1}}
   END {if(!n || n!=documented) {print "exit_table: mismatched exit status lines"; bad=1} exit bad}' "$RUN_HELP" ;;
+lessons_unique)
+  # A reused lesson ID makes a cross-project ledger ambiguous. IDs come from table rows and from exported-template lines.
+  [ -f "$DOC" ] || fail 'lessons_unique: DOC must name a file'
+  awk '/^\| (XFER-[0-9]+|CM-[A-Z]+-[0-9]+) \|/ || /^Lesson (XFER|CM)-/ { n++; if(seen[$2]++ == 1) {print "lessons_unique: " $2 " appears twice"; bad=1} }
+  END { if(!n) {print "lessons_unique: no lesson IDs in " ENVIRON["DOC"]; bad=1} else print "lessons_unique: " n " IDs"; exit bad }' "$DOC" ;;
 *) fail "unknown repository check: $1" ;;
 esac

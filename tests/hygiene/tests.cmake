@@ -345,11 +345,10 @@ cogmaster_add_test(NAME policy.publish_signer
 # Fault prevented: a CI required roll-up that passes a failed or wrongly
 # skipped job, or a job missing from its needs. The self test runs it on a
 # copy of ci.yml whose program ignores heavy, which must let a skipped build
-# through and so fail the case that names it. wasm32 reports on its own, so
-# it may stay out of the needs.
+# through and so fail the case that names it.
 set(hygiene_ci ${CMAKE_SOURCE_DIR}/.github/workflows/ci.yml)
 cogmaster_add_test(NAME policy.ci_required
-  COMMAND ${CMAKE_COMMAND} -DCI_YML=${hygiene_ci} -DJQ=${COGMASTER_JQ} -DREPORT_ONLY=wasm32
+  COMMAND ${CMAKE_COMMAND} -DCI_YML=${hygiene_ci} -DJQ=${COGMASTER_JQ}
     -P ${hygiene_scripts}/ci_required.cmake
   LABELS hygiene policy TIMEOUT 30)
 file(READ ${hygiene_ci} hygiene_yml)
@@ -360,7 +359,7 @@ endif()
 file(WRITE ${CMAKE_BINARY_DIR}/hygiene/ci_required_fixture/ci.yml "${hygiene_ignores_heavy}")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${hygiene_ci})
 set(hygiene_cmd ${CMAKE_COMMAND} -DCI_YML=${CMAKE_BINARY_DIR}/hygiene/ci_required_fixture/ci.yml
-  -DJQ=${COGMASTER_JQ} -DREPORT_ONLY=wasm32 -P ${hygiene_scripts}/ci_required.cmake)
+  -DJQ=${COGMASTER_JQ} -P ${hygiene_scripts}/ci_required.cmake)
 string(REPLACE ";" "$<SEMICOLON>" hygiene_cmd "${hygiene_cmd}")
 cogmaster_add_test(NAME policy.ci_required.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${hygiene_cmd}" -DCODE=1
@@ -368,22 +367,44 @@ cogmaster_add_test(NAME policy.ci_required.self_test
     -P ${hygiene_scripts}/expect_fail.cmake
   LABELS hygiene policy TIMEOUT 30)
 
+# Fault prevented: the Dependabot exception in CI required widened to every
+# author. The self test runs on a copy of ci.yml whose author clause accepts
+# any author, which must let a person's skipped rehearsal through and so fail
+# the case that names it.
+string(REPLACE "$actor == \"dependabot[bot]\"" "true" hygiene_any_actor "${hygiene_yml}")
+if(hygiene_any_actor STREQUAL hygiene_yml)
+  message(FATAL_ERROR "policy.ci_required.actor_self_test: ci.yml's program no longer tests $actor == \"dependabot[bot]\"")
+endif()
+file(WRITE ${CMAKE_BINARY_DIR}/hygiene/ci_required_actor_fixture/ci.yml "${hygiene_any_actor}")
+set(hygiene_cmd ${CMAKE_COMMAND} -DCI_YML=${CMAKE_BINARY_DIR}/hygiene/ci_required_actor_fixture/ci.yml
+  -DJQ=${COGMASTER_JQ} -P ${hygiene_scripts}/ci_required.cmake)
+string(REPLACE ";" "$<SEMICOLON>" hygiene_cmd "${hygiene_cmd}")
+cogmaster_add_test(NAME policy.ci_required.actor_self_test
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${hygiene_cmd}" -DCODE=1
+    "-DREGEX=rehearsal skipped when a release input changed: want fail"
+    -P ${hygiene_scripts}/expect_fail.cmake
+  LABELS hygiene policy TIMEOUT 30)
+
 # Fault prevented: a job timeout guessed rather than measured. Every
-# timeout-minutes line names a run ID or says provisional. The self test
-# scans a fixture with two good lines and two bad ones.
+# timeout-minutes line carries twice its slowest measured run and that run's
+# ID, or the five-minute floor for a workflow with no runs yet. The self test
+# scans a fixture with two good lines and five bad ones.
 cogmaster_add_test(NAME hygiene.timeout_comments
   COMMAND ${CMAKE_COMMAND} -DDIR=${CMAKE_SOURCE_DIR}/.github/workflows -DCHECK=timeouts -P ${hygiene_scripts}/repository.cmake
   LABELS hygiene TIMEOUT 30)
 set(hygiene_timeouts ${CMAKE_BINARY_DIR}/hygiene/timeouts_fixture)
 file(REMOVE_RECURSE ${hygiene_timeouts})
-file(WRITE ${hygiene_timeouts}/sample.yml "jobs:\n  a:\n    timeout-minutes: 5  # provisional\n"
-  "  b:\n    timeout-minutes: 30\n  c:\n    timeout-minutes: 8  # 2 x 3 min, run 38935647258\n"
-  "  d:\n    timeout-minutes: 15  # a guess\n")
+file(WRITE ${hygiene_timeouts}/sample.yml "jobs:\n  a:\n    timeout-minutes: 5  # 5-minute floor; no runs yet\n"
+  "  b:\n    timeout-minutes: 8  # 2 x 180 s, slowest of 40 runs, run 38935647258\n"
+  "  c:\n    timeout-minutes: 30\n  d:\n    timeout-minutes: 15  # a guess\n"
+  "  e:\n    timeout-minutes: 6  # 2 x 3 s, slowest of 2 runs, run 38935647258, provisional\n"
+  "  f:\n    timeout-minutes: 1  # 2 x 40 s, slowest of 12 runs, run 39336389305\n"
+  "  g:\n    timeout-minutes: 3  # 5-minute floor; no runs yet\n")
 set(hygiene_cmd ${CMAKE_COMMAND} -DDIR=${hygiene_timeouts} -DCHECK=timeouts -P ${hygiene_scripts}/repository.cmake)
 string(REPLACE ";" "$<SEMICOLON>" hygiene_cmd "${hygiene_cmd}")
 cogmaster_add_test(NAME hygiene.timeout_comments.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${hygiene_cmd}" -DCODE=1
-    "-DREGEX=sample.yml: timeout-minutes: 30.*sample.yml: timeout-minutes: 15 .*a guess.*timeout_comments: 2 lines"
+    "-DREGEX=sample.yml: timeout-minutes: 30.*sample.yml: timeout-minutes: 15 .*a guess.*sample.yml: timeout-minutes: 6 .*provisional.*sample.yml: timeout-minutes: 1 .*sample.yml: timeout-minutes: 3 .*timeout_comments: 5 lines"
     -P ${hygiene_scripts}/expect_fail.cmake
   LABELS hygiene TIMEOUT 30)
 
@@ -402,6 +423,81 @@ string(REPLACE ";" "$<SEMICOLON>" hygiene_cmd "${hygiene_cmd}")
 cogmaster_add_test(NAME policy.action_pins.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${hygiene_cmd}" -DCODE=1
     "-DREGEX=action_pins: sample.yml: uses: actions/checkout@v4.*action_pins: 1 uses: lines not pinned"
+    -P ${hygiene_scripts}/expect_fail.cmake
+  LABELS hygiene policy TIMEOUT 30)
+
+# Fault prevented: a weekly digest that names the wrong slowest job, misses a
+# flaky run, or never checks a job's timeout margin because its YAML key
+# differs from the name ci-durations prints (ci-required against CI required).
+# The timeouts fixture holds that key-differs-from-name job and a matrix job.
+set(hygiene_digest ${CMAKE_BINARY_DIR}/hygiene/digest_fixture)
+file(REMOVE_RECURSE ${hygiene_digest})
+file(WRITE ${hygiene_digest}/sample.yml [=[
+name: Sample
+on: push
+jobs:
+  ci-required:
+    name: CI required
+    timeout-minutes: 4  # 5-minute floor; no runs yet
+    steps:
+      - name: not a job name
+        run: true
+  build:
+    name: build (${{ matrix.os }})
+    timeout-minutes: 7
+  plain:
+    timeout-minutes: 9
+]=])
+set(hygiene_digest_timeouts [=[
+sh "$1" timeouts "$2" > "$3" || exit 1
+"$4" -e '."CI required" == 4 and .build == 7 and .plain == 9 and (has("ci-required") | not)' "$3"
+]=])
+cogmaster_add_test(NAME digest.timeouts
+  COMMAND ${COGMASTER_SH} -c "${hygiene_digest_timeouts}" sh ${CMAKE_SOURCE_DIR}/scripts/digest.sh
+    ${hygiene_digest}/sample.yml ${hygiene_digest}/timeouts.json ${COGMASTER_JQ}
+  LABELS hygiene TIMEOUT 30)
+set(hygiene_digest_format [=[
+sh "$1" < "$2" > "$3" || exit 1
+for want in '^Slowest job: build, 200 s, run 2' '^Flaky: build' '^- timeout margin: CI required' '^- nightly issue #12' '^attention: [1-9]'
+do
+  grep -Eq "$want" "$3" || { echo "digest.format: no line matching $want"; cat "$3"; exit 1; }
+done
+grep -Fq '#9 is red: `fix: name see http://evil.test/x x`' "$3" && ! grep -q '@name' "$3" || { echo "digest.format: a pull request title was not neutralised"; cat "$3"; exit 1; }
+if grep -q 'timeout margin: build' "$3"
+then
+  echo "digest.format: build is inside its timeout margin but was flagged"
+  exit 1
+fi
+]=])
+cogmaster_add_test(NAME digest.format
+  COMMAND ${COGMASTER_SH} -c "${hygiene_digest_format}" sh ${CMAKE_SOURCE_DIR}/scripts/digest.sh
+    ${CMAKE_CURRENT_LIST_DIR}/fixtures/digest.json ${hygiene_digest}/digest.md
+  LABELS hygiene TIMEOUT 30)
+
+# Fault prevented: the digest reporter gaining write access or a schedule
+# nobody asked for. The self test scans a fixture with a write-all workflow
+# permission, a daily cron and a job permission outside the four allowed.
+cogmaster_add_test(NAME policy.digest
+  COMMAND ${CMAKE_COMMAND} -DDOC=${CMAKE_SOURCE_DIR}/.github/workflows/digest.yml -DCHECK=digest
+    -P ${hygiene_scripts}/repository.cmake
+  LABELS hygiene policy TIMEOUT 30)
+file(WRITE ${hygiene_digest}/digest.yml [=[
+on:
+  schedule:
+    - cron: "0 6 * * *"
+permissions:
+  contents: write
+jobs:
+  digest:
+    permissions:
+      actions: read
+      checks: read
+]=])
+set(hygiene_cmd ${CMAKE_COMMAND} -DDOC=${hygiene_digest}/digest.yml -DCHECK=digest -P ${hygiene_scripts}/repository.cmake)
+string(REPLACE ";" "$<SEMICOLON>" hygiene_cmd "${hygiene_cmd}")
+cogmaster_add_test(NAME policy.digest.self_test
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${hygiene_cmd}" -DCODE=1
+    "-DREGEX=digest: workflow permission contents: write.*digest: job permission checks: read.*digest: cron"
     -P ${hygiene_scripts}/expect_fail.cmake
   LABELS hygiene policy TIMEOUT 30)
 

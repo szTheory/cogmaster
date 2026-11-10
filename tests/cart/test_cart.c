@@ -297,7 +297,9 @@ static void test_pure(void)
 }
 
 /* The size bounds: 1,023 bytes and 1 MiB + 513 are refused with the size
-   filled in; 1,024 and 1 MiB + 512 (a copier header) are probed. */
+   filled in, and so is a body over 1 MiB with no copier header (1 MiB + 1
+   to 1 MiB + 511); 1,024, 1 MiB and 1 MiB + 512 (a copier header) are
+   probed. */
 static void test_sizes(void)
 {
     cogmaster_cart_info info;
@@ -308,9 +310,16 @@ static void test_sizes(void)
     CHECK_EQ_U64(probe(MIB + 513u, &info), COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE);
     CHECK_EQ_U64(info.image_size, MIB + 513u);
     CHECK_EQ_U64(info.body_offset, 0);
+    CHECK_EQ_U64(probe(MIB + 1u, &info), COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE);
+    CHECK_EQ_U64(info.image_size, MIB + 1u);
+    CHECK_EQ_U64(info.body_offset, 0);
+    CHECK_EQ_U64(probe(MIB + 511u, &info), COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE);
+    CHECK_EQ_U64(info.image_size, MIB + 511u);
     CHECK_EQ_U64(probe(1024u, &info), COGMASTER_STATUS_OK);
     CHECK_EQ_U64(info.image_size, 1024);
     CHECK_EQ_U64(info.board, COGMASTER_BOARD_ROM_ONLY);
+    CHECK_EQ_U64(probe(MIB, &info), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(info.body_offset, 0);
     CHECK_EQ_U64(probe(MIB + 512u, &info), COGMASTER_STATUS_OK);
     CHECK_EQ_U64(info.body_offset, 512);
     CHECK_EQ_U64(info.board, COGMASTER_BOARD_SEGA);

@@ -200,11 +200,12 @@ GG controller reads decode C0/C1 and DC/DD; native Start is active low at port 0
 In explicit SMS video mode Start instead raises the edge-detected Pause NMI.
 
 `cogmaster_media.image` with `image_size` 0 and a NULL `image` loads the built-in test card. Any other image must
-be 1,024 to 1,048,576 + 512 bytes; any other size returns `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE`, and a NULL
+be 1,024 bytes to a 1 MiB body, with an optional 512-byte copier header in front; any other size, or a body above
+1 MiB whatever the image's total size, returns `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE`, and a NULL
 `image` with a non-zero size returns `COGMASTER_STATUS_ERR_ARGUMENT`. When the size is 512 bytes past a multiple
 of 16 KiB the first 512 bytes are a copier's header and are skipped. The library copies the rest into one buffer
 from your allocator, padded with `$FF` to a multiple of 16 KiB, so you may free your copy once `load` returns.
-The library guesses the cartridge's board from the image (see [Probing an image](#probing-an-image)) and maps it
+The library guesses the cartridge's board from the image (see [Probing an image](boards.md#probing-an-image)) and maps it
 at `$0000`-`$BFFF`, with 8 KiB of work RAM at `$C000`; an image on no supported board returns
 `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD`. The CPU starts as the console's BIOS leaves it (fast boot; no BIOS code runs): stack pointer `$DFF0`,
 `$AB` at `$C000` on the Master System, program counter 0. `machine` selects the profile: `COGMASTER_MACHINE_AUTO` (the default, a Master
@@ -218,7 +219,7 @@ Gear and no Japanese console was made for PAL, so `COGMASTER_TV_PAL` with either
 `COGMASTER_STATUS_ERR_PROFILE_REJECTED`. Each
 `load` restarts the frame count and clears the fault record.
 
-`cogmaster_run_frame` runs one frame: 262 lines, 179,208 ticks of the 10,738,635 Hz video clock, on NTSC, and
+`cogmaster_run_frame` runs one frame: 262 lines, 179,208 ticks of the 315/88 MHz × 3 (about 10,738,636 Hz) tick clock, on NTSC, and
 313 lines, 214,092 ticks of the 10,640,684.8 Hz (53,203,424 / 5) clock, on PAL. The CPU runs whole instructions,
 so a frame stops at the first instruction boundary at or after its end, at most 69 ticks late, and the next frame
 ends one frame length after this one should have: the frames never drift. If `out`, a
@@ -229,60 +230,7 @@ The Master System's Pause button reaches the CPU as on the console: a press rais
 at the start of the frame's last line, tick 611 of line 260 on NTSC and of line 311 on PAL, wherever in the frame it
 was pressed. The Game Gear has no Pause button.
 
-## Probing an image
-
-`cogmaster_probe(image, n, out)` reads an image the way `load` does, without an instance: it fills a
-`cogmaster_cart_info` and returns the status `load` would give for the image alone. Appended fields distinguish
-`COGMASTER_PERSISTENCE_UNKNOWN`, `COGMASTER_PERSISTENCE_NONE` and `COGMASTER_PERSISTENCE_BATTERY`.
-`persistent_size` is the declared extent, independent of mapper decoding. `persistence_geometry` is
-`COGMASTER_GEOMETRY_NONE`, `COGMASTER_GEOMETRY_SUPPORTED` or `COGMASTER_GEOMETRY_UNSUPPORTED`.
-Unknown/unsupported geometry provides no persistent span. `identified` means a whole-body SHA-1 match;
-`public_identity` distinguishes public CC0 identities from owned fixture facts. `sha1` and `title` are
-zero-terminated identity strings, empty on a miss. `video_mode` carries a verified GG SMS-mode fact.
-Old 52-byte output tags leave the appended fields untouched. AUTO machine/region use table/header facts
-before defaults; explicit choices win. These facts are independent of compatibility-ledger membership.
-The probe reads only the `n` bytes
-at `image`, never changes them, and gives the same answer for the same bytes. It returns
-`COGMASTER_STATUS_ERR_ARGUMENT` for a NULL `image` or `out`, `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE` outside the
-load bounds (with only `image_size` filled), and `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD` with `board` 0 and
-every other field filled when no supported board fits.
-
-| Field | Meaning |
-|---|---|
-| `image_size` | `n` |
-| `body_offset` | 512 after a copier header, else 0 |
-| `header_at` | where the ROM header was found: `0x7FF0`, `0x3FF0`, `0x1FF0`, or 0 for none |
-| `checksum`, `checksum_ok` | the header's checksum, and 1 when it matches the sum over the range its size code names |
-| `product_code`, `version` | the product number (decimal) and the version nibble |
-| `region_code`, `rom_size_code` | the header's region and size nibbles |
-| `machine_guess`, `region_guess` | the machine and region the region code names (`COGMASTER_MACHINE_*`, `COGMASTER_REGION_*`), or 0 |
-| `board` | `COGMASTER_BOARD_ROM_ONLY` (1), `COGMASTER_BOARD_SEGA` (2) or `COGMASTER_BOARD_CODEMASTERS` (3); 0 for none |
-
-Every header field is 0 when no header was found. The board is chosen in this order:
-
-1. When the size is 512 bytes past a multiple of 16 KiB, the first 512 bytes are a copier's header and are skipped.
-2. The ROM header is looked for at `$7FF0`, then `$3FF0`, then `$1FF0`. Its region code names the machine and
-   region; its checksum is checked but a wrong one refuses nothing.
-3. A Codemasters header at `$7FE0` (page count, BCD date, checksum and its complement, `$7FEF` zero) gives the
-   Codemasters board.
-4. An 8 KiB image whose header names the Game Gear is refused, and so is any 8 KiB image loaded as a Game Gear.
-5. An image of at most 48 KiB has no mapper.
-6. Otherwise the first 32 KiB are scanned for `LD (nn),A` stores. When stores to another board's registers
-   (`$0002`-`$0004`, `$3FFE`, `$6000`, `$A000`) outnumber stores to the Sega registers (`$FFFC`-`$FFFF`), the
-   image is refused; else it has the Sega mapper.
-
-The boards:
-
-- **No mapper.** The image at `$0000`, padded with `$FF` up to `$BFFF`. Writes to it change nothing.
-- **Sega.** Writes to `$FFFD`, `$FFFE` and `$FFFF` select the 16 KiB bank in `$0000`, `$4000` and `$8000`; the
-  first 1 KiB stays on bank 0. Bit 3 of `$FFFC` maps 16 KiB of cartridge RAM at `$8000` (bit 2 picks which of
-  two banks); bits 1-0 add `$18`, `$10` or `$08` to later bank writes. Every register write also lands in work
-  RAM, so `$DFFC`-`$DFFF` read them back. Fast boot leaves the banks at 0, 1 and 2.
-- **Codemasters.** Writes to `$0000`, `$4000` and `$8000` select the bank in those slots; they start at 0, 1 and
-  0. Bit 7 of the `$4000` write maps 8 KiB of cartridge RAM at `$A000`-`$BFFF`.
-
-The image is padded with `$FF` to whole 16 KiB banks, and a bank number past the end selects the bank number
-modulo the bank count. Cartridge RAM starts zeroed at load, is kept by both resets and is part of the saved state.
+Probing an image without an instance, and the cartridge boards each image gets, are in [boards.md](boards.md).
 
 ## Frames
 
@@ -417,6 +365,8 @@ answer returns a value above 255: a NULL instance, no successful `cogmaster_load
 `COGMASTER_SPACE_BUS` (0, the only space), or an `addr` above `$FFFF`. With the test card loaded the slots read
 `$FF`.
 
+Persistent cartridge RAM has its own calls; see [saves.md](saves.md).
+
 ## Information
 
 `cogmaster_get_info` fills a `cogmaster_info` for the loaded machine, so a host need not hard-code it:
@@ -451,7 +401,7 @@ changes no state; a failed `cogmaster_load` keeps the content that was loaded be
 | `COGMASTER_STATUS_ERR_BUFFER_TOO_SMALL` | 4 | `pitch_bytes` is below `w × 2` for the rectangle requested |
 | `COGMASTER_STATUS_ERR_NO_CONTENT` | 5 | `cogmaster_run_frame`, `cogmaster_get_frame`, `cogmaster_get_info`, `cogmaster_get_audio`, `cogmaster_get_audio_trace` or `cogmaster_reset` before a successful `cogmaster_load` |
 | `COGMASTER_STATUS_ERR_PROFILE_REJECTED` | 6 | `cogmaster_media.machine`, `region` or `tv` is not one of its `COGMASTER_MACHINE_*`, `COGMASTER_REGION_*` or `COGMASTER_TV_*` values, or the pair was never made: `COGMASTER_TV_PAL` with `COGMASTER_MACHINE_GG` or with `COGMASTER_REGION_JAPAN` |
-| `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE` | 7 | an image is below 1,024 or above 1,048,576 + 512 bytes; checked before every other load rule |
+| `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE` | 7 | an image is below 1,024 bytes, or its body after any copier header is above 1 MiB; checked before every other load rule |
 | `COGMASTER_STATUS_ERR_SAVE_SIZE` | 9 | raw save exceeds the classified persistent length |
 | `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD` | 8 | the image is on a cartridge board the library does not emulate, or is an 8 KiB Game Gear image (the X-Terminator cheat device) |
 
@@ -530,54 +480,3 @@ aspect without changing native emulation or its hashes. These options take effec
 on the next frame. Machine, region/timing and Game Gear mode options require content
 reload. SMS PAL uses PAR 2950000:2128137. The adapter drains `cogmaster_get_audio`
 every frame before the video work and keeps no pacing state of its own.
-
-## Battery media
-
-`cogmaster_get_battery` fills `cogmaster_battery` (`size`, `data`, `length`, `knowledge`,
-`generation`). Set `size` to `sizeof(cogmaster_battery)`; a smaller tag is refused without
-changing the output or instance. Larger outputs retain their unknown tail. Before load it
-returns `COGMASTER_STATUS_ERR_NO_CONTENT`.
-
-`COGMASTER_BATTERY_KNOWN` exposes exactly the classified persistent bytes from load, before
-RAM is enabled. Its writable pointer and length stay fixed through frames, SOFT and POWER
-resets until the next successful load or destruction. Fresh bytes are FF. `COGMASTER_BATTERY_NONE`
-means known nonbattery content (including the test card); `COGMASTER_BATTERY_UNKNOWN` means
-unidentified persistence; `COGMASTER_BATTERY_UNSUPPORTED` means known battery with unsupported
-geometry. These three expose NULL, zero length and zero generation, never guessed storage.
-
-The uint64 generation starts at zero and increments once modulo 2^64 per CPU-mapped persistent
-write, including a same-value write. Reads, mapper register writes, disabled cartridge writes,
-volatile writes and direct host writes do not increment it. Both resets preserve bytes and
-generation. Internal states include and validate the generation, allowing only zero without
-supported persistence. Hosts compare generations with their last successful flush snapshot;
-acknowledge only after replacement succeeds. File persistence belongs to the host.
-
-API version 7 adds `cogmaster_import_battery(m, data, length)`. With supported media,
-lengths from zero through the exact span succeed: copy the supplied prefix and pad the
-suffix with FF. NULL is accepted only for an empty import. Overlapping sources inside
-the exposed span are supported. Import preserves generation, including repeated identical
-imports. Snapshot generation after loading a save, before running. Oversized input returns
-`COGMASTER_STATUS_ERR_SAVE_SIZE` before reading any source byte; NULL with a nonzero
-accepted length returns `COGMASTER_STATUS_ERR_ARGUMENT`. Before load, or for known-none
-media, import returns `COGMASTER_STATUS_ERR_NO_CONTENT`; unknown or unsupported persistence
-returns `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD`. Every refusal preserves all instance state.
-
-The core accepts exact-size wrong-game data: raw bytes carry no identity. Hosts must bound
-file reads to expected length plus one and keep save namespaces separate. For a missing
-file, leave the fresh FF bytes or import NULL with length zero. Neither operation marks
-the cartridge dirty.
-
-The libretro adapter exposes this same writable pointer and exact length through
-`retro_get_memory_data(RETRO_MEMORY_SAVE_RAM)` and `retro_get_memory_size` immediately
-after content load, before guest RAM enable. The frontend restores raw bytes through
-that pointer and owns file naming, reading and writing; direct restoration does not
-increment CPU-write generation. Frames and frontend Restart preserve the span; SMS
-Restart uses SOFT reset and Game Gear Restart uses POWER reset. Unload, failed reload
-and deinitialization make callbacks return NULL/0. A later successful load creates
-fresh FF storage; hosts must discard prior pointers even if the address is reused.
-Other memory IDs, known nonbattery, unknown persistence and unsupported geometry
-return NULL/0. The adapter performs no filesystem I/O.
-
-`libretro_saves` remains false and the core remains experimental in its `.info`:
-memory export and in-process continuation do not prove the deferred hosted save-file
-round trip or interoperability with another emulator.

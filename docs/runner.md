@@ -52,7 +52,7 @@ cogmaster-run --help | --version
 
 | Option | Meaning |
 |---|---|
-| `FILE`, `--rom FILE` | The cartridge image to run: a Master System or Game Gear ROM from 1,024 bytes to 1 MiB, optionally after a 512-byte copier header. Give one file. Without one, the test card shows. |
+| `FILE`, `--rom FILE` | The cartridge image to run: a Master System or Game Gear ROM from 1,024 bytes to 1 MiB, optionally after a 512-byte copier header; a body above 1 MiB is refused. Give one file. Without one, the test card shows. |
 | `--machine NAME` | `sms` selects SMS2, `sms1` selects SMS1, `gg` selects Game Gear. `auto` uses the public probe's hash metadata/header facts, then the `.gg` filename fallback. With no file, `auto` selects SMS2. |
 | `--region NAME` | Region and TV standard together: `ntsc-u` is export NTSC, `ntsc-j` Japanese NTSC and `pal` export PAL. `auto` uses probe metadata/header region when present, otherwise export NTSC. |
 | `--video-mode NAME` | `auto`, `sms` or `gg`; video selection is independent of the machine profile. |
@@ -79,7 +79,7 @@ includes a second file and any option this release does not have.
 The runner exits 77 and runs nothing when it cannot run what was asked:
 
 - a file larger than 64 MiB, refused before any of it is read;
-- an image smaller than 1,024 bytes or larger than 1 MiB plus a 512-byte copier header;
+- an image smaller than 1,024 bytes, or whose body after any 512-byte copier header is larger than 1 MiB;
 - a cartridge whose board (its bank-switching hardware) is not supported: the core runs cartridges with no mapper,
   the Sega mapper and the Codemasters mapper;
 - an 8 KiB image on the Game Gear, which is the X-Terminator cheat device rather than a game;

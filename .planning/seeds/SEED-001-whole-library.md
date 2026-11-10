@@ -48,3 +48,7 @@ drops `is_experimental`.
 
 The Light Phaser depends on the H-counter latch timing and the VDP's per-line model; schedule it after the
 v1.0 line timing has held for a phase.
+
+Review finding deferred here: P2 IN-05, `--probe` prints `ntsc-u` for `region_guess` when the probe reports unknown,
+so "no guess" cannot be told apart, and `--machine` and `--region` are ignored. It rides the Phase 6 plan because that
+plan touches `probe.c`.

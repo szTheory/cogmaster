@@ -1,0 +1,31 @@
+{
+  "ceilings": {
+    "docs.max_bytes": 38912,
+    "size.zip.libretro": 198656,
+    "size.zip.library": 228352,
+    "size.zip.runner": 253952,
+    "size.wasm": 1037312
+  },
+  "floors": {
+    "tests.ci": 422,
+    "tests.wasm32": 397
+  },
+  "reasons": [
+    {
+      "key": "size.zip.library",
+      "reason": "Measured from the main push run 42741490263: the largest library zip over six legs was 198021 bytes (windows-x64); the ceiling is that plus 15 percent, rounded up to a whole kilobyte."
+    },
+    {
+      "key": "size.zip.libretro",
+      "reason": "Measured from the main push run 42741490263: the largest libretro zip over six legs was 172530 bytes (windows-x64); the ceiling is that plus 15 percent, rounded up to a whole kilobyte."
+    },
+    {
+      "key": "size.zip.runner",
+      "reason": "Measured from the main push run 42741490263: the largest runner zip over six legs was 220520 bytes (windows-x64); the ceiling is that plus 15 percent, rounded up to a whole kilobyte."
+    },
+    {
+      "key": "size.wasm",
+      "reason": "Measured from the phase branch dispatch run 42758855565: the wasm32 runner module was 901343 bytes; the ceiling is that plus 15 percent, rounded up to a whole kilobyte."
+    }
+  ]
+}

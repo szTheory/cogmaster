@@ -275,8 +275,11 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out)
     info.tv = m->tv;
     info.audio_channels = m->machine == COGMASTER_MACHINE_GG ? 2u : 1u;
     info.fm = m->fm_unit ? COGMASTER_FM_ON : COGMASTER_FM_OFF;
-    /* NTSC: 179,208 ticks of 10,738,635 Hz per frame (ARCHITECTURE section
-       2). PAL: 214,092 ticks of 53,203,424 / 5 Hz (SMS-SYSTEM C2), reduced. */
+    /* NTSC: a frame is 262 lines of 684 ticks, 179,208 ticks. A tick is a
+       third of a Z80 cycle and the Z80 runs at 315/88 MHz, so the tick clock
+       is 315/88 MHz x 3 (about 10,738,636 Hz) and the frame rate reduces to
+       1,640,625 / 27,379 Hz (ARCHITECTURE section 2, SMS-AUDIO section 1).
+       PAL: 214,092 ticks of 53,203,424 / 5 Hz (SMS-SYSTEM C2), reduced. */
     if (m->tv == COGMASTER_TV_PAL) {
         info.fps_num = 13300856u;
         info.fps_den = 267615u;

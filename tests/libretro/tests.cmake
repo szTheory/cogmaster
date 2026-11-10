@@ -9,8 +9,7 @@ cogmaster_add_test(NAME libretro.vendored
   LABELS libretro TIMEOUT 10)
 
 if(TARGET cogmaster_libretro)
-  add_executable(cogmaster-test-screenshot ${PROJECT_SOURCE_DIR}/tests/retroarch/compare.c
-    ${PROJECT_SOURCE_DIR}/tests/retroarch/bmp.c)
+  add_executable(cogmaster-test-screenshot ${PROJECT_SOURCE_DIR}/tests/retroarch/compare.c)
   add_executable(cogmaster-test-screenshot-fixture ${PROJECT_SOURCE_DIR}/tests/retroarch/oracle.c)
   cogmaster_warnings(cogmaster-test-screenshot)
   cogmaster_warnings(cogmaster-test-screenshot-fixture)

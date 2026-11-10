@@ -5,8 +5,7 @@ up and checked, and how the pinned downloads move. Tests and CI are in [testing.
 
 Execution hands off to code review before phase verification. Keep review fixes to at most two rounds and
 allow one gap round only when new evidence warrants it. Test/tooling review findings become later seeds.
-Automate owned-fixture and frontend checks; no routine owner UAT is required. Performance remains report-only;
-arming it and promoting wasm32 remain the separate post-merge CI follow-up. Do not chain GSD steps.
+Automate owned-fixture and frontend checks; no routine owner UAT is required. Do not chain GSD steps.
 
 ## How a release happens
 
@@ -124,6 +123,40 @@ installation. It stops early if the variable is already set; `--force` creates a
 and delete the key file. Only the owner handles the key. To replace the App itself, rerun
 `scripts/setup-release-app.sh --force` and uninstall the old App.
 
+## Dependabot
+
+`.github/dependabot.yml` updates the pinned GitHub Actions weekly, with a seven-day cooldown and the `ci` commit
+prefix. Minor and patch updates arrive as one pull request in the `minor-and-patch` group; each major update is
+its own pull request and waits for review.
+
+`.github/workflows/dependabot-automerge.yml` runs on `pull_request` only, never checks code out, and acts only
+for `dependabot[bot]`. It enables squash auto-merge for the `minor-and-patch` group and for a single update whose
+old and new versions share a major; any other title is left for review, and the log says why. A required check
+still has to pass before the merge. It reuses the release App key and client ID described above, so the owner has
+nothing to set up. `policy.dependabot` fails a group that holds majors or is renamed, and a workflow that uses a
+privileged trigger or a checkout.
+
+## Weekly digest
+
+`.github/workflows/digest.yml` runs on Monday and reports on CI without anyone asking. It reads the week's
+workflow runs, each run's jobs and the earlier attempts of runs that later passed, and `scripts/digest.sh` turns
+them into the digest: run count and job minutes per workflow, the slowest job, flaky jobs (a job that failed an
+earlier attempt of a run that then passed), open `nightly` issues, and the attention items. An attention item is
+an open nightly issue, a red or seven-day-idle pull request, or a job whose slowest run of the week is more than
+half its `timeout-minutes`, which means the 2x margin is spent. The timeout join uses the display name
+`scripts/ci-durations.sh` prints (a matrix suffix removed), so `CI required` is matched, not its key
+`ci-required`.
+
+The digest goes to the job summary and into the one open issue labelled `digest`, which is rewritten each week
+and created when none is open. A comment is added only when the `attention:` count is above 0; a green week
+stays silent. To see the digest without writing anything, dispatch the workflow with `dry_run`:
+`gh workflow run digest.yml -f dry_run=true`. GitHub dispatches only a workflow that is on the default branch.
+
+A red pull request is read from the workflow runs on its head commit, not from `statusCheckRollup`, which would
+need the Checks read and Commit statuses read permissions. The job holds only contents read, actions read,
+pull requests read and issues write, and uses no App token. `policy.digest` fails a widened permission, a
+schedule other than one Monday cron, a missing `dry_run` input, an App token or a privileged trigger.
+
 ## Repository settings
 
 `scripts/apply-repo-settings.sh` holds the repository's settings as code, and `.github/rulesets/main.json` holds
@@ -150,6 +183,23 @@ description, the App's variable and secrets, and the live ruleset with the commi
 line per difference and exits 1 if there was any (`no drift on <repository>` otherwise). Run it at each tune-up
 and after changing anything on the repository's settings page. Change a setting in the script, not by hand, then
 apply it.
+
+## Quality ceilings and floors
+
+`quality.json` holds the measured limits: ceilings `docs.max_bytes`, `size.zip.library`, `size.zip.runner`,
+`size.zip.libretro` and `size.wasm`, floors `tests.ci` and `tests.wasm32`, and a `reasons` list of `{key, reason}`
+entries. `tests/cmake/quality.cmake` checks a measured value against its key and fails naming it. Each limit is
+enforced in one place:
+
+- the `ci` preset checks `docs.max_bytes` (through `docs.budgets`) and the two test-count floors (`policy.quality`);
+- each build leg's `Size ceilings` step checks its three zips after packaging;
+- the `wasm32` lane's `Size ceiling` step checks the runner module.
+
+Each size step also runs a control that an oversize value exits 1 naming the key. Numbers are tightened by hand at a
+tune-up, to about 15 percent above the largest value measured over the six legs. On Linux x64 the build job compares
+the file with the base branch's copy: a ceiling that rises or goes, or a floor that falls or goes, fails unless the
+head's `reasons` holds an entry for that key whose text the base does not already hold. A pull request whose base
+has no `quality.json` passes. Tightening needs no reason.
 
 ## Pinned downloads
 

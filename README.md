@@ -31,29 +31,35 @@ On other systems, download `cogmaster-libretro-<os>-<arch>.zip` from the
 - macOS 10.13+ (Intel) or 11+ (Apple Silicon).
 - Windows 10+ x64/arm64, with no runtime install.
 
-## Quick start: RetroArch
+## Play a game
 
-1. Main Menu → Load Core → **Sega - MS/GG (cogmaster)**.
-2. Main Menu → **Start Core**.
-3. The test card appears: a white border, a red band at the top, a green band at the bottom, a blue band on the
-   right, a checkerboard on the left and a chart of the console's 64 colours.
-   [docs/runner.md](docs/runner.md#test-card) explains what each part checks.
+cogmaster ships no BIOS and no game; bring a `.sms` or `.gg` file you own, no BIOS is needed.
 
-## Quick start: runner
+In RetroArch: Main Menu → Load Core → **Sega - MS/GG (cogmaster)**, then Load Content and pick your file. Start
+Core with no content shows the built-in test card instead; [docs/runner.md](docs/runner.md#test-card) explains
+what each part of it checks.
 
-Download `cogmaster-runner-<os>-<arch>.zip` from the same release, unzip it, and run 60 frames:
+With the runner, download `cogmaster-runner-<os>-<arch>.zip` from the same release, unzip it, and run 600 frames
+of your file:
 
 ```sh
-bin/cogmaster-run --frames 60 --hash
+bin/cogmaster-run --frames 600 --hash game.sms
 ```
 
 It prints the SHA-256 of the last frame's picture, the same on every platform:
 
 ```text
-frame 60 sha256 e14d77ce564f0b1498f703134e82e6c1fc718a27c94e49b5a35b95a981857ae7
+frame 600 sha256 <64 hex digits>
 ```
 
-Add `--machine gg` for the Game Gear card, and `--png 60:card.png` to write the picture to a PNG file.
+Add `--png 600:shot.png` to write the picture to a PNG file. Exit status 77 means the cartridge, its size or the
+machine is not supported; see [docs/runner.md](docs/runner.md#exit-status).
+
+With no file, the runner shows the test card, and `--machine gg` picks the Game Gear card:
+
+```sh
+bin/cogmaster-run --frames 60 --hash
+```
 
 ## Documentation
 

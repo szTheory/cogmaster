@@ -4,12 +4,15 @@ check|tests/cmake/budgets.cmake|Document and repository source budgets
 check|tests/cmake/ci_required.cmake|Workflow required-job policy and its negative cases
 check|tests/cmake/expect_fail.cmake|Shared exact exit status and tolerant diagnostic negative-control helper
 behavior|tests/cmake/floor.cmake|Examines packaged deliverables for loader compatibility on supported operating systems
+check|tests/cmake/quality.cmake|Quality ceilings and floors read from quality.json with string(JSON)
+check|tests/cmake/readme.cmake|README play steps: the command runs, its printed line, ROM extensions and the no-BIOS sentence
 check|tests/cmake/repository.cmake|Shared check dispatch and environment forwarding
 check|tests/cmake/repository.sh|Shared scanners and repository policy predicate implementations
 check|cmake/CogmasterTests.cmake|Shared test registration and exact inventory checker, counted in full
 check|scripts/hygiene.sh|Tree, commit and history privacy, licence, identity and branch policy
 check|scripts/check-title.sh|Conventional title, release classification and CI skip policy
 operation|scripts/classify-changes.sh|Routes CI jobs for changed input rather than asserting repository content
+operation|scripts/ci-durations.sh|Reads remote run data to size timeouts and never fails on repository content
 check|.githooks/pre-commit|Shared staged-tree policy entry point
 check|.githooks/pre-push|Shared history policy entry point
 build|cmake/WlaDx.cmake|Pinned external assembler bootstrap and fixture assembly operations
@@ -38,3 +41,4 @@ check|scripts/compat-ratchet.sh|Trusted compatibility judge entry point with adj
 check|scripts/compat-update.sh|Explicit public ledger projection reuses the fully counted CSV parser and immutable CC0 identities
 operation|scripts/library.sh|Enumerates private local files and orchestrates bounded executable observations without asserting repository content
 operation|scripts/library.cmake|Probes and executes each local image against accepted expectations and writes private local results
+operation|scripts/digest.sh|Formats remote run data for the weekly digest and reads workflow timeouts; never fails on repository content

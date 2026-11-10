@@ -175,4 +175,4 @@ The log is allocated once, by the first load, through your allocator. Nothing is
 The test card is silent and follows the same cadence.
 
 A real RetroArch session records this sound: the hosted job checks that a `psg_sweep` recording is not silent
-(see [testing](testing.md#hosted-retroarch)).
+(see [hosted](hosted.md#hosted-retroarch)).

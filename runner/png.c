@@ -108,8 +108,8 @@ size_t cogmaster__png_write(uint8_t *out, size_t cap, const uint8_t *rgb, uint32
     ihdr[12] = 0;
     chunk(out, &at, "IHDR", ihdr, 13);
 
-    /* IDAT: length and type, then the zlib header: CM 8 with a 256-byte
-       window (0x78) and FLEVEL 0 with FCHECK making 0x7801 a multiple of 31
+    /* IDAT: length and type, then the zlib header: CM 8 with a 32 KiB
+       window (CINFO 7, 0x78) and FLEVEL 0 with FCHECK making 0x7801 a multiple of 31
        (RFC 1950 section 2.2). */
     size_t idat_start = at;
     uint8_t b[8];

@@ -42,3 +42,15 @@ within the e2e line budget.
 ## Notes
 
 Keep persistent saves, snapshots and movies as three formats with separate version rules (sibling lesson).
+
+Review findings deferred here, to be settled with the state format:
+
+- P1 IN-07: the state checksum starts at byte 64, so the header's `frame` and `ticks` are guarded only by
+  `ticks == frame * 179208`, and `fault_frame > frame` is accepted. Extend the CRC over the header with the CRC field
+  read as zero, and check `fault_frame <= frame`, before a public state API freezes the format.
+- P2 IN-02: `bus.vdp_at` is saved but never read; drop it or use it when the state visitor is rewritten.
+- P2 IN-06: a saved fault record accepts values the core never records; validate it in full with the next
+  state-format change.
+- P4 IN-04: loading a state keeps the previous timeline's pending trace records, which breaks the per-source
+  monotonic rule `docs/audio.md` documents. In the apply branch of `synth_io` also clear `trace_pending` and
+  `trace_dropped`, and say so in `docs/audio.md`, before a public state load ships.

@@ -1,8 +1,17 @@
 # Faults prevented: oversized documentation/corpus and unclassified or disproportionate repository checks.
+# The docs cap lives in quality.json, the one place ceilings and floors are kept.
+set(quality "")
+if(EXISTS "${ROOT}/quality.json")
+  file(READ "${ROOT}/quality.json" quality)
+endif()
+string(JSON docs_cap ERROR_VARIABLE quality_error GET "${quality}" ceilings docs.max_bytes)
+if(quality_error)
+  message(FATAL_ERROR "budgets: ${ROOT}/quality.json has no ceilings docs.max_bytes: ${quality_error}")
+endif()
 set(checks README.md=12288 include/cogmaster.h=24576)
 file(GLOB docs RELATIVE "${ROOT}" "${ROOT}/docs/*.md")
 foreach(doc IN LISTS docs)
-  list(APPEND checks "${doc}=40960")
+  list(APPEND checks "${doc}=${docs_cap}")
 endforeach()
 foreach(check IN LISTS checks)
   string(REGEX MATCH "^(.*)=([0-9]+)$" unused "${check}")

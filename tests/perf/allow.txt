@@ -1,7 +1,8 @@
 # Reviewed exceptions to the instructions-per-frame gate, one line each:
 #   <rom> <max % x 100> <expiry YYYY-MM-DD> <reason>
-# Example: "testcard 250 2026-12-01 the new mixer runs every scanline" lets the
-# test card slow down by up to 2.50 % until 1 December. A line applies from the
+# Example: "boot_to_play 250 2026-12-01 the new mixer runs every scanline" lets the
+# playing fixture slow down by up to 2.50 % until 1 December. A line applies from the
 # day it is checked through its expiry, which must be at most 60 days away. It
 # is reviewed in the pull request that needs it and removed after that merges.
-boot_to_play 357 2027-01-07 synthesised sound runs every frame
+# Phases 6 to 9: a pull request that adds more than 1 % on a hot path carries its own
+# line (percentage, expiry, reason naming the feature), deleted in the next phase's first commit.
