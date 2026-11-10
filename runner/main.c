@@ -246,7 +246,9 @@ static int load_status(cogmaster_status st, size_t image_size)
     case COGMASTER_STATUS_OK:
         return COGMASTER__EXIT_OK;
     case COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE:
-        fprintf(stderr, "cogmaster-run: unsupported: an image of %lu bytes; 1024 to 1049088 load\n",
+        fprintf(stderr,
+                "cogmaster-run: unsupported: an image of %lu bytes; the body after any 512-byte copier header "
+                "must be 1024 bytes to 1 MiB\n",
                 (unsigned long)image_size);
         return COGMASTER__EXIT_REFUSED;
     case COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD:
