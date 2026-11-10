@@ -25,8 +25,8 @@ Requirements for this milestone. Each maps to one roadmap phase. Scope decisions
 - [x] **MAP-01**: The cartridge generator maps every pinned MAME slot to a board or to an explicit unsupported-by-design list, fails on an unmapped slot, and prints a count per slot
 - [x] **MAP-02**: The hash table row holds a binary SHA-1 and fixed-width facts with titles moved to the ledger side, and `cartdb.c.o` is under 100 KB
 - [x] **MAP-03**: A Korean `$A000`, Hicom, Zemina, Nemesis or `korean_nb` cartridge in the CC0 lists loads and plays with no setting
-- [x] **MAP-04**: A Janggun or 4PAK cartridge plays, or its ledger row is `unsupported` and names why
-- [x] **MAP-05**: Seo Jin and 188-in-1 appear as `unsupported` rows that name what fails, and the runner exits 77 for them
+- [x] **MAP-04**: A Janggun or 4PAK cartridge plays, or its catalog row is `unsupported` and names why
+- [x] **MAP-05**: Seo Jin and 188-in-1 appear as `unsupported` catalog rows that name what fails, and the runner exits 77 for them
 - [x] **MAP-06**: A valid `TMR SEGA` header outranks the board scan, the scan needs a threshold and a margin, a tie refuses naming the candidate, and `--probe` reports `board_source`
 - [x] **MAP-07**: Every new board has an exhaustive register-write and address-read test under ASan, and a documented register write records no fault
 - [ ] **MAP-08**: No existing frame or audio hash changes, shown by the eight-lane equality job

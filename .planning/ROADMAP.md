@@ -78,7 +78,7 @@ Plans:
 **Requirements**: MAP-01, MAP-02, MAP-03, MAP-04, MAP-05, MAP-06, MAP-07, MAP-08
 **Success Criteria** (what must be TRUE):
   1. The cartridge generator prints a count per MAME slot, maps every pinned slot to a board or to the unsupported-by-design list, and fails when fed an unmapped slot; the hash table holds binary SHA-1 rows with titles on the ledger side, and a size check keeps `cartdb.c.o` under 100 KB (MAP-01, MAP-02).
-  2. Korean `$A000`, Hicom, Zemina, Nemesis and `korean_nb` images play through the runner and the libretro core with no option set; a Janggun or 4PAK image plays or its ledger row is `unsupported` with a reason; Seo Jin and 188-in-1 rows are `unsupported`, name what fails, and the runner exits 77 for them (MAP-03, MAP-04, MAP-05).
+  2. Korean `$A000`, Hicom, Zemina, Nemesis and `korean_nb` images play through the runner and the libretro core with no option set; a Janggun or 4PAK image plays or its catalog row is `unsupported` with a reason; Seo Jin and 188-in-1 rows are `unsupported`, name what fails, and the runner exits 77 for them (MAP-03, MAP-04, MAP-05).
   3. `cogmaster-run --probe` reports `board_source`; a decoy with a valid `TMR SEGA` header and Korean-looking bytes stays a Sega board, a scan below threshold or margin does not pick a Korean board, and a tie refuses with the candidate named (MAP-06).
   4. Each new board passes an exhaustive register-write and address-read test under ASan, and a test shows its documented register writes record no fault (MAP-07).
   5. The eight-lane equality job shows every frame and audio hash that existed before the phase unchanged (MAP-08).
