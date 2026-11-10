@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 5
 current_phase_name: Tune-up
 status: executing
-stopped_at: Completed 05-10-PLAN.md (runtime Claude Code, model Sonnet 5.5)
-last_updated: "2026-11-10T05:17:28.500Z"
+stopped_at: Completed 05-11-PLAN.md (runtime Claude Code, model Sonnet 5.5)
+last_updated: "2026-11-10T05:20:33.164Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 5 execution started
-state_head: c32222c9a4b7a278db7744b6dab856081023386e
+state_head: 165f34497108d5c3e8aa39e4e62df89df6732480
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 14
-  completed_plans: 10
+  completed_plans: 11
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 5 (Tune-up) — EXECUTING
-Plan: 11 of 14
+Plan: 12 of 14
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 5 execution started
 
@@ -133,6 +133,7 @@ Progress: [░░░░░░░░░░] 0% of v2.0
 | Phase 05 P06 | 70min | 3 tasks | 8 files |
 | Phase 05 P09 | 12min | 2 tasks | 7 files |
 | Phase 05 P10 | 20 min | 2 tasks | 7 files |
+| Phase 05 P11 | 12 min | 1 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -153,6 +154,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 05]: 05-06: ratchet fixtures are measured in lines because a file written on Windows has CRLF line ends
 - [Phase 05]: 05-09: P1 WR-02 and IN-04 deferred to SEED-007 under AGENTS rule 7, P1 WR-04 accepted risk, no script changed; P4 WR-02 recorded fixed from 04-REVIEW-FIX.md
 - [Phase 05]: README check runs against the built boot_to_play.sms fixture (owned image, digest in tests/built/expected.txt), not a tests/roms fixture: present on every fixtures lane, no ROM bytes
+- [Phase 05]: 05-11: the Dependabot exception in CI required is keyed on the pull request author and pinned by a control that widens it to any author; the control matches the diagnostic up to 'want fail' because CMake wraps the full line
 
 ### Pending Todos
 
@@ -220,6 +222,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-10 | Execute phase 5 plan 05-07 (gsd-execute-phase 05); cart probe refuses a body over 1 MiB after the copier-header strip, core load oracle follows the rule, docs say body not total; 1 task, 4 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Execute phase 5 plan 05-04 (gsd-execute-phase 05); wasm32 promoted into hash-equality (eight files) and CI required after 12 equal main runs, report-only exemption deleted; 2 tasks, 1 commit | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Execute phase 5 plan 05-09 (gsd-execute-phase 05); phase 1, 2 and 4 review dispositions settled (open 0), deferred findings seeded in SEED-001, 002, 004 and 007, no script changed; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Execute phase 5 plan 05-11 (gsd-execute-phase 05); rehearsal skip and CI required clause for the Dependabot author with an actor control; 1 task, 1 commit | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -241,8 +244,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T05:17:28.474Z
-Stopped at: Completed 05-10-PLAN.md (runtime Claude Code, model Sonnet 5.5)
+Last session: 2026-11-10T05:20:33.142Z
+Stopped at: Completed 05-11-PLAN.md (runtime Claude Code, model Sonnet 5.5)
 Resume file: None
 
 ## Operator Next Steps
