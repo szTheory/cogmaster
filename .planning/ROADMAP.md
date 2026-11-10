@@ -33,7 +33,7 @@ first. PAL and Japanese FM rows need the ledger's `tv` split and an audio predic
 `is_experimental` exit come last, since they are the phase most able to overclaim. Every phase is one branch, one
 pull request and one automated release.
 
-- [ ] **Phase 5: Tune-up** - The v1.0 debt merged away: measured timeouts, an armed perf gate, `quality.json`, budget headroom, the README's ROM step and the weekly digest
+- [x] **Phase 5: Tune-up** - The v1.0 debt merged away: measured timeouts, an armed perf gate, `quality.json`, budget headroom, the README's ROM step and the weekly digest (completed 2026-11-10)
 - [ ] **Phase 6: Korean cartridges play** - The remaining mapper boards load and play with no setting, detected hash-first, with no shipped hash moving
 - [ ] **Phase 7: Saves survive a restart** - 93C46 EEPROM and battery saves persist through the runner and RetroArch, with `.srm` interop only in measured layouts
 - [ ] **Phase 8: Sports Pad, Paddle and 3-D glasses** - Pin-level ports and a grown input struct make the pad-device and 3-D titles play, with replays matching
@@ -54,7 +54,7 @@ pull request and one automated release.
   3. The `quality.json` ceilings and floors are enforced where each can be measured, each with a negative control that fails: `cmake --workflow --preset ci` checks the test-count floors and the docs cap, each `build` leg checks its zip sizes after packaging, and the wasm32 lane checks the wasm size; the `ci` preset also runs `policy.lessons_unique` and `policy.dependabot`, each with a negative control; the Dependabot configuration updates GitHub Actions weekly with minor and patch grouped (TUNE-04, TUNE-09).
   4. A scheduled weekly digest reports CI duration, flaky tests and open nightly issues and names the slowest job with no one asking; the nightly lanes have run on the sound code, and a forced nightly failure opens one issue that the next passing run closes, each recorded as a run URL (TUNE-03, TUNE-08).
   5. The budget test shows every `docs/*.md` file more than 2 KiB under its cap and `tests/retroarch` at least 20 lines under 300; the README says how to load a ROM and states in one sentence that no BIOS or game is shipped; every open review finding from phases 1, 2 and 4 has a fixed, closed-with-reason or seeded disposition (TUNE-05, TUNE-06, TUNE-07).
-**Plans**: 14/14 plans executed
+**Plans**: 14/14 plans complete
 
 Plans:
 - [x] 05-01-PLAN.md — perf control runs on main first; docs split into topic files (TUNE-02, TUNE-05)
@@ -163,7 +163,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 5. Tune-up | v2.0 | 14/14 | In Progress | - |
+| 5. Tune-up | v2.0 | 14/14 | Complete    | 2026-11-10 |
 | 6. Korean cartridges play | v2.0 | 0/TBD | Not started | - |
 | 7. Saves survive a restart | v2.0 | 0/TBD | Not started | - |
 | 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 0/TBD | Not started | - |
