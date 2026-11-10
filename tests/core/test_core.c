@@ -1052,7 +1052,7 @@ static void test_load_sizes(void)
     if (m == NULL) {
         return;
     }
-    static const size_t refused[] = {0u, 1u, IMAGE_MIN - 1u, IMAGE_MAX + 1u, IMAGE_MAX + 64u};
+    static const size_t refused[] = {0u, 1u, IMAGE_MIN - 1u, 1048576u + 1u, IMAGE_MAX - 1u, IMAGE_MAX + 1u, IMAGE_MAX + 64u};
     for (size_t i = 0; i < sizeof refused / sizeof refused[0]; i++) {
         cogmaster_media media = image_media(big, refused[i], COGMASTER_MACHINE_SMS2);
         expect_status("load", (uint32_t)refused[i], cogmaster_load(m, &media),
@@ -1128,7 +1128,9 @@ static void test_load_rejected_unchanged(void)
         uint32_t region = r2 % 8u == 0u ? (uint32_t)(r2 >> 32) : (uint32_t)((r2 >> 8) % 4u);
         uint32_t tv = (r2 >> 16) % 8u == 0u ? (uint32_t)(r2 >> 24) : (uint32_t)((r2 >> 20) % 4u);
         cogmaster_status want = COGMASTER_STATUS_OK;
-        if (n < IMAGE_MIN || n > IMAGE_MAX) {
+        /* The body is what follows a copier header, and it is at most 1 MiB. */
+        size_t body = (n & (PAGE - 1u)) == 512u ? n - 512u : n;
+        if (n < IMAGE_MIN || body > 1048576u) {
             want = COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE;
         } else if (machine > COGMASTER_MACHINE_SMS1 || region > COGMASTER_REGION_JAPAN ||
                    tv > COGMASTER_TV_PAL) {
