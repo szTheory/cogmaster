@@ -11,10 +11,10 @@
 extern "C" {
 #endif
 
-#define COGMASTER_API_VERSION 9
+#define COGMASTER_API_VERSION 10
 #define COGMASTER_ABI_VERSION 1
-#define COGMASTER_BEHAVIOUR_REVISION 11
-#define COGMASTER_STATE_FORMAT_VERSION 11
+#define COGMASTER_BEHAVIOUR_REVISION 12
+#define COGMASTER_STATE_FORMAT_VERSION 12
 
 typedef uint32_t cogmaster_status;
 #define COGMASTER_STATUS_OK 0u
@@ -72,6 +72,17 @@ typedef struct cogmaster_battery {
 #define COGMASTER_BOARD_ROM_ONLY 1u
 #define COGMASTER_BOARD_SEGA 2u
 #define COGMASTER_BOARD_CODEMASTERS 3u
+#define COGMASTER_BOARD_KOREAN 4u
+#define COGMASTER_BOARD_KOREAN_NB 5u
+#define COGMASTER_BOARD_HICOM 6u
+#define COGMASTER_BOARD_ZEMINA 7u
+#define COGMASTER_BOARD_NEMESIS 8u
+#define COGMASTER_BOARD_4PAK 9u
+
+#define COGMASTER_BOARD_SOURCE_DB 1u
+#define COGMASTER_BOARD_SOURCE_HEADER 2u
+#define COGMASTER_BOARD_SOURCE_HEURISTIC 3u
+#define COGMASTER_BOARD_SOURCE_DEFAULT 4u
 
 #define COGMASTER_SPACE_BUS 0u
 
@@ -228,6 +239,11 @@ typedef struct cogmaster_cart_info {
     uint32_t persistence, persistent_size, persistence_geometry;
     uint32_t video_mode;
     char sha1[41], title[256];
+    uint32_t board_source;    /* COGMASTER_BOARD_SOURCE_*, 0 when no board was guessed */
+    uint32_t board_candidate; /* board the scan pointed at, 0 for none */
+    uint32_t scan_sega, scan_candidate, scan_runner_up; /* store-site counts */
+    uint32_t unsupported_id;      /* slot id of an unsupported-by-design row, 0 for none */
+    char unsupported_reason[128]; /* "<slot>: <reason>", empty for none */
 } cogmaster_cart_info;
 
 cogmaster_status cogmaster_get_versions(cogmaster_versions *out);

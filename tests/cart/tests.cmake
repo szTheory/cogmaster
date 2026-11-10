@@ -8,6 +8,7 @@ cogmaster_add_test(NAME cart.fixture_identity COMMAND cogmaster-test-cartdb
 target_include_directories(cogmaster-test-cartdb PRIVATE ${PROJECT_SOURCE_DIR}/src)
 add_executable(cogmaster-cartdb ${PROJECT_SOURCE_DIR}/tools/cartdb.c)
 cogmaster_warnings(cogmaster-cartdb)
+target_include_directories(cogmaster-cartdb PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR}/generated)
 string(REPLACE ";" "$<SEMICOLON>" cartdb_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
 # Fault prevented: filename classification and a changed assembler output losing battery metadata.
 cogmaster_add_test(NAME cart.fixture_hash COMMAND ${CMAKE_COMMAND}
@@ -25,6 +26,8 @@ cogmaster_add_test(NAME cart.fixture_wrong_hash COMMAND ${CMAKE_COMMAND}
 # Fault prevented: guessed whole-image identities, conflicting facts and metadata parser drift.
 cogmaster_add_test(NAME cart.generator COMMAND ${CMAKE_COMMAND}
   -DGEN=$<TARGET_FILE:cogmaster-cartdb> -DOUT=${PROJECT_BINARY_DIR}/tests/cartdb
+  -DFACT=${CMAKE_CURRENT_LIST_DIR}/fixture_facts.txt
+  -DPINS=${PROJECT_SOURCE_DIR}/pins.txt -DTABLE=${PROJECT_SOURCE_DIR}/src/cartdb.inc
   "-DEMULATOR=${cartdb_emulator}" -P ${CMAKE_CURRENT_LIST_DIR}/generator.cmake
   LABELS cart portable TIMEOUT 10)
 add_executable(cogmaster-test-cart ${CMAKE_CURRENT_LIST_DIR}/test_cart.c)
@@ -34,9 +37,10 @@ set_target_properties(cogmaster-test-cart PROPERTIES
 cogmaster_warnings(cogmaster-test-cart)
 
 # Fault prevented: an image guessed onto the wrong board, a header read from
-# the wrong place or past the image, or a probe whose answer depends on
+# the wrong place or past the image, a Sega game turned Korean by data bytes
+# that merely look like register stores, or a probe whose answer depends on
 # anything but the bytes, so a host's probe and the load disagree.
-foreach(case IN ITEMS probe.branches probe.pure probe.sizes)
+foreach(case IN ITEMS probe.branches probe.pure probe.scan probe.sizes)
   # Timeout: 10 s floor; 2 x 0.18 s, slowest of 2 runs, run 39376644025, provisional.
   cogmaster_add_test(NAME cart.${case} COMMAND cogmaster-test-cart ${case}
     LABELS cart portable TIMEOUT 10)

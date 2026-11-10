@@ -120,6 +120,28 @@ if(TARGET cogmaster_libretro)
           -P ${PROJECT_SOURCE_DIR}/tests/fixtures/tests.cmake
         LABELS libretro portable TIMEOUT 10)
     endforeach()
+    # Fault prevented: the core refusing or mis-paging a Korean board the runner plays: it loads the
+    # headerless image with no option set and must show the runner's frame.
+    set(korean_frame -DCASE=frame -DNAME=mapper_korean
+      -DIMAGE=${PROJECT_BINARY_DIR}/fixtures/mapper_korean.sms
+      -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+      -DRUN=$<TARGET_FILE:cogmaster-run> -DHOST=$<TARGET_FILE:cogmaster-test-libretro-host>
+      -DMODULE=$<TARGET_FILE:cogmaster_libretro>)
+    cogmaster_add_test(NAME libretro.host.korean
+      COMMAND ${CMAKE_COMMAND} ${korean_frame} "-DEMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}"
+        -P ${PROJECT_SOURCE_DIR}/tests/fixtures/tests.cmake
+      LABELS libretro portable TIMEOUT 10)
+    # Fault prevented: a frame mode that passes whatever frame the core draws. The same case with a
+    # digest of zeros must fail naming the frame digest.
+    string(REPLACE ";" "\;" korean_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
+    set(korean_cmd ${CMAKE_COMMAND} ${korean_frame} "-DEMULATOR=${korean_emulator}" -DWRONG=1
+      -P ${PROJECT_SOURCE_DIR}/tests/fixtures/tests.cmake)
+    string(REPLACE ";" "$<SEMICOLON>" korean_cmd "${korean_cmd}")
+    cogmaster_add_test(NAME libretro.host.korean_control
+      COMMAND ${CMAKE_COMMAND} "-DCMD=${korean_cmd}" -DCODE=1 "-DREGEX=frame digest"
+        -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+      LABELS libretro portable TIMEOUT 10)
+    set_tests_properties(libretro.host.korean_control PROPERTIES DEPENDS libretro.host.korean)
     # Fault prevented: the FM option attaching, detaching or refusing the unit differently from the
     # library's setting, or failing the load of Game Gear content.
     cogmaster_add_test(NAME libretro.host.fm_option

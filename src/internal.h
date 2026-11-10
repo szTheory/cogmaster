@@ -147,7 +147,13 @@ enum {
     COGMASTER__BOARD_NONE = 0,
     COGMASTER__BOARD_ROM_ONLY = COGMASTER_BOARD_ROM_ONLY,
     COGMASTER__BOARD_SEGA = COGMASTER_BOARD_SEGA,
-    COGMASTER__BOARD_CODEMASTERS = COGMASTER_BOARD_CODEMASTERS
+    COGMASTER__BOARD_CODEMASTERS = COGMASTER_BOARD_CODEMASTERS,
+    COGMASTER__BOARD_KOREAN = COGMASTER_BOARD_KOREAN,
+    COGMASTER__BOARD_KOREAN_NB = COGMASTER_BOARD_KOREAN_NB,
+    COGMASTER__BOARD_HICOM = COGMASTER_BOARD_HICOM,
+    COGMASTER__BOARD_ZEMINA = COGMASTER_BOARD_ZEMINA,
+    COGMASTER__BOARD_NEMESIS = COGMASTER_BOARD_NEMESIS,
+    COGMASTER__BOARD_4PAK = COGMASTER_BOARD_4PAK
 };
 
 /* The mapper's registers. The board is the cartridge's; these are what the
@@ -155,6 +161,11 @@ enum {
 struct cogmaster__mapper {
     uint8_t ctrl;    /* Sega: $FFFC. Codemasters: $80 while RAM is at $A000. */
     uint8_t bank[3]; /* the bank in each 16 KiB slot, each below the page count */
+    /* boards 4 and up: the 8 KiB bank in each of the six slots of $0000-$BFFF,
+       each below twice the page count */
+    uint8_t bank8[6];
+    /* boards 4 and up: register values a board needs to recompute a bank */
+    uint8_t raw[2];
 };
 
 /* The I/O chip's ports as the CPU last wrote them (SMS-SYSTEM section 4). */
@@ -560,6 +571,24 @@ uint16_t cogmaster__vdp_backdrop(const cogmaster *m);
    only image[0, n). */
 cogmaster_status cogmaster__cart_probe(const void *image, size_t n, cogmaster_cart_info *out);
 
+/* Store sites to each board's registers found by the board scan: count[]
+   indexed by the family. Sega is the mapper registers; the others are the
+   boards the scan can tell from a store alone. */
+enum {
+    COGMASTER__SCAN_SEGA,
+    COGMASTER__SCAN_KOREAN,
+    COGMASTER__SCAN_ZEMINA,
+    COGMASTER__SCAN_4PAK,
+    COGMASTER__SCAN_JANGGUN,
+    COGMASTER__SCAN_FAMILIES
+};
+struct cogmaster__scan {
+    uint32_t count[COGMASTER__SCAN_FAMILIES];
+};
+/* Counts LD (nn),A stores at instruction boundaries over the first 32 KiB of
+   b[0, body), by family. Reads only that span; no allocation. */
+void cogmaster__cart_scan(const uint8_t *b, size_t body, struct cogmaster__scan *out);
+
 /* Copies a probed image into a new allocator buffer described by out, which
    the caller installs with cogmaster__cart_install. ERR_NO_MEMORY changes
    nothing. */
@@ -577,6 +606,11 @@ void cogmaster__battery_write(cogmaster *m, uint32_t offset, uint8_t value);
 uint8_t cogmaster__mapper_read(const cogmaster *m, uint16_t addr);
 void cogmaster__mapper_write(cogmaster *m, uint16_t addr, uint8_t v);
 void cogmaster__mapper_reset(cogmaster *m);
+/* The boards outside the mapper's three switch arms: same contract, same
+   address range. reset runs after the registers are cleared. */
+uint8_t cogmaster__mapext_read(const cogmaster *m, uint16_t addr);
+void cogmaster__mapext_write(cogmaster *m, uint16_t addr, uint8_t v);
+void cogmaster__mapext_reset(cogmaster *m);
 
 /* The I/O ports outside the VDP's: the bus calls these for every other
    port address (the full 16-bit address). open_bus returns what an undriven

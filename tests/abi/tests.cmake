@@ -173,3 +173,10 @@ add_executable(cogmaster-test-api-v9 ${PROJECT_SOURCE_DIR}/tests/api/v9.c)
 target_link_libraries(cogmaster-test-api-v9 PRIVATE cogmaster::cogmaster)
 cogmaster_warnings(cogmaster-test-api-v9)
 cogmaster_add_test(NAME abi.api_v9 COMMAND cogmaster-test-api-v9 LABELS abi portable TIMEOUT 10)
+
+# Fault prevented: the board constants or the appended cart_info fields moving the version 9
+# layout, or a caller with the older size having an appended byte written.
+add_executable(cogmaster-test-api-v10 ${PROJECT_SOURCE_DIR}/tests/api/v10.c)
+target_link_libraries(cogmaster-test-api-v10 PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-api-v10)
+cogmaster_add_test(NAME abi.api_v10 COMMAND cogmaster-test-api-v10 LABELS abi portable TIMEOUT 10)

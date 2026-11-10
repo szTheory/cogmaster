@@ -16,10 +16,6 @@ function day(s, a,y,m,d,n,i) {
 function quote(s) { gsub(/"/,"\"\"",s); return "\"" s "\"" }
 function md(s) { gsub(/&/,"\&amp;",s); gsub(/</,"\&lt;",s); gsub(/>/,"\&gt;",s); gsub(/\|/,"\&#124;",s); return s }
 function hex(s, n,i,d) { n=0; s=toupper(s); for(i=1;i<=length(s);i++) { d=index("0123456789ABCDEF",substr(s,i,1))-1; if(d<0) bad(); n=n*16+d } return n }
-function title(s, a,n) {
-  while(match(s,/\\[0-7][0-7][0-7]/)) { a=substr(s,RSTART+1,3); n=substr(a,1,1)*64+substr(a,2,1)*8+substr(a,3,1); s=substr(s,1,RSTART-1) sprintf("%c",n) substr(s,RSTART+4) }
-  gsub(/\\"/,"\"",s); gsub(/\\\\/,"\\",s); return s
-}
 function predicate(s, machine, p,n,a,b,t,frame,address,value,cfg) {
   cfg="cfg:video=" (machine=="gg"?"gg":"sms") ";port1=pad;port2=pad;script=none;sha256=" empty;
   if(index(s,"cfg:")==1) { n=index(s,"/"); if(!n) bad(); cfg=substr(s,1,n-1); s=substr(s,n+1) }
@@ -34,9 +30,7 @@ function predicate(s, machine, p,n,a,b,t,frame,address,value,cfg) {
   return cfg "/" parameter (value!=""?"=" value:"")
 }
 BEGIN { header="id,title,machine,region,mapper,predicate,status,evidence,date"; empty="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"; if(mode!="normalize" && mode!="cases" && mode!="docs" && mode!="ratchet" && mode!="results" && mode!="update") bad();
-  if(mode=="update") while((getline line < ENVIRON["COMPAT_CATALOG"])>0) {
-    if(line !~ /,1u},$/) continue; id=substr(line,3,40); text=substr(line,45); if(match(text,/^"([^"\\]|\\.)*"/)) titles[id]=title(substr(text,2,RLENGTH-2));
-  }
+  if(mode=="update") while((getline line < ENVIRON["COMPAT_CATALOG"])>0) { split(line,t,"\t"); if(length(t[1])==40 && t[1] ~ /^[0-9a-f]+$/) titles[t[1]]=t[5] }
 }
 {
   sub(/\r$/,"" ); if(length($0)>4096 || $0=="" || $0 ~ /[[:cntrl:]]/ || FNR>4097) bad();

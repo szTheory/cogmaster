@@ -121,6 +121,44 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(NOT rc STREQUAL "0" OR NOT out MATCHES "(^|\n)checksum_ok=1\n")
       message(FATAL_ERROR "--probe ${IMAGE}: expected exit 0 and checksum_ok=1, got exit ${rc}\n${out}")
     endif()
+  elseif(CASE STREQUAL "frame")
+    # The core, with no option set, shows the frame the runner shows for IMAGE after 120 runs. WRONG
+    # replaces the runner's digest with zeros of its length, for the negative control.
+    execute_process(COMMAND ${EMULATOR} ${RUN} ${IMAGE} --frames 120 --hash
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "0" OR NOT out MATCHES "sha256 ([0-9a-f]+)")
+      message(FATAL_ERROR "frame: the runner's hash of ${IMAGE}: exit ${rc}\n${out}${err}")
+    endif()
+    set(digest ${CMAKE_MATCH_1})
+    if(WRONG)
+      string(LENGTH "${digest}" digits)
+      string(REPEAT "0" ${digits} digest)
+    endif()
+    execute_process(COMMAND ${EMULATOR} ${HOST} ${MODULE} frame ${IMAGE} 120 ${digest}
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "0")
+      message(FATAL_ERROR "frame digest: the core's frame of ${IMAGE} is not the runner's: exit ${rc}\n${out}${err}")
+    endif()
+  elseif(CASE STREQUAL "probe")
+    # The runner's probe finds each board in BOARDS (comma separated) by the scan: board_source is
+    # SOURCE (default heuristic), the board is named for the image, and no ROM header was read.
+    if(NOT SOURCE)
+      set(SOURCE heuristic)
+    endif()
+    string(REPLACE "," ";" boards "${BOARDS}")
+    foreach(board IN LISTS boards)
+      execute_process(COMMAND ${EMULATOR} ${RUN} --probe ${DIR}/mapper_${board}.sms
+        RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+      if(NOT rc STREQUAL "0")
+        message(FATAL_ERROR "korean_probe: --probe ${board}: exit ${rc}\n${err}")
+      endif()
+      if(NOT out MATCHES "(^|\n)board_source=${SOURCE}\n")
+        message(FATAL_ERROR "korean_probe: board_source of ${board} is not ${SOURCE}\n${out}")
+      endif()
+      if(NOT out MATCHES "(^|\n)mapper_guess=${board}\n" OR NOT out MATCHES "(^|\n)header_magic=0\n")
+        message(FATAL_ERROR "korean_probe: ${board} is not found by the scan with no header\n${out}")
+      endif()
+    endforeach()
   elseif(CASE STREQUAL "mailbox")
     # The runner prints the image's mailbox, at most FRAMES frames in, into
     # OUT; mailbox.cmake (JUDGE) then judges it against CSV for PROFILE.
@@ -208,6 +246,27 @@ foreach(height IN ITEMS 192 224 240)
     WORKING_DIRECTORY ${fixtures_src}
     DEPENDS ${fixtures_src}/vdp_lines.asm ${fixtures_src}/vdp_lines.link
       ${fixtures_src}/header.inc ${fixtures_src}/mailbox.inc VERBATIM)
+  list(APPEND fixtures_images ${image})
+endforeach()
+# One source builds the Korean, Zemina and 4 PAK images, as vdp_lines does: FIXTURE_BOARD picks
+# the board and each image gets its own link file.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${fixtures_src}/mapper_korean.link)
+file(READ ${fixtures_src}/mapper_korean.link korean_link)
+foreach(spec IN ITEMS korean:1 zemina:2 hes_4pak:3)
+  string(REPLACE ":" ";" spec "${spec}")
+  list(GET spec 0 board)
+  list(GET spec 1 board_number)
+  string(REPLACE "mapper_korean.o" "mapper_${board}.o" link "${korean_link}")
+  set(image ${COGMASTER_FIXTURES_DIR}/mapper_${board}.sms)
+  file(GENERATE OUTPUT ${COGMASTER_FIXTURES_DIR}/mapper_${board}.link CONTENT "${link}")
+  add_custom_command(OUTPUT ${image}
+    COMMAND ${COGMASTER_WLA_Z80} -q -D FIXTURE_BOARD=${board_number}
+      -o ${COGMASTER_FIXTURES_DIR}/mapper_${board}.o mapper_korean.asm
+    COMMAND ${CMAKE_COMMAND} -E chdir ${COGMASTER_FIXTURES_DIR}
+      ${COGMASTER_WLALINK} -r mapper_${board}.link ${image}
+    WORKING_DIRECTORY ${fixtures_src}
+    DEPENDS ${fixtures_src}/mapper_korean.asm ${fixtures_src}/mapper_korean.link
+      ${fixtures_src}/mailbox.inc VERBATIM)
   list(APPEND fixtures_images ${image})
 endforeach()
 add_custom_target(cogmaster-fixtures ALL DEPENDS ${fixtures_images})
@@ -436,6 +495,38 @@ cogmaster_add_test(NAME fixtures.mapper_codemasters
     -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/mapper_codemasters.txt
     -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS fixtures portable TIMEOUT 10)
+# Fault prevented: a Korean-family board that pages the wrong bank, does not wrap, or answers the
+# Sega registers other than as documented, or an image the scan sends to another board.
+foreach(board IN ITEMS korean zemina hes_4pak)
+  # Timeout: 10 s floor; 0.02 s slowest local run, no hosted run yet, so provisional.
+  cogmaster_add_test(NAME fixtures.mapper_${board}
+    COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=mapper_${board} -DMACHINE=sms
+      -DIMAGE=${COGMASTER_FIXTURES_DIR}/mapper_${board}.sms -DFRAMES=120
+      -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/mapper_${board}.txt
+      -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures portable TIMEOUT 10)
+endforeach()
+# Fault prevented: a Korean-family image the scan does not find, or finds as another board, with
+# no header and no setting: each of the three must print board_source=heuristic and its own name.
+set(fixtures_probe -DCASE=probe -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+  -DNAME=mapper_korean -DIMAGE=${COGMASTER_FIXTURES_DIR}/mapper_korean.sms
+  -DDIR=${COGMASTER_FIXTURES_DIR} -DBOARDS=korean,zemina,hes_4pak -DRUN=$<TARGET_FILE:cogmaster-run>)
+# Timeout: 10 s floor; 0.02 s slowest local run, no hosted run yet, so provisional.
+cogmaster_add_test(NAME fixtures.korean_probe
+  COMMAND ${CMAKE_COMMAND} ${fixtures_probe} "-DEMULATOR=${fixtures_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 10)
+# Fault prevented: a probe check that passes whatever board_source the runner prints. The same
+# case expects database, which the scan never reports for these images, and must fail naming it.
+string(REPLACE ";" "\;" fixtures_probe_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
+set(cmd ${CMAKE_COMMAND} ${fixtures_probe} "-DEMULATOR=${fixtures_probe_emulator}" -DSOURCE=database
+  -P ${CMAKE_CURRENT_LIST_FILE})
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+# Timeout: 10 s floor; 0.02 s slowest local run, no hosted run yet, so provisional.
+cogmaster_add_test(NAME fixtures.korean_probe_control
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=korean_probe: board_source"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+  LABELS fixtures portable TIMEOUT 10)
+set_tests_properties(fixtures.korean_probe_control PROPERTIES DEPENDS fixtures.korean_probe)
 # Fault prevented: unjudged guest counter/IRQ/status measurements.
 foreach(tv IN ITEMS ntsc pal)
   set(region ntsc-u)

@@ -518,6 +518,42 @@ static int content_test(const char *path, const char *digest)
     return check_failures != 0 ? 1 : 0;
 }
 
+/* The core with no option set plays the image: the frame after the given
+   number of runs hashes to digest, the runner's digest of the same run. */
+static int frame_test(const char *path, const char *frames, const char *digest)
+{
+    static uint8_t image[262144];
+    FILE *f = fopen(path, "rb");
+    if (f == NULL) {
+        return 1;
+    }
+    size_t n = fread(image, 1u, sizeof image, f);
+    CHECK(n != 0u && feof(f));
+    CHECK_EQ_U64(fclose(f), 0u);
+    want_w = 256u;
+    want_h = 192u;
+    p_set_environment(env);
+    p_init();
+    set_callbacks();
+    struct retro_game_info game = {0};
+    game.data = image;
+    game.size = n;
+    bool loaded = p_load_game(&game);
+    CHECK(loaded);
+    if (loaded) {
+        char hex[65];
+        for (unsigned i = parse(frames); i != 0u; i--) {
+            (void)run_one();
+        }
+        hash_frame(hex);
+        check_string("frame digest", hex, digest);
+        CHECK_EQ_U64(video_bad, 0u);
+        p_unload_game();
+    }
+    p_deinit();
+    return loaded && check_failures == 0 ? 0 : 1;
+}
+
 #include "presentation.h"
 #include "controls.h"
 #include "battery.h"
@@ -583,6 +619,15 @@ int main(int argc, char **argv)
         return rc;
     }
 
+    if (argc == 6 && strcmp(argv[2], "frame") == 0) {
+        if (!module_open(argv[1])) {
+            return 1;
+        }
+        resolve_all();
+        int rc = missing != NULL ? 1 : frame_test(argv[3], argv[4], argv[5]);
+        module_close();
+        return rc;
+    }
     if (argc == 5 && strcmp(argv[2], "content") == 0) {
         if (!module_open(argv[1])) {
             return 1;

@@ -1201,7 +1201,8 @@ static void expect_board_refused(const char *what, cogmaster *m, const counts *c
 
 /* An image on no supported board is refused by load with the status the
    probe gives, and the instance stays byte for byte as it was: a 64 KiB
-   image storing to $A000, an 8 KiB image whose header names the Game Gear,
+   image with two stores to $A000 (below the scan's threshold of three, so a
+   doubt and not a Korean board), an 8 KiB image whose header names the Game Gear,
    and an 8 KiB image loaded as a Game Gear. As a Master System the last
    loads with no mapper. */
 static void test_load_board(void)
@@ -1222,9 +1223,9 @@ static void test_load_board(void)
     CHECK_EQ_U64(cogmaster_load(m, &first), COGMASTER_STATUS_OK);
     run_frames(m, 2);
 
-    /* Four LD ($A000),A stores, the Korean board's register. */
+    /* Two LD ($A000),A stores, the Korean board's register. */
     memset(board_img, 0, sizeof board_img);
-    for (uint32_t i = 0; i < 4u; i++) {
+    for (uint32_t i = 0; i < 2u; i++) {
         board_img[0x100u + 3u * i] = 0x32u;
         board_img[0x101u + 3u * i] = 0x00u;
         board_img[0x102u + 3u * i] = 0xA0u;

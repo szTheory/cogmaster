@@ -48,6 +48,7 @@ add_library(cogmaster STATIC
   src/boot.c
   src/bus.c
   src/cart.c
+  src/cart_scan.c
   src/battery.c
   src/cartdb.c
   src/sha1.c
@@ -57,6 +58,7 @@ add_library(cogmaster STATIC
   src/io.c
   src/frame.c
   src/mapper.c
+  src/mapper_ext.c
   src/opll.c
   src/opll_reg.c
   src/psg.c

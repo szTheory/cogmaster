@@ -44,12 +44,14 @@ if(CMAKE_SCRIPT_MODE_FILE)
     set(form "^size=[0-9]+\ncopier_header=[01]\nheader_at=([$][0-9A-F][0-9A-F][0-9A-F][0-9A-F]|none)\n"
       "header_magic=[01]\nchecksum=${num}\nchecksum_ok=([01]|none)\nproduct_code=${num}\n"
       "version=${num}\nregion_code=${num}\nrom_size_code=${num}\nmachine_guess=(sms|gg)\n"
-      "region_guess=(ntsc-u|ntsc-j|pal)\nmapper_guess=(none|sega|codemasters|unsupported)\n"
+      "region_guess=(ntsc-u|ntsc-j|pal)\nmapper_guess=(none|sega|codemasters|korean|korean_nb|hicom|zemina|nemesis|hes_4pak|unsupported)\n"
       "sha1=${h40}\nsha256=${h64}\ncrc32=${h8}\nmd5=${h32}\n"
       "sha1_headerless=(${h40}|none)\nsha256_headerless=(${h64}|none)\n"
       "crc32_headerless=(${h8}|none)\nmd5_headerless=(${h32}|none)\n"
       "identified=[01]\npublic_identity=[01]\npersistence=[012]\npersistent_size=[0-9]+\n"
       "persistence_geometry=[012]\nvideo_mode=[012]\nidentity_sha1=(${h40}|)\ntitle=[^\n]*\n"
+      "board_source=(db|header|heuristic|default|none)\nboard_candidate=[a-z0-9_]+\nscan_sega=[0-9]+\n"
+      "scan_candidate=[0-9]+\nscan_runner_up=[0-9]+\nunsupported_id=[0-9]+\nunsupported_reason=[^\n]*\n"
       "$")
     string(CONCAT form ${form})
     if(NOT out MATCHES "${form}")
@@ -330,6 +332,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     expect_key("${out}" rom_size_code 15)
     expect_key("${out}" machine_guess sms)
     expect_key("${out}" mapper_guess sega)
+    expect_key("${out}" board_source header)
     expect_key("${out}" md5_headerless none)
     # A bad checksum is reported, not refused.
     probe(${SEEDS}/header-export-128k-bad.sms)
@@ -366,13 +369,26 @@ if(CMAKE_SCRIPT_MODE_FILE)
       expect_key("${out}" ${key}_headerless none)
     endforeach()
   elseif(CASE STREQUAL "probe_unsupported")
-    # Another board's mapper: every key is still printed, then exit 77.
+    # Another board's mapper: every key is still printed, then exit 77. Two stores to
+    # a Korean register are too few to trust, so the scan names korean and refuses; four
+    # stores to Janggun's register name a board the core does not play, with its reason.
+    # A load says which board and why.
     probe(${SEEDS}/unsupported-board.sms)
     if(NOT rc STREQUAL "77")
       message(FATAL_ERROR "--probe of another board: expected exit 77, got ${rc}\n${out}${err}")
     endif()
     expect_probe_form("${out}")
     expect_key("${out}" mapper_guess unsupported)
+    expect_key("${out}" board_source heuristic)
+    expect_key("${out}" board_candidate korean)
+    expect_exit(77 "unsupported: [^\n]*korean" --frames 1 ${SEEDS}/unsupported-board.sms)
+    probe(${SEEDS}/janggun-board.sms)
+    if(NOT rc STREQUAL "77")
+      message(FATAL_ERROR "--probe of a Janggun-looking image: expected exit 77, got ${rc}\n${out}${err}")
+    endif()
+    expect_probe_form("${out}")
+    expect_key("${out}" unsupported_reason "janggun: reverse bit[^\n]*")
+    expect_exit(77 "reverse bit" --frames 1 ${SEEDS}/janggun-board.sms)
   elseif(CASE STREQUAL "refuse_size")
     # Below 1 KiB and above 1 MiB + 512 the core refuses the image; above
     # 64 MiB the runner refuses the file before reading it.
@@ -1095,7 +1111,8 @@ cogmaster_add_test(NAME runner.probe.headerless
   LABELS portable runner TIMEOUT 10)
 
 # Fault prevented: --probe hiding the report of an image it calls
-# unsupported, or calling it supported.
+# unsupported, or calling it supported; a refusal that does not say which board
+# or why, or a probe that hides where its board came from.
 # Timeout: 10 s floor; 2 x 0.01 s, slowest of 2 runs, run 39376644025, provisional.
 cogmaster_add_test(NAME runner.probe.unsupported
   COMMAND ${runner_check} -DCASE=probe_unsupported -P ${CMAKE_CURRENT_LIST_FILE}

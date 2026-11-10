@@ -1,6 +1,7 @@
 # Every test the ci, dev and ci-msvc presets register: name<TAB>labels.
 # Sorted; configure fails when this differs from what is registered.
 abi.api_v1	abi,portable
+abi.api_v10	abi,portable
 abi.api_v2	abi,portable
 abi.api_v3	abi,portable
 abi.api_v4	abi,portable
@@ -49,6 +50,7 @@ cart.fixture_wrong_hash	cart,portable
 cart.generator	cart,portable
 cart.probe.branches	cart,portable
 cart.probe.pure	cart,portable
+cart.probe.scan	cart,portable
 cart.probe.sizes	cart,portable
 compat.csv	compat
 compat.fixtures	compat,portable
@@ -120,8 +122,13 @@ fixtures.hello	fixtures,portable
 fixtures.judge.hang	fixtures,portable
 fixtures.judge.missing_row	fixtures,portable
 fixtures.judge.wrong_value	fixtures,portable
+fixtures.korean_probe	fixtures,portable
+fixtures.korean_probe_control	fixtures,portable
 fixtures.mapper_codemasters	fixtures,portable
+fixtures.mapper_hes_4pak	fixtures,portable
+fixtures.mapper_korean	fixtures,portable
 fixtures.mapper_sega	fixtures,portable
+fixtures.mapper_zemina	fixtures,portable
 fixtures.ports.gg	fixtures,portable
 fixtures.ports.sms-export	fixtures,portable
 fixtures.ports.sms-japan	fixtures,portable
@@ -195,6 +202,8 @@ libretro.host.content	libretro,portable
 libretro.host.content.gg	libretro,portable
 libretro.host.fm_option	libretro,portable
 libretro.host.gg	libretro,portable
+libretro.host.korean	libretro,portable
+libretro.host.korean_control	libretro,portable
 libretro.host.replay	libretro,portable
 libretro.host.replay.gg	libretro,portable
 libretro.host.rgb565	libretro,portable
@@ -211,6 +220,13 @@ libretro.vendored	libretro
 mapper.codemasters.banks	mapper,portable
 mapper.codemasters.ram	mapper,portable
 mapper.codemasters.wrap	mapper,portable
+mapper.ext.hes_4pak	mapper,portable
+mapper.ext.hicom	mapper,portable
+mapper.ext.korean	mapper,portable
+mapper.ext.korean_nb	mapper,portable
+mapper.ext.nemesis	mapper,portable
+mapper.ext.state	mapper,portable
+mapper.ext.zemina	mapper,portable
 mapper.none.layout	mapper,portable
 mapper.pad_wrap	mapper,portable
 mapper.sega.banks	mapper,portable

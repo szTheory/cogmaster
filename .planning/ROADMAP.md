@@ -34,7 +34,7 @@ first. PAL and Japanese FM rows need the ledger's `tv` split and an audio predic
 pull request and one automated release.
 
 - [x] **Phase 5: Tune-up** - The v1.0 debt merged away: measured timeouts, an armed perf gate, `quality.json`, budget headroom, the README's ROM step and the weekly digest (completed 2026-11-10)
-- [ ] **Phase 6: Korean cartridges play** - The remaining mapper boards load and play with no setting, detected hash-first, with no shipped hash moving
+- [x] **Phase 6: Korean cartridges play** - The remaining mapper boards load and play with no setting, detected hash-first, with no shipped hash moving (completed 2026-11-10)
 - [ ] **Phase 7: Saves survive a restart** - 93C46 EEPROM and battery saves persist through the runner and RetroArch, with `.srm` interop only in measured layouts
 - [ ] **Phase 8: Sports Pad, Paddle and 3-D glasses** - Pin-level ports and a grown input struct make the pad-device and 3-D titles play, with replays matching
 - [ ] **Phase 9: Light Phaser** - Light Phaser titles hit where the player aims, sensed from the emitted pixel at the beam
@@ -78,11 +78,24 @@ Plans:
 **Requirements**: MAP-01, MAP-02, MAP-03, MAP-04, MAP-05, MAP-06, MAP-07, MAP-08
 **Success Criteria** (what must be TRUE):
   1. The cartridge generator prints a count per MAME slot, maps every pinned slot to a board or to the unsupported-by-design list, and fails when fed an unmapped slot; the hash table holds binary SHA-1 rows with titles on the ledger side, and a size check keeps `cartdb.c.o` under 100 KB (MAP-01, MAP-02).
-  2. Korean `$A000`, Hicom, Zemina, Nemesis and `korean_nb` images play through the runner and the libretro core with no option set; a Janggun or 4PAK image plays or its ledger row is `unsupported` with a reason; Seo Jin and 188-in-1 rows are `unsupported`, name what fails, and the runner exits 77 for them (MAP-03, MAP-04, MAP-05).
+  2. Korean `$A000`, Hicom, Zemina, Nemesis and `korean_nb` images play through the runner and the libretro core with no option set; a Janggun or 4PAK image plays or its catalog row is `unsupported` with a reason; Seo Jin and 188-in-1 rows are `unsupported`, name what fails, and the runner exits 77 for them (MAP-03, MAP-04, MAP-05).
   3. `cogmaster-run --probe` reports `board_source`; a decoy with a valid `TMR SEGA` header and Korean-looking bytes stays a Sega board, a scan below threshold or margin does not pick a Korean board, and a tie refuses with the candidate named (MAP-06).
   4. Each new board passes an exhaustive register-write and address-read test under ASan, and a test shows its documented register writes record no fault (MAP-07).
   5. The eight-lane equality job shows every frame and audio hash that existed before the phase unchanged (MAP-08).
-**Plans**: TBD
+**Plans**: 11/11 plans complete
+
+Plans:
+- [x] 06-01-PLAN.md — generator slot table, per-slot counts, unmapped-slot failure, compact rows and catalog output (MAP-01, MAP-02)
+- [x] 06-02-PLAN.md — API 10 surface: board and board-source constants, appended cart_info fields, v10 program (MAP-06, MAP-03, MAP-05)
+- [x] 06-03-PLAN.md — table regenerated, library on compact rows, fact_to_info, named-unsupported rows, catalog-fed compat update (MAP-01, MAP-02, MAP-04, MAP-05)
+- [x] 06-04-PLAN.md — mapper_ext.c behind default, 8 KiB bank state, early perf delta from dispatch runs (MAP-07, MAP-08)
+- [x] 06-05-PLAN.md — size.cartdb ceiling on Linux x64, table pin check, maintainer docs and notices (MAP-01, MAP-02)
+- [x] 06-06-PLAN.md — Korean $A000, korean_nb and Hi-Com boards with exhaustive tests; rows flipped (MAP-03, MAP-07)
+- [x] 06-07-PLAN.md — Zemina, Nemesis and 4 PAK boards with exhaustive tests; rows flipped; unsupported list documented (MAP-03, MAP-04, MAP-07)
+- [x] 06-08-PLAN.md — guess_board and the instruction-aware scan with threshold, margin, geometry and decoys (MAP-06, MAP-03)
+- [x] 06-09-PLAN.md — runner probe keys, board names and refusal messages with exit 77 (MAP-05, MAP-06)
+- [x] 06-10-PLAN.md — parameterised WLA-DX Korean-family fixture through the runner and one libretro load (MAP-03, MAP-08)
+- [x] 06-11-PLAN.md — wording amendments, final hosted run and perf delta, MAP-08 local proof, ship-time list (MAP-08, MAP-04, MAP-05)
 
 ### Phase 7: Saves survive a restart
 **Goal**: A Game Gear 93C46 game and a battery-backed game keep their progress across restarts in the runner and in RetroArch, saves survive a killed process, and `.srm` files cross between cogmaster and other released cores only in layouts that were measured.
@@ -164,7 +177,7 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 5. Tune-up | v2.0 | 14/14 | Complete    | 2026-11-10 |
-| 6. Korean cartridges play | v2.0 | 0/TBD | Not started | - |
+| 6. Korean cartridges play | v2.0 | 11/11 | Complete    | 2026-11-10 |
 | 7. Saves survive a restart | v2.0 | 0/TBD | Not started | - |
 | 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 0/TBD | Not started | - |
 | 9. Light Phaser | v2.0 | 0/TBD | Not started | - |

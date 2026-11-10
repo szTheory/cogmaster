@@ -3,6 +3,8 @@
    The image is padded to whole 16 KiB pages, so a bank number is reduced
    modulo the page count when it is written and every read stays inside the
    image (section 2.4). */
+#include <string.h>
+
 #include "internal.h"
 
 #define SLOT_MASK 0x3FFFu
@@ -51,7 +53,7 @@ static uint8_t rom_at(const cogmaster *m, uint32_t bank, uint16_t addr)
 void cogmaster__mapper_reset(cogmaster *m)
 {
     struct cogmaster__mapper *p = &m->mapper;
-    p->ctrl = 0u;
+    memset(p, 0, sizeof *p);
     switch (m->cart.board) {
     case COGMASTER__BOARD_SEGA:
         /* The 315-5235 powers up with $FFFD-$FFFF at 0, 1, 2, which the
@@ -67,9 +69,7 @@ void cogmaster__mapper_reset(cogmaster *m)
         p->bank[2] = bank_of(m, 0u);
         break;
     default:
-        p->bank[0] = 0u;
-        p->bank[1] = 0u;
-        p->bank[2] = 0u;
+        cogmaster__mapext_reset(m);
         break;
     }
 }
@@ -97,7 +97,7 @@ uint8_t cogmaster__mapper_read(const cogmaster *m, uint16_t addr)
         /* Linear: the image, then $FF up to $BFFF (section 2.1). */
         return addr < m->cart.size ? m->cart.rom[addr] : 0xFFu;
     default:
-        return 0xFFu;
+        return cogmaster__mapext_read(m, addr);
     }
 }
 
@@ -141,10 +141,7 @@ void cogmaster__mapper_write(cogmaster *m, uint16_t addr, uint8_t v)
         }
         break;
     default:
-        /* Writes to ROM change nothing. $FFFC-$FFFF are work RAM only. */
-        if (addr < 0xC000u) {
-            cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_CART, COGMASTER__FAULT_ROM_WRITE);
-        }
+        cogmaster__mapext_write(m, addr, v);
         break;
     }
 }

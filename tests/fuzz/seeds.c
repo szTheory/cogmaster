@@ -23,6 +23,7 @@
    Boards:
      codemasters-64k.sms (a header at $7FE0)
      unsupported-board.sms (64 KiB storing to another board's $A000)
+     janggun-board.sms (64 KiB storing to a board's $6000, which the core names and refuses)
    Programs at $0000, 32 KiB with no header unless noted:
      di-halt.sms  di-halt.gg  jr-self.sms  in-a-00.sms  ld-8000.sms
      ed-00.sms  be-hammer.sms  fffc-writes.sms (64 KiB, Sega board) */
@@ -176,6 +177,14 @@ static void boards(void)
                                     0x32u, 0x00u, 0xA0u, 0xF3u, 0x76u};
     program(0u, 64u * KIB, other, sizeof other);
     write_image("unsupported-board.sms", 64u * KIB);
+    /* Four LD ($6000),A stores and none to the Sega registers: the store sites of Janggun's
+       $6000 register make the scan name Janggun, an unsupported board (SMS-CARTRIDGES section
+       1.4; MAME src/devices/bus/sms_cart/rom.cpp, sega8_janggun_device). */
+    static const uint8_t janggun[] = {0x3Eu, 0x01u, 0x32u, 0x00u, 0x60u, 0x3Eu, 0x02u, 0x32u,
+                                      0x00u, 0x60u, 0x3Eu, 0x03u, 0x32u, 0x00u, 0x60u, 0x3Eu,
+                                      0x04u, 0x32u, 0x00u, 0x60u, 0xF3u, 0x76u};
+    program(0u, 64u * KIB, janggun, sizeof janggun);
+    write_image("janggun-board.sms", 64u * KIB);
 }
 
 static void programs(void)

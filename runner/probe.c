@@ -136,6 +136,38 @@ static void print_field(const char *key, uint32_t value, int header)
     }
 }
 
+/* The names the catalog uses for COGMASTER_BOARD_*; 0 and anything out of range read unsupported.
+ */
+const char *cogmaster__board_name(uint32_t board)
+{
+    static const char *const names[] = {"unsupported", "none",      "sega",  "codemasters",
+                                        "korean",      "korean_nb", "hicom", "zemina",
+                                        "nemesis",     "hes_4pak"};
+    return names[board < sizeof names / sizeof names[0] ? board : 0u];
+}
+
+int cogmaster__refusal_board(const uint8_t *image, size_t n)
+{
+    cogmaster_cart_info info;
+    memset(&info, 0, sizeof info);
+    info.size = (uint32_t)sizeof info;
+    (void)cogmaster_probe(image, n, &info);
+    if (info.unsupported_reason[0] != '\0') {
+        fprintf(stderr, "cogmaster-run: unsupported: board %s\n", info.unsupported_reason);
+    } else if (info.board_candidate != 0u) {
+        fprintf(
+            stderr,
+            "cogmaster-run: unsupported: the board scan is not sure about %s (sega %lu, %s %lu, "
+            "runner-up %lu)\n",
+            cogmaster__board_name(info.board_candidate), (unsigned long)info.scan_sega,
+            cogmaster__board_name(info.board_candidate), (unsigned long)info.scan_candidate,
+            (unsigned long)info.scan_runner_up);
+    } else {
+        return 0;
+    }
+    return 1;
+}
+
 int cogmaster__probe_print(const char *path, const uint8_t *image, size_t n)
 {
     cogmaster_cart_info info;
@@ -144,7 +176,7 @@ int cogmaster__probe_print(const char *path, const uint8_t *image, size_t n)
     cogmaster_status st = cogmaster_probe(image, n, &info);
     int header = info.header_at != 0u;
     int copier = n % 16384u == COPIER_HEADER;
-    static const char *const mappers[] = {"unsupported", "none", "sega", "codemasters"};
+    static const char *const sources[] = {"none", "db", "header", "heuristic", "default"};
     uint32_t machine = cogmaster__auto_machine(path, image, n);
 
     printf("size=%lu\n", (unsigned long)n);
@@ -163,7 +195,7 @@ int cogmaster__probe_print(const char *path, const uint8_t *image, size_t n)
     print_field("rom_size_code", info.rom_size_code, header);
     printf("machine_guess=%s\n", machine == COGMASTER_MACHINE_GG ? "gg" : "sms");
     printf("region_guess=%s\n", info.region_guess == COGMASTER_REGION_JAPAN ? "ntsc-j" : "ntsc-u");
-    printf("mapper_guess=%s\n", mappers[info.board <= 3u ? info.board : 0u]);
+    printf("mapper_guess=%s\n", cogmaster__board_name(info.board));
     print_digests(image, n, "");
     if (copier) {
         print_digests(image + COPIER_HEADER, n - COPIER_HEADER, "_headerless");
@@ -177,6 +209,13 @@ int cogmaster__probe_print(const char *path, const uint8_t *image, size_t n)
            (unsigned long)info.persistence, (unsigned long)info.persistent_size,
            (unsigned long)info.persistence_geometry, (unsigned long)info.video_mode, info.sha1,
            info.title);
+    printf("board_source=%s\nboard_candidate=%s\nscan_sega=%lu\nscan_candidate=%lu\n"
+           "scan_runner_up=%lu\nunsupported_id=%lu\nunsupported_reason=%s\n",
+           sources[info.board_source <= 4u ? info.board_source : 0u],
+           info.board_candidate != 0u ? cogmaster__board_name(info.board_candidate) : "none",
+           (unsigned long)info.scan_sega, (unsigned long)info.scan_candidate,
+           (unsigned long)info.scan_runner_up, (unsigned long)info.unsupported_id,
+           info.unsupported_reason);
     if (st == COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD ||
         st == COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE) {
         return COGMASTER__EXIT_REFUSED;

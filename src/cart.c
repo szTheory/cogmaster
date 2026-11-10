@@ -19,8 +19,8 @@
 #define CART_NO_MAPPER_MAX 49152u
 /* The Game Gear X-Terminator cheat device is an 8 KiB image (section 1.4). */
 #define CART_GG_DEVICE 8192u
-/* The opcode scan covers the first 32 KiB (section 1.4). */
-#define CART_SCAN 32768u
+/* The 8 KiB bank of the boards that page by bank. */
+#define CART_BANK 8192u
 /* Cartridge RAM: two 16 KiB banks on the Sega board, 8 KiB on the
    Codemasters board (section 2). */
 #define CART_RAM_SEGA 32768u
@@ -131,28 +131,175 @@ static int codemasters_header(const uint8_t *b, size_t body)
            ((le16(h + 6) + le16(h + 8)) & 0xFFFFu) == 0u && h[15] == 0u;
 }
 
-/* The opcode scan: LD (nn),A ($32 nn) stores over the first 32 KiB. Stores
-   to the Sega registers count for the Sega board; stores to another board's
-   registers ($0002-$0004 MSX and Zemina, $3FFE 4 PAK, $6000 Janggun, $A000
-   Korean) count against it; the Codemasters $8000 family counts for
-   neither (SMS-CARTRIDGES section 1.4). */
-static int other_board(const uint8_t *b, size_t body)
+/* Whether a header read by read_header selects a board: the magic found, a
+   region code of 3 to 7, a matching checksum and a checksum range that lies
+   inside the body (SMS-CARTRIDGES section 1.2). A bad checksum argues for
+   nothing. */
+static int header_valid(const cogmaster_cart_info *p, size_t body)
 {
-    size_t end = body < CART_SCAN ? body : CART_SCAN;
-    uint32_t sega = 0u, other = 0u;
-    for (size_t i = 0; i + 2u < end; i++) {
-        if (b[i] != 0x32u) {
-            continue;
-        }
-        uint32_t target = le16(b + i + 1u);
-        if (target >= 0xFFFCu) {
-            sega++;
-        } else if ((target >= 0x0002u && target <= 0x0004u) || target == 0x3FFEu ||
-                   target == 0x6000u || target == 0xA000u) {
-            other++;
+    return p->header_at != 0u && p->region_code >= 3u && p->region_code <= 7u && p->checksum_ok &&
+           checksum_range[p->rom_size_code] <= body;
+}
+
+/* Names the unsupported slot in out: its id and "name: reason". */
+static void name_unsupported(const struct cogmaster__cart_slot *slot, cogmaster_cart_info *out)
+{
+    size_t k = 0u;
+    if (slot == NULL || slot->reason[0] == 0) {
+        return;
+    }
+    out->unsupported_id = slot->id;
+    for (size_t i = 0u;
+         i < sizeof slot->name && slot->name[i] != 0 && k < sizeof out->unsupported_reason - 1u;
+         i++)
+        out->unsupported_reason[k++] = slot->name[i];
+    if (k < sizeof out->unsupported_reason - 2u) {
+        out->unsupported_reason[k++] = ':';
+        out->unsupported_reason[k++] = ' ';
+    }
+    for (size_t i = 0u;
+         i < sizeof slot->reason && slot->reason[i] != 0 && k < sizeof out->unsupported_reason - 1u;
+         i++)
+        out->unsupported_reason[k++] = slot->reason[i];
+    out->unsupported_reason[k] = 0;
+}
+
+/* The board a family of store sites points at; Janggun is no board. */
+static const uint8_t family_board[COGMASTER__SCAN_FAMILIES] = {
+    COGMASTER__BOARD_SEGA, COGMASTER__BOARD_KOREAN, COGMASTER__BOARD_ZEMINA,
+    COGMASTER__BOARD_4PAK, COGMASTER__BOARD_NONE,
+};
+
+/* Whether the image size fits the family's board: Korean and 4 PAK page
+   16 KiB, Zemina and Janggun page 8 KiB, and Zemina has more than 64 KiB to
+   page (MAME src/devices/bus/sms_cart/rom.cpp at the pinned commit). */
+static int geometry_fits(uint32_t family, size_t body)
+{
+    switch (family) {
+    case COGMASTER__SCAN_KOREAN:
+    case COGMASTER__SCAN_4PAK:
+        return (body & (CART_PAGE - 1u)) == 0u;
+    case COGMASTER__SCAN_ZEMINA:
+        return (body & (CART_BANK - 1u)) == 0u && body > 65536u;
+    default:
+        return (body & (CART_BANK - 1u)) == 0u;
+    }
+}
+
+/* The scan decides what no database row, header or size settled. F is the
+   family with the most store sites (Korean, Zemina, 4 PAK, Janggun in that
+   order break a tie), x its count, y the runner-up's and s the Sega count. F
+   wins with at least 3 sites, at least 2s + 2 over the Sega count, at least
+   2y + 2 over the runner-up, a fitting geometry and no Game Gear header. The
+   Sega board wins by the same margin over F. Anything between refuses naming
+   F: a doubtful image never plays. Three sites is a conservative start
+   until measured on real dumps. */
+static cogmaster_status scan_board(const uint8_t *b, size_t body, cogmaster_cart_info *out)
+{
+    struct cogmaster__scan sc;
+    uint32_t f = COGMASTER__SCAN_KOREAN, x = 0u, y = 0u;
+    cogmaster__cart_scan(b, body, &sc);
+    for (uint32_t k = COGMASTER__SCAN_KOREAN; k < COGMASTER__SCAN_FAMILIES; k++) {
+        if (sc.count[k] > x) {
+            y = x;
+            x = sc.count[k];
+            f = k;
+        } else if (sc.count[k] > y) {
+            y = sc.count[k];
         }
     }
-    return other > sega;
+    uint32_t s = sc.count[COGMASTER__SCAN_SEGA];
+    out->scan_sega = s;
+    out->scan_candidate = x;
+    out->scan_runner_up = y;
+    if (x == 0u) {
+        out->board = COGMASTER__BOARD_SEGA;
+        out->board_source = COGMASTER_BOARD_SOURCE_DEFAULT;
+        return COGMASTER_STATUS_OK;
+    }
+    out->board_source = COGMASTER_BOARD_SOURCE_HEURISTIC;
+    out->board_candidate = family_board[f];
+    if (x >= 3u && x >= 2u * s + 2u && x >= 2u * y + 2u && geometry_fits(f, body) &&
+        !(out->region_code >= 5u && out->region_code <= 7u)) {
+        if (f == COGMASTER__SCAN_JANGGUN) {
+            name_unsupported(cogmaster__cartdb_slot_named("janggun"), out);
+        } else {
+            out->board = family_board[f];
+            /* Nemesis is a 128 KiB Zemina-family image with $00 $00 $00 at 0 and
+               DI; IM 1 (F3 ED 56) at 120 KiB, the start of its last 8 KiB bank
+               (SMS-CARTRIDGES-AND-PERIPHERALS.md section 2, scan step 5; the
+               board itself is sega8_nemesis_device, MAME rom.cpp). One byte of
+               that signature would also match an ordinary Zemina image. */
+            const uint8_t *last = b + (body - CART_BANK);
+            if (f == COGMASTER__SCAN_ZEMINA && body == 131072u && last[0] == 0xF3u &&
+                last[1] == 0xEDu && last[2] == 0x56u && b[0] == 0u && b[1] == 0u && b[2] == 0u) {
+                out->board = COGMASTER__BOARD_NEMESIS;
+                out->board_candidate = COGMASTER__BOARD_NEMESIS;
+            }
+            return COGMASTER_STATUS_OK;
+        }
+    } else if (s >= 2u * x + 2u) {
+        out->board = COGMASTER__BOARD_SEGA;
+        return COGMASTER_STATUS_OK;
+    }
+    return COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD;
+}
+
+/* The board of an image the database does not know, in order: a Codemasters
+   header, the 8 KiB Game Gear cheat device (refused), a valid ROM header,
+   a body of at most 48 KiB, then the scan. board_source says which step
+   decided. */
+static cogmaster_status guess_board(const uint8_t *b, size_t body, cogmaster_cart_info *out)
+{
+    int small = body <= CART_NO_MAPPER_MAX;
+    if (codemasters_header(b, body)) {
+        out->board = COGMASTER__BOARD_CODEMASTERS;
+        out->board_source = COGMASTER_BOARD_SOURCE_HEADER;
+    } else if (body == CART_GG_DEVICE && out->machine_guess == COGMASTER_MACHINE_GG) {
+        out->board_source = COGMASTER_BOARD_SOURCE_DEFAULT;
+        return COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD;
+    } else if (header_valid(out, body)) {
+        out->board = small ? COGMASTER__BOARD_ROM_ONLY : COGMASTER__BOARD_SEGA;
+        out->board_source = COGMASTER_BOARD_SOURCE_HEADER;
+    } else if (small) {
+        out->board = COGMASTER__BOARD_ROM_ONLY;
+        out->board_source = COGMASTER_BOARD_SOURCE_DEFAULT;
+    } else {
+        return scan_board(b, body, out);
+    }
+    return COGMASTER_STATUS_OK;
+}
+
+/* Copies one database row into the probe result. A row of board 0 is unsupported by
+   design and names its slot and reason. Titles live in tests/compat/catalog.tsv, not
+   in the table. EEPROM has no public persistence value yet, so it reads as unknown. */
+cogmaster_status cogmaster__cart_fact_to_info(const struct cogmaster__cart_fact *fact,
+                                              cogmaster_cart_info *out)
+{
+    static const char digits[] = "0123456789abcdef";
+    out->identified = 1u;
+    out->public_identity = fact->flags & 1u;
+    out->board = fact->board;
+    out->board_source = COGMASTER_BOARD_SOURCE_DB;
+    out->machine_guess = fact->machine;
+    if (fact->region != 0u)
+        out->region_guess = fact->region;
+    out->video_mode = fact->video;
+    out->persistence = fact->persistence > COGMASTER_PERSISTENCE_BATTERY
+                           ? (uint32_t)COGMASTER_PERSISTENCE_UNKNOWN
+                           : fact->persistence;
+    out->persistent_size = fact->ram_bytes;
+    out->persistence_geometry = fact->geometry;
+    for (size_t i = 0u; i < 20u; i++) {
+        out->sha1[2u * i] = digits[fact->sha1[i] >> 4];
+        out->sha1[2u * i + 1u] = digits[fact->sha1[i] & 15u];
+    }
+    out->sha1[40] = 0;
+    out->title[0] = 0;
+    if (fact->board != 0u)
+        return COGMASTER_STATUS_OK;
+    name_unsupported(cogmaster__cartdb_slot(fact->slot), out);
+    return COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD;
 }
 
 cogmaster_status cogmaster__cart_probe(const void *image, size_t n, cogmaster_cart_info *out)
@@ -175,34 +322,9 @@ cogmaster_status cogmaster__cart_probe(const void *image, size_t n, cogmaster_ca
     read_header(b, body, out);
     const struct cogmaster__cart_fact *fact = cogmaster__cartdb_image(b, body);
     if (fact != NULL) {
-        out->identified = 1u;
-        out->public_identity = fact->public_identity;
-        out->board = fact->board;
-        out->machine_guess = fact->machine;
-        if (fact->region != 0u)
-            out->region_guess = fact->region;
-        out->video_mode = fact->video;
-        out->persistence = fact->persistence;
-        out->persistent_size = fact->declared;
-        out->persistence_geometry = fact->geometry;
-        memcpy(out->sha1, fact->sha1, 41u);
-        for (size_t i = 0u; fact->title[i] != 0; i++)
-            out->title[i] = fact->title[i];
-        return out->board == 0u ? COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD : COGMASTER_STATUS_OK;
+        return cogmaster__cart_fact_to_info(fact, out);
     }
-    if (codemasters_header(b, body)) {
-        out->board = COGMASTER__BOARD_CODEMASTERS;
-    } else if (body == CART_GG_DEVICE && out->machine_guess == COGMASTER_MACHINE_GG) {
-        out->board = COGMASTER__BOARD_NONE;
-    } else if (body <= CART_NO_MAPPER_MAX) {
-        out->board = COGMASTER__BOARD_ROM_ONLY;
-    } else if (other_board(b, body)) {
-        out->board = COGMASTER__BOARD_NONE;
-    } else {
-        out->board = COGMASTER__BOARD_SEGA;
-    }
-    return out->board == COGMASTER__BOARD_NONE ? COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD
-                                               : COGMASTER_STATUS_OK;
+    return guess_board(b, body, out);
 }
 
 cogmaster_status cogmaster__cart_copy(cogmaster *m, const uint8_t *image, size_t n,

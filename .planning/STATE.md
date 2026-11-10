@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: The whole library
-current_phase: 6
-current_phase_name: Korean cartridges play
+current_phase: 7
+current_phase_name: Saves survive a restart
 status: planning
-stopped_at: Phase 5 complete, ready to plan Phase 6
-last_updated: "2026-11-10T06:24:34.005Z"
+stopped_at: Phase 6 complete, ready to plan Phase 7
+last_updated: "2026-11-10T09:19:07.575Z"
 last_activity: 2026-11-10
-last_activity_desc: Phase 5 complete, transitioned to Phase 6
-state_head: 20b71b129ad7a4d8be925818e76e382602f551dc
+last_activity_desc: Phase 6 complete, transitioned to Phase 7
+state_head: d652bd5dfb07189df1464c83dab3953cdddae8b7
 progress:
   total_phases: 8
-  completed_phases: 1
-  total_plans: 14
-  completed_plans: 14
-  percent: 13
+  completed_phases: 2
+  total_plans: 25
+  completed_plans: 25
+  percent: 25
 ---
 
 # Project State
@@ -25,21 +25,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-10)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 5 — Tune-up
+**Current focus:** Phase 6 — Korean cartridges play
 
 ## Current Position
 
-Phase: 6 — Korean cartridges play
+Phase: 7 — Saves survive a restart
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-11-10 — Phase 5 complete, transitioned to Phase 6
+Last activity: 2026-11-10 — Phase 6 complete, transitioned to Phase 7
 
-Progress: [█░░░░░░░░░] 13% of v2.0
+Progress: [███░░░░░░░] 25% of v2.0
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 76
+- Total plans completed: 87
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -52,6 +52,7 @@ Progress: [█░░░░░░░░░] 13% of v2.0
 | 03 | 18 | - | - |
 | 04 | 15 | - | - |
 | 5 | 14 | - | - |
+| 6 | 11 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -138,6 +139,17 @@ Progress: [█░░░░░░░░░] 13% of v2.0
 | Phase 05 P12 | 4 min | 1 tasks | 7 files |
 | Phase 05 P13 | 17min | 3 tasks | 8 files |
 | Phase 05 P14 | 35 min | 3 tasks | 6 files |
+| Phase 06 P01 | 35 min | 2 tasks | 3 files |
+| Phase 06 P02 | 15min | 2 tasks | 8 files |
+| Phase 06 P03 | 40 min | 2 tasks | 11 files |
+| Phase 06 P04 | 40 min | 2 tasks | 5 files |
+| Phase 06 P05 | 12 min | 2 tasks | 7 files |
+| Phase 06 P06 | 35 min | 2 tasks | 10 files |
+| Phase 06 P07 | 35 min | 2 tasks | 11 files |
+| Phase 06 P08 | 25 min | 3 tasks | 11 files |
+| Phase 06 P09 | 12 min | 2 tasks | 6 files |
+| Phase 06 P10 | 20min | 3 tasks | 12 files |
+| Phase 06 P11 | 25 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -164,6 +176,17 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 05]: 05-13: a red pull request is read from the newest CI run on its head commit via actions/runs?head_sha, never statusCheckRollup; the sound-code nightly run is the plain post-merge dispatch 42762969470 on main (head f69ab03 contains 8faf841)
 - [Phase 05]: 05-14: the perf gate is armed in a ci.yml-only commit (950ff2c); a throwaway draft PR 18 failed perf (verdict=FAIL, +4.87 percent) with every other job green; final head 73547df passed pull_request run 42764989102
 - [Phase 05]: 05-14: quality.json floors tests.ci 422 and tests.wasm32 397 follow the inventory line counts, not a local macOS ctest count
+- [Phase 06]: 06-01: the six Korean-board slots stay board 0 with reason 'mapper arm not present' until each arm lands; slot ids equal row position plus one under a start-up self-check; emitted counts unique table rows so excluded records add to seen only
+- [Phase 06]: 06-02: the cart_info appended block starts at the version 9 size 376 and adds 152 bytes; api_version compares the API number as a number because awk sub() leaves a string and k<=v stopped scanning older programs at API 10
+- [Phase 06]: 06-03: the library reads 36-byte rows by binary search with titles in tests/compat/catalog.tsv; the old table equals the new one outside the EEPROM persistence column; the slot-by-name lookup is a bounded loop because strcmp is not linkable
+- [Phase 06]: Mapper reset clears the whole struct; ext boards live behind the default arms in mapper_ext.c; boot_to_play delta_bp=0 vs main 8c97f8e (runs 42781709144, 42781713344)
+- [Phase 06]: size.cartdb starts at the 100 KB hard bound (102400); a follow-up replaces it with the first hosted Linux x64 value plus about 15 percent. The pin check is a mode of cart.generator so no inventory changes.
+- [Phase 06]: Ext boards fault with mapper_range only when the highest selected 8 KiB bank is at or past twice the page count and the page count is not a power of two
+- [Phase 06]: 06-07: 4 PAK writes to $FFFD-$FFFF page slots 0-2 as MAME's inherited Sega write_mapper does (register-only reading cited, not implemented); Zemina and Nemesis share one write arm; the generator self-check refuses the temporary slot reason
+- [Phase 06]: 06-08: scan thresholds stay T=3 with margins 2s+2 and 2y+2 (no private library, SEED-009 holds the measurement); the Sega wins only at s >= 2x+2 and no store sites at all means Sega by default; a family failing its size rule or under a Game Gear header falls to the doubt zone naming the candidate
+- [Phase 06]: 06-09: the refusal text lives in probe.c beside the board names and main.c makes one call; no test name added, three existing runner cases extended
+- [Phase 06]: 06-10: the Korean, Zemina and 4 PAK images are detected by the scan (board_source heuristic), not by fixture_facts rows; a 4 PAK slot powers up on page 0 (banks 0 and 1)
+- [Phase 06]: 06-11: no perf allow line; boot_to_play delta_bp 0 on final head run 42787536409, eight-lane hash equality green
 
 ### Pending Todos
 
@@ -233,6 +256,15 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-10 | Execute phase 5 plan 05-09 (gsd-execute-phase 05); phase 1, 2 and 4 review dispositions settled (open 0), deferred findings seeded in SEED-001, 002, 004 and 007, no script changed; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Execute phase 5 plan 05-11 (gsd-execute-phase 05); rehearsal skip and CI required clause for the Dependabot author with an actor control; 1 task, 1 commit | Claude Code | claude-sonnet-5-5 |
 
+| 2026-11-10 | Execute phase 5 close-out (gsd-autonomous); code review 0 critical, 5 warning, 7 info, WR-01/03/04 fixed and the rest seeded; verifier passed 5/5; ci workflow exit 0 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Ship phase 5 (gsd-ship 05); PR #19 squash-merged on green CI run 42768406155, release PR #20 merged, v0.5.0; digest dry run run 42769805382 exit 0 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Execute phase 6 plan 06-01 (gsd-execute-phase 06); cartdb slot table of 20 ids, per-slot counts, compact rows, catalog file and zz_new control; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Execute phase 6 plan 06-02 (gsd-execute-phase 06); API 10 constants and cart_info fields, abi.api_v10, api_version numeric-compare fix, embedding lines; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Execute phase 6 plan 06-03 (gsd-execute-phase 06); table regenerated as 1657 compact rows with 20 slot rows, binary search, catalog.tsv titles, named unsupported rows proven through fact_to_info, old table equal outside EEPROM persistence; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Execute phase 6 plan 06-07 (gsd-execute-phase 06); Zemina, Nemesis and 4 PAK arms, three exhaustive model-checked tests, slot rows flipped and regenerated, boards docs with the unsupported list; 2 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Execute phase 6 plan 06-08 (gsd-execute-phase 06); cart_scan and guess_board replace other_board, cart.probe.scan decoys and families, row geometry property, boards prose, SEED-009 for the threshold measurement; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-10 | Execute phase 6 plan 06-09 (gsd-execute-phase 06); probe board_source and scan keys, every board named in mapper_guess, refusal message naming board and reason, Janggun-looking seed; 2 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+
 ## Deferred Items
 
 Items acknowledged and deferred at milestone close, most recent first:
@@ -253,10 +285,10 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T06:04:42.115Z
-Stopped at: Phase 5 complete, ready to plan Phase 6
+Last session: 2026-11-10T09:09:15.688Z
+Stopped at: Phase 6 complete, ready to plan Phase 7
 Resume file: None
 
 ## Operator Next Steps
 
-- Branch `phase/05-tune-up` off `origin/main` after the roadmap merges, then run /gsd-discuss-phase 5
+- Phase 6 on branch `phase/06-korean-cartridges-play`: discuss (fan-out), plan, execute, verify, ship; owner authorised /gsd-autonomous for v2.0 on 2026-11-10 (overrides AGENTS rule 9)

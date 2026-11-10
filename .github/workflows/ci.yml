@@ -177,13 +177,17 @@ jobs:
           measured="size.zip.library=bytes:$dir/cogmaster-library-$leg.zip"
           measured="$measured;size.zip.runner=bytes:$dir/cogmaster-runner-$leg.zip"
           measured="$measured;size.zip.libretro=bytes:$dir/cogmaster-libretro-$leg.zip"
+          # Fault prevented: a hash table object over the 100 KB bound reaching a release.
           if [ "$leg" = linux-x64 ]; then
+            measured="$measured;size.cartdb=bytes:$dir/CMakeFiles/cogmaster.dir/src/cartdb.c.o"
             cmake -DQUALITY=quality.json "-DMEASURED=$measured" "-DBASE=$RUNNER_TEMP/compat-base/quality.json" -P tests/cmake/quality.cmake
           else
             cmake -DQUALITY=quality.json "-DMEASURED=$measured" -P tests/cmake/quality.cmake
           fi
           cmake "-DCMD=cmake;-DQUALITY=quality.json;-DMEASURED=size.zip.library=999999999;-P;tests/cmake/quality.cmake" \
             -DCODE=1 -DREGEX=size.zip.library -P tests/cmake/expect_fail.cmake
+          cmake "-DCMD=cmake;-DQUALITY=quality.json;-DMEASURED=size.cartdb=999999;-P;tests/cmake/quality.cmake" \
+            -DCODE=1 -DREGEX=size.cartdb -P tests/cmake/expect_fail.cmake
       - name: Protected compatibility comparison
         if: matrix.os == 'linux' && matrix.arch == 'x64'
         run: |

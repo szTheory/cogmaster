@@ -20,6 +20,25 @@ foreach(case IN ITEMS sega.banks sega.wrap sega.ram sega.mirror sega.shift codem
     LABELS mapper portable TIMEOUT 10)
 endforeach()
 
+# The Korean, Korean no-bank, Hi-Com, Zemina, Nemesis and 4 PAK boards at register level: images of
+# exact sizes on each board, every register value written through the bus and
+# compared with a model kept in the test, run under the address sanitizer in CI.
+add_executable(cogmaster-test-mapper-ext ${CMAKE_CURRENT_LIST_DIR}/test_mapper_ext.c)
+target_include_directories(cogmaster-test-mapper-ext PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-mapper-ext PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-mapper-ext PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-mapper-ext)
+
+# Fault prevented: a bank register that selects the wrong 8 KiB bank, a read
+# that runs past the end of the image, a documented register write recorded as
+# a fault, or a bank state that a saved state restores out of range.
+foreach(case IN ITEMS korean korean_nb hicom zemina nemesis hes_4pak state)
+  # Timeout: 10 s floor; 7 x 0.27 s, slowest of 3 runs, provisional.
+  cogmaster_add_test(NAME mapper.ext.${case} COMMAND cogmaster-test-mapper-ext ${case}
+    LABELS mapper portable TIMEOUT 10)
+endforeach()
+
 # Fault prevented: guessed battery spans, lost same-value writes and reset data loss.
 add_executable(cogmaster-test-battery ${CMAKE_CURRENT_LIST_DIR}/test_battery.c)
 target_include_directories(cogmaster-test-battery PRIVATE ${PROJECT_SOURCE_DIR}/src)

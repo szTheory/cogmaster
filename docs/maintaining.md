@@ -205,21 +205,38 @@ has no `quality.json` passes. Tightening needs no reason.
 
 Cartridge metadata comes only from the three per-file CC0 MAME hash lists at
 `1d7a454ed79e97d35d2a9f127ac029ead94711d6`. Fetch the `mame-sms`, `mame-gamegear` and `mame-sg1000`
-rows with `scripts/fetch-pin.sh`, then run
-`cogmaster-cartdb sms.xml gamegear.xml sg1000.xml --fixture tests/cart/fixture_facts.txt` and replace
-`src/cartdb.inc`. The fixture input is a fixed owned fact, never the assembler output. Assembly checks
-its SHA-1 after linking; no core target depends on fixture assembly. The bounded C17 converter never expands DTDs or
-external entities. It emits sorted whole-image SHA-1 facts only for a single full-size, offset-zero ROM;
-compound/incomplete records are counted on stderr and excluded. The pinned conversion has 1,669 candidates,
-21 excluded records and 1,656 unique facts. Identical hardware facts with card/cart title aliases coalesce;
-the title sorts deterministically. The image distributed for both SMS and GG SMS mode defaults to SMS.
-Conflicting board, size, persistence or video facts fail conversion. Unknown devices remain unsupported.
-This table identifies content; membership makes no gameplay claim. Generator tests use authored XML,
-not commercial bytes. Owned fixture facts remain separate from the CC0 records.
-The owned input has columns SHA-1, bytes, board, machine, region, video, persistence, declared bytes,
-geometry and title. Its public-identity flag is always zero; commercial rows have one. The merged table
-contains 1,657 unique facts. `cart.fixture_hash` renames the image and tests the production loader;
-`cart.fixture_wrong_hash` proves a changed expected identity is refused.
+rows with `scripts/fetch-pin.sh`, then, from the repository root, run
+
+```
+cogmaster-cartdb --pin <commit> --catalog tests/compat/catalog.tsv sms.xml gamegear.xml sg1000.xml \
+  --fixture tests/cart/fixture_facts.txt > src/cartdb.inc
+```
+
+The run writes `src/cartdb.inc` to stdout and the catalog to the named file. `--pin` is required and is
+printed on the table's first line. The fixture input is a fixed owned fact, never the assembler output;
+assembly checks its SHA-1 after linking, and no core target depends on fixture assembly. The bounded C17
+converter never expands DTDs or external entities.
+
+Every slot in the lists maps through the slot table in `tools/cartdb.c` to a board or to unsupported with a
+stated reason; that table is the one place that maps a slot to a board. A slot the table does not name fails
+the run, and `--list-slots` prints the names. Stderr prints one `cartdb: slot` line per slot with its seen and
+emitted counts. Compound or incomplete records are counted as seen and not emitted. The pinned conversion has
+1,670 candidates, 21 excluded records and 1,657 unique rows. Seen and emitted counts per slot:
+4pak 1/1, cardcatcher 1/0, castle 1/1, codemasters 22/21, dahjee_typea 11/11, dahjee_typeb 5/5, eeprom 7/7,
+hicom 9/9, janggun 1/1, korean 6/6, korean_188in1 1/1, korean_nb 5/5, level3 2/2, mgear 2/1, nemesis 1/1,
+othello 2/2, seojin 1/1, terebi 1/1, xterminator 2/2, zemina 8/8.
+
+A row is a binary SHA-1 with fixed-width facts and no title. Titles live in `tests/compat/catalog.tsv`
+(five tab-separated fields ending in the title; public records only), which `scripts/compat-update.sh` reads. Identical
+hardware facts with card/cart aliases coalesce. Conflicting board, size, persistence or video facts fail
+conversion. The table identifies content; membership makes no gameplay claim. Generator tests use authored
+XML, not commercial bytes, and the owned fixture row stays out of the catalog. Its public-identity flag is zero.
+`cart.fixture_hash` renames the image and tests the production loader; `cart.fixture_wrong_hash` proves a
+changed expected identity is refused.
+
+Two gates guard the table. `size.cartdb` in `quality.json` bounds the table's object file, measured on Linux
+x64 in the Size ceilings step. The `cart.generator` test also checks that the first line of `src/cartdb.inc`
+names the commit `pins.txt` pins, so a pin bump that left the table stale fails.
 
 When adding a repository check or a shared parser/judge helper, add its responsibility to
 `tests/policy/repository-checks.txt`. Keep check implementations in CMake script mode or POSIX sh and count
