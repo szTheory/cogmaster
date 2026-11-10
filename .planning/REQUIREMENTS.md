@@ -14,7 +14,7 @@ Requirements for this milestone. Each maps to one roadmap phase. Scope decisions
 - [ ] **TUNE-03**: A weekly digest reports CI duration, flaky tests and open nightly issues without anyone asking, and a CI-efficiency report names the slowest job
 - [x] **TUNE-04**: `quality.json` holds measured ceilings (including zip and wasm size) and floors that a CMake check enforces, and a `policy.lessons_unique` check runs in `ci`
 - [x] **TUNE-05**: Behaviour prose lives in topic files so no `docs/*.md` file is within 2 KiB of its cap, and `tests/retroarch` has at least 20 lines of headroom
-- [ ] **TUNE-06**: The README says how to load a ROM and states in one sentence that no BIOS or game is shipped
+- [x] **TUNE-06**: The README says how to load a ROM and states in one sentence that no BIOS or game is shipped
 - [x] **TUNE-07**: Each open review finding from phases 1, 2 and 4 (WR-02, WR-04, IN-01 to IN-06 and the phase 4 info items) is fixed, closed with a reason, or seeded
 - [ ] **TUNE-08**: The nightly lanes have run on the sound code, and the nightly report opens and closes an issue once on a forced failure
 - [ ] **TUNE-09**: Dependabot updates GitHub Actions weekly with minor and patch grouped, and a `policy.dependabot` test with a negative control guards its configuration
@@ -114,7 +114,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TUNE-03 | Phase 5 | Pending |
 | TUNE-04 | Phase 5 | Complete |
 | TUNE-05 | Phase 5 | Complete |
-| TUNE-06 | Phase 5 | Pending |
+| TUNE-06 | Phase 5 | Complete |
 | TUNE-07 | Phase 5 | Complete |
 | TUNE-08 | Phase 5 | Pending |
 | TUNE-09 | Phase 5 | Pending |

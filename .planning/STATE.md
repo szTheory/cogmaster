@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 5
 current_phase_name: Tune-up
 status: executing
-stopped_at: Completed 05-09-PLAN.md (runtime Claude Code, model Sonnet 5.5)
-last_updated: "2026-11-10T05:12:20.123Z"
+stopped_at: Completed 05-10-PLAN.md (runtime Claude Code, model Sonnet 5.5)
+last_updated: "2026-11-10T05:17:28.500Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 5 execution started
-state_head: b50ce5b41a58b25994b18d4f5b1c6f80974e5b1b
+state_head: c32222c9a4b7a278db7744b6dab856081023386e
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 14
-  completed_plans: 9
+  completed_plans: 10
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 5 (Tune-up) — EXECUTING
-Plan: 10 of 14
+Plan: 11 of 14
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 5 execution started
 
@@ -132,6 +132,7 @@ Progress: [░░░░░░░░░░] 0% of v2.0
 | Phase 05 P08 | 10min | 1 tasks | 6 files |
 | Phase 05 P06 | 70min | 3 tasks | 8 files |
 | Phase 05 P09 | 12min | 2 tasks | 7 files |
+| Phase 05 P10 | 20 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -151,6 +152,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 05]: 05-06: size ceilings are 15 percent above the largest measured value, rounded up to a whole kibibyte; the ratchet needs a new reasons entry to loosen
 - [Phase 05]: 05-06: ratchet fixtures are measured in lines because a file written on Windows has CRLF line ends
 - [Phase 05]: 05-09: P1 WR-02 and IN-04 deferred to SEED-007 under AGENTS rule 7, P1 WR-04 accepted risk, no script changed; P4 WR-02 recorded fixed from 04-REVIEW-FIX.md
+- [Phase 05]: README check runs against the built boot_to_play.sms fixture (owned image, digest in tests/built/expected.txt), not a tests/roms fixture: present on every fixtures lane, no ROM bytes
 
 ### Pending Todos
 
@@ -239,8 +241,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T05:12:20.102Z
-Stopped at: Completed 05-09-PLAN.md (runtime Claude Code, model Sonnet 5.5)
+Last session: 2026-11-10T05:17:28.474Z
+Stopped at: Completed 05-10-PLAN.md (runtime Claude Code, model Sonnet 5.5)
 Resume file: None
 
 ## Operator Next Steps
