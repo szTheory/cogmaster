@@ -408,6 +408,8 @@ release.floor.self_test	release
 release.single_version_source	policy
 release.single_version_source.next	policy
 release.single_version_source.self_test	policy
+runner.audio_cadence	portable,runner
+runner.audio_cadence.self_test	portable,runner
 runner.bench.bytes	bench,portable,runner
 runner.bench.format	bench,portable,runner
 runner.bench.percentile	bench,portable,runner

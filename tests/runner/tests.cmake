@@ -1232,9 +1232,54 @@ if(CMAKE_SCRIPT_MODE_FILE)
     # or 802: that is a failure, not a short hash.
     execute_process(COMMAND ${EMULATOR} ${SHORT} --frames 2 --hash-audio
       RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
-    if(NOT rc STREQUAL "1" OR NOT err MATCHES "frame 1 holds 800 samples" OR out MATCHES "audio-")
-      message(FATAL_ERROR "the 800 sample runner: expected exit 1 and no hash lines, got exit ${rc}\n${out}${err}")
+    if(NOT rc STREQUAL "1" OR NOT err MATCHES "frame 1 holds 800 samples, not 801" OR out MATCHES "audio-")
+      message(FATAL_ERROR "the 800 sample runner: expected exit 1, the expected count and no hash lines, got exit ${rc}\n${out}${err}")
     endif()
+  elseif(CASE STREQUAL "audio_cadence")
+    # The card's sample total after F frames is floor(F x N / D) in integer math, N / D being the samples a
+    # frame holds: 3,504,512 / 4,375 on NTSC and 685,094,400 / 709,379 on PAL. Derived from the audio crystal
+    # (53,203,425 Hz, 12 x 4,433,618.75, the figure MAME uses; .planning/preparation SMS-SYSTEM section 1 and
+    # SMS-AUDIO) at 48,000 samples a second over 59,736 (NTSC) and 71,364 (PAL) Z80 cycles a frame; no code is
+    # pasted. NUDGE, 0 unless a control sets it, is added to every expected total, so the control is off by
+    # one on the first comparison and must fail.
+    if(NOT DEFINED NUDGE)
+      set(NUDGE 0)
+    endif()
+    # Literal totals, derived by hand from the closed form and independent of the CMake math below.
+    set(anchor_ntsc_60 48061)
+    set(anchor_pal_1 965)
+    set(anchor_pal_2 1931)
+    set(anchor_pal_3 2897)
+    set(anchor_pal_50 48288)
+    set(anchor_pal_60 57945)
+    foreach(tv IN ITEMS ntsc pal)
+      set(region_args "")
+      set(num 3504512)
+      set(den 4375)
+      if(tv STREQUAL "pal")
+        set(region_args --region pal)
+        set(num 685094400)
+        set(den 709379)
+      endif()
+      foreach(frames IN ITEMS 1 2 3 50 60)
+        execute_process(COMMAND ${EMULATOR} ${RUN} --frames ${frames} --hash-audio ${region_args}
+          RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+        if(NOT rc STREQUAL "0" OR NOT out MATCHES "(^|\n)audio-pcm ${frames} rate 48000 channels 1 samples ([0-9]+) ")
+          message(FATAL_ERROR "audio_cadence: ${tv} ${frames} frames: exit ${rc}\n${out}${err}")
+        endif()
+        set(got ${CMAKE_MATCH_2})
+        math(EXPR want "${frames} * ${num} / ${den} + ${NUDGE}")
+        if(NOT got STREQUAL want)
+          message(FATAL_ERROR "audio_cadence: ${tv} ${frames} frames: samples ${got}, closed form ${want}")
+        endif()
+        if(DEFINED anchor_${tv}_${frames})
+          math(EXPR literal "${anchor_${tv}_${frames}} + ${NUDGE}")
+          if(NOT got STREQUAL literal)
+            message(FATAL_ERROR "audio_cadence: ${tv} ${frames} frames: samples ${got}, derived ${literal}")
+          endif()
+        endif()
+      endforeach()
+    endforeach()
   elseif(CASE STREQUAL "expect_audio")
     # audio@F=H judges the merged transition stream of frames 1 to F. The pinned hashes are read out of the
     # frozen files by pattern and the prefix hash comes from a run made here, so no digest is typed.
@@ -1985,6 +2030,22 @@ cogmaster_add_test(NAME runner.hash_audio
   COMMAND ${runner_check} -DCASE=hash_audio -DSHORT=$<TARGET_FILE:cogmaster-test-run-audio-short>
     ${hash_audio_image} -DPINS=${PROJECT_SOURCE_DIR}/tests/audio -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS portable psg runner TIMEOUT 30)
+
+# Fault prevented: a PAL frame that carries one sample too many or too few passing as 965 or 966, so a
+# drifting audio clock would go unseen by the hashes. The control adds one to every expected total.
+# Timeout: 20 s floor; 0.4 s slowest local run, no hosted run yet, so provisional.
+cogmaster_add_test(NAME runner.audio_cadence
+  COMMAND ${runner_check} -DCASE=audio_cadence -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 20)
+string(REPLACE ";" "\;" cadence_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
+set(cmd ${CMAKE_COMMAND} -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${cadence_emulator}"
+  -DCASE=audio_cadence -DNUDGE=1 -P ${CMAKE_CURRENT_LIST_FILE})
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+# Timeout: 20 s floor; 0.1 s slowest local run, no hosted run yet, so provisional.
+cogmaster_add_test(NAME runner.audio_cadence.self_test
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=audio_cadence:.*samples"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+  LABELS portable runner TIMEOUT 20)
 
 # Fault prevented: a sound claim that is only a frame hash (the transition stream, which shows the chips'
 # writes, can differ while the picture stays equal), an audio expectation that reads an empty trace because

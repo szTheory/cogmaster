@@ -145,11 +145,14 @@ The machine and console come from `--machine`, `--region` and `--video-mode` as 
   levels count as changes at tick 0. A level is the chip's register state, not a volume in samples, so changing
   how loud a level sounds moves `audio-pcm` and leaves this line alone.
 - **`audio-pcm`** hashes every sample of the run as 16-bit values, low byte first, left then right on a Game Gear.
-  `samples` is the sample count per channel, which is `floor(frames x 3,504,512 / 4,375)` on NTSC. `peak` is the
+  `samples` is the sample count per channel, which is `floor(frames x 3,504,512 / 4,375)` on NTSC and
+  `floor(frames x 685,094,400 / 709,379)` on PAL. `peak` is the
   largest magnitude (32,768 for the lowest value) and `clipped` counts samples at the extreme values.
 
-The run exits 1 and prints nothing to standard output when any frame does not hold 801 or 802 samples (965 or 966 on
-PAL), when the core dropped samples or log records, or when the core logs a source's changes out of time order. The
+The run exits 1 and prints nothing to standard output when frame f does not hold exactly
+`floor(f x N / D) - floor((f - 1) x N / D)` samples, N / D being the fraction above. NTSC frames hold 801 or
+802 samples and PAL frames 965 or 966, in a fixed pattern, PAL's first five being 965, 966, 966, 966 and 965. It also exits 1
+when the core dropped samples or log records, or when the core logs a source's changes out of time order. The
 check is made after each frame, so a hostile ROM cannot make the runner hold more than one frame of sound.
 
 ## PNG output
