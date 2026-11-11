@@ -88,13 +88,13 @@ END {
     for(i=1;i<=count;i++) { key=order[i]; for(j=1;j<=14;j++) if(j!=2 && j!=9) print "set(compat_" i "_" names[j] " [[" r[key,j] "]])"; split(r[key,13],t,";");
       for(j=1;j<=5;j++) { sub(/^[a-z0-9:]*=/,"",t[j]); print "set(compat_" i "_" parts[j] " [[" t[j] "]])" } print "set(compat_" i "_runner_region [[" (r[key,5]=="pal"?"pal":(r[key,4]=="japan"?"ntsc-j":"ntsc-u")) "]])" } }
   if(mode=="docs") {
-    for(i=1;i<=count;i++) { key=order[i]; status[r[key,8]]++; split(r[key,11],a,"@"); predicates[a[1]]++; if(r[key,1] ~ /^fixture\//) fixtures[r[key,1]]=1; group=r[key,3] "/" r[key,6] "/" r[key,8]; groups[group]++; }
+    for(i=1;i<=count;i++) { key=order[i]; status[r[key,8]]++; split(r[key,11],a,"@"); predicates[a[1]]++; if(r[key,5]=="pal" && r[key,8] ~ /^(pass|fail)$/) pal++; if(r[key,1] ~ /^fixture\//) fixtures[r[key,1]]=1; group=r[key,3] "/" r[key,6] "/" r[key,8]; groups[group]++; }
     for(key in fixtures) fixture_count++;
     print "# Compatibility\n\nGenerated from `tests/compat/ledger.csv`; regenerate with `sh scripts/compat-common.sh docs tests/compat/ledger.csv`.\n";
     print "Rows: " count+0 ". Evaluated coverage: " status["pass"]+status["fail"] ". Own fixtures: " fixture_count+0 ".";
     print "\nPass/fail describe accepted predicates only. Unknown has no accepted evaluation; unsupported names an unavailable capability; infrastructure_error describes a runner/judge failure. Metadata membership proves no support. No playable, completable or sound claim; boots is sampled display/distinct-frame/first-fault smoke and may reject static screens. HALT is not a rejection. Experimental through v2.0.\n\nEach row names its setting: machine, ntsc or pal, export or japan, and fm=on or off. TV is a setting of the run, not a fact about the cartridge. audio@F=HASH checks the stream of changes at the chips against a pinned hash, never how it sounds. Format 2: region was split into tv and region; fm joined the run configuration.\n";
     split("pass fail unknown unsupported infrastructure_error skipped",a," "); for(i=1;i<=6;i++) print "- " a[i] ": " status[a[i]]+0;
-    print ""; split("frame ram mailbox boots audio",a," "); for(i=1;i<=5;i++) print "- " a[i] " predicates: " predicates[a[i]]+0;
+    print ""; split("frame ram mailbox boots audio",a," "); for(i=1;i<=5;i++) print "- " a[i] " predicates: " predicates[a[i]]+0; print "- pal rows judged: " pal+0;
     print "\n| Machine/mapper/status | Rows |\n|---|---:|"; for(i=1;i<=count;i++) { key=order[i]; group=r[key,3] "/" r[key,6] "/" r[key,8]; if(!printed[group]++) print "| " group " | " groups[group] " |" }
     print "\n| ID | Title | Profile | Predicate | Status | Evidence | Date |\n|---|---|---|---|---|---|---|";
     for(i=1;i<=count;i++) { key=order[i]; split(r[key,13],t,";"); print "| " r[key,1] " | " md(r[key,2]) " | " r[key,3] "/" r[key,4] "/" r[key,5] "/" r[key,6] " " t[2] " | " r[key,7] " | " r[key,8] " | " md(r[key,9]) " | " r[key,10] " |" }
