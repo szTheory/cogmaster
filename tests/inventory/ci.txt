@@ -312,6 +312,11 @@ ports.input.tags	portable,ports
 ports.latch	portable,ports
 ports.latch_control	portable,ports
 ports.pins	portable,ports
+ports.state.midsequence	portable,ports
+ports.state.mutation	portable,ports
+ports.state.outside	portable,ports
+ports.state.profile_device	portable,ports
+ports.state.sweep	portable,ports
 psg.frame_flush	portable,psg
 psg.gg.port06_sms_mode	portable,psg
 psg.gg.routing	portable,psg

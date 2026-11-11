@@ -73,3 +73,22 @@ foreach(case IN ITEMS sports_ticks sports_walk clamp pending device_switch reset
   cogmaster_add_test(NAME ports.devices.${case} COMMAND cogmaster-test-ports-devices ${case}
     LABELS ports portable TIMEOUT ${timeout})
 endforeach()
+
+# The saved device state against an independent bounds checker: every byte of every new field
+# changed and loaded, each bound just outside, each cross-check violated once, a sweep with each
+# device attached, a state saved at every step of a read sequence and a Paddle on an export profile.
+add_executable(cogmaster-test-ports-state ${CMAKE_CURRENT_LIST_DIR}/test_state.c)
+target_include_directories(cogmaster-test-ports-state PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-ports-state PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-ports-state PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-ports-state)
+
+# Fault prevented: a loader that accepts a device state no run produces, or refuses one a run does, so a
+# corrupt save drives the core outside its bounds or a valid save is lost.
+foreach(case IN ITEMS mutation outside sweep midsequence profile_device)
+  # Timeout: 60 s for the byte mutations and the sweep, which load a state thousands of times;
+  # provisional until a hosted run measures it.
+  cogmaster_add_test(NAME ports.state.${case} COMMAND cogmaster-test-ports-state ${case}
+    LABELS ports portable TIMEOUT 60)
+endforeach()
