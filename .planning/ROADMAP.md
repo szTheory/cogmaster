@@ -39,7 +39,7 @@ pull request and one automated release.
 - [x] **Phase 8: Sports Pad, Paddle and 3-D glasses** - Pin-level ports and a grown input struct make the pad-device and 3-D titles play, with replays matching (completed 2026-11-11)
 - [x] **Phase 9: Light Phaser** - Light Phaser titles hit where the player aims, sensed from the emitted pixel at the beam (completed 2026-11-11)
 - [x] **Phase 10: BIOS boot** - A user boots from their own BIOS dump in the runner or RetroArch; fast boot stays the default (completed 2026-11-11)
-- [ ] **Phase 11: PAL and Japanese FM** - PAL timing proven on every lane and the library judge able to add PAL and Japanese FM rows for catalog-identified carts
+- [x] **Phase 11: PAL and Japanese FM** - PAL timing proven on every lane and the library judge able to add PAL and Japanese FM rows for catalog-identified carts (completed 2026-11-11)
 - [ ] **Phase 12: The whole list in the ledger** - Every SMS and Game Gear entry at the pin has an honest row, and `is_experimental` leaves the core
 
 ## Phase Details
@@ -211,7 +211,7 @@ Plans:
   2. PAL fixtures for the V-counter tables, Pause at line 311 and exact samples per frame give equal hashes on all eight lanes (REG-02).
   3. The `audio@F=H` predicate passes on a matching transition-stream hash and fails on its negative control, and `fm` is part of the row identity (REG-03).
   4. The library judge adds PAL and Japanese FM rows for catalog-identified carts through `compat-update.sh`, proven in CI by a synthetic library run through `library.sh run`, and the ratchet passes (REG-04).
-**Plans**: 8/9 plans executed
+**Plans**: 9/9 plans complete
 - [x] 11-01-PLAN.md
 - [x] 11-02-PLAN.md
 - [x] 11-03-PLAN.md
@@ -220,7 +220,7 @@ Plans:
 - [x] 11-06-PLAN.md
 - [x] 11-07-PLAN.md
 - [x] 11-08-PLAN.md
-- [ ] 11-09-PLAN.md
+- [x] 11-09-PLAN.md
 
 ### Phase 12: The whole list in the ledger
 **Goal**: Every SMS and Game Gear entry at the MAME pin has a ledger row with an honest status, and the libretro core drops `is_experimental` when the command over the owner's judged rows passes.
@@ -249,5 +249,5 @@ Plans:
 | 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 17/17 | Complete    | 2026-11-11 |
 | 9. Light Phaser | v2.0 | 12/12 | Complete    | 2026-11-11 |
 | 10. BIOS boot | v2.0 | 11/11 | Complete    | 2026-11-11 |
-| 11. PAL and Japanese FM | v2.0 | 8/9 | In Progress | - |
+| 11. PAL and Japanese FM | v2.0 | 9/9 | Complete    | 2026-11-11 |
 | 12. The whole list in the ledger | v2.0 | 0/TBD | Not started | - |
