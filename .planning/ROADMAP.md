@@ -187,14 +187,14 @@ Plans:
   3. CI runs a self-authored BIOS-shaped image with no skip, and a check shows the fast-boot hand-off state equals the state that image reaches (BIOS-03).
   4. The libretro `.info` declares the firmware as optional, and an in-process host test shows the adapter reads it from the system directory when the boot option asks for it (BIOS-04).
   5. SMS-SYSTEM section 3 is checked against the code, and a test exercises each BIOS and cartridge enable combination under `$3E` with the documented result (BIOS-05).
-**Plans**: 4/11 plans executed
+**Plans**: 5/11 plans executed
 
 Plans:
 - [x] 10-01-PLAN.md — release firmware scan, the digest table checked both ways against ASSET_POLICY, the BIOS directory read check, the BSD-3 digest notice (BIOS-01)
 - [x] 10-02-PLAN.md — local firmware-window scan, the retyped-bytes tripwire and the staged and pre-push hook with a control for each branch, their controls in the hygiene lane, hosted dispatch D1 (BIOS-01)
 - [x] 10-03-PLAN.md — header delta inert: media bios and bios_size, versions 14/16/16, v14 pins on three lanes, the commit-order evidence (BIOS-01, BIOS-03)
 - [x] 10-04-PLAN.md — the derived flag, the shared decoder and the per-machine arbitration with its closed-form table and controls, the SMS-SYSTEM amendments (BIOS-05)
-- [ ] 10-05-PLAN.md — load validation and ownership, power-on boot path, state binding, the last recompute legs, hosted dispatch D2 with the perf delta (BIOS-03, BIOS-05)
+- [x] 10-05-PLAN.md — load validation and ownership, power-on boot path, state binding, the last recompute legs, hosted dispatch D2 with the perf delta (BIOS-03, BIOS-05)
 - [ ] 10-06-PLAN.md — hostile BIOS images, the BIOS fuzz harness and seeds, the testing-guide rows and the fuzzing-guide counts (BIOS-03)
 - [ ] 10-07-PLAN.md — the self-authored BIOS-shaped image, the classification-complete hand-off equivalence with controls (BIOS-03)
 - [ ] 10-08-PLAN.md — the host BIOS helper: label-only recognition proved through the real identify path with an injected table, and the capped reader, provenance and environment text (BIOS-02)
@@ -239,6 +239,6 @@ Plans:
 | 7. Saves survive a restart | v2.0 | 10/10 | Complete    | 2026-11-10 |
 | 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 17/17 | Complete    | 2026-11-11 |
 | 9. Light Phaser | v2.0 | 12/12 | Complete    | 2026-11-11 |
-| 10. BIOS boot | v2.0 | 4/11 | In Progress | - |
+| 10. BIOS boot | v2.0 | 5/11 | In Progress | - |
 | 11. PAL and Japanese FM | v2.0 | 0/TBD | Not started | - |
 | 12. The whole list in the ledger | v2.0 | 0/TBD | Not started | - |

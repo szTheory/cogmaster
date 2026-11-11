@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 10
 current_phase_name: BIOS boot
 status: planning
-stopped_at: Completed 10-04-PLAN.md
-last_updated: "2026-11-11T16:21:17.330Z"
+stopped_at: Completed 10-05-PLAN.md
+last_updated: "2026-11-11T17:07:48.759Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 9 complete, transitioned to Phase 10
-state_head: f7bcbffd7e67f0aa2085e55e2e799dfa11bf3d38
+state_head: 356b5579908ca757a138238ba64107078de9d457
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 75
-  completed_plans: 68
+  completed_plans: 69
   percent: 63
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 10 — BIOS boot
-Plan: 4 of 11 complete (10-04: bus decode and BIOS arbitration behind the mem_slow flag)
+Plan: 5 of 11 complete (10-05: BIOS load and power-on boot, state bound to boot mode and BIOS, dispatch D2 green, perf delta -11 bp)
 Status: Executing Phase 10
-Last activity: 2026-11-11 — Completed 10-04-PLAN.md
+Last activity: 2026-11-11 — Completed 10-05-PLAN.md
 
 Progress: [██████░░░░] 63% of v2.0
 
@@ -196,6 +196,7 @@ Progress: [██████░░░░] 63% of v2.0
 | Phase 10 P02 | 70 min | 3 tasks | 10 files |
 | Phase 10 P03 | 25min | 2 tasks | 10 files |
 | Phase 10 P04 | 40min | 2 tasks | 10 files |
+| Phase 10 P05 | 65min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -286,6 +287,8 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 10]: The hygiene job timeout is 3 minutes after a measured 63 s, and hosted dispatch 1 saw perf, be32 and wasm32 fail at their apt-get step on runner DNS in three attempts and on main, so those legs are unproven for this branch
 - [Phase 10]: 10-03: the media struct grows at its end (reserved3, bios, bios_size) and only its size pin loosens to >=; every offset pin stays exact
 - [Phase 10]: 10-04: mem_slow is read only by mem_read; the cold decoder and peek decode from mem_ctrl and bios.size, so a direct mem_ctrl write stays truthful until plan 05 adds the load and state recompute sites
+- [Phase 10]: 10-05: a BIOS in the media is the request to boot from it; load and both reset kinds call cogmaster__boot_power_on when bios.size is set, the state binds boot mode and BIOS CRC-32 at header offsets 53 and 54, and state_load recomputes mem_slow after APPLY
+- [Phase 10]: 10-05: hosted dispatch D2 (run 43062734904) is green on every lane after the runner DNS recovered, perf delta_bp -11 against a fresh main run 43063808940, and the four bios test timeouts stay at the 20 s floor (slowest 0.57 s)
 
 ### Pending Todos
 
@@ -397,6 +400,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Plan phase 10 (gsd-plan-phase 10); research skipped (the discuss step did it), 11 plans of at most ten files, wave equals plan number, hosted dispatches D1, D2 and D3 inside the plans and D4 in the closing plan (no extra dispatch for the timeouts of plans 6 and 7: they are settled from D3's times, libretro in plan 10 and the rest in plan 11), the BIOS-01 scans first | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-01 (gsd-execute-phase 10); host/bios_table.inc (13 digests converted from ASSET_POLICY), policy.bios_table both ways with two self-tests, policy.bios_dir_reads, release.firmware_scan on the leg's three zips with eleven owned-byte controls, the MAME BIOS digests notice, ASSET_POLICY sections 4 and 5 as built, counted check code 788 of 847, no code file touched, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-02 (gsd-execute-phase 10); scripts/firmware-window.sh (rolling 32-byte window, one line per hit, 0 compared when no dump), local.firmware_window_scan in the library preset, ten hygiene-lane controls, hygiene.sh byte_run and the staged and history hook branches each controlled, counted check code 833 of 847, hosted dispatch 1 (runs 43047222253, 43049044281, 43051607563 on 947ac8e: every leg that could start green and release.firmware_scan Passed on all six build legs; perf, be32 and wasm32 failed at their apt-get step on runner DNS, main run 43053345486 fails perf the same way), timeouts of plans 01 and 02 settled, hygiene job timeout 2 to 3 minutes; 3 tasks, 3 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 10 plan 10-05 (gsd-execute-phase 10); cogmaster_load reads media.bios by size tag and validates in the stated order, cogmaster__boot_power_on for load and both resets, state header boot byte and BIOS CRC-32, mem_slow recomputed after state load, bios.load and bios.state with a proven window detector, embedding guide text, hosted dispatch D2 (run 43062734904 green on every lane after two DNS-failed attempts and one MSVC fix; fresh main run 43063808940; perf delta_bp -11), bios timeouts settled at the 20 s floor, counted check code 833 of 847; 3 tasks, 6 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-03 (gsd-execute-phase 10); cogmaster_media gains reserved3, bios and bios_size (72 / 40 bytes), versions API 14, behaviour 16, state 16, layout asserts only in src, size pins loosened to >= with every offset pin exact, tests/api/v14.c and abi.api_v14 on ci, wasm32 and nofp, order evidence for BIOS-01 recorded (scans precede the first code commit: exit 0 forward, 1 reversed), counted check code 833 of 847, no dispatch (runner DNS not re-observed; main still shows the failed dispatch); 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-04 (gsd-execute-phase 10); struct cogmaster__bios and the derived mem_slow flag, one shared decoder for the cold read path and peek, per-machine BIOS and cartridge arbitration (SMS1 cartridge wins, SMS2 ANDs, empty enabled slot without a fault when a BIOS is attached), bios.arbitration with 64 one-entry flips and three wrong-table controls, bios.slow_flag, three one-shot controls, SMS-SYSTEM section 3 and 9 amended and the fault row of embedding.md (+95 bytes), counted check code 833 of 847, no dispatch, no hot-path measurement yet (plan 05); 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 
@@ -420,8 +424,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T16:21:17.046Z
-Stopped at: Completed 10-04-PLAN.md
+Last session: 2026-11-11T17:07:48.509Z
+Stopped at: Completed 10-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
