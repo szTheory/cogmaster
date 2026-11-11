@@ -40,6 +40,10 @@
  * frame whose status reads $00, and prints the mailbox (mailbox.h).
  * docs/runner.md describes all of this for users.
  *
+ * --boot bios --bios FILE starts from that 8192-byte Master System BIOS
+ * instead of the fast hand-off; bios_load reads and labels it, and prints
+ * neither its path nor a byte.
+ *
  * Exit statuses are listed in exit_status.h and printed by --help.
  */
 #include <stdio.h>
@@ -49,6 +53,7 @@
 #include "args.h"
 #include "audio.h"
 #include "bench.h"
+#include "bios.h"
 #include "clock.h"
 #include "cogmaster.h"
 #include "exit_status.h"
@@ -311,7 +316,8 @@ static int set_devices(cogmaster *m, uint32_t port1, uint32_t port2)
 /* Runs the frames. The pixel buffer and the bench samples are on the heap:
    a field is too large for a small stack such as wasm32's, and the samples
    take 4 bytes per frame. Returns the exit status. */
-static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t image_size)
+static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t image_size,
+               const uint8_t *bios)
 {
     cogmaster__expect expectations;
     if (opt->expect != NULL) {
@@ -357,6 +363,8 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     media.region = opt->region;
     media.tv = opt->tv;
     media.video_mode = opt->video_mode;
+    media.bios = bios;
+    media.bios_size = bios != NULL ? (size_t)COGMASTER_BIOS_SIZE : 0u;
     int status = load_status(cogmaster_load(m, &media), image, image_size);
     /* auto takes the library's default for this content, already degraded to a pad when the
        machine and region cannot take it; the call is made once, so a later frame never changes it.
@@ -591,12 +599,75 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     return status;
 }
 
+/* Writes the digest as lowercase hex digits and a NUL. */
+static void sha1_text(const uint8_t d[20], char out[41])
+{
+    static const char digits[] = "0123456789abcdef";
+    for (size_t i = 0; i < 20u; i++) {
+        out[2u * i] = digits[d[i] >> 4];
+        out[2u * i + 1u] = digits[d[i] & 0x0fu];
+    }
+    out[40] = '\0';
+}
+
+/* Reads the BIOS for --boot bios into buf (room for the read cap) and prints its label line. Faults
+   prevented: a missing firmware request that exits 1 like a crash, a Game Gear cartridge that
+   starts a Master System BIOS, and a message that echoes the path or a byte of a dump. Every
+   refusal text is fixed. Recognition is a label only: a dump of the right size that is not in the
+   table still boots. Returns the exit status. */
+static int bios_load(const cogmaster__run_options *opt, const uint8_t *image, size_t image_size,
+                     uint8_t *buf)
+{
+    size_t n = 0;
+    size_t rows = 0;
+    uint8_t digest[20] = {0};
+    char text[41];
+    const char *name;
+    int rc;
+    if (opt->machine == COGMASTER_MACHINE_GG ||
+        (opt->machine == COGMASTER_MACHINE_AUTO &&
+         cogmaster__auto_machine(opt->file, image, image_size) == COGMASTER_MACHINE_GG)) {
+        fprintf(stderr, "cogmaster-run: unsupported: a BIOS cannot start a Game Gear cartridge\n");
+        return COGMASTER__EXIT_REFUSED;
+    }
+    rc = opt->bios != NULL ? cogmaster__bios_read(opt->bios, buf, &n) : COGMASTER_BIOS_READ_ABSENT;
+    if (rc == COGMASTER_BIOS_READ_ABSENT) {
+        fprintf(stderr,
+                "cogmaster-run: unsupported: a BIOS is required and absent; give --bios FILE\n");
+        return COGMASTER__EXIT_REFUSED;
+    }
+    if (rc != COGMASTER_BIOS_READ_OK) {
+        fprintf(stderr, "cogmaster-run: cannot read the BIOS file\n");
+        return COGMASTER__EXIT_FAILURE;
+    }
+    name = n < COGMASTER_BIOS_READ_CAP
+               ? cogmaster__bios_identify(cogmaster__bios_rows(&rows), rows, buf, n, digest)
+               : NULL;
+    if (n != COGMASTER_BIOS_SIZE) {
+        fprintf(stderr,
+                "cogmaster-run: unsupported: a BIOS file of %s%lu bytes%s%s%s; this release "
+                "runs 8192-byte Master System BIOS images\n",
+                n < COGMASTER_BIOS_READ_CAP ? "" : "over ",
+                (unsigned long)(n < COGMASTER_BIOS_READ_CAP ? n : COGMASTER_BIOS_SIZE),
+                name != NULL ? " (" : "", name != NULL ? name : "", name != NULL ? ")" : "");
+        return COGMASTER__EXIT_REFUSED;
+    }
+    if (name != NULL) {
+        fprintf(stderr, "cogmaster-run: BIOS recognised: %s\n", name);
+    } else {
+        sha1_text(digest, text);
+        fprintf(stderr, "cogmaster-run: BIOS not recognised (sha1 %s); running it as given\n",
+                text);
+    }
+    return COGMASTER__EXIT_OK;
+}
+
 /* Reads the file, if any, then probes it or runs it. Returns the exit
    status. */
 static int start(const cogmaster__run_options *opt)
 {
     if (opt->file == NULL) {
-        return run(opt, NULL, 0u);
+        return run(opt, NULL, 0u, NULL);
     }
     /* SG-1000 and SC-3000 images are named .sg and .sc; their support is
        planned, so they are refused before they are read. */
@@ -610,7 +681,17 @@ static int start(const cogmaster__run_options *opt)
     if (status != COGMASTER__EXIT_OK) {
         return status;
     }
-    status = opt->probe ? cogmaster__probe_print(opt->file, image, n) : run(opt, image, n);
+    if (opt->probe) {
+        status = cogmaster__probe_print(opt->file, image, n);
+    } else if (opt->boot_bios) {
+        uint8_t bios[COGMASTER_BIOS_READ_CAP];
+        status = bios_load(opt, image, n, bios);
+        if (status == COGMASTER__EXIT_OK) {
+            status = run(opt, image, n, bios);
+        }
+    } else {
+        status = run(opt, image, n, NULL);
+    }
     free(image);
     return status;
 }

@@ -43,9 +43,10 @@ request that changes the bench or the workflow runs the bench jobs but writes no
 
 ## Fuzzing
 
-Five fuzz targets each define `LLVMFuzzerTestOneInput`: `tests/fuzz/fuzz_loader.c` probes the bytes and loads them
+Six fuzz targets each define `LLVMFuzzerTestOneInput`: `tests/fuzz/fuzz_loader.c` probes the bytes and loads them
 on the profile the probe guesses, and fails when the probe and the load disagree on accepting them;
 `tests/fuzz/fuzz_run.c` loads them with fast boot and runs two frames.
+`tests/fuzz/fuzz_bios.c` takes the bytes as the BIOS image, of any length, against a fixed owned `DI; HALT` cartridge on a Master System 1 or 2 chosen by the last byte, runs two frames and applies the same checks as the run target; the loader and run targets keep the cartridge as their input.
 `tests/fuzz/fuzz_save.c` imports the bytes against independently constructed physical RAM
 with known, none, unknown and unsupported persistence. It checks FF padding, exact bytes,
 generation-neutral repeated import and full-state equality after refusal, including SIZE_MAX
@@ -60,12 +61,12 @@ every operation, then loads a state with changed device fields and requires a re
 Their starting inputs are the images
 `tests/fuzz/seeds.c` writes into `build/<preset>/tests/seeds` at build time; no corpus is committed.
 
-**Replay, every pull request.** `fuzz.regress.loader`, `fuzz.regress.run`, `fuzz.regress.save`, `fuzz.regress.eeprom` and `fuzz.regress.pad` link each entry with a plain `main`
+**Replay, every pull request.** `fuzz.regress.loader`, `fuzz.regress.run`, `fuzz.regress.save`, `fuzz.regress.eeprom`, `fuzz.regress.pad` and `fuzz.regress.bios` link each entry with a plain `main`
 (`tests/fuzz/replay.c`) and replay every seed, and every file in `tests/fuzz/regress` when it exists, on every
 lane that runs the `portable` label. Each prints `replayed N` and fails when N is 0. No libFuzzer is needed.
 
 **libFuzzer, nightly.** The `fuzz` job in `nightly.yml` runs `cmake --workflow --preset fuzz` on `ubuntu-26.04`:
-clang-21 with `-fsanitize=fuzzer-no-link,address,undefined`, the five targets linked with `-fsanitize=fuzzer`, each
+clang-21 with `-fsanitize=fuzzer-no-link,address,undefined`, the six targets linked with `-fsanitize=fuzzer`, each
 run for 60 s over a fresh copy of the seeds with `-timeout=2 -max_len=1049089` (1 MiB, a copier header and one
 byte, so the size-reject path is reachable). A crashing input is uploaded as the `fuzz-artifacts` artifact. The
 job is `continue-on-error` until ten green nightly runs. A finding is a harness or core bug to triage, never a

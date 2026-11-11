@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: The whole library
-current_phase: 10
-current_phase_name: BIOS boot
+current_phase: 11
+current_phase_name: PAL and Japanese FM
 status: planning
-stopped_at: Phase 9 complete, ready to plan Phase 10
-last_updated: "2026-11-11T12:26:56.048Z"
+stopped_at: Phase 10 complete, ready to plan Phase 11
+last_updated: "2026-11-11T19:14:50.371Z"
 last_activity: 2026-11-11
-last_activity_desc: Phase 9 complete, transitioned to Phase 10
-state_head: aa4dc48eaa25e508ee374e2a7cbe346b0986eecd
+last_activity_desc: Phase 10 complete, transitioned to Phase 11
+state_head: bd09bb49d34cf25fcd2293770babf77ea81cdf80
 progress:
   total_phases: 8
-  completed_phases: 5
-  total_plans: 64
-  completed_plans: 64
-  percent: 63
+  completed_phases: 6
+  total_plans: 75
+  completed_plans: 75
+  percent: 75
 ---
 
 # Project State
@@ -29,17 +29,17 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 
 ## Current Position
 
-Phase: 10 — BIOS boot
+Phase: 11 — PAL and Japanese FM
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-11-11 — Phase 9 complete, transitioned to Phase 10
+Last activity: 2026-11-11 — Phase 10 complete, transitioned to Phase 11
 
-Progress: [██████░░░░] 63% of v2.0
+Progress: [████████░░] 75% of v2.0
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 126
+- Total plans completed: 137
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -56,6 +56,7 @@ Progress: [██████░░░░] 63% of v2.0
 | 7 | 10 | - | - |
 | 8 | 17 | - | - |
 | 9 | 12 | - | - |
+| 10 | 11 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -192,6 +193,17 @@ Progress: [██████░░░░] 63% of v2.0
 | Phase 09 P10 | 45 min | 3 tasks | 6 files |
 | Phase 09 P11 | 25min | 3 tasks | 9 files |
 | Phase 9 P12 | 20 min | 3 tasks | 9 files |
+| Phase 10 P01 | 55 min | 2 tasks | 10 files |
+| Phase 10 P02 | 70 min | 3 tasks | 10 files |
+| Phase 10 P03 | 25min | 2 tasks | 10 files |
+| Phase 10 P04 | 40min | 2 tasks | 10 files |
+| Phase 10 P05 | 65min | 3 tasks | 10 files |
+| Phase 10 P06 | 15min | 2 tasks | 10 files |
+| Phase 10 P07 | 120min | 2 tasks | 8 files |
+| Phase 10 P08 | 45 min | 2 tasks | 9 files |
+| Phase 10 P09 | 60 min | 2 tasks | 10 files |
+| Phase 10 P10 | 75 min | 3 tasks | 10 files |
+| Phase 10 P11 | 60min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -276,6 +288,20 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 09]: Plan 09-10: the libretro Light Phaser aims by the frontend pointer through the last frame's rectangle or by a pad, stick and mouse cursor, a gun on a port whose option is not the phaser is ignored, and the crosshair is drawn after the conversion loop into the output buffer only in the native RGB444 colours (white 0x0FFF, red 0x000F, green 0x00F0, yellow 0x00FF)
 - [Phase 09]: Plan 09-11: table controller code 1 maps to the Light Phaser with no region or machine effect (a Game Gear degrades it through the availability rule), and the ledger token lphaser is accepted in every key grammar copy while only auto is refused
 - [Phase 9]: Soft reset and power reset keep a Light Phaser aim and only a load parks it; the three libretro gun cases run in their own loop at the 10 s floor
+- [Phase 10]: Release scan scratch directory is DIR.extract, one per staging directory, so parallel controls cannot clobber each other
+- [Phase 10]: firmware_scan reads the two digest tables through cmake -E cat so a missing table is empty and fails vacuous; the tables themselves are not hashed as scanned files
+- [Phase 10]: The window scan rolls a 32-byte window through od output line by line (one hash lookup per byte) because sliding substr over one long hex string is quadratic in BWK awk; the end and low_entropy controls use their own dumps since the plan's dump repeats every 256 bytes
+- [Phase 10]: The hygiene job timeout is 3 minutes after a measured 63 s, and hosted dispatch 1 saw perf, be32 and wasm32 fail at their apt-get step on runner DNS in three attempts and on main, so those legs are unproven for this branch
+- [Phase 10]: 10-03: the media struct grows at its end (reserved3, bios, bios_size) and only its size pin loosens to >=; every offset pin stays exact
+- [Phase 10]: 10-04: mem_slow is read only by mem_read; the cold decoder and peek decode from mem_ctrl and bios.size, so a direct mem_ctrl write stays truthful until plan 05 adds the load and state recompute sites
+- [Phase 10]: 10-05: a BIOS in the media is the request to boot from it; load and both reset kinds call cogmaster__boot_power_on when bios.size is set, the state binds boot mode and BIOS CRC-32 at header offsets 53 and 54, and state_load recomputes mem_slow after APPLY
+- [Phase 10]: 10-05: hosted dispatch D2 (run 43062734904) is green on every lane after the runner DNS recovered, perf delta_bp -11 against a fresh main run 43063808940, and the four bios test timeouts stay at the 20 s floor (slowest 0.57 s)
+- [Phase 10]: 10-06: fuzz_bios is a third harness entry whose input is the BIOS image against a fixed owned cartridge; no existing seed, harness or replay was edited, and bios.hostile bounds seven owned hostile images to one instruction of overshoot
+- [Phase 10]: 10-07: the equivalence check steps the BIOS instance inside frames and closes each with cogmaster_run_frame (a raw step past the deadline leaves renderer state that state load refuses), the probe cartridge is 64 KiB so the paging literals 0, 0, 1, 2 are meaningful, and 88 compared and 69 excluded names are pinned with a reason for each exclusion
+- [Phase 10]: 10-08: the BIOS helper takes its recognition table as an argument so host.bios injects its own rows and exercises the real bytes-to-digest-to-name path, the read is one fread of 8193 bytes with sentinel-checked bounds, and cogmaster-host is not linked to the core in CMake (consumers already link it; a second link gave duplicate-library warnings)
+- [Phase 10]: 10-09: the runner reads the BIOS after the cartridge and decides the Game Gear refusal first, an absent BIOS path is exit 77 while any other read error is 1, every BIOS text is fixed and never prints the path, and the cross-lane device row runs two frames because from the third a BIOS run of the probe hashes like a fast one
+- [Phase 10]: 10-10: the libretro BIOS option does nothing without content and logs one warning naming only the file on every other refusal, a Game Gear game never asks for the system folder, the region picks Japan then PAL then the export file with no fallback, and the two libretro timeouts take the 20 s floor from D3
+- [Phase 10]: 10-11: BIOS wording amended to what was built, BIOS-01..05 complete; every phase timeout settled at the 20 s floor from run 43074158512; final dispatch run 43076225840 and nightly 43076276567 green, perf delta -11 bp; real-BIOS residue stays an owner hand-off in SEED-010
 
 ### Pending Todos
 
@@ -384,6 +410,19 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 9 plan 09-10 (gsd-execute-phase 09); libretro LIGHTGUN type, lphaser option, pointer and cursor aim sources, Pause and Reset on a gun port 0, the crosshair after the conversion loop, tests/libretro/gun.h with three cases and six one-shot controls, no push; 3 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 9 plan 09-11 (gsd-execute-phase 09); table code 1 maps to the Light Phaser, lphaser in each ledger key grammar copy with 25-pair key and 6-token rejection cases and ratchet cases, eight testing-guide rows and the README line, two one-shot controls, no push; 3 tasks, 3 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 9 plan 09-12 (gsd-execute-phase 09); the Light Phaser section of the controller guide, GUN-02 and GUN-03 wording amended, GUN-01 to GUN-04 complete, floors 588 and 548, the SEED-010 hand-off, hosted dispatch 3 (run 43015673654 green on every lane, main base run 43015683127, nightly run 43015678841 with the fuzz lane green, perf delta 0 basis points) and the last timeouts settled, no ci.yml edit, local library judge deferred to the seed (no library path); 3 tasks, 3 commits |  Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Plan phase 10 (gsd-plan-phase 10); research skipped (the discuss step did it), 11 plans of at most ten files, wave equals plan number, hosted dispatches D1, D2 and D3 inside the plans and D4 in the closing plan (no extra dispatch for the timeouts of plans 6 and 7: they are settled from D3's times, libretro in plan 10 and the rest in plan 11), the BIOS-01 scans first | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 10 plan 10-01 (gsd-execute-phase 10); host/bios_table.inc (13 digests converted from ASSET_POLICY), policy.bios_table both ways with two self-tests, policy.bios_dir_reads, release.firmware_scan on the leg's three zips with eleven owned-byte controls, the MAME BIOS digests notice, ASSET_POLICY sections 4 and 5 as built, counted check code 788 of 847, no code file touched, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 10 plan 10-02 (gsd-execute-phase 10); scripts/firmware-window.sh (rolling 32-byte window, one line per hit, 0 compared when no dump), local.firmware_window_scan in the library preset, ten hygiene-lane controls, hygiene.sh byte_run and the staged and history hook branches each controlled, counted check code 833 of 847, hosted dispatch 1 (runs 43047222253, 43049044281, 43051607563 on 947ac8e: every leg that could start green and release.firmware_scan Passed on all six build legs; perf, be32 and wasm32 failed at their apt-get step on runner DNS, main run 43053345486 fails perf the same way), timeouts of plans 01 and 02 settled, hygiene job timeout 2 to 3 minutes; 3 tasks, 3 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 10 plan 10-05 (gsd-execute-phase 10); cogmaster_load reads media.bios by size tag and validates in the stated order, cogmaster__boot_power_on for load and both resets, state header boot byte and BIOS CRC-32, mem_slow recomputed after state load, bios.load and bios.state with a proven window detector, embedding guide text, hosted dispatch D2 (run 43062734904 green on every lane after two DNS-failed attempts and one MSVC fix; fresh main run 43063808940; perf delta_bp -11), bios timeouts settled at the 20 s floor, counted check code 833 of 847; 3 tasks, 6 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 10 plan 10-06 (gsd-execute-phase 10); bios.hostile (seven owned hostile images on SMS1 and SMS2 within 68 ticks of overshoot, the eight-size sweep with the instance unchanged), tests/fuzz/fuzz_bios.c as a third harness entry with fuzz.regress.bios and fuzz.libfuzzer.bios, six bios-* seeds added with no existing seed or harness touched, testing-guide rows for the two scans and the fuzzing guide at six targets, no dispatch (timeouts settle at the next one), counted check code 833 of 847; 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 10 plan 10-07 (gsd-execute-phase 10); tests/roms/src/bios_shape.asm builds the 8 KiB BIOS-shaped image, a 64 KiB probe cartridge and two bad variants from one owned source, four digest pins, bios.equivalence comparing the fast-boot hand-off with the state the image reaches over 88 compared and 69 excluded names (every name classified, reasons, pinned counts, typed independence literals, 23 mutation controls), the two bad images failing naming ram and z80_sp, no dispatch (timeouts settle after plan 10), counted check code 833 of 847; 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 10 plan 10-08 (gsd-execute-phase 10); host/bios.c and host/bios.h (built-in 13-row table, pure lookup, identify by SHA-1 and size, one read bounded at 8193 bytes, prints nothing), host.bios with the abc vector and an owned file hashed by CMake against injected tables and three negative controls, the provenance sentence and the environment example comment, no dispatch (timeout settles after plan 10), counted check code 833 of 847; 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 10 plan 10-09 (gsd-execute-phase 10); cogmaster-run --boot and --bios with a strict grammar (exit 2), 77 for an absent BIOS, a wrong size or a Game Gear cartridge and 1 for other read errors, fixed texts that never print the path, one SHA-1 label line, the exit table changed in --help, exit_status.h and docs/runner.md together, runner.bios.grammar, refusals, no_path_echo and boot with four negative controls, one two-frame cross-lane device row, no dispatch (timeouts settle after plan 10), counted check code 833 of 847; 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 10 plan 10-10 (gsd-execute-phase 10); libretro option cogmaster_boot (fast by default) reading one of bios_U/E/J.sms from the system folder by region and TV with one warning and a fast boot on every refusal, three optional .info firmware rows mapped to libretro.host.bios by the claims check with a self-test, libretro.host.bios (19 legs against the runner's digests) with three controls, docs/bios.md and one README sentence, hosted dispatch D3 run 43074158512 green on all lanes, libretro timeouts settled at the 20 s floor, counted check code 833 of 847; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 10 plan 10-11 (gsd-execute-phase 10); BIOS-01, BIOS-02 and BIOS-04 wording amended in REQUIREMENTS and ROADMAP, BIOS-01 to BIOS-05 complete, floors 626 and 584, SEED-011 and the SEED-010 BIOS local judge written; every timeout of the phase settled at the 20 s floor from run 43074158512, hosted dispatch D4 run 43076225840 green on every lane, fresh main run 43076272120, nightly run 43076276567 with libFuzzer on the BIOS harness green, perf delta -11 basis points, no ci.yml edit, local RetroArch observation done, real-BIOS runs left to the owner (SEED-010); 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 10 plan 10-03 (gsd-execute-phase 10); cogmaster_media gains reserved3, bios and bios_size (72 / 40 bytes), versions API 14, behaviour 16, state 16, layout asserts only in src, size pins loosened to >= with every offset pin exact, tests/api/v14.c and abi.api_v14 on ci, wasm32 and nofp, order evidence for BIOS-01 recorded (scans precede the first code commit: exit 0 forward, 1 reversed), counted check code 833 of 847, no dispatch (runner DNS not re-observed; main still shows the failed dispatch); 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 10 plan 10-04 (gsd-execute-phase 10); struct cogmaster__bios and the derived mem_slow flag, one shared decoder for the cold read path and peek, per-machine BIOS and cartridge arbitration (SMS1 cartridge wins, SMS2 ANDs, empty enabled slot without a fault when a BIOS is attached), bios.arbitration with 64 one-entry flips and three wrong-table controls, bios.slow_flag, three one-shot controls, SMS-SYSTEM section 3 and 9 amended and the fault row of embedding.md (+95 bytes), counted check code 833 of 847, no dispatch, no hot-path measurement yet (plan 05); 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Code review and verify phase 10 (autonomous run); core review 0 critical 2 warning, host review 2 critical (window scan false negatives) 7 warning, fix round 1 fixed 11, hygiene job and seven window controls settled from run 43082065462, verification passed 5 of 5, counted check code 845 of 940 | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -405,8 +444,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T12:01:38.694Z
-Stopped at: Phase 9 complete, ready to plan Phase 10
+Last session: 2026-11-11T18:29:17.526Z
+Stopped at: Phase 10 complete, ready to plan Phase 11
 Resume file: None
 
 ## Operator Next Steps

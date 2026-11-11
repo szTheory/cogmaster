@@ -57,6 +57,7 @@ API version 10 appends the board constants `COGMASTER_BOARD_KOREAN`, `COGMASTER_
 API version 11 appends the board constant `COGMASTER_BOARD_SEGA_EEPROM`, the Sega board with a 93C46 save chip, with behaviour revision 13 and state format 13, so older state bytes are refused; [Saves](saves.md) says what the chip and its window do.
 API version 12 appends the axis fields `x1`, `y1`, `x2` and `y2` to `cogmaster_input` (48 bytes), the devices `COGMASTER_DEVICE_PADDLE` and `COGMASTER_DEVICE_SPORTS_PAD`, the eye constants `COGMASTER_GLASSES_NONE`, `COGMASTER_GLASSES_RIGHT` and `COGMASTER_GLASSES_LEFT`, `glasses` in `cogmaster_run_result` and `default_port1` and `default_port2` in `cogmaster_info` and `cogmaster_cart_info`, with behaviour revision 14 and state format 14. Axis values are deltas per call. A caller built against the 32-byte input stays valid; a zeroed result or info means no eye and a pad. The controllers guide has the rest.
 API version 13 appends `COGMASTER_DEVICE_LIGHT_PHASER`, with behaviour revision 15 and state format 15, so older state bytes are refused. A phaser port reads its aim from `x1` `y1` (port 1) or `x2` `y2` (port 2) as 1-based field dots; the last call wins and `0 0` means no aim.
+API version 14 appends `bios` and `bios_size` to `cogmaster_media` (72 bytes), with behaviour revision 16 and state format 16, so older state bytes are refused.
 
 ## Getting it
 
@@ -145,7 +146,7 @@ First released sizes, where P is the pointer size (4 or 8):
 | `cogmaster_audio` (output) | 2 × P + 16 |
 | `cogmaster_audio_trace` (output) | 32 on 64-bit, 20 on 32-bit |
 
-Whole structs: `cogmaster_media` is 56 bytes (32 on 32-bit, `fm` at 28) and `cogmaster_info` is 68.
+Whole structs: `cogmaster_media` is 72 bytes (40 on 32-bit, `fm` at 28) and `cogmaster_info` is 68.
 
 Fields are fixed-width integers and pointers; enumerations travel as `uint32_t` and zero is the default of every
 input field. Statuses, constants and fields are only ever appended.
@@ -221,7 +222,7 @@ from your allocator, padded with `$FF` to a multiple of 16 KiB, so you may free 
 The library guesses the cartridge's board from the image (see [Probing an image](boards.md#probing-an-image)) and maps it
 at `$0000`-`$BFFF`, with 8 KiB of work RAM at `$C000`; an image on no supported board returns
 `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD`. The CPU starts as the console's BIOS leaves it (fast boot; no BIOS code runs): stack pointer `$DFF0`,
-`$AB` at `$C000` on the Master System, program counter 0. `machine` selects the profile: `COGMASTER_MACHINE_AUTO` (the default, a Master
+`$AB` at `$C000` on the Master System, program counter 0. A BIOS in `cogmaster_media` boots from it instead: `bios` and `bios_size` take an 8,192-byte Master System image, are read only when the size tag covers `bios_size`, and are both set or both zero (`COGMASTER_STATUS_ERR_ARGUMENT`). Another size returns `COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE`; the test card returns `COGMASTER_STATUS_ERR_NO_CONTENT` and a Game Gear `COGMASTER_STATUS_ERR_PROFILE_REJECTED`. The library keeps its own copy, a load without a BIOS drops it, and a state saved under one boot mode or BIOS is refused by another. See the BIOS guide, `docs/bios.md`. `machine` selects the profile: `COGMASTER_MACHINE_AUTO` (the default, a Master
 System II), `COGMASTER_MACHINE_SMS2`, `COGMASTER_MACHINE_GG` (2), or
 `COGMASTER_MACHINE_SMS1` (3, the 315-5124 VDP). SMS1 uses the console boot and
 port rules with address masks described in [video](hardware/video.md).
@@ -304,7 +305,7 @@ resets empty the log, since ticks restart there.
 
 `cogmaster_reset(m, kind)` restarts the loaded content without loading it again. Both kinds set the frame count
 and the tick count to zero, put the beam at the frame origin (line 192, tick 607, where a frame ends) as `load`
-does, start the CPU again from the fast-boot hand-off and clear the fault record. Every frame, the first after a
+does, start the CPU again from the fast-boot hand-off (at address 0 with a BIOS) and clear the fault record. Every frame, the first after a
 load or reset included, is then exactly 179,208 ticks on NTSC and 214,092 on PAL:
 
 - `COGMASTER_RESET_SOFT` (0) reapplies the fast-boot hand-off: memory kept across this restart, such as work RAM,
@@ -336,7 +337,7 @@ The record is part of the instance's saved state.
 
 | `kind` | Constant | Recorded when |
 |---|---|---|
-| 1 | `COGMASTER_FAULT_KIND_UNMAPPED_READ` | a read nothing drives returns open bus: a port in `$00`–`$3F` other than the Game Gear's `$00`–`$06`, the cartridge slots with the cartridge disabled by port `$3E`, or work RAM disabled by port `$3E` |
+| 1 | `COGMASTER_FAULT_KIND_UNMAPPED_READ` | a read nothing drives returns open bus: a port in `$00`–`$3F` other than the Game Gear's `$00`–`$06`, the cartridge slots with the cartridge disabled by port `$3E` and no BIOS answering (and, with a BIOS attached, not an enabled empty card or expansion slot), or work RAM disabled by port `$3E` |
 | 2 | `COGMASTER_FAULT_KIND_UNMAPPED_WRITE` | a write nothing takes: on the Japanese console or the Game Gear, which decode every port address, a port in `$00`–`$3F` or `$80`–`$BF` that nothing latches, such as `$3E` on the Game Gear; the cartridge slots with the cartridge disabled by port `$3E`, which also hides `$FFFC`–`$FFFF` from its mapper; or work RAM disabled by port `$3E`, except a write to `$FFFC`–`$FFFF` the enabled cartridge takes |
 | 3 | `COGMASTER_FAULT_KIND_ROM_WRITE` | a write to `$0000`–`$BFFF` that is neither a register of the cartridge's mapper nor cartridge RAM |
 | 4 | `COGMASTER_FAULT_KIND_MAPPER_RANGE` | a bank number at or past the end of an image whose page count is not a power of two, or a write to `$FFFC` that sets bit 7, bit 4 or bits 1–0 |

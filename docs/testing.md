@@ -68,7 +68,7 @@ Each lane is one workflow preset, `cmake --workflow --preset <name>`, building i
 | `hygiene` | The repository is clean: tree scan, formatting, the integer-only text scan, the analyzer, the pins file, and the tests of CI itself. | `hygiene` | `hygiene` |
 | `be32` | The same hashes on a big-endian, 32-bit target with unsigned `char`: 32-bit PowerPC (`cmake/toolchains/ppc-linux-gnu.cmake`) under `qemu-ppc`. | `ci` | `portable` |
 | `wasm32` | The same hashes in WebAssembly: clang-21 for `wasm32-wasi` (`cmake/toolchains/wasm32-wasi.cmake`) under the pinned wasmtime. WASI cannot load a libretro core, so this lane builds none. | `wasm32` | `portable` |
-| `fuzz` | The nightly libFuzzer runs of the loader, two-frame execution and raw save import under clang-21's ASan and UBSan (see [Fuzzing](perf-fuzz.md#fuzzing)). No fixtures, no libretro core. | `fuzz` | `fuzz` |
+| `fuzz` | The nightly libFuzzer runs of the loader, two-frame execution, raw save import and the boot ROM image under clang-21's ASan and UBSan (see [Fuzzing](perf-fuzz.md#fuzzing)). No fixtures, no libretro core. | `fuzz` | `fuzz` |
 | `vectors-full` | The nightly run of all 1,604,000 Z80 vectors, and that the committed sample is what the converter writes from the pinned archive (see [conformance.md](conformance.md#the-nightly-full-run)). Fetch the archive first. | `vectors-full` | `vectors` |
 | `bench` | A Release runner for the bench and the instructions-per-frame job. Configure and build only, with no tests and no fixtures. | none | none |
 
@@ -148,7 +148,7 @@ labels comma-separated (`cmake/CogmasterTests.cmake`). Configure fails when the 
 file in either direction, so a test cannot be dropped, renamed or registered on one platform only without the file
 changing in the same commit. Every leg registers the same tests; a check only one platform can perform runs there
 as a CI step instead. Five lanes have their own list: `hygiene.txt`, `nofp.txt` (the `abi` tests plus the nofp
-fixture), `wasm32.txt` (the `ci` list without the `libretro` tests), `fuzz.txt` (the three timed libFuzzer runs) and
+fixture), `wasm32.txt` (the `ci` list without the `libretro` tests), `fuzz.txt` (the timed libFuzzer runs) and
 `vectors-full.txt` (the seven full vector shards and the sample check).
 
 | Label | Tests |
@@ -221,10 +221,14 @@ matches the expected message; a crash or a missing file does not count as the ex
 | `policy.ci_required.actor_self_test` | A copy of `ci.yml` whose roll-up accepts a skipped rehearsal from any author. |
 | `policy.action_pins.self_test` | An action referenced by a tag. |
 | `policy.e2e_budget.self_test` | Two files totaling 301 lines under the RetroArch test budget. |
+| `policy.firmware_scan.*` | A zip holding a file with an injected SHA-1, a copier-headered member, a cartdb or manifest row, an empty directory and a zero-row table fail; a clean zip, a loose headered file and a misaligned `00` hex match pass. |
+| `policy.firmware_window.*`, `hygiene.byte_run.*` | A planted 32-byte window fails (also in a C array, a non-ASCII file name, a libretro module and a release zip), a 31-byte one passes; an unreadable target, a zip that will not open, an unusable or empty dump directory fail; 300 byte literals fail, 255 pass. |
 | `docs.budgets.ratio_equal` | One physical check line against ten core lines, including unterminated final lines. |
 | `docs.budgets.unclassified` | A checker omitted from the responsibility inventory. |
 | `docs.budgets.helper` | An additional counted compatibility helper exceeds an otherwise passing ratio. |
 | `docs.budgets.helper_unclassified` | An unclassified compatibility parser helper beside a classified checker. |
+
+The window controls run only in the Linux `hygiene` lane; `local.firmware_window_scan` runs in the `library` preset and says it compared nothing when no dump is set. The window scan misses base64, decimal lists, XOR, compression, `xxd` and `hexdump -C` layouts and a dump kept as a zip. A nested archive in a release zip is not re-extracted (`release.archive_contents` pins each member set); a padded dump of the same BIOS passes the release scan and only the window scan catches it.
 
 `docs.budgets.ratio_below` supplies the passing boundary: one check line against eleven core lines. Both `ci`
 and `hygiene` execute these cases and `docs.budgets`; the equality and omission cases require the intended

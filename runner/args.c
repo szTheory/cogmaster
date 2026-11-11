@@ -18,6 +18,8 @@ static const char synopsis[] =
     "  FILE, --rom FILE     the cartridge image to run; without one, the test card\n"
     "  --machine NAME       auto (default), sms, sms1 or gg\n"
     "  --video-mode NAME    auto (default), sms or gg\n"
+    "  --boot NAME          fast (default) or bios; bios starts from the BIOS in --bios FILE\n"
+    "  --bios FILE          the 8192-byte Master System BIOS to start from; needs --boot bios\n"
     "  --region NAME        auto (default), ntsc-u, ntsc-j or pal\n"
     "  --frames N           run N frames (N >= 1)\n"
     "  --bench N            run N frames and report the time per frame\n"
@@ -213,7 +215,7 @@ static int check_combination(const cogmaster__run_options *o)
         }
         if (o->frames != 0u || o->hash || o->hash_audio || o->png_count != 0u || o->trace ||
             o->mailbox || o->eyes || o->input || o->save_dir || o->expect ||
-            o->save_interval != 0u) {
+            o->save_interval != 0u || o->boot_given || o->bios != NULL) {
             return usage("--probe runs nothing, so it takes no run option");
         }
         return COGMASTER__EXIT_OK;
@@ -221,6 +223,12 @@ static int check_combination(const cogmaster__run_options *o)
     if (o->frames == 0u) {
         return usage("--frames N or --bench N is required");
     }
+    if (o->bios != NULL && !o->boot_bios)
+        return usage("--bios needs --boot bios");
+    if (o->boot_bios && o->file == NULL)
+        return usage("--boot bios needs a cartridge file");
+    if (o->boot_bios && o->expect != NULL)
+        return usage("--expect does not take --boot bios");
     if (o->save_dir != NULL && o->file == NULL)
         return usage("--save-dir requires content");
     if (o->save_interval != 0u && o->save_dir == NULL)
@@ -313,6 +321,17 @@ int cogmaster__parse_options(int argc, char **argv, cogmaster__run_options *o)
             o->video_mode = is(value, "gg")    ? COGMASTER_VIDEO_GG
                             : is(value, "sms") ? COGMASTER_VIDEO_SMS
                                                : COGMASTER_VIDEO_AUTO;
+            i++;
+        } else if (strcmp(arg, "--boot") == 0) {
+            if (o->boot_given || (!is(value, "fast") && !is(value, "bios")))
+                return usage("--boot needs fast or bios, once");
+            o->boot_given = 1;
+            o->boot_bios = is(value, "bios");
+            i++;
+        } else if (strcmp(arg, "--bios") == 0) {
+            if (value == NULL || *value == '\0' || o->bios != NULL)
+                return usage("--bios needs one file");
+            o->bios = value;
             i++;
         } else if (strcmp(arg, "--region") == 0) {
             if (!parse_region(value, &o->region, &o->tv)) {

@@ -10,10 +10,12 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "aim.h"
+#include "bios.h"
 #include "cogmaster.h"
 #include "eyes.h"
 #include "libretro.h"
@@ -682,6 +684,44 @@ void retro_cheat_set(unsigned index, bool enabled, const char *code)
     (void)code;
 }
 
+/* Boots from a BIOS when the player asked for it. The system folder is the only place read, the
+   name is chosen by the resolved region and TV and nothing else (Japan, then PAL, then the export
+   file), and no name falls back to another. Any refusal logs one line that names the file, never
+   the folder, and leaves the load on the fast boot: a frontend user cannot read an exit code. The
+   image is only handed to the library, which copies it at once; nothing here recognises or prints a
+   digest. */
+static uint8_t lr_bios_image[COGMASTER_BIOS_READ_CAP];
+
+static void lr_bios(cogmaster_media *media)
+{
+    const char *name = media->region == COGMASTER_REGION_JAPAN ? "bios_J.sms"
+                       : media->tv == COGMASTER_TV_PAL         ? "bios_E.sms"
+                                                               : "bios_U.sms";
+    const char *dir = NULL;
+    char path[512];
+    char line[96];
+    size_t n = 0u;
+    int rc = COGMASTER_BIOS_READ_ABSENT;
+
+    if (media->machine == COGMASTER_MACHINE_GG) {
+        lr_log("a Game Gear has no BIOS support in this release; using fast boot");
+        return;
+    }
+    if (env_cb != NULL && env_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir) && dir != NULL &&
+        dir[0] != '\0' && (size_t)snprintf(path, sizeof path, "%s/%s", dir, name) < sizeof path) {
+        rc = cogmaster__bios_read(path, lr_bios_image, &n);
+    }
+    if (rc == COGMASTER_BIOS_READ_OK && n == COGMASTER_BIOS_SIZE) {
+        media->bios = lr_bios_image;
+        media->bios_size = n;
+        return;
+    }
+    (void)snprintf(line, sizeof line,
+                   "no usable %s of %u bytes in the system folder; using fast boot", name,
+                   (unsigned)COGMASTER_BIOS_SIZE);
+    lr_log(line);
+}
+
 /* L7761. A NULL game loads the test card; content uses game.data and size.
    XRGB8888, or RGB565 in the test build, is requested here (L865);
    the default 0RGB1555 is deprecated. The frame buffers are allocated once,
@@ -738,6 +778,8 @@ bool retro_load_game(const struct retro_game_info *game)
             media.fm = COGMASTER_FM_ON;
         media.image = game->data;
         media.image_size = game->size;
+        if (lr_option("cogmaster_boot", "bios"))
+            lr_bios(&media);
     }
     info.size = (uint32_t)sizeof info;
     if (cogmaster_load(inst, &media) != COGMASTER_STATUS_OK ||

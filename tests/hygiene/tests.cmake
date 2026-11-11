@@ -1,6 +1,7 @@
 # Hygiene tests, registered only by the hygiene preset (COGMASTER_HYGIENE).
 set(hygiene_scripts ${CMAKE_CURRENT_LIST_DIR}/../cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/../policy/budget_cases.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/../policy/firmware_window_cases.cmake)
 
 # Fault prevented: a personal path or address, an unlisted binary, a game
 # image or GPL text in any file git would track, ignored build output aside.
@@ -55,6 +56,35 @@ foreach(case manifest unlisted)
       COMMAND ${CMAKE_COMMAND} "-DCMD=${command}" -DCODE=1 "-DREGEX=binary file not in manifest"
         -P ${hygiene_scripts}/expect_fail.cmake
       LABELS hygiene TIMEOUT 60)
+  endif()
+endforeach()
+
+# Fault prevented: firmware retyped into source as a byte array. 300 consecutive two-digit literals fail, 255 pass,
+# and 255 split by one prose line pass, so only a long unbroken run trips the tripwire.
+foreach(case over under split)
+  set(tree ${CMAKE_BINARY_DIR}/hygiene/byte_run_${case})
+  file(REMOVE_RECURSE ${tree})
+  file(MAKE_DIRECTORY ${tree}/scripts)
+  file(COPY ${CMAKE_SOURCE_DIR}/scripts/hygiene.sh DESTINATION ${tree}/scripts)
+  execute_process(COMMAND ${GIT_EXECUTABLE} init -q ${tree} COMMAND_ERROR_IS_FATAL ANY)
+  set(literals 255)
+  set(prose -1)
+  if(case STREQUAL "over")
+    set(literals 300)
+  elseif(case STREQUAL "split")
+    set(prose 128)
+  endif()
+  execute_process(COMMAND ${COGMASTER_SH} -c [=[awk -v n="$2" -v s="$3" 'BEGIN { for (i = 0; i < n; i++) { if (i == s) print "prose"; printf "0x%02x,%s", i % 256, (i % 16 == 15 ? "\n" : " ") } print "" }' > "$1"]=]
+    sh ${tree}/data.txt ${literals} ${prose} COMMAND_ERROR_IS_FATAL ANY)
+  set(command ${COGMASTER_SH} -c "cd \"$1\" && sh scripts/hygiene.sh --tree" sh ${tree})
+  # Timeout: 20 s floor; 2 x 0.10 s, slowest of 9 runs, run 43049044281.
+  if(case STREQUAL "over")
+    string(REPLACE ";" "$<SEMICOLON>" command "${command}")
+    cogmaster_add_test(NAME hygiene.byte_run.over
+      COMMAND ${CMAKE_COMMAND} "-DCMD=${command}" -DCODE=1 "-DREGEX=hygiene: retyped bytes" -P ${hygiene_scripts}/expect_fail.cmake
+      LABELS hygiene TIMEOUT 20)
+  else()
+    cogmaster_add_test(NAME hygiene.byte_run.${case} COMMAND ${command} LABELS hygiene TIMEOUT 20)
   endif()
 endforeach()
 

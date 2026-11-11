@@ -236,3 +236,43 @@ express Statement of Purpose.
     this CC0 or use of the Work.
 
 ```
+
+## MAME BIOS digests
+
+- **Applies to:** `host/bios_table.inc`
+- **Upstream:** https://github.com/mamedev/mame, driver `src/mame/sega/sms.cpp` at commit
+  `1d7a454ed79e97d35d2a9f127ac029ead94711d6`. The file's own header reads `license:BSD-3-Clause`.
+- **Taken:** the BIOS file names, sizes and SHA-1 digests the driver lists, as facts. No code and no firmware
+  byte is taken or kept; the same rows are the public record in `ASSET_POLICY.md` section 4.
+
+Licence: BSD-3-Clause.
+
+```text
+Copyright (c) the copyright holders named in the driver's header: Wilbert Pol, Charles MacDonald,
+Mathis Rosenhauer, Brad Oliver, Michael Luong, Fabio Priuli and Enik Land.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```

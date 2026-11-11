@@ -59,11 +59,11 @@ Requirements for this milestone. Each maps to one roadmap phase. Scope decisions
 
 ### BIOS boot
 
-- [ ] **BIOS-01**: The two firmware legality scans (release and local window) exist, each with a negative control, before any BIOS code lands
-- [ ] **BIOS-02**: A user boots from their own BIOS dump with `--boot bios --bios FILE` or the libretro option, fast boot stays the default, the dump is recognised by SHA-1, and the runner exits 77 when a BIOS is required and absent
-- [ ] **BIOS-03**: CI runs a self-authored BIOS-shaped image with no skip, and a check shows the fast-boot hand-off equals the state that image reaches
-- [ ] **BIOS-04**: The libretro `.info` declares the firmware as optional and the adapter reads it from the system directory
-- [ ] **BIOS-05**: BIOS and cartridge arbitration under `$3E` follows the documented hardware after SMS-SYSTEM section 3 is checked against the code, not an assumed exclusive overlay
+- [x] **BIOS-01**: The two firmware legality scans (release and local window) exist before any BIOS code lands, each with a negative control; the release scan runs in `ci` and its controls with it, the local window scan runs in the `library` preset and the pre-commit and pre-push hooks, and its controls run in the `hygiene` lane
+- [x] **BIOS-02**: A user boots a Master System from their own 8 KiB BIOS dump with `--boot bios --bios FILE` or the libretro option; fast boot stays the default, the dump is named by SHA-1, and the runner exits 77 when a BIOS is required and absent or not supported (the Game Gear and built-in-game BIOSes are seeds)
+- [x] **BIOS-03**: CI runs a self-authored BIOS-shaped image with no skip, and a check shows the fast-boot hand-off equals the state that image reaches
+- [x] **BIOS-04**: The libretro `.info` declares the firmware as optional and the adapter reads it from the system directory (three Master System file names; the Game Gear BIOS is a seed)
+- [x] **BIOS-05**: BIOS and cartridge arbitration under `$3E` follows the documented hardware after SMS-SYSTEM section 3 is checked against the code, not an assumed exclusive overlay
 
 ### PAL and Japanese FM
 
@@ -144,11 +144,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GUN-02 | Phase 9 | Complete |
 | GUN-03 | Phase 9 | Complete |
 | GUN-04 | Phase 9 | Complete |
-| BIOS-01 | Phase 10 | Pending |
-| BIOS-02 | Phase 10 | Pending |
-| BIOS-03 | Phase 10 | Pending |
-| BIOS-04 | Phase 10 | Pending |
-| BIOS-05 | Phase 10 | Pending |
+| BIOS-01 | Phase 10 | Complete |
+| BIOS-02 | Phase 10 | Complete |
+| BIOS-03 | Phase 10 | Complete |
+| BIOS-04 | Phase 10 | Complete |
+| BIOS-05 | Phase 10 | Complete |
 | REG-01 | Phase 11 | Pending |
 | REG-02 | Phase 11 | Pending |
 | REG-03 | Phase 11 | Pending |

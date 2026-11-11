@@ -24,6 +24,10 @@ check_text() {
   $0 ~ ENVIRON["HOME_PATH"] && $0 !~ ENVIRON["HOME_OK"] {found("home directory path")}
   $0 ~ ENVIRON["EMAIL"] && $0 !~ ENVIRON["EMAIL_OK"] {found("email address")}
   code ~ ENVIRON["CODE_PATH"] && $0 ~ ENVIRON["GPL_TEXT"] {found("GPL licence text in code")}
+  # Fault prevented: firmware retyped as a byte array with no dump configured. An obvious-paste tripwire; other forms pass.
+  {l=$0; gsub(/\.(db|byte)|[, \t]+/, "", l)}
+  l ~ /^((0[xX]|\$)[0-9A-Fa-f][0-9A-Fa-f])+$/ {run += gsub(/(0[xX]|\$)[0-9A-Fa-f][0-9A-Fa-f]/, "&", l); if (run >= 256 && !seen++) found("retyped bytes"); next}
+  {run = 0}
   END {exit bad}'
 }
 check_file() {
@@ -55,6 +59,10 @@ check_stop_policy() {
 check_identity() {
   case $1 in *@users.noreply.github.com | noreply@github.com) ;; *) found 'commit identity is not a noreply address' "$2" ;; esac
 }
+# Fault prevented: a window of the owner's firmware dump entering a commit or push (rev:path names in; a no-op until configured).
+fw_scan() { [ -n "${COGMASTER_BIOS_DIR-}" ] || grep -q '^COGMASTER_BIOS_DIR=.' .env.local 2>/dev/null || return 0
+  d=$(mktemp -d); trap 'rm -rf "$d"' EXIT; while read -r r; do git show "$r" > "$d/$(printf %s "$r" | tr '/:' '__')"; done
+  sh scripts/firmware-window.sh '' "$d"/* >&2; }
 staged_show() { git show ":$1"; }
 tree_show() { if [ -f "$1" ]; then cat "$1"; else git show ":$1"; fi; }
 mode=${1:---tree}
@@ -62,6 +70,7 @@ mode=${1:---tree}
 case $mode in
   --staged)
     check_files "$(git diff --cached --name-only -z --diff-filter=ACMR | tr '\0' '\n')" staged_show
+    git diff --cached --name-only --diff-filter=ACMR | sed 's/^/:/' | fw_scan || found 'firmware window' staged
     check_stop_policy
     if [ "${COGMASTER_ALLOW_MAIN_COMMIT:-0}" != 1 ] && [ -n "$(git remote)" ] && [ "$(git symbolic-ref --quiet --short HEAD || true)" = main ]; then found 'commit on main once a remote exists; branch first' 'git switch -c phase/NN-slug origin/main'; fi
     check_identity "$(git var GIT_AUTHOR_IDENT | sed -E 's/.*<([^>]*)>.*/\1/')" author
@@ -71,6 +80,7 @@ case $mode in
     check_stop_policy ;;
   --history)
     [ $# -gt 0 ] || set -- --all
+    for c in $(git rev-list "$@"); do git diff-tree -r --root --no-commit-id --name-only --diff-filter=ACMR "$c" | sed "s/^/$c:/"; done | fw_scan || found 'firmware window' history
     for c in $(git rev-list "$@"); do
       git grep -I -h -e '' "$c" -- . ":!$SELF" | check_text "commit $c" || fail=1
       git log -1 --format=%B "$c" | check_text "message of $c" || fail=1

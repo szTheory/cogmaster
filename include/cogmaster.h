@@ -11,10 +11,10 @@
 extern "C" {
 #endif
 
-#define COGMASTER_API_VERSION 13
+#define COGMASTER_API_VERSION 14
 #define COGMASTER_ABI_VERSION 1
-#define COGMASTER_BEHAVIOUR_REVISION 15
-#define COGMASTER_STATE_FORMAT_VERSION 15
+#define COGMASTER_BEHAVIOUR_REVISION 16
+#define COGMASTER_STATE_FORMAT_VERSION 16
 
 typedef uint32_t cogmaster_status;
 #define COGMASTER_STATUS_OK 0u
@@ -163,6 +163,11 @@ typedef struct cogmaster_media {
     uint32_t reserved2;
 #endif
     uint32_t fm; /* COGMASTER_FM_* */
+#if UINTPTR_MAX > UINT32_MAX
+    uint32_t reserved3;
+#endif
+    const void *bios; /* NULL with bios_size 0: fast boot; an 8192-byte image boots from it */
+    size_t bios_size;
 } cogmaster_media;
 
 typedef struct cogmaster_info {

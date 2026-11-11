@@ -107,11 +107,15 @@ extreme [SYS.29]). Would change if: catch-up proves too slow for the handheld bu
 | $FFFD–$FFFF | bank for slots 0–2; 3, 5 or 6 significant bits by mapper revision; power-of-two ROMs mirror | | [SYS.03] |
 
 - Slot area arbitration is port $3E: expansion, cartridge, card and BIOS each have an active-low enable; the BIOS copies itself to RAM,
-  disables its ROM and enables card, cartridge and expansion in turn [SYS.04]. On SMS2 the BIOS and cartridge outputs are ANDed when both
-  are enabled [SYS.26]; MAME starts from $FF and ANDs every enabled source, ares applies sources in order with the cartridge overriding
-  the BIOS [SYS.26][SYS.28]. Mark III has no $3E: the cartridge bridges the card's /OE, so cartridge beats card [SYS.04][SYS.26].
+  disables its ROM and enables card, cartridge and expansion in turn [SYS.04]. When BIOS and cartridge are both enabled, the SMS lets the
+  cartridge win with no corrupted data and the SMS 2 ANDs the two outputs (MacDonald's hardware tests, smstech section 4 [SYS.04]); MAME ANDs on every machine but the Game Gear
+  and ares lets the cartridge win on every model, so each is right for one machine only [SYS.26][SYS.28]. cogmaster follows the
+  hardware tests per machine, with the BIOS answering only $0000–$1FFF; a real BIOS never enables both. With a BIOS attached, a
+  read of an enabled but empty card or expansion slot (cartridge and BIOS off, b5 or b7 clear) returns open bus and records no
+  fault, because the BIOS probes those slots in turn [SYS.04]. Mark III has no $3E: the cartridge bridges the card's /OE, so cartridge beats card [SYS.04][SYS.26].
 - Game Gear: with $3E bit 3 clear the 1 KB BIOS answers $0000–$03FF and the cartridge the rest; with it set the cartridge fills the
-  first 1 KB too [SYS.04][SYS.09]. MAME notes $3E "only exists in Master System mode" on GG [SYS.25].
+  first 1 KB too [SYS.04][SYS.09]. MAME notes $3E "only exists in Master System mode" on GG [SYS.25]. cogmaster does not model the Game
+  Gear BIOS: a load with one is refused, and $3E stays undecoded in native mode.
 - On-cart RAM is 16 KB per bank (two banks, bit 2); most games fit 8 KB mirrored across the slot [SYS.03]. Mapper families (Codemasters
   at $0000/$4000/$8000 with no protected first KB, Korean $A000, and the rest) are in SMS-CARTRIDGES-AND-PERIPHERALS.md [SYS.03].
 - Mapper power-on: undefined on the 831001/832011 mask ROMs and the 315-5208; the 315-5235 resets to $FFFC = $00, $FFFD = $00,
@@ -275,8 +279,7 @@ and the exact read mapping: the VDP phase. (3) SMS1 open-bus byte = last instruc
 operand, or the refresh?) is untested; the bus phase adds a vector and C5 stays until it fails. (4) Full versus partial port decode on
 the Japanese SMS and Mark III ("unconfirmed" in ares, asserted in MAME) [SYS.28][SYS.25]: the machine-profile phase follows MAME.
 (5) $F2 on export units: $DD mirror (ares, port map) or fixed %10 (SMS Power!) [SYS.28][SYS.12][SYS.19]: the FM phase; the
-Phantasy Star detector fails either way. (6) Whether the GG BIOS stores $3E at $C000, and the VDP "after BIOS" register image: the boot
-phase reads the public disassemblies for facts only. (7) Sean Young's reset values and prefix rule (unverified here): the CPU phase
+Phantasy Star detector fails either way. (6) Whether the GG BIOS stores $3E at $C000, and the VDP "after BIOS" register image are unknown. (7) Sean Young's reset values and prefix rule (unverified here): the CPU phase
 re-fetches the document and SingleStepTests/z80 pins the behaviour.
 
 ## Sources

@@ -69,6 +69,8 @@ cogmaster-run --help | --version
 | `--machine NAME` | `sms` selects SMS2, `sms1` selects SMS1, `gg` selects Game Gear. `auto` uses the public probe's hash metadata/header facts, then the `.gg` filename fallback. With no file, `auto` selects SMS2. |
 | `--region NAME` | Region and TV standard together: `ntsc-u` is export NTSC, `ntsc-j` Japanese NTSC and `pal` export PAL. `auto` uses probe metadata/header region when present, otherwise export NTSC. |
 | `--video-mode NAME` | `auto`, `sms` or `gg`; video selection is independent of the machine profile. |
+| `--boot NAME` | `fast` (the default) starts the cartridge as the BIOS would have left the console, with no BIOS. `bios` starts from the Master System BIOS named by `--bios`, runs it, and lets it start the cartridge. Give it once. It needs a cartridge file and is a usage error with `--probe` or `--expect`. A BIOS run starts with the BIOS's own time, so frame N of a BIOS run is not frame N of a fast run, and an `--input` script written for fast boot misaligns. Most real BIOS images check the cartridge's header, so a cartridge that runs under `fast` can lock up under `bios`. |
+| `--bios FILE` | The BIOS dump to start from: exactly 8,192 bytes, from a Master System. Give it once, only with `--boot bios` (with `--boot fast` or alone it is a usage error, so adding a path never changes a hash). The runner reads at most 8,193 bytes of it. It prints one line on standard error: `BIOS recognised: NAME` when the file's SHA-1 and size are a known dump, else `BIOS not recognised (sha1 DIGEST); running it as given`. A dump of the right size that is not recognised still runs, so a patched dump works. Recognition names the file; it selects no machine, region or FM sound. The path and the bytes are never printed. |
 | `--input FILE` | Exactly one absolute input record per requested frame, applied before that frame. |
 | `--port1 NAME`, `--port2 NAME` | `auto` (the default), `pad`, `none`, `paddle`, `sports` or `lphaser`. `auto` takes the controller the loaded cartridge was made for, a pad for any other content. A `paddle` needs `--region ntsc-j` on a Master System, and `sports` needs a Master System. |
 | `--frames N` | Run N frames, N from 1 to 4294967295. Give either `--frames` or `--bench`, once. |
@@ -100,9 +102,13 @@ The runner exits 77 and runs nothing when it cannot run what was asked:
 - an 8 KiB image on the Game Gear, which is the X-Terminator cheat device rather than a game;
 - a machine and region no console had: PAL with the Game Gear or with `ntsc-j`'s Japanese console;
 - a controller the machine and region cannot take: `--port1 paddle` without `--region ntsc-j`, or any `paddle`, `sports` or `lphaser` choice on the Game Gear; the message names the fix;
-- a file whose name ends in `.sg` or `.sc`, refused unread with `unsupported: SG-1000 (planned)`.
+- a file whose name ends in `.sg` or `.sc`, refused unread with `unsupported: SG-1000 (planned)`;
+- a BIOS asked for with `--boot bios` that is absent (no `--bios`, or no file at that path), whose size is not 8,192
+  bytes (the message gives the size and, for a known dump of another size, its name), or that would start a Game Gear
+  cartridge (`--machine gg`, or a `.gg` image under `auto`). The messages never print the path.
 
-A file that cannot be read exits 1.
+A file that cannot be read exits 1, a `--bios` path that is a directory or unreadable included; a `--bios` path that
+does not exist is a refusal and exits 77. A missing cartridge is still exit 1.
 
 ## Frame hash
 
@@ -391,11 +397,11 @@ failure; mismatches exit 3, unsupported capabilities 77, invalid syntax 2 and I/
 
 ```text
   0  ok       every frame ran or the probe printed, or a signal stopped the run after a whole frame
-  1  failure  a file could not be read or written, memory ran out or the core failed
+  1  failure  a file could not be read or written, memory ran out or the core failed; a missing --bios path is refused (77), not a failure; a missing cartridge is still 1
   2  usage    the command line or input script is invalid, so nothing ran
   3  mismatch  an accepted expectation did not match the observed predicate
   4  save     the battery file is oversized, so nothing ran
-  77  refused  the cartridge, its size, the machine and region, or a controller is not supported, so nothing ran
+  77  refused  the cartridge, its size, the machine and region, or a controller is not supported, or the BIOS asked for is absent or not supported, so nothing ran
 ```
 
 Errors and usage messages go to standard error. Standard output holds only the results described above.

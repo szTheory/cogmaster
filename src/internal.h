@@ -280,6 +280,9 @@ _Static_assert(sizeof(uint64_t) + 2u * sizeof(int16_t) + 2u * sizeof(int8_t) +
 /* The Master System's work RAM, mirrored over $C000-$FFFF. */
 #define COGMASTER__RAM_SIZE 8192u
 
+/* The one boot ROM the core can hold: 8 KiB, answering at $0000-$1FFF. */
+#define COGMASTER__BIOS_SIZE 8192u
+
 /* Audio leaves the core at 48 kHz. Per bus tick a frame's sample count grows
    by inc / mod of a sample: the per-Z80-cycle rates 176 / 13,125 (NTSC) and
    9,600 / 709,379 (PAL) with the modulus tripled for three ticks a cycle
@@ -390,6 +393,10 @@ struct cogmaster {
     /* The 93C46 on the Sega EEPROM board; zero and unused on every other board. */
     struct cogmaster__eeprom eeprom;
     struct cogmaster__io io;
+    /* Derived from io.mem_ctrl and bios.size by cogmaster__bus_decode, which every writer of those
+       two must call; only mem_read reads it. It is 1 when a read may be undriven or answered by the
+       BIOS, so the hot path tests one byte. */
+    uint8_t mem_slow;
     struct cogmaster__port ports[2]; /* the two controller ports' device blocks */
     uint32_t render_line;
     uint32_t render_x; /* next unrendered dot of render_line */
@@ -419,6 +426,12 @@ struct cogmaster {
         uint8_t frozen;
         uint16_t pixels[144][160];
     } lcd;
+    /* The boot ROM image; size is 0 when none is attached. Last, so no hot offset shifts. */
+    struct cogmaster__bios {
+        uint8_t rom[COGMASTER__BIOS_SIZE];
+        uint32_t size;
+        uint32_t crc32;
+    } bios;
 };
 
 static inline int cogmaster__native_gg(const cogmaster *m)
@@ -483,7 +496,13 @@ _Static_assert(offsetof(cogmaster_media, video_mode) == (COGMASTER__P == 8 ? 40 
                "media.video_mode");
 /* Explicit pad to the next word, so fm starts at 48 on 64-bit and 28 on 32-bit. */
 _Static_assert(offsetof(cogmaster_media, fm) == (COGMASTER__P == 8 ? 48 : 28), "media.fm");
-_Static_assert(sizeof(cogmaster_media) == (COGMASTER__P == 8 ? 56 : 32), "media size");
+#if UINTPTR_MAX > UINT32_MAX
+_Static_assert(offsetof(cogmaster_media, reserved3) == 52, "media.reserved3");
+#endif
+_Static_assert(offsetof(cogmaster_media, bios) == (COGMASTER__P == 8 ? 56 : 32), "media.bios");
+_Static_assert(offsetof(cogmaster_media, bios_size) == (COGMASTER__P == 8 ? 64 : 36),
+               "media.bios_size");
+_Static_assert(sizeof(cogmaster_media) == (COGMASTER__P == 8 ? 72 : 40), "media size");
 
 _Static_assert(offsetof(cogmaster_info, size) == 0, "info.size");
 _Static_assert(offsetof(cogmaster_info, machine) == 4, "info.machine");
@@ -664,6 +683,7 @@ uint32_t cogmaster__frame_lines(const cogmaster *m);
 
 /* Brings the beam up to m->ticks. */
 void cogmaster__bus_sync(cogmaster *m);
+void cogmaster__bus_decode(cogmaster *m);
 
 /* Runs the Z80 until the frame deadline and returns the overshoot in ticks;
    the next frame's deadline is one frame after this one's. */
@@ -794,6 +814,8 @@ int cogmaster__device_ok(const cogmaster *m, uint32_t device);
 /* The fast-boot hand-off: the CPU and RAM as the BIOS leaves them. power
    also clears work RAM first. */
 void cogmaster__boot_handoff(cogmaster *m, int power);
+/* The state a BIOS starts from: reset Z80 at address 0, BIOS visible, nothing handed off. */
+void cogmaster__boot_power_on(cogmaster *m, int power);
 
 /* The synthesiser. reset runs last in load and in both resets, after the bus,
    hand-off, I/O and VDP resets: power zeroes everything, a soft reset keeps

@@ -4,7 +4,7 @@
      header  magic, format version, header size, total size, behaviour
              revision, API version, profile (machine, region, TV and video
              mode), ROM CRC-32, body CRC-32,
-             frame, ticks, the FM unit, 11 reserved zero bytes
+             frame, ticks, the FM unit, the boot mode, the BIOS CRC-32, 6 reserved zero bytes
      body    the counters, the first-fault record, the Z80, the beam and the
              frame deadline, the VDP with its 16 KiB of VRAM, the 8 KiB of
              work RAM, then the board, the mapper registers, on the Sega
@@ -33,10 +33,11 @@
 /* Header offsets, in the order header_io visits them: magic 0, format
    version 8, header size 10, total size 12, behaviour revision 16, API
    version 20, machine 24, region 25, TV 26, video mode 27, ROM CRC-32 28,
-   body CRC-32 32, frame 36, ticks 44, FM unit 52, reserved 53. */
+   body CRC-32 32, frame 36, ticks 44, FM unit 52, boot mode 53, BIOS CRC-32
+   54, reserved 58. */
 #define H_BODY_CRC 32u
-#define H_RESERVED 53u
-#define H_RESERVED_SIZE 11u
+#define H_RESERVED 58u
+#define H_RESERVED_SIZE 6u
 _Static_assert(H_RESERVED + H_RESERVED_SIZE == STATE_HEADER_SIZE, "the header is 64 bytes");
 
 /* A loaded state's ticks are capped at 2^62, far from 2^64 wrapping
@@ -133,6 +134,11 @@ static struct state_time header_io(struct cogmaster__sio *io, cogmaster *m, uint
     /* Attached at load and never changed, so a state loads only into an
        instance with the same FM unit. */
     fixed(io, "fm_unit", m->fm_unit, 1u);
+    /* The boot mode and the CRC-32 of the BIOS (0 under fast boot) tie a state to the firmware it
+       ran under, as the ROM CRC-32 ties it to the cartridge. The BIOS bytes are never visited by
+       a state pass. */
+    fixed(io, "boot", m->bios.size != 0u ? 1u : 0u, 1u);
+    fixed(io, "bios_crc32", m->bios.size != 0u ? m->bios.crc32 : 0u, 4u);
     for (uint32_t i = 0; i < H_RESERVED_SIZE; i++) {
         fixed(io, "reserved", 0u, 1u);
     }
@@ -890,5 +896,7 @@ cogmaster_status cogmaster__state_load(cogmaster *m, const void *buf, size_t siz
     io.mode = COGMASTER__SIO_APPLY;
     io.r = b;
     state_io(&io, m, (uint32_t)size);
+    /* The derived bus flag is not saved: recompute it from the restored port $3E. */
+    cogmaster__bus_decode(m);
     return COGMASTER_STATUS_OK;
 }

@@ -30,6 +30,9 @@ typedef struct cogmaster__run_options {
     int trace;                    /* --trace first-fault */
     int mailbox;                  /* --mailbox: stop at the mailbox's done status and print it */
     int eyes;                     /* --eyes: count the 3-D glasses eyes and print one line */
+    int boot_given;               /* --boot was spelled, fast or bios */
+    int boot_bios;                /* --boot bios: start from the BIOS image named by bios */
+    const char *bios;             /* --bios FILE, or NULL */
     cogmaster__png_request *pngs; /* room for one per argument */
     uint32_t png_count;
     int printed; /* --help or --version ran; nothing else to do */
