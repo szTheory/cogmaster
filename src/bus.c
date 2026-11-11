@@ -103,19 +103,12 @@ uint32_t cogmaster__bus_run_frame(cogmaster *m)
     return (uint32_t)(m->ticks - deadline);
 }
 
-/* $3E b6 and b4, active low, take the cartridge and work RAM off the bus
-   (SMS-SYSTEM section 4). */
+/* $3E b6, b5, b4, b3 and b7, active low, take the cartridge, the card slot, work RAM, the BIOS and
+   the expansion slot off the bus (SMS-SYSTEM section 4). */
 #define BUS_CART_OFF 0x40u
 #define BUS_RAM_OFF 0x10u
-
-/* A read nobody drives: the slot area with the cartridge off (the SMS2 and
-   the Game Gear have no card, expansion or BIOS to answer instead) or work
-   RAM off. */
-static int mem_undriven(const cogmaster *m, uint16_t addr)
-{
-    uint8_t off = addr >= 0xC000u ? BUS_RAM_OFF : BUS_CART_OFF;
-    return (m->io.mem_ctrl & off) != 0u;
-}
+#define BUS_BIOS_OFF 0x08u
+#define BUS_SLOTS_OFF 0xA0u
 
 /* Cartridge slots at $0000-$BFFF through the board's mapper, 8 KiB of work
    RAM at $C000 mirrored up to $FFFF (SMS-SYSTEM section 3). Changes
@@ -128,13 +121,74 @@ static uint8_t mem_driven(const cogmaster *m, uint16_t addr)
     return cogmaster__mapper_read(m, addr);
 }
 
+/* The flag the hot read path tests: set when $3E turns the cartridge or work RAM off, or a BIOS is
+   attached and enabled, which is every case a read can differ from mem_driven. With no BIOS it is
+   the old mask test bit for bit. Recomputed wherever $3E or the BIOS changes. */
+void cogmaster__bus_decode(cogmaster *m)
+{
+    uint8_t c = m->io.mem_ctrl;
+    int bios_on = m->bios.size != 0u && (c & BUS_BIOS_OFF) == 0u;
+    m->mem_slow = (uint8_t)(((c & (BUS_CART_OFF | BUS_RAM_OFF)) != 0u) || bios_on);
+}
+
+/* Whether a read at addr is answered, and by what. This is the one decoder of the slow path and of
+   peek; it reads $3E and the BIOS size directly and never the derived flag, so a register set from
+   outside bus_decode still decodes truthfully. Work RAM answers $C000 and up unless b4 turns it
+   off. Below that the cartridge answers unless b6 turns it off, and the BIOS answers $0000-$1FFF
+   when one is attached and b3 enables it. When both answer, the SMS lets the cartridge win with no
+   corrupted data and the SMS 2 ANDs the two outputs (smstech section 4 hardware tests, quoted in
+   SMS-SYSTEM section 3); the BIOS answers nowhere else, so a BIOS-only read at $2000-$BFFF is
+   undriven, a model row with no measurement behind it. A Game Gear never has a BIOS. */
+static int mem_slow_driven(const cogmaster *m, uint16_t addr, uint8_t *v)
+{
+    uint8_t c = m->io.mem_ctrl;
+    if (addr >= 0xC000u) {
+        if ((c & BUS_RAM_OFF) != 0u) {
+            return 0;
+        }
+        *v = m->ram[addr & (COGMASTER__RAM_SIZE - 1u)];
+        return 1;
+    }
+    int cart_on = (c & BUS_CART_OFF) == 0u;
+    int bios_on = m->bios.size != 0u && (c & BUS_BIOS_OFF) == 0u && addr < COGMASTER__BIOS_SIZE;
+    if (cart_on && bios_on && m->machine == COGMASTER_MACHINE_SMS2) {
+        *v = (uint8_t)(cogmaster__mapper_read(m, addr) & m->bios.rom[addr]);
+        return 1;
+    }
+    if (cart_on) {
+        *v = cogmaster__mapper_read(m, addr);
+        return 1;
+    }
+    if (bios_on) {
+        *v = m->bios.rom[addr];
+        return 1;
+    }
+    return 0;
+}
+
+/* The cold half of a read, taken when mem_slow is set. An undriven read records the first fault and
+   counts as open bus, except that with a BIOS attached a slot-area read with the card slot or the
+   expansion slot enabled (b5 or b7 clear) and nothing answering returns the same open-bus value
+   with no fault and no count: the BIOS probes those slots in turn and finds them empty, and the
+   first fault is kept for the whole run (SMS-SYSTEM section 3). A model row, not a measurement. */
+static uint8_t mem_read_slow(cogmaster *m, uint16_t addr)
+{
+    uint8_t v;
+    if (mem_slow_driven(m, addr, &v)) {
+        return v;
+    }
+    if (addr < 0xC000u && m->bios.size != 0u && (m->io.mem_ctrl & BUS_SLOTS_OFF) != BUS_SLOTS_OFF) {
+        return (uint8_t)(m->bus.data | cogmaster__profile(m).bus_pullup);
+    }
+    cogmaster__bus_fault(m, addr, addr >= 0xC000u ? COGMASTER__DEVICE_RAM : COGMASTER__DEVICE_CART,
+                         COGMASTER__FAULT_UNMAPPED_READ);
+    return cogmaster__io_open_bus(m);
+}
+
 static uint8_t mem_read(cogmaster *m, uint16_t addr)
 {
-    if ((m->io.mem_ctrl & (BUS_CART_OFF | BUS_RAM_OFF)) != 0u && mem_undriven(m, addr)) {
-        cogmaster__bus_fault(m, addr,
-                             addr >= 0xC000u ? COGMASTER__DEVICE_RAM : COGMASTER__DEVICE_CART,
-                             COGMASTER__FAULT_UNMAPPED_READ);
-        return cogmaster__io_open_bus(m);
+    if (m->mem_slow != 0u) {
+        return mem_read_slow(m, addr);
     }
     return mem_driven(m, addr);
 }
@@ -149,10 +203,11 @@ uint32_t cogmaster_peek(const cogmaster *m, uint32_t space, uint32_t addr)
     if (m == NULL || !m->loaded || space != COGMASTER_SPACE_BUS || addr > 0xFFFFu) {
         return BUS_PEEK_NONE;
     }
-    if (mem_undriven(m, (uint16_t)addr)) {
-        return (uint8_t)(m->bus.data | cogmaster__profile(m).bus_pullup);
+    uint8_t v;
+    if (mem_slow_driven(m, (uint16_t)addr, &v)) {
+        return v;
     }
-    return mem_driven(m, (uint16_t)addr);
+    return (uint8_t)(m->bus.data | cogmaster__profile(m).bus_pullup);
 }
 
 uint8_t cogmaster__bus_fetch(cogmaster *m, uint16_t addr, uint16_t refresh)

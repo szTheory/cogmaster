@@ -280,6 +280,9 @@ _Static_assert(sizeof(uint64_t) + 2u * sizeof(int16_t) + 2u * sizeof(int8_t) +
 /* The Master System's work RAM, mirrored over $C000-$FFFF. */
 #define COGMASTER__RAM_SIZE 8192u
 
+/* The one boot ROM the core can hold: 8 KiB, answering at $0000-$1FFF. */
+#define COGMASTER__BIOS_SIZE 8192u
+
 /* Audio leaves the core at 48 kHz. Per bus tick a frame's sample count grows
    by inc / mod of a sample: the per-Z80-cycle rates 176 / 13,125 (NTSC) and
    9,600 / 709,379 (PAL) with the modulus tripled for three ticks a cycle
@@ -390,6 +393,9 @@ struct cogmaster {
     /* The 93C46 on the Sega EEPROM board; zero and unused on every other board. */
     struct cogmaster__eeprom eeprom;
     struct cogmaster__io io;
+    /* Derived from io.mem_ctrl and bios.size by cogmaster__bus_decode; only mem_read reads it. It
+       is 1 when a read may be undriven or answered by the BIOS, so the hot path tests one byte. */
+    uint8_t mem_slow;
     struct cogmaster__port ports[2]; /* the two controller ports' device blocks */
     uint32_t render_line;
     uint32_t render_x; /* next unrendered dot of render_line */
@@ -419,6 +425,12 @@ struct cogmaster {
         uint8_t frozen;
         uint16_t pixels[144][160];
     } lcd;
+    /* The boot ROM image; size is 0 when none is attached. Last, so no hot offset shifts. */
+    struct cogmaster__bios {
+        uint8_t rom[COGMASTER__BIOS_SIZE];
+        uint32_t size;
+        uint32_t crc32;
+    } bios;
 };
 
 static inline int cogmaster__native_gg(const cogmaster *m)
@@ -670,6 +682,7 @@ uint32_t cogmaster__frame_lines(const cogmaster *m);
 
 /* Brings the beam up to m->ticks. */
 void cogmaster__bus_sync(cogmaster *m);
+void cogmaster__bus_decode(cogmaster *m);
 
 /* Runs the Z80 until the frame deadline and returns the overshoot in ticks;
    the next frame's deadline is one frame after this one's. */

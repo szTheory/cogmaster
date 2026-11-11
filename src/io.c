@@ -177,6 +177,7 @@ void cogmaster__io_reset(cogmaster *m)
     /* The device blocks start clean, the stored edge included: the tick count restarts at 0, so
        an edge from before would be in its future. The pending motion is not touched. */
     memset(m->ports, 0, sizeof m->ports);
+    cogmaster__bus_decode(m);
 }
 
 /* A write at $FFF8-$FFFF that reached work RAM's mirror. At $FFFC and up a cartridge on the bus
@@ -499,6 +500,7 @@ void cogmaster__io_out(cogmaster *m, uint16_t port, uint8_t v)
             io_control(m, v);
         } else {
             io->mem_ctrl = v;
+            cogmaster__bus_decode(m);
         }
         return;
     }
