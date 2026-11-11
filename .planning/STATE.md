@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 8
 current_phase_name: Sports Pad, Paddle and 3-D glasses
 status: planning
-stopped_at: Completed 08-12-PLAN.md
-last_updated: "2026-11-11T06:40:07.091Z"
+stopped_at: Completed 08-13-PLAN.md
+last_updated: "2026-11-11T06:47:23.346Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 7 complete, transitioned to Phase 8
-state_head: 60c97a6a21324d74b32cb6e0bf862866e9a07c2e
+state_head: 247812ee13f1d829df4a25d163653dd8e224bf25
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 52
-  completed_plans: 47
+  completed_plans: 48
   percent: 38
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 8 — Sports Pad, Paddle and 3-D glasses
-Plan: 12 of 17 complete (08-01 port layer, 08-02 header delta, 08-03 set_input copy rule, 08-04 glasses core and hosted dispatch 1, 08-05 Sports Pad, Paddle and saved device state, 08-06 state bounds proof and pad fuzz target, 08-07 default controller per dump and the region rule, 08-08 runner device grammar, exit 77 refusal and probe default keys, 08-09 runner delta lines and --eyes, 08-10 Sports Pad fixture and replay, 08-11 Paddle fixture and replay, 08-12 glasses fixture and hosted dispatch 2); next 08-13
+Plan: 13 of 17 complete (08-01 port layer, 08-02 header delta, 08-03 set_input copy rule, 08-04 glasses core and hosted dispatch 1, 08-05 Sports Pad, Paddle and saved device state, 08-06 state bounds proof and pad fuzz target, 08-07 default controller per dump and the region rule, 08-08 runner device grammar, exit 77 refusal and probe default keys, 08-09 runner delta lines and --eyes, 08-10 Sports Pad fixture and replay, 08-11 Paddle fixture and replay, 08-12 glasses fixture and hosted dispatch 2, 08-13 table rows for the two device fixtures); next 08-14
 Status: Executing
-Last activity: 2026-11-11 — Completed 08-12 (glasses.sms writes the shutter from a frame table, one held write and a RAM routine with the cartridge off; eye counts simulated from the table on export, Japan and Game Gear; hosted dispatch 2 green after a GCC qualifier error, a GCC type-limits error in the pad fuzz target and four Windows CRLF failures were fixed, perf delta 0 basis points). Runtime Claude Code, model Sonnet 5.5
+Last activity: 2026-11-11 — Completed 08-13 (the Sports Pad and Paddle fixtures have rows in the hash table, so cogmaster-run plays them with their table controller and region with no option; an export region degrades the Paddle default to a pad and an explicit Paddle there exits 77; the table differs from the old one by exactly the two rows). Runtime Claude Code, model Sonnet 5.5
 
 Progress: [████░░░░░░] 38% of v2.0
 
@@ -173,6 +173,7 @@ Progress: [████░░░░░░] 38% of v2.0
 | Phase 8 P10 | 70min | 3 tasks | 11 files |
 | Phase 08 P11 | 45min | 3 tasks | 9 files |
 | Phase 08 P12 | 14 min | 3 tasks | 13 files |
+| Phase 8 P13 | 45min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -238,6 +239,8 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 08]: The Paddle position oracle clamps after every frame's motion (saturating sum), matching the core; the sweep's two shortest periods (29, 31) are the detect loop unrolled because a padded DJNZ loop cannot be shorter than 43 cycles
 - [Phase 08]: 08-12: the eye counts are simulated from the literal table (checked against the .DB row of glasses.asm) over 30 frames, the mailbox judged in a second run
 - [Phase 08]: 08-12: exact-byte files in script-mode runner tests go through file(CONFIGURE) with a newline style, since file(WRITE) writes CRLF on Windows
+- [Phase 8]: 08-13: the two device fixtures' table rows are plain ROM, SMS, persistence 0 and region 0, so the table adds only the default controllers and the Paddle's Japan region
+- [Phase 8]: 08-13: any later edit of sports_pad.asm or paddle.asm fails the build identity check until its row in fixture_facts.txt is re-pinned and src/cartdb.inc regenerated
 
 ### Pending Todos
 
@@ -354,8 +357,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T06:40:06.997Z
-Stopped at: Completed 08-12-PLAN.md
+Last session: 2026-11-11T06:47:23.242Z
+Stopped at: Completed 08-13-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
