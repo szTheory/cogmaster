@@ -23,14 +23,16 @@ static const cogmaster__exit_status cogmaster__exit_statuses[] = {
     {COGMASTER__EXIT_OK, "ok",
      "every frame ran or the probe printed, or a signal stopped the run after a whole frame"},
     {COGMASTER__EXIT_FAILURE, "failure",
-     "a file could not be read or written, memory ran out or the core failed"},
+     "a file could not be read or written, memory ran out or the core failed; a missing --bios "
+     "path is refused (77), not a failure; a missing cartridge is still 1"},
     {COGMASTER__EXIT_USAGE, "usage", "the command line or input script is invalid, so nothing ran"},
     {COGMASTER__EXIT_MISMATCH, "mismatch",
      "an accepted expectation did not match the observed predicate"},
     {COGMASTER__EXIT_SAVE_SIZE, "save", "the battery file is oversized, so nothing ran"},
     {COGMASTER__EXIT_REFUSED, "refused",
-     "the cartridge, its size, the machine and region, or a controller is not supported, so "
-     "nothing ran"},
+     "the cartridge, its size, the machine and region, or a controller is not supported, or the "
+     "BIOS "
+     "asked for is absent or not supported, so nothing ran"},
 };
 
 #endif /* COGMASTER_RUNNER_EXIT_STATUS_H */

@@ -1085,7 +1085,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     # Options a later release adds are refused now, and --help does not
     # mention them; --help and --version take nothing else; --trace takes
     # only first-fault and --region only its four names.
-    foreach(opt --capabilities --boot --bios)
+    foreach(opt --capabilities)
       expect_exit(2 "unknown option" --frames 1 ${opt})
       expect_exit(2 "unknown option" --frames 1 ${opt} x)
     endforeach()
@@ -1099,7 +1099,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     expect_exit(2 "usage" --probe)
     expect_exit(2 "usage" --probe --frames 1 ${SEEDS}/di-halt.sms)
     execute_process(COMMAND ${EMULATOR} ${RUN} --help RESULT_VARIABLE rc OUTPUT_VARIABLE out)
-    if(NOT rc STREQUAL "0" OR out MATCHES "--(capabilities|boot|bios)")
+    if(NOT rc STREQUAL "0" OR out MATCHES "--capabilities")
       message(FATAL_ERROR "--help: expected exit 0 and no later option, got exit ${rc}\n${out}")
     endif()
   elseif(CASE STREQUAL "hash_audio" OR CASE STREQUAL "hash_audio_fm")
@@ -1227,6 +1227,115 @@ if(CMAKE_SCRIPT_MODE_FILE)
     set(first ${CMAKE_MATCH_1})
     if(NOT out60 STREQUAL "frame 60 sha256 ${first}\n")
       message(FATAL_ERROR "frame 1 and frame 60 differ:\n${out1}${out60}")
+    endif()
+  elseif(CASE STREQUAL "bios_grammar" OR CASE STREQUAL "bios_refusals" OR CASE STREQUAL "bios_no_path_echo")
+    # Writes a file of exactly size bytes of "a". file(CONFIGURE) ends a body in one LF on every platform, so
+    # the body is size-1 characters; the files of 0 and 1 byte hold no LF and are written whole. The size
+    # is read back, so a file of the wrong size fails here by name and not as a refusal that was never
+    # about its size.
+    function(owned_file path size)
+      if(size LESS 2)
+        string(REPEAT "a" ${size} text)
+        file(WRITE "${path}" "${text}")
+      else()
+        math(EXPR body "${size} - 1")
+        string(REPEAT "a" ${body} text)
+        write_bytes("${path}" UNIX "${text}")
+      endif()
+      file(SIZE "${path}" got)
+      if(NOT got EQUAL size)
+        message(FATAL_ERROR "owned_file ${path}: wanted ${size} bytes, got ${got}")
+      endif()
+    endfunction()
+    # A BIOS error holding the marker in every path it was given must not print it: the decision
+    # is that no text of the BIOS options echoes a path.
+    function(expect_no_echo code regex)
+      execute_process(COMMAND ${EMULATOR} ${RUN} ${ARGN} RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+      if(NOT rc STREQUAL code OR NOT "${out}${err}" MATCHES "${regex}")
+        message(FATAL_ERROR "cogmaster-run ${ARGN}: expected exit ${code} and output matching ${regex}\ngot exit ${rc}\n${out}${err}")
+      endif()
+      string(FIND "${out}${err}" "NOECHO-MARKER-7f3a" at)
+      if(NOT at EQUAL -1)
+        message(FATAL_ERROR "cogmaster-run ${ARGN}: the output holds the path marker\n${out}${err}")
+      endif()
+    endfunction()
+    file(MAKE_DIRECTORY "${OUT}")
+    set(cart ${SEEDS}/di-halt.sms)
+    owned_file("${OUT}/bios.bin" 8192)
+    set(bios ${OUT}/bios.bin)
+    if(CASE STREQUAL "bios_grammar")
+      # Fault prevented: a BIOS option that silently changes a hash world (a path given with fast boot) or
+      # runs on a misspelt word. Every misuse is exit 2 whose first line names the option, and the valid
+      # spellings, in either order, run.
+      set(first "^cogmaster-run: [^\n]*--(boot|bios|expect|probe)")
+      expect_exit(0 "BIOS not recognised" --frames 1 --boot bios --bios ${bios} ${cart})
+      expect_exit(0 "BIOS not recognised" ${cart} --bios ${bios} --frames 1 --boot bios)
+      expect_exit(0 "^$" --frames 1 --boot fast ${cart})
+      expect_exit(2 "${first}" --frames 1 ${cart} --boot)
+      expect_exit(2 "${first}" --frames 1 ${cart} --boot slow)
+      expect_exit(2 "${first}" --frames 1 ${cart} --boot "")
+      expect_exit(2 "${first}" --frames 1 ${cart} --boot fast --boot fast)
+      expect_exit(2 "${first}" --frames 1 ${cart} --boot bios --boot bios --bios ${bios})
+      expect_exit(2 "${first}" --frames 1 ${cart} --boot bios --bios ${bios} --bios ${bios})
+      expect_exit(2 "${first}" --frames 1 ${cart} --boot bios --bios "")
+      expect_exit(2 "${first}" --frames 1 ${cart} --boot bios --bios)
+      expect_exit(2 "${first}" --frames 1 ${cart} --bios ${bios})
+      expect_exit(2 "${first}" --frames 1 ${cart} --boot fast --bios ${bios})
+      expect_exit(2 "${first}" --frames 1 --boot bios --bios ${bios})
+      expect_exit(2 "${first}" --probe ${cart} --boot bios --bios ${bios})
+      expect_exit(2 "${first}" --probe ${cart} --boot fast)
+      expect_exit(2 "${first}" --probe ${cart} --bios ${bios})
+      write_bytes("${OUT}/run.expect" UNIX "ram@2:$C200=00")
+      expect_exit(2 "${first}" --frames 2 ${cart} --boot bios --bios ${bios} --expect ${OUT}/run.expect)
+      # Control: the same expectation with fast boot is accepted and prints the execution line.
+      expect_exit(0 "execution machine=" --frames 2 ${cart} --boot fast --expect ${OUT}/run.expect)
+      # Nothing is read before a usage error: a missing BIOS and a missing cartridge are still exit 2.
+      expect_exit(2 "${first}" --frames 1 --boot fast --bios ${OUT}/absent.bin ${SEEDS}/missing.sms)
+    elseif(CASE STREQUAL "bios_refusals")
+      # Fault prevented: a missing or unsupported BIOS sent to exit 1 like a crash, or a Game Gear cartridge
+      # started on a Master System BIOS. Each refusal is exit 77 with a text naming the BIOS.
+      set(why "unsupported: [^\n]*BIOS")
+      expect_exit(0 "BIOS not recognised \\(sha1 " --frames 1 --boot bios --bios ${bios} ${cart})
+      expect_exit(77 "${why}" --frames 1 --boot bios ${cart})
+      expect_exit(77 "${why}" --frames 1 --boot bios --bios ${OUT}/absent.bin ${cart})
+      if(NOT WIN32)
+        # A path below a regular file is not a path that exists.
+        expect_exit(77 "${why}" --frames 1 --boot bios --bios ${bios}/below ${cart})
+      endif()
+      foreach(size 0 1 8191 8193 16384)
+        owned_file("${OUT}/size${size}.bin" ${size})
+        expect_exit(77 "${why} file of (over )?[0-9]+ bytes" --frames 1 --boot bios --bios ${OUT}/size${size}.bin ${cart})
+      endforeach()
+      expect_exit(77 "BIOS file of 8191 bytes" --frames 1 --boot bios --bios ${OUT}/size8191.bin ${cart})
+      expect_exit(77 "BIOS cannot start a Game Gear" --frames 1 --boot bios --bios ${bios} --machine gg ${cart})
+      expect_exit(77 "BIOS cannot start a Game Gear" --frames 1 --boot bios --bios ${bios} ${SEEDS}/di-halt.gg)
+      # Control: the Game Gear image does run without a BIOS, so it is the BIOS the refusal is about.
+      expect_exit(0 "^$" --frames 1 ${SEEDS}/di-halt.gg)
+      # Exit 1: a BIOS path that is a directory, and a missing cartridge, as for a cartridge today.
+      expect_exit(1 "cannot read the BIOS file" --frames 1 --boot bios --bios ${OUT} ${cart})
+      expect_exit(1 "cannot read" --frames 1 --boot bios --bios ${bios} ${SEEDS}/missing.sms)
+      expect_exit(1 "cannot read" --frames 1 --boot bios --bios ${OUT}/absent.bin ${SEEDS}/missing.sms)
+    else()
+      # Fault prevented: a failure text that echoes the path of a BIOS, or a byte of a dump.
+      set(marker ${OUT}/NOECHO-MARKER-7f3a)
+      file(MAKE_DIRECTORY "${marker}")
+      owned_file("${marker}/bios.bin" 8192)
+      owned_file("${marker}/short.bin" 8191)
+      file(COPY ${cart} DESTINATION "${marker}")
+      set(here ${marker}/di-halt.sms)
+      expect_no_echo(77 "BIOS" --frames 1 --boot bios --bios ${marker}/absent.bin ${here})
+      expect_no_echo(77 "BIOS" --frames 1 --boot bios --bios ${marker}/short.bin ${here})
+      expect_no_echo(77 "BIOS" --frames 1 --boot bios --bios ${marker}/bios.bin --machine gg ${here})
+      expect_no_echo(77 "BIOS" --frames 1 --boot bios ${here})
+      expect_no_echo(1 "BIOS" --frames 1 --boot bios --bios ${marker} ${here})
+      expect_no_echo(0 "BIOS not recognised" --frames 1 --boot bios --bios ${marker}/bios.bin ${here})
+      # Control: a cartridge path is echoed by its own error, so the marker check can fail.
+      execute_process(COMMAND ${EMULATOR} ${RUN} --frames 1 ${marker}/missing.sms RESULT_VARIABLE rc
+        OUTPUT_VARIABLE out ERROR_VARIABLE err)
+      string(FIND "${out}${err}" "NOECHO-MARKER-7f3a" at)
+      if(NOT rc STREQUAL "1" OR at EQUAL -1)
+        message(FATAL_ERROR "control: a missing cartridge under the marker should exit 1 and print its path, got exit ${rc}\n${out}${err}")
+      endif()
     endif()
   elseif(CASE STREQUAL "version")
     expect_exit(0 "^cogmaster-run [0-9]+\\.[0-9]+\\.[0-9]+\n$" --version)
@@ -1676,6 +1785,16 @@ foreach(case no_args unknown positional frame_range)
   cogmaster_add_test(NAME runner.usage.${case}
     COMMAND ${runner_check} -DCASE=${case} -P ${CMAKE_CURRENT_LIST_FILE}
     LABELS portable runner TIMEOUT 30)
+endforeach()
+
+# Fault prevented: a BIOS option that silently changes a hash world, a missing-firmware request that exits like a
+# crash, and a failure text that echoes the path of a dump.
+# Timeout: 20 s floor; no hosted run yet, so provisional.
+foreach(bios_case IN ITEMS grammar refusals no_path_echo)
+  cogmaster_add_test(NAME runner.bios.${bios_case}
+    COMMAND ${runner_check} -DCASE=bios_${bios_case}
+      -DOUT=${PROJECT_BINARY_DIR}/tests/bios-${bios_case} -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS portable runner TIMEOUT 20)
 endforeach()
 
 # Fault prevented: a malformed or unusable --save-interval that is accepted instead of refused as a
