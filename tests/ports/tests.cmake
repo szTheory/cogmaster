@@ -11,7 +11,7 @@ cogmaster_warnings(cogmaster-test-ports)
 # Fault prevented: a refactor that moves the H-counter latch or a pad pin, so every
 # light-gun, H-counter and pad game changes behaviour without a test noticing.
 foreach(case IN ITEMS latch latch_control pins)
-  # Timeout: 20 s floor; provisional until a hosted run measures it.
+  # Timeout: 20 s floor; 2 x 0.49 s, slowest of 1 run, run 42973268415.
   cogmaster_add_test(NAME ports.${case} COMMAND cogmaster-test-ports ${case}
     LABELS ports portable TIMEOUT 20)
 endforeach()
@@ -28,7 +28,7 @@ cogmaster_warnings(cogmaster-test-ports-input)
 # Fault prevented: a caller built against the 32-byte struct is read past its end when the struct grows,
 # or a hostile axis escapes validation.
 foreach(case IN ITEMS poison exact_malloc tags refusals range outputs)
-  # Timeout: 20 s floor; provisional until a hosted run measures it.
+  # Timeout: 20 s floor; 2 x 0.33 s, slowest of 1 run, run 42973268415.
   cogmaster_add_test(NAME ports.input.${case} COMMAND cogmaster-test-ports-input ${case}
     LABELS ports portable TIMEOUT 20)
 endforeach()
@@ -45,7 +45,7 @@ cogmaster_warnings(cogmaster-test-ports-glasses)
 # Fault prevented: a 3-D eye reported in the wrong picture (inverted depth), gated by a bit no
 # source supports, or a frame hash that depends on the glasses.
 foreach(case IN ITEMS rule control gate profiles nolag state)
-  # Timeout: 20 s floor; provisional until a hosted run measures it.
+  # Timeout: 20 s floor; 2 x 3.14 s, slowest of 1 run, run 42973268415.
   cogmaster_add_test(NAME ports.glasses.${case} COMMAND cogmaster-test-ports-glasses ${case}
     LABELS ports portable TIMEOUT 20)
 endforeach()
@@ -67,8 +67,8 @@ cogmaster_warnings(cogmaster-test-ports-devices)
 # motion, or saves a state the core could not have produced, so a replay or a restart changes the game.
 foreach(case IN ITEMS sports_ticks sports_walk clamp pending device_switch resets paddle profiles
     hammer roundtrip replay)
-  # Timeout: 20 s floor, 60 s for the million-iteration hammer; provisional until a hosted run
-  # measures it.
+  # Timeout: 20 s floor; 2 x 6.00 s (replay), slowest of 1 run, run 42973268415. The million-iteration
+  # hammer keeps 60 s: 0.82 s there, and it is the case that cannot hang quietly.
   set(timeout 20)
   if(case STREQUAL "hammer")
     set(timeout 60)
@@ -90,8 +90,7 @@ cogmaster_warnings(cogmaster-test-ports-state)
 # Fault prevented: a loader that accepts a device state no run produces, or refuses one a run does, so a
 # corrupt save drives the core outside its bounds or a valid save is lost.
 foreach(case IN ITEMS mutation outside sweep midsequence profile_device)
-  # Timeout: 60 s for the byte mutations and the sweep, which load a state thousands of times;
-  # provisional until a hosted run measures it.
+  # Timeout: 80 s; 2 x 38.44 s, slowest of 1 run, run 42973268415 (mutation on the be32 lane, 4.7 s native).
   cogmaster_add_test(NAME ports.state.${case} COMMAND cogmaster-test-ports-state ${case}
-    LABELS ports portable TIMEOUT 60)
+    LABELS ports portable TIMEOUT 80)
 endforeach()

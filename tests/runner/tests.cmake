@@ -1268,7 +1268,7 @@ endif()
 
 # Fault prevented: a controller choice the profile cannot honour that runs silently as a pad, or a default that never
 # reaches the host, so a Paddle title plays with the wrong device.
-# Timeout: 30 s floor; each case is a few short runs, provisional.
+# Timeout: 30 s floor; 2 x 0.34 s, slowest of 1 run, run 42973268415.
 foreach(device_case IN ITEMS usage names refused auto)
   cogmaster_add_test(NAME runner.device.${device_case}
     COMMAND ${runner_check} -DCASE=device_${device_case}
@@ -1296,7 +1296,7 @@ cogmaster_add_test(NAME runner.input
   LABELS runner portable TIMEOUT 30)
 
 # Fault prevented: a delta script that is half-parsed, accepted out of range or applied to a port that cannot move, so a replay differs from the recording without an error.
-# Timeout: 30 s floor; each case is a few short runs, provisional.
+# Timeout: 30 s floor; 2 x 2.39 s, slowest of 1 run, run 42973268415.
 foreach(axes_case IN ITEMS axes_grammar axes_device axes_equivalent)
   cogmaster_add_test(NAME runner.input.${axes_case}
     COMMAND ${runner_check} -DCASE=${axes_case}

@@ -781,7 +781,7 @@ endforeach()
 # Fault prevented: a Sports Pad read sequence that drops, doubles or flips a delta, or a profile on which the
 # sequence differs, so a game tracks the wrong way or desyncs. The same rows are judged on the export and the
 # Japanese console; a script missing one delta and a plain pad on the port must each fall outside a row.
-# Timeout: 10 s floor; 0.02 s slowest local run, no hosted run yet, so provisional.
+# Timeout: 10 s floor; 2 x 0.27 s, slowest of 1 run, run 42973268415.
 foreach(profile IN ITEMS export japan)
   set(region ntsc-u)
   if(profile STREQUAL "japan")
@@ -831,7 +831,7 @@ cogmaster_add_test(NAME fixtures.sports_pad.default
 # Fault prevented: a recorded delta script that replays to a different frame, so a replay no longer matches the
 # run it recorded. The library records the pad's motion on every TV standard, the runner replays the written
 # script to the same hash, and the same script with one count changed in its last record must not.
-# Timeout: 10 s floor; 0.1 s slowest local run, no hosted run yet, so provisional.
+# Timeout: 10 s floor; 2 x 3.67 s, slowest of 1 run, run 42973268415.
 set(sports_replay -DCASE=replay -DNAME=sports_pad -DIMAGE=${COGMASTER_FIXTURES_DIR}/sports_pad.sms
   -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt -DRECORDER=$<TARGET_FILE:cogmaster-test-ports-devices>
   -DRUN=$<TARGET_FILE:cogmaster-run> -DDEVICE=sports -DREGIONS=ntsc-u,ntsc-j,pal -DFRAMES=40)
@@ -901,7 +901,7 @@ endforeach()
 # position that drifts from the scripted deltas, so a Japanese paddle title cannot be played. The Japanese console
 # judges every record; the export console, given a plain pad, judges the region test alone. A frozen TR, a plain pad
 # and a script missing one delta must each fall outside a row.
-# Timeout: 10 s floor; 0.05 s slowest local run, no hosted run yet, so provisional.
+# Timeout: 10 s floor; 2 x 0.33 s, slowest of 1 run, run 42973268415.
 foreach(profile IN ITEMS japan export)
   set(region ntsc-j)
   set(device paddle)
@@ -970,7 +970,7 @@ cogmaster_add_test(NAME fixtures.paddle.control.degrade
 # Fault prevented: a Paddle position accumulated in state that a replay of the recorded deltas does not
 # reproduce. The same replay case, on the Japanese console the Paddle needs: the recorder drives the paddle image,
 # the runner replays the script it wrote to the same hash, and one count changed in the last record must not.
-# Timeout: 10 s floor; 0.1 s slowest local run, no hosted run yet, so provisional.
+# Timeout: 10 s floor; 2 x 1.31 s, slowest of 1 run, run 42973268415.
 set(paddle_replay -DCASE=replay -DNAME=paddle -DIMAGE=${COGMASTER_FIXTURES_DIR}/paddle.sms
   -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt -DRECORDER=$<TARGET_FILE:cogmaster-test-ports-devices>
   -DRUN=$<TARGET_FILE:cogmaster-run> -DDEVICE=paddle -DREGIONS=ntsc-j -DFRAMES=40)
@@ -1054,7 +1054,7 @@ set(fixtures_eyes -DCASE=eyes -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expec
 # Game Gear, or a frame hash that changes with the eye report. The export and Japanese consoles must print the
 # table's counts (the cartridge-off frames and the one-write frames included), a Game Gear none for every frame,
 # and a count off by one must fail.
-# Timeout: 10 s floor; 0.05 s slowest local run, no hosted run yet, so provisional.
+# Timeout: 10 s floor; 2 x 0.73 s, slowest of 1 run, run 42973268415.
 foreach(profile IN ITEMS export japan gg)
   set(args -DMACHINE=sms -DREGION=ntsc-u -DWANT_none=${glasses_want_none} -DWANT_left=${glasses_want_left}
     -DWANT_right=${glasses_want_right} -DWANT_flips=${glasses_want_flips} -DWANT_last=${glasses_last})

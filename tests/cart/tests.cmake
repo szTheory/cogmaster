@@ -77,7 +77,7 @@ cogmaster_warnings(cogmaster-test-cart-device)
 # Fault prevented: a Paddle dump that loads as export and finds no paddle, or a default the profile
 # cannot take that fails the load instead of degrading to a pad.
 foreach(case IN ITEMS defaults region degrade none)
-  # Timeout: 20 s floor; provisional until a hosted run measures it.
+  # Timeout: 20 s floor; 2 x 0.05 s, slowest of 1 run, run 42973268415.
   cogmaster_add_test(NAME cart.device.${case} COMMAND cogmaster-test-cart-device ${case}
     LABELS cart portable TIMEOUT 20)
 endforeach()
