@@ -1205,8 +1205,12 @@ static int same_as_reference(cogmaster *a)
            memcmp(&a->completed, &reference->completed, sizeof a->completed) == 0;
 }
 
-#define NOSHOT_FRAMES 600u
-#define NOSHOT_SHORT 40u
+/* The polling loop's phase against the frame, which is what moves a poll across the disc, repeats
+   within 150 frames on every profile (the last new (pc, overshoot) pair appears at frame 149 on
+   PAL and 127 on the others), so 160 frames visit every alignment and more only revisit them. The
+   controls need a frame or two to differ. */
+#define NOSHOT_FRAMES 160u
+#define NOSHOT_SHORT 8u
 #define TRIGGER 0x10u
 
 static cogmaster *noshot_machine(uint32_t pr, uint32_t d1, int32_t ax, int32_t ay, uint32_t held)

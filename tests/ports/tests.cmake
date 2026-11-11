@@ -70,9 +70,9 @@ cogmaster_warnings(cogmaster-test-ports-gun)
 foreach(case IN ITEMS latch_at aim pins hostile_aim model edge luma control order fault_neutral lag
     seen_expiry peek noshot hammer walk th_toggle)
   if(case STREQUAL "noshot")
-    # Timeout: 250 s; 2 x 124.50 s, slowest of 2 runs, runs 43003041792 and 43003756603 (the be32
-    # lane, 6.64 s on linux-x64): five instances of four profiles for 600 frames each.
-    set(gun_timeout 250)
+    # Timeout: 60 s floor; provisional. Four profiles of 160 frames on three instances; it took
+    # 124.50 s on the be32 lane at 600 frames.
+    set(gun_timeout 60)
   elseif(case MATCHES "^(hostile_aim|model|hammer|walk|th_toggle)$")
     # Timeout: 60 s floor; 2 x 13.83 s (hostile_aim), slowest of 2 runs, runs 43003041792 and
     # 43003756603. The million-access cases keep 60 s: 1.15 s there, and they are the ones that
