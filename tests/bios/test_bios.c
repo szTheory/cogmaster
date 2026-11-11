@@ -814,6 +814,118 @@ static void test_slow_flag(void)
     }
 }
 
+/* ---- hostile and wrong-sized images ---- */
+
+/* The most a frame may overshoot its deadline: one instruction (at most 68 ticks). */
+#define OVERSHOOT_MAX 68u
+
+static const uint8_t code_halt[] = {0xF3u, 0x76u};
+static const uint8_t code_jr_self[] = {0xF3u, 0x18u, 0xFEu};
+/* ld a,$FF; out ($3E),a; xor a; out ($3E),a; jr back: both slots off, then both on, again and
+   again, and the fetch after the first write comes off an undriven bus. */
+static const uint8_t code_alternate[] = {0xF3u, 0x3Eu, 0xFFu, 0xD3u, 0x3Eu,
+                                         0xAFu, 0xD3u, 0x3Eu, 0x18u, 0xF7u};
+/* xor a; out ($3E),a; cpl; jr back to the out: a write at every other instruction. */
+static const uint8_t code_toggle[] = {0xF3u, 0xAFu, 0xD3u, 0x3Eu, 0x2Fu, 0x18u, 0xFBu};
+/* ld sp,0; push af; jr back: the stack walks down through work RAM and the mapper registers. */
+static const uint8_t code_stack[] = {0xF3u, 0x31u, 0x00u, 0x00u, 0xF5u, 0x18u, 0xFDu};
+
+static const struct {
+    const char *name;
+    const uint8_t *code;
+    size_t n;
+    uint8_t fill;
+    int fault;
+} hostile[] = {
+    {"di halt", code_halt, sizeof code_halt, 0x00u, 0},
+    {"jr self", code_jr_self, sizeof code_jr_self, 0x00u, 0},
+    {"alternate 3E", code_alternate, sizeof code_alternate, 0x00u, 1},
+    {"toggle 3E", code_toggle, sizeof code_toggle, 0x00u, 0},
+    {"wild stack", code_stack, sizeof code_stack, 0x00u, 0},
+    {"all FF", NULL, 0u, 0xFFu, 0},
+    {"all 00", NULL, 0u, 0x00u, 0},
+};
+
+static void hostile_leg(uint32_t machine, size_t which)
+{
+    static uint8_t cart[IMAGE_SIZE];
+    memset(cart, 0, sizeof cart);
+    cart[0] = 0xF3u;
+    cart[1] = 0x76u;
+    memset(bios_img, hostile[which].fill, sizeof bios_img);
+    for (size_t i = 0; i < hostile[which].n; i++) {
+        bios_img[i] = hostile[which].code[i];
+    }
+    cogmaster *m = blank();
+    cogmaster_media media = media_of(cart, sizeof cart, machine, bios_img, COGMASTER__BIOS_SIZE);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    for (uint32_t f = 0; f < 3u; f++) {
+        uint64_t before = m->frame;
+        cogmaster_run_result r;
+        memset(&r, 0, sizeof r);
+        r.size = (uint32_t)sizeof r;
+        CHECK_EQ_U64(cogmaster_run_frame(m, &r), COGMASTER_STATUS_OK);
+        if (r.overshoot_ticks > OVERSHOOT_MAX) {
+            fprintf(stderr, "hostile %s: overshoot %u ticks\n", hostile[which].name,
+                    (unsigned)r.overshoot_ticks);
+            check_failures++;
+        }
+        CHECK_EQ_U64(m->frame, before + 1u);
+    }
+    cogmaster_fault fault;
+    memset(&fault, 0, sizeof fault);
+    fault.size = (uint32_t)sizeof fault;
+    CHECK_EQ_U64(cogmaster_get_fault(m, &fault), COGMASTER_STATUS_OK);
+    if (hostile[which].fault) {
+        CHECK_EQ_U64(fault.present, 1);
+    }
+    cogmaster_destroy(m);
+}
+
+/* Every refused size, with a buffer of exactly that many bytes (one for a size beyond any
+   allocation, which is only compared) so a read past the pointer is a sanitiser report. */
+static void sweep_sizes(void)
+{
+    bios_fill(bios_img, 0x51ED270Bu);
+    cart_fill();
+    cogmaster *m = blank();
+    cogmaster_media good =
+        media_of(cart64, sizeof cart64, COGMASTER_MACHINE_SMS2, bios_img, COGMASTER__BIOS_SIZE);
+    CHECK_EQ_U64(cogmaster_load(m, &good), COGMASTER_STATUS_OK);
+    run_frames(m, 2u);
+    static const size_t sizes[] = {0u, 1u, 1023u, 1025u, 8191u, 8193u, 262145u, SIZE_MAX};
+    for (size_t i = 0; i < sizeof sizes / sizeof sizes[0]; i++) {
+        size_t have = sizes[i] == SIZE_MAX ? 1u : sizes[i] > 0u ? sizes[i] : 1u;
+        uint8_t *buf = malloc(have);
+        CHECK(buf != NULL);
+        if (buf == NULL) {
+            exit(1);
+        }
+        memset(buf, 0x6Cu, have);
+        cogmaster_media media =
+            media_of(cart64, sizeof cart64, COGMASTER_MACHINE_SMS2, buf, sizes[i]);
+        refused(m, &media,
+                sizes[i] == 0u ? COGMASTER_STATUS_ERR_ARGUMENT
+                               : COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE,
+                "sweep");
+        free(buf);
+    }
+    cogmaster_destroy(m);
+}
+
+/* Fault prevented: a hostile BIOS image (a jam, a stack overwrite, a $3E toggle that puts both
+   slots on and off at every instruction) that holds the host past its frame time or corrupts the
+   instance, and a BIOS-size input that crashes the loader. */
+static void test_hostile(void)
+{
+    cart_fill();
+    for (size_t i = 0; i < sizeof hostile / sizeof hostile[0]; i++) {
+        hostile_leg(COGMASTER_MACHINE_SMS1, i);
+        hostile_leg(COGMASTER_MACHINE_SMS2, i);
+    }
+    sweep_sizes();
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
@@ -822,6 +934,7 @@ static const struct {
     {"slow_flag", test_slow_flag},
     {"load", test_load},
     {"state", test_state},
+    {"hostile", test_hostile},
 };
 
 int main(int argc, char **argv)

@@ -43,6 +43,7 @@ battery.generation	mapper,portable
 battery.import	mapper,portable
 battery.spans	mapper,portable
 bios.arbitration	bios,portable
+bios.hostile	bios,portable
 bios.load	bios,portable
 bios.slow_flag	bios,portable
 bios.state	bios,portable
@@ -232,6 +233,7 @@ fm.state_round_trip	fm,portable
 fm.sum_bound	fm,portable
 fm.test_register	fm,portable
 fm.through_bus	fm,portable
+fuzz.regress.bios	fuzz,portable
 fuzz.regress.eeprom	fuzz,portable
 fuzz.regress.loader	fuzz,portable
 fuzz.regress.pad	fuzz,portable

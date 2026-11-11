@@ -28,6 +28,11 @@
      di-halt.sms  di-halt.gg  jr-self.sms  in-a-00.sms  ld-8000.sms
      ed-00.sms  be-hammer.sms  fffc-writes.sms (64 KiB, Sega board)
    An EEPROM clock stream for fuzz_eeprom.c: eeprom-clocks.bin */
+/* Boot ROM images for fuzz_bios.c, each 8192 bytes unless noted:
+     bios-owned.bin (DI, jump to itself, then a pseudo-random body)
+     bios-ff.bin  bios-zero.bin  bios-never-disables.bin (loops, no write to $3E)
+     bios-both.bin (writes $3E enabling the BIOS and the cartridge, then loops)
+     bios-oversize.bin (262,145 bytes of a pseudo-random pattern) */
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -574,6 +579,42 @@ static int oversize(const char *path)
     return 0;
 }
 
+/* Boot ROM images for the BIOS fuzz entry. They are written after every other seed so no existing
+   file changes. A pseudo-random body is owned pattern, never firmware. */
+static void bios_body(size_t n, uint32_t seed)
+{
+    uint32_t s = seed;
+    for (size_t i = 0; i < n; i++) {
+        s ^= s << 13;
+        s ^= s >> 17;
+        s ^= s << 5;
+        image[i] = (uint8_t)(s >> 11);
+    }
+}
+
+static void bios_images(void)
+{
+    /* DI; JR to itself. */
+    static const uint8_t jam[] = {0xF3u, 0x18u, 0xFEu};
+    /* DI; loop: INC A; JR loop. */
+    static const uint8_t spin[] = {0xF3u, 0x3Cu, 0x18u, 0xFDu};
+    /* DI; LD A,0; OUT ($3E),A (every slot on, the BIOS and the cartridge); loop: JR loop. */
+    static const uint8_t both[] = {0xF3u, 0x3Eu, 0x00u, 0xD3u, 0x3Eu, 0x18u, 0xFEu};
+    bios_body(8192u, 0x1B1057EDu);
+    memcpy(image, jam, sizeof jam);
+    write_image("bios-owned.bin", 8192u);
+    memset(image, 0xFF, 8192u);
+    write_image("bios-ff.bin", 8192u);
+    memset(image, 0x00, 8192u);
+    write_image("bios-zero.bin", 8192u);
+    program(0u, 8192u, spin, sizeof spin);
+    write_image("bios-never-disables.bin", 8192u);
+    program(0u, 8192u, both, sizeof both);
+    write_image("bios-both.bin", 8192u);
+    bios_body(262145u, 0x2545F491u);
+    write_image("bios-oversize.bin", 262145u);
+}
+
 int main(int argc, char **argv)
 {
     if (argc == 3 && strcmp(argv[1], "--oversize") == 0) {
@@ -609,5 +650,6 @@ int main(int argc, char **argv)
                               : "save-unsupported.bin",
                     32768u);
     }
+    bios_images();
     return failures != 0 ? 1 : 0;
 }
