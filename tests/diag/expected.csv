@@ -200,3 +200,33 @@ mapper_hes_4pak,08:reg_7fff_wrap_10,*,0504,doc,SMS-CARTRIDGES section 2.4
 mapper_hes_4pak,09:reg_bfff_wrap_ff,*,0F0E,doc,SMS-CARTRIDGES section 2.4
 mapper_hes_4pak,0A:ffff_moves_slot_2,*,0B0A,doc,MAME sega8_rom_device::write_mapper inherited by sega8_4pak_device at 1d7a454ed79e
 mapper_hes_4pak,0B:bfff_page_sum,*,4038,doc,MAME rom.cpp sega8_4pak_device at 1d7a454ed79e
+sports_pad,01:frame_01_plain_sum,sms-export,03FB,doc,SMS-CARTRIDGES section 3.5
+sports_pad,02:frame_02_idle,sms-export,0000,doc,SMS-CARTRIDGES section 3.5
+sports_pad,03:frame_03_saturated,sms-export,7F81,doc,SMS-CARTRIDGES section 3.5
+sports_pad,04:frame_04_burst_first,sms-export,7F81,doc,SMS-CARTRIDGES section 3.5
+sports_pad,05:frame_05_burst_carry,sms-export,7F81,doc,SMS-CARTRIDGES section 3.5
+sports_pad,06:frame_06_burst_rest,sms-export,2FD2,doc,SMS-CARTRIDGES section 3.5
+sports_pad,07:frame_07_negative_burst,sms-export,CE7F,doc,SMS-CARTRIDGES section 3.5
+sports_pad,08:frame_08_burst_rest,sms-export,0049,doc,SMS-CARTRIDGES section 3.5
+sports_pad,09:frame_09_single_count,sms-export,FFFF,doc,SMS-CARTRIDGES section 3.5
+sports_pad,0A:frame_10_single_count,sms-export,0101,doc,SMS-CARTRIDGES section 3.5
+sports_pad,0B:idle_511_cycles_keeps_phase,sms-export,060F,doc,SMS-CARTRIDGES section 3.5 and MAME sms_ctrl/sports.cpp at 1d7a454ed79e (BSD-3)
+sports_pad,0C:idle_512_cycles_resets_phase,sms-export,000F,doc,SMS-CARTRIDGES section 3.5 and MAME sms_ctrl/sports.cpp at 1d7a454ed79e (BSD-3)
+sports_pad,0D:button_1_only,sms-export,0101,doc,SMS-CARTRIDGES section 3.5
+sports_pad,0E:button_2_only,sms-export,0202,doc,SMS-CARTRIDGES section 3.5
+sports_pad,0F:both_buttons,sms-export,0303,doc,SMS-CARTRIDGES section 3.5
+sports_pad,01:frame_01_plain_sum,sms-japan,03FB,doc,SMS-CARTRIDGES section 3.5
+sports_pad,02:frame_02_idle,sms-japan,0000,doc,SMS-CARTRIDGES section 3.5
+sports_pad,03:frame_03_saturated,sms-japan,7F81,doc,SMS-CARTRIDGES section 3.5
+sports_pad,04:frame_04_burst_first,sms-japan,7F81,doc,SMS-CARTRIDGES section 3.5
+sports_pad,05:frame_05_burst_carry,sms-japan,7F81,doc,SMS-CARTRIDGES section 3.5
+sports_pad,06:frame_06_burst_rest,sms-japan,2FD2,doc,SMS-CARTRIDGES section 3.5
+sports_pad,07:frame_07_negative_burst,sms-japan,CE7F,doc,SMS-CARTRIDGES section 3.5
+sports_pad,08:frame_08_burst_rest,sms-japan,0049,doc,SMS-CARTRIDGES section 3.5
+sports_pad,09:frame_09_single_count,sms-japan,FFFF,doc,SMS-CARTRIDGES section 3.5
+sports_pad,0A:frame_10_single_count,sms-japan,0101,doc,SMS-CARTRIDGES section 3.5
+sports_pad,0B:idle_511_cycles_keeps_phase,sms-japan,060F,doc,SMS-CARTRIDGES section 3.5 and MAME sms_ctrl/sports.cpp at 1d7a454ed79e (BSD-3)
+sports_pad,0C:idle_512_cycles_resets_phase,sms-japan,000F,doc,SMS-CARTRIDGES section 3.5 and MAME sms_ctrl/sports.cpp at 1d7a454ed79e (BSD-3)
+sports_pad,0D:button_1_only,sms-japan,0101,doc,SMS-CARTRIDGES section 3.5
+sports_pad,0E:button_2_only,sms-japan,0202,doc,SMS-CARTRIDGES section 3.5
+sports_pad,0F:both_buttons,sms-japan,0303,doc,SMS-CARTRIDGES section 3.5
