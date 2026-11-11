@@ -157,9 +157,11 @@ fixtures.mapper_hes_4pak	fixtures,portable
 fixtures.mapper_korean	fixtures,portable
 fixtures.mapper_sega	fixtures,portable
 fixtures.mapper_zemina	fixtures,portable
+fixtures.paddle.control.degrade	fixtures,portable
 fixtures.paddle.control.dropped_delta	fixtures,portable
 fixtures.paddle.control.frozen	fixtures,portable
 fixtures.paddle.control.pad	fixtures,portable
+fixtures.paddle.default	fixtures,portable
 fixtures.paddle.mailbox.export	fixtures,portable
 fixtures.paddle.mailbox.japan	fixtures,portable
 fixtures.paddle.replay	fixtures,portable
@@ -172,6 +174,7 @@ fixtures.psg_sweep	fixtures,portable,psg
 fixtures.psg_sweep.gg	fixtures,portable,psg
 fixtures.sports_pad.control.dropped_delta	fixtures,portable
 fixtures.sports_pad.control.pad	fixtures,portable
+fixtures.sports_pad.default	fixtures,portable
 fixtures.sports_pad.mailbox.export	fixtures,portable
 fixtures.sports_pad.mailbox.japan	fixtures,portable
 fixtures.sports_pad.replay	fixtures,portable
@@ -368,7 +371,10 @@ runner.bench.bytes	bench,portable,runner
 runner.bench.format	bench,portable,runner
 runner.bench.percentile	bench,portable,runner
 runner.device.auto	portable,runner
+runner.device.default	portable,runner
 runner.device.names	portable,runner
+runner.device.paddle_export_refused	portable,runner
+runner.device.probe_default	portable,runner
 runner.device.refused	portable,runner
 runner.device.usage	portable,runner
 runner.exit.failure	portable,runner

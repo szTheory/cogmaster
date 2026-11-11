@@ -816,6 +816,18 @@ foreach(control IN ITEMS dropped_delta pad)
     LABELS fixtures portable TIMEOUT 10)
 endforeach()
 
+# Fault prevented: a table default that never reaches a host, or a Paddle dump that loads as export and plays as a pad.
+# The Sports Pad image, run with no --port1, --machine or --region, takes its controller from the table and is judged
+# against the same rows as the explicit export case.
+# Timeout: 10 s floor; 0.02 s slowest local run, no hosted run yet, so provisional.
+cogmaster_add_test(NAME fixtures.sports_pad.default
+  COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=sports_pad -DPROFILE=sms-export
+    -DINPUT=${PROJECT_BINARY_DIR}/tests/sports.input
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/sports_pad.sms -DFRAMES=${sports_count}
+    -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+    -DOUT=${fixtures_out}/sports_pad.default.txt -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 10)
+
 # Fault prevented: a recorded delta script that replays to a different frame, so a replay no longer matches the
 # run it recorded. The library records the pad's motion on every TV standard, the runner replays the written
 # script to the same hash, and the same script with one count changed in its last record must not.
@@ -930,6 +942,30 @@ foreach(control IN ITEMS frozen pad dropped_delta)
       -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
     LABELS fixtures portable TIMEOUT 10)
 endforeach()
+
+# The same fault for the Paddle image, whose table row also gives its region: run with no --port1 and no --region it
+# is a Japanese-console dump with a Paddle and is judged on the Japanese rows. The control names an export region, so
+# the default degrades to a pad and the detect rows must fail.
+# Timeout: 10 s floor; 0.05 s slowest local run, no hosted run yet, so provisional.
+cogmaster_add_test(NAME fixtures.paddle.default
+  COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=paddle -DPROFILE=sms-japan
+    -DINPUT=${PROJECT_BINARY_DIR}/tests/paddle.input
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/paddle.sms -DFRAMES=${paddle_count}
+    -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+    -DOUT=${fixtures_out}/paddle.default.txt -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 10)
+set(cmd ${CMAKE_COMMAND} -DCASE=mailbox -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+  -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${fixtures_inner_emulator}"
+  -DJUDGE=${PROJECT_SOURCE_DIR}/tests/cmake/mailbox.cmake -DPROFILE=sms-japan -DNAME=paddle
+  -DREGION=ntsc-u -DINPUT=${PROJECT_BINARY_DIR}/tests/paddle-still.input
+  -DIMAGE=${COGMASTER_FIXTURES_DIR}/paddle.sms -DFRAMES=${paddle_count}
+  -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/paddle.degrade.txt
+  -P ${CMAKE_CURRENT_LIST_FILE})
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+cogmaster_add_test(NAME fixtures.paddle.control.degrade
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=outside its row"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+  LABELS fixtures portable TIMEOUT 10)
 
 # Fault prevented: a Paddle position accumulated in state that a replay of the recorded deltas does not
 # reproduce. The same replay case, on the Japanese console the Paddle needs: the recorder drives the paddle image,

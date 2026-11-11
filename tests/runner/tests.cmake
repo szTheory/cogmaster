@@ -694,6 +694,35 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(NOT out MATCHES "unsupported_reason=[^\n]*\nport1_default=pad\nport2_default=pad\n$")
       message(FATAL_ERROR "--probe: pad defaults missing after unsupported_reason in\n${out}")
     endif()
+  elseif(CASE STREQUAL "device_default")
+    # An owned device image names its own controllers and region in the table, so with no option the
+    # execution line carries them; an explicit region the profile cannot honour degrades the default to a
+    # pad, and an explicit pad overrides the table.
+    write_bytes("${OUT}" UNIX "mailbox@120\n")
+    set(line "execution machine=[0-9]+ region=")
+    set(play --frames 120 --expect ${OUT})
+    expect_exit(0 "${line}1 [^\n]*port1=sports port2=sports " ${SPORTS} ${play})
+    expect_exit(0 "${line}1 [^\n]*port1=sports port2=sports " ${SPORTS} ${play} --port1 auto)
+    expect_exit(0 "${line}1 [^\n]*port1=pad port2=sports " ${SPORTS} ${play} --port1 pad --region ntsc-u)
+    expect_exit(0 "${line}2 [^\n]*port1=paddle port2=pad " ${PADDLE} ${play})
+    expect_exit(0 "${line}2 [^\n]*port1=paddle port2=pad " ${PADDLE} ${play} --region auto)
+    expect_exit(0 "${line}1 [^\n]*port1=pad port2=pad " ${PADDLE} ${play} --region ntsc-u)
+  elseif(CASE STREQUAL "device_probe_default")
+    probe(${SPORTS})
+    expect_key("${out}" identified 1)
+    expect_key("${out}" region_guess ntsc-u)
+    expect_key("${out}" port1_default sports)
+    expect_key("${out}" port2_default sports)
+    probe(${PADDLE})
+    expect_key("${out}" identified 1)
+    expect_key("${out}" region_guess ntsc-j)
+    expect_key("${out}" port1_default paddle)
+    expect_key("${out}" port2_default pad)
+  elseif(CASE STREQUAL "device_paddle_export_refused")
+    # A Paddle dump on an export console is refused, never run as a pad; a pad asked for by name still plays.
+    expect_exit(77 "unsupported.*--region" ${PADDLE} --frames 1 --port1 paddle --region ntsc-u)
+    expect_exit(77 "unsupported.*--region" ${PADDLE} --frames 1 --port1 paddle --region pal)
+    expect_exit(0 "frame 1 sha256" ${PADDLE} --frames 1 --port1 pad --region ntsc-u --hash)
   elseif(CASE STREQUAL "probe_keys")
     # A 128 KiB export image with a good header and no mapper stores: the
     # keys in order, the header read at $7FF0 and the Sega board guessed.
@@ -1246,6 +1275,19 @@ foreach(device_case IN ITEMS usage names refused auto)
       -DOUT=${PROJECT_BINARY_DIR}/tests/device-${device_case}.expect -P ${CMAKE_CURRENT_LIST_FILE}
     LABELS portable runner TIMEOUT 30)
 endforeach()
+
+# Fault prevented: a table default that never reaches a host, or a Paddle dump that loads as export and plays as a
+# pad, seen through the runner on the two owned device images.
+# Timeout: 30 s floor; each case is a few short runs, provisional.
+if(COGMASTER_FIXTURES)
+  foreach(device_case IN ITEMS default probe_default paddle_export_refused)
+    cogmaster_add_test(NAME runner.device.${device_case}
+      COMMAND ${runner_check} -DCASE=device_${device_case}
+        -DSPORTS=${PROJECT_BINARY_DIR}/fixtures/sports_pad.sms -DPADDLE=${PROJECT_BINARY_DIR}/fixtures/paddle.sms
+        -DOUT=${PROJECT_BINARY_DIR}/tests/device-${device_case}.expect -P ${CMAKE_CURRENT_LIST_FILE}
+      LABELS portable runner TIMEOUT 30)
+  endforeach()
+endif()
 
 # Fault prevented: malformed, truncated or surplus absolute input being run as released input.
 cogmaster_add_test(NAME runner.input
