@@ -513,7 +513,7 @@ jobs:
             "-DRA_DIR=$PWD/build/ra-save-battery" -DFRAMES=30 "-DSHOT=$PWD/build/ra-save/battery-1.png" \
             -DCONTENT=build/owned/fixtures/battery.sms -P tests/retroarch/run_retroarch.cmake
           build/runner/bin/cogmaster-run build/owned/fixtures/battery.sms --frames 30 --save-dir build/oracle-battery
-          cmake -E compare_files build/ra-save-battery/saves/battery.srm build/oracle-battery/battery.srm
+          cmake -E compare_files build/ra-save-battery/saves/cogmaster/battery.srm build/oracle-battery/battery.srm
           cmake -E copy build/oracle-battery/battery.srm build/oracle-battery-1.srm
           cmake -DRETROARCH=build/RetroArch.app/Contents/MacOS/RetroArch \
             -DCORE=build/libretro/cores/cogmaster_libretro.dylib \
@@ -521,7 +521,7 @@ jobs:
             "-DRA_DIR=$PWD/build/ra-save-battery" -DFRAMES=30 "-DSHOT=$PWD/build/ra-save/battery-2.png" \
             -DCONTENT=build/owned/fixtures/battery.sms -DKEEP=1 -P tests/retroarch/run_retroarch.cmake
           build/runner/bin/cogmaster-run build/owned/fixtures/battery.sms --frames 30 --save-dir build/oracle-battery
-          cmake -E compare_files build/ra-save-battery/saves/battery.srm build/oracle-battery/battery.srm
+          cmake -E compare_files build/ra-save-battery/saves/cogmaster/battery.srm build/oracle-battery/battery.srm
           cmake "-DCMD=cmake;-E;compare_files;build/oracle-battery-1.srm;build/oracle-battery/battery.srm" -DCODE=1 \
             "-DREGEX=^" -P tests/cmake/expect_fail.cmake
       - name: EEPROM save survives a RetroArch restart
@@ -533,7 +533,7 @@ jobs:
             "-DRA_DIR=$PWD/build/ra-save-eeprom" -DFRAMES=30 "-DSHOT=$PWD/build/ra-save/eeprom-1.png" \
             -DCONTENT=build/owned/fixtures/eeprom.gg -P tests/retroarch/run_retroarch.cmake
           build/runner/bin/cogmaster-run build/owned/fixtures/eeprom.gg --frames 30 --save-dir build/oracle-eeprom
-          cmake -E compare_files build/ra-save-eeprom/saves/eeprom.srm build/oracle-eeprom/eeprom.srm
+          cmake -E compare_files build/ra-save-eeprom/saves/cogmaster/eeprom.srm build/oracle-eeprom/eeprom.srm
           cmake -E copy build/oracle-eeprom/eeprom.srm build/oracle-eeprom-1.srm
           cmake -DRETROARCH=build/RetroArch.app/Contents/MacOS/RetroArch \
             -DCORE=build/libretro/cores/cogmaster_libretro.dylib \
@@ -541,7 +541,7 @@ jobs:
             "-DRA_DIR=$PWD/build/ra-save-eeprom" -DFRAMES=30 "-DSHOT=$PWD/build/ra-save/eeprom-2.png" \
             -DCONTENT=build/owned/fixtures/eeprom.gg -DKEEP=1 -P tests/retroarch/run_retroarch.cmake
           build/runner/bin/cogmaster-run build/owned/fixtures/eeprom.gg --frames 30 --save-dir build/oracle-eeprom
-          cmake -E compare_files build/ra-save-eeprom/saves/eeprom.srm build/oracle-eeprom/eeprom.srm
+          cmake -E compare_files build/ra-save-eeprom/saves/cogmaster/eeprom.srm build/oracle-eeprom/eeprom.srm
           cmake "-DCMD=cmake;-E;compare_files;build/oracle-eeprom-1.srm;build/oracle-eeprom/eeprom.srm" -DCODE=1 \
             "-DREGEX=^" -P tests/cmake/expect_fail.cmake
       - name: Owned screenshots
