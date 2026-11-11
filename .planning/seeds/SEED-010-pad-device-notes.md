@@ -65,3 +65,25 @@ workaround; it is a change to the five sync sites and is not worth it unless a h
   title that stops alternating; shorten or document.
 - **`hashes.cmake` argument parsing (host IN-04).** Device arguments go through `separate_arguments`; a name with a
   space would split. No such name exists.
+
+## Light Phaser review leftovers (rule 7: seeds, not requirements)
+
+- **Orphaned `th_pins` comment (core IN-02).** The doc comment in `src/io.c` sits above `sensor_low`; move it back
+  beside `th_pins`.
+- **Dead helper and unused parameter (core IN-03).** `cogmaster__vdp_latch_h` has no caller in `src/` and
+  `cogmaster__vdp_hcount_at` carries an unused parameter; delete or use them when `vdp.c` is next touched.
+- **Gun check twice on `$DD` (core IN-04).** A gun-less read evaluates the gun test twice and the `ports.c` header
+  claim no longer holds exactly; fold the checks when the perf gate next has headroom to spare.
+- **Fixture row citations (host IN-01).** `tests/diag/expected.csv` evidence for the light_phaser rows cites sources
+  whose latch edge differs from the pinned release edge; reword the citation to name the rule actually pinned.
+- **`compat.device_key` and the phaser pair (host IN-02).** The case never asserts that an `lphaser` pair is present
+  and distinct from a pad pair; add one row each way.
+- **Stale comments (host IN-03).** Two comments in the new gun code and tests are stale or ambiguous; reword.
+- **Cross-lane hash row (host IN-04).** The `light_phaser` row in `hashes.cmake` covers only the fixed picture;
+  add a lit-aim script row if a lane-specific divergence ever shows in the mailbox but not the hash.
+- **Fuzz op for a height change (core IN-01 follow-up).** `ports.gun.walk` covers a height change between pictures,
+  but `fuzz_pad.c` has no op for it: adding one changes `OP_COUNT` and reinterprets every stored seed byte, so add
+  it together with regenerated seeds and a hosted libFuzzer run.
+- **Stick asymmetry on Sports Pad and Paddle.** Full deflection at K=6 gives +5 and -6 counts because those
+  devices truncate; `libretro.host.devices.*` pins the truncation. Round both devices and update the pins if a
+  symmetric feel matters.
