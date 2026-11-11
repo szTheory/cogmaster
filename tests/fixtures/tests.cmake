@@ -214,6 +214,9 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(PORT1)
       list(APPEND machine --port1 ${PORT1})
     endif()
+    if(PORT2)
+      list(APPEND machine --port2 ${PORT2})
+    endif()
     execute_process(COMMAND ${EMULATOR} ${RUN} ${machine} ${IMAGE} --frames ${FRAMES} --mailbox
       RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
     if(NOT rc STREQUAL "0")
@@ -1084,6 +1087,270 @@ cogmaster_add_test(NAME fixtures.glasses.hash_same
     -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${fixtures_emulator}" -DNAME=glasses
     -DIMAGE=${COGMASTER_FIXTURES_DIR}/glasses.sms -DFRAMES=${glasses_count} -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS fixtures portable TIMEOUT 10)
+
+# The light_phaser fixture's oracle. Every expected value is derived here from the positions the source defines
+# and from the sensor's rule (a disc of radius 6 around the aim, the light ending at the first dot that is not
+# bright, H = (dot + 35) >> 1 for a release at that dot, 38 ticks after it is drawn), never read from a run of
+# the core; each literal in tests/diag/expected.csv must equal what this derives. A dot is 0-based here, and an
+# aim in a script is the dot plus one.
+file(STRINGS ${fixtures_src}/light_phaser.asm lp_defines
+  REGEX "^[.]DEFINE (SQ_X|SQ_Y|DARK_X|DARK_Y|BAND_X|BAND_Y|PHASE_[A-Z]+) [0-9]+$")
+foreach(lp_define IN LISTS lp_defines)
+  string(REGEX REPLACE "^[.]DEFINE ([A-Z_]+) ([0-9]+)$" "\\1" lp_key "${lp_define}")
+  string(REGEX REPLACE "^[.]DEFINE ([A-Z_]+) ([0-9]+)$" "\\2" lp_value "${lp_define}")
+  set(lp_${lp_key} ${lp_value})
+endforeach()
+foreach(lp_key IN ITEMS SQ_X SQ_Y DARK_X DARK_Y BAND_X BAND_Y PHASE_PARKED PHASE_PERIODS PHASE_DARK PHASE_SQUARE
+    PHASE_BAND)
+  if(NOT DEFINED lp_${lp_key})
+    message(FATAL_ERROR "tests/roms/src/light_phaser.asm: no .DEFINE ${lp_key}")
+  endif()
+endforeach()
+set(lp_periods 29 31 47 64 97 100 101 200 114 228)
+set(lp_total 40)
+
+# The half width of the disc's chord dy rows from the aim: the largest h with h * h + dy * dy within 6 * 6.
+function(lp_half out dy)
+  math(EXPR dy "${dy} * ${dy}")
+  set(h 6)
+  while(h GREATER 0)
+    math(EXPR size "${h} * ${h} + ${dy}")
+    if(size LESS_EQUAL 36)
+      break()
+    endif()
+    math(EXPR h "${h} - 1")
+  endwhile()
+  set(${out} ${h} PARENT_SCOPE)
+endfunction()
+
+# The dot the light ends at on ROW when the aim is dot AIM_X of row AIM_Y: the first dot after the chord's lit run
+# that is not lit, the dot after the chord counting as dark; 0 when the row has no light. SHAPE is square (a lit
+# 16 by 16 square at LEFT, TOP) or band (a lit line across the whole width on row TOP).
+function(lp_release out shape left top aim_x aim_y row)
+  math(EXPR dy "${row} - ${aim_y}")
+  lp_half(h ${dy})
+  math(EXPR first "${aim_x} - ${h}")
+  if(first LESS 0)
+    set(first 0)
+  endif()
+  math(EXPR last "${aim_x} + ${h}")
+  if(last GREATER 255)
+    set(last 255)
+  endif()
+  math(EXPR stop "${last} + 1")
+  math(EXPR right "${left} + 15")
+  math(EXPR bottom "${top} + 15")
+  set(release 0)
+  set(was 0)
+  foreach(dot RANGE ${first} ${stop})
+    set(lit 0)
+    if(dot LESS_EQUAL last)
+      if(shape STREQUAL "band" AND row EQUAL top)
+        set(lit 1)
+      elseif(shape STREQUAL "square" AND row GREATER_EQUAL top AND row LESS_EQUAL bottom
+          AND dot GREATER_EQUAL left AND dot LESS_EQUAL right)
+        set(lit 1)
+      endif()
+    endif()
+    if(was AND NOT lit AND release EQUAL 0)
+      set(release ${dot})
+    endif()
+    set(was ${lit})
+  endforeach()
+  set(${out} ${release} PARENT_SCOPE)
+endfunction()
+
+# The aim at the square's right edge dot and centre row dot. The light must end at the dot after the edge on
+# every one of the 13 rows of the disc, so the latched H does not depend on the row; this is checked here.
+math(EXPR lp_square_x "${lp_SQ_X} + 15")
+math(EXPR lp_square_y "${lp_SQ_Y} + 8")
+foreach(lp_dy RANGE -6 6)
+  math(EXPR lp_row "${lp_square_y} + ${lp_dy}")
+  lp_release(lp_release_dot square ${lp_SQ_X} ${lp_SQ_Y} ${lp_square_x} ${lp_square_y} ${lp_row})
+  math(EXPR lp_want_dot "${lp_SQ_X} + 16")
+  if(NOT lp_release_dot EQUAL lp_want_dot)
+    message(FATAL_ERROR "tests/roms/src/light_phaser.asm: the light ends at dot ${lp_release_dot} on row ${lp_row}, "
+      "expected ${lp_want_dot} on every row of the disc")
+  endif()
+endforeach()
+math(EXPR lp_square_h "(${lp_SQ_X} + 16 + 35) >> 1")
+# The line: the aim is on its dot row and the light ends at the end of the chord.
+math(EXPR lp_band_x "${lp_BAND_X} - 1")
+lp_release(lp_band_dot band 0 ${lp_BAND_Y} ${lp_band_x} ${lp_BAND_Y} ${lp_BAND_Y})
+math(EXPR lp_want_dot "${lp_BAND_X} + 6")
+if(NOT lp_band_dot EQUAL lp_want_dot)
+  message(FATAL_ERROR "tests/roms/src/light_phaser.asm: the light ends at dot ${lp_band_dot} on the line, "
+    "expected ${lp_want_dot}")
+endif()
+math(EXPR lp_band_h "(${lp_BAND_X} + 6 + 35) >> 1")
+
+# Four hex digits, upper case.
+function(lp_hex out value)
+  math(EXPR value "${value}" OUTPUT_FORMAT HEXADECIMAL)
+  string(REGEX REPLACE "^0x" "" value "${value}")
+  string(TOUPPER "${value}" value)
+  string(LENGTH "${value}" digits)
+  math(EXPR pad "4 - ${digits}")
+  string(REPEAT 0 ${pad} zeros)
+  set(${out} "${zeros}${value}" PARENT_SCOPE)
+endfunction()
+
+# The rows the fixture must hold, as "<test>|<profile>|<expected>"; plus or minus 1 H count around a derived one.
+set(lp_want_rows "01:parked_th_low_reads|*|0000" "16:dark_th_low_reads|*|0000" "17:lit_th_low_reads|*|0001-FFFF"
+  "1A:th_bit_that_saw_light|port1|0040" "1A:th_bit_that_saw_light|port2|0080")
+function(lp_range out value)
+  math(EXPR low "${value} - 1")
+  math(EXPR high "${value} + 1")
+  lp_hex(low_hex ${low})
+  lp_hex(high_hex ${high})
+  set(${out} "${low_hex}-${high_hex}" PARENT_SCOPE)
+endfunction()
+lp_range(lp_square_range ${lp_square_h})
+lp_range(lp_band_range ${lp_band_h})
+set(lp_index 0)
+foreach(lp_period IN LISTS lp_periods)
+  math(EXPR lp_id_b "2 + ${lp_index}")
+  math(EXPR lp_id_a "12 + ${lp_index}")
+  lp_hex(lp_id_b ${lp_id_b})
+  lp_hex(lp_id_a ${lp_id_a})
+  string(SUBSTRING "${lp_id_b}" 2 2 lp_id_b)
+  string(SUBSTRING "${lp_id_a}" 2 2 lp_id_a)
+  string(LENGTH "${lp_period}" lp_digits)
+  math(EXPR lp_pad "3 - ${lp_digits}")
+  string(REPEAT 0 ${lp_pad} lp_zeros)
+  list(APPEND lp_want_rows "${lp_id_b}:period_${lp_zeros}${lp_period}_after_th_high|*|${lp_square_range}"
+    "${lp_id_a}:period_${lp_zeros}${lp_period}_after_poll|*|${lp_square_range}")
+  math(EXPR lp_index "${lp_index} + 1")
+endforeach()
+# The V counter read at the poll: the disc's first row to its last, two rows either side for the loop and the
+# read, and one more line per 228 cycles of loop (both periods here are shorter than a line).
+math(EXPR lp_v_low "${lp_SQ_Y} + 2 - 2")
+math(EXPR lp_v_high "${lp_SQ_Y} + 14 + 2 + 1")
+lp_hex(lp_v_low_hex ${lp_v_low})
+lp_hex(lp_v_high_hex ${lp_v_high})
+list(APPEND lp_want_rows "18:period_029_v_counter|*|${lp_v_low_hex}-${lp_v_high_hex}"
+  "19:period_064_v_counter|*|${lp_v_low_hex}-${lp_v_high_hex}"
+  "1B:line_after_th_high|*|${lp_band_range}" "1C:line_after_poll|*|${lp_band_range}")
+list(LENGTH lp_want_rows lp_want_count)
+file(STRINGS ${PROJECT_SOURCE_DIR}/tests/diag/expected.csv lp_rows REGEX "^light_phaser,")
+list(LENGTH lp_rows lp_row_count)
+if(NOT lp_row_count EQUAL lp_want_count)
+  message(FATAL_ERROR "tests/diag/expected.csv: ${lp_row_count} light_phaser rows, the oracle derives ${lp_want_count}")
+endif()
+foreach(lp_row IN LISTS lp_rows)
+  string(REPLACE "," ";" lp_row "${lp_row}")
+  list(GET lp_row 1 lp_test)
+  list(GET lp_row 2 lp_profile)
+  list(GET lp_row 3 lp_literal)
+  if(NOT "${lp_test}|${lp_profile}|${lp_literal}" IN_LIST lp_want_rows)
+    message(FATAL_ERROR "tests/diag/expected.csv: light_phaser row ${lp_test} (${lp_profile}) is ${lp_literal}, "
+      "which the oracle does not derive")
+  endif()
+endforeach()
+
+# The scripts, one line a frame. The part of the program that runs in a frame is named by the source's PHASE_
+# values: the ten periods and the lit run aim at the square, the dark part at the dark square's centre, the line
+# part at the line, and every other frame has no aim. The trigger is never pulled. phaser aims port 1, port2
+# aims port 2, left is the same 16 dots to the left, parked has no aim and dark aims at the dark square all the
+# time (the runs that must equal a pad's).
+math(EXPR lp_dark_x "${lp_DARK_X} + 9")
+math(EXPR lp_dark_y "${lp_DARK_Y} + 9")
+math(EXPR lp_square_aim_x "${lp_SQ_X} + 16")
+math(EXPR lp_square_aim_y "${lp_SQ_Y} + 9")
+math(EXPR lp_band_aim_y "${lp_BAND_Y} + 1")
+math(EXPR lp_periods_end "${lp_PHASE_PERIODS} + 9")
+set(lp_zero "+00000")
+foreach(lp_variant IN ITEMS phaser port2 left parked dark)
+  set(lp_body "")
+  foreach(lp_frame RANGE 1 ${lp_total})
+    set(lp_ax 0)
+    set(lp_ay 0)
+    if(lp_frame EQUAL lp_PHASE_SQUARE OR (lp_frame GREATER_EQUAL lp_PHASE_PERIODS AND lp_frame LESS_EQUAL lp_periods_end))
+      set(lp_ax ${lp_square_aim_x})
+      set(lp_ay ${lp_square_aim_y})
+    elseif(lp_frame EQUAL lp_PHASE_DARK)
+      set(lp_ax ${lp_dark_x})
+      set(lp_ay ${lp_dark_y})
+    elseif(lp_frame EQUAL lp_PHASE_BAND)
+      set(lp_ax ${lp_BAND_X})
+      set(lp_ay ${lp_band_aim_y})
+    endif()
+    if(lp_variant STREQUAL "left" AND lp_ax GREATER 0)
+      math(EXPR lp_ax "${lp_ax} - 16")
+    elseif(lp_variant STREQUAL "parked")
+      set(lp_ax 0)
+      set(lp_ay 0)
+    elseif(lp_variant STREQUAL "dark")
+      set(lp_ax ${lp_dark_x})
+      set(lp_ay ${lp_dark_y})
+    endif()
+    sports_axis(lp_xs ${lp_ax})
+    sports_axis(lp_ys ${lp_ay})
+    if(lp_variant STREQUAL "port2")
+      string(APPEND lp_body "p1=00 p2=00 pause=0 reset=0 start=0 x1=${lp_zero} y1=${lp_zero} x2=${lp_xs} y2=${lp_ys}\n")
+    else()
+      string(APPEND lp_body "p1=00 p2=00 pause=0 reset=0 start=0 x1=${lp_xs} y1=${lp_ys} x2=${lp_zero} y2=${lp_zero}\n")
+    endif()
+  endforeach()
+  set(lp_file phaser-${lp_variant})
+  if(lp_variant STREQUAL "phaser")
+    set(lp_file phaser)
+  endif()
+  file(CONFIGURE OUTPUT ${PROJECT_BINARY_DIR}/tests/${lp_file}.input CONTENT "${lp_body}" NEWLINE_STYLE UNIX @ONLY)
+endforeach()
+
+# Fault prevented: a sensor that latches at the read, at the leading edge or at the wrong delay, a geometric TH
+# that a loop length locks away from, or a fixture whose aim is a pixel off. The same rows are judged on the
+# export, Japanese, PAL and first-model consoles with the gun on port 1, and on port 2 with a pad on port 1 (the
+# row that names the TH bit differs); an aim 16 dots to the left, no aim and a pad on the port must each fall
+# outside a row.
+# Timeout: 10 s floor; provisional.
+foreach(profile IN ITEMS export japan pal sms1)
+  set(machine sms)
+  set(region ntsc-u)
+  if(profile STREQUAL "japan")
+    set(region ntsc-j)
+  elseif(profile STREQUAL "pal")
+    set(region pal)
+  elseif(profile STREQUAL "sms1")
+    set(machine sms1)
+  endif()
+  cogmaster_add_test(NAME fixtures.light_phaser.mailbox.${profile}
+    COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=light_phaser -DMACHINE=${machine} -DREGION=${region}
+      -DPROFILE=port1 -DPORT1=lphaser -DINPUT=${PROJECT_BINARY_DIR}/tests/phaser.input
+      -DIMAGE=${COGMASTER_FIXTURES_DIR}/light_phaser.sms -DFRAMES=${lp_total}
+      -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+      -DOUT=${fixtures_out}/light_phaser.${profile}.txt -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures portable TIMEOUT 10)
+endforeach()
+cogmaster_add_test(NAME fixtures.light_phaser.port2
+  COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=light_phaser -DMACHINE=sms -DREGION=ntsc-u
+    -DPROFILE=port2 -DPORT1=pad -DPORT2=lphaser -DINPUT=${PROJECT_BINARY_DIR}/tests/phaser-port2.input
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/light_phaser.sms -DFRAMES=${lp_total}
+    -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+    -DOUT=${fixtures_out}/light_phaser.port2.txt -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 10)
+# Timeout: 10 s floor; provisional.
+foreach(control IN ITEMS left parked pad)
+  set(input phaser-${control})
+  set(device lphaser)
+  if(control STREQUAL "pad")
+    set(input phaser-parked)
+    set(device pad)
+  endif()
+  set(cmd ${CMAKE_COMMAND} -DCASE=mailbox -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+    -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${fixtures_inner_emulator}"
+    -DJUDGE=${PROJECT_SOURCE_DIR}/tests/cmake/mailbox.cmake -DPROFILE=port1 -DNAME=light_phaser
+    -DMACHINE=sms -DREGION=ntsc-u -DPORT1=${device} -DINPUT=${PROJECT_BINARY_DIR}/tests/${input}.input
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/light_phaser.sms -DFRAMES=${lp_total}
+    -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/light_phaser.${control}.txt
+    -P ${CMAKE_CURRENT_LIST_FILE})
+  string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+  cogmaster_add_test(NAME fixtures.light_phaser.control.${control}
+    COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=outside its row"
+      -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+    LABELS fixtures portable TIMEOUT 10)
+endforeach()
 
 # Fault prevented: a judge that passes what it should fail. Each control
 # runs the mapper_sega fixture through the judge and must fail with exit 1

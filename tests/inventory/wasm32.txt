@@ -157,6 +157,14 @@ fixtures.judge.missing_row	fixtures,portable
 fixtures.judge.wrong_value	fixtures,portable
 fixtures.korean_probe	fixtures,portable
 fixtures.korean_probe_control	fixtures,portable
+fixtures.light_phaser.control.left	fixtures,portable
+fixtures.light_phaser.control.pad	fixtures,portable
+fixtures.light_phaser.control.parked	fixtures,portable
+fixtures.light_phaser.mailbox.export	fixtures,portable
+fixtures.light_phaser.mailbox.japan	fixtures,portable
+fixtures.light_phaser.mailbox.pal	fixtures,portable
+fixtures.light_phaser.mailbox.sms1	fixtures,portable
+fixtures.light_phaser.port2	fixtures,portable
 fixtures.mapper_codemasters	fixtures,portable
 fixtures.mapper_hes_4pak	fixtures,portable
 fixtures.mapper_korean	fixtures,portable
@@ -376,7 +384,9 @@ runner.expect.predicates	portable,runner
 runner.eyes.line	portable,runner
 runner.eyes.probe	portable,runner
 runner.gun.args	portable,runner
+runner.gun.crop	portable,runner
 runner.gun.gg_refused	portable,runner
+runner.gun.noshot	portable,runner
 runner.hash.gg	portable,runner
 runner.hash.repeat	portable,runner
 runner.hash.self_test	runner

@@ -666,6 +666,67 @@ if(CMAKE_SCRIPT_MODE_FILE)
     expect_exit(2 "usage.*--probe" --eyes --probe ${SEEDS}/di-halt.sms)
     expect_exit(2 "usage.*--probe" --probe ${SEEDS}/di-halt.sms --eyes)
     expect_exit(2 "usage" --eyes)
+  elseif(CASE STREQUAL "gun_crop")
+    # The runner's script aim is the field dot: every machine that can hold a phaser has its crop at 0,0, so a
+    # script aim at the square's picture position gives the record inside the row of tests/diag/expected.csv
+    # and the same script 16 dots to the left gives one outside it.
+    file(STRINGS "${CSV}" row REGEX "^light_phaser,0C:")
+    if(NOT row MATCHES "^light_phaser,0C:[^,]*,[*],([0-9A-F]+)-([0-9A-F]+),")
+      message(FATAL_ERROR "${CSV}: no light_phaser row 0C with a range")
+    endif()
+    math(EXPR low "0x${CMAKE_MATCH_1}")
+    math(EXPR high "0x${CMAKE_MATCH_2}")
+    foreach(aim IN ITEMS aimed left)
+      set(script ${PHASER})
+      if(aim STREQUAL "left")
+        set(script ${LEFT})
+      endif()
+      execute_process(COMMAND ${EMULATOR} ${RUN} ${IMAGE} --frames ${FRAMES} --port1 lphaser --input ${script}
+        --mailbox RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+      if(NOT rc STREQUAL "0" OR NOT out MATCHES "(^|\n)status=00\n(.*\n)?0C=([0-9A-F]+) flags=")
+        message(FATAL_ERROR "gun_crop (${aim}): exit ${rc}, no record 0C\n${out}${err}")
+      endif()
+      math(EXPR record "0x${CMAKE_MATCH_3}")
+      if(aim STREQUAL "aimed" AND (record LESS low OR record GREATER high))
+        message(FATAL_ERROR "gun_crop: record 0C is ${record}, expected ${low}-${high}\n${out}")
+      elseif(aim STREQUAL "left" AND record GREATER_EQUAL low AND record LESS_EQUAL high)
+        message(FATAL_ERROR "gun_crop: the aim 16 dots left still gives record 0C ${record} in ${low}-${high}\n${out}")
+      endif()
+    endforeach()
+  elseif(CASE STREQUAL "gun_noshot")
+    # The host half of the no-shot invariant: the fixture run with the phaser parked, and with its aim on the
+    # dark square, prints the frame hash, the lag line and the mailbox records of the run with a pad and the
+    # same script's aim columns zeroed (the execution line names the device and the script, so it is dropped).
+    # The aim on the lit square must change the records. The picture the fixture draws is fixed, so its frame
+    # hash cannot differ: the records are what keep the equality from being vacuous.
+    set(runs pad parked dark aimed)
+    foreach(run IN LISTS runs)
+      set(device lphaser)
+      set(script ${PHASER})
+      if(run STREQUAL "pad")
+        set(device pad)
+        set(script ${PARKED})
+      elseif(run STREQUAL "parked")
+        set(script ${PARKED})
+      elseif(run STREQUAL "dark")
+        set(script ${DARK})
+      endif()
+      execute_process(COMMAND ${EMULATOR} ${RUN} ${IMAGE} --frames ${FRAMES} --port1 ${device} --input ${script}
+        --hash --mailbox RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+      if(NOT rc STREQUAL "0" OR NOT out MATCHES "(^|\n)frame [0-9]+ sha256 [0-9a-f]+\n")
+        message(FATAL_ERROR "gun_noshot (${run}): exit ${rc}\n${out}${err}")
+      endif()
+      string(REGEX REPLACE "(^|\n)execution [^\n]*" "\\1" out "${out}")
+      set(out_${run} "${out}")
+    endforeach()
+    foreach(run IN ITEMS parked dark)
+      if(NOT out_${run} STREQUAL out_pad)
+        message(FATAL_ERROR "gun_noshot: the ${run} phaser run differs from the pad run\n${out_${run}}\n${out_pad}")
+      endif()
+    endforeach()
+    if(out_aimed STREQUAL out_pad OR NOT out_aimed MATCHES "(^|\n)status=00\n")
+      message(FATAL_ERROR "gun_noshot: the aim on the lit square changed nothing\n${out_aimed}")
+    endif()
   elseif(CASE STREQUAL "gun_args")
     # A phaser's aim is a 1-based field dot, 0 0 or the short line is no aim, and every other pair is exit 2
     # before frame 1 naming the port and the device; the same file on a pad port is exit 2 too.
@@ -1330,6 +1391,23 @@ foreach(gun_case IN ITEMS args gg_refused)
       -DOUT=${PROJECT_BINARY_DIR}/tests/gun-${gun_case}.input -P ${CMAKE_CURRENT_LIST_FILE}
     LABELS portable runner TIMEOUT 30)
 endforeach()
+
+# Fault prevented: a script aim that is not the field dot, so a gun title is aimed at the wrong place by the same
+# crop the hosts map through; a gun on the port that changes a run in which it sees no light, so a title that
+# never aims is not the title that ran before. The fixture's aim is judged against its row and, 16 dots left, falls
+# outside it; the parked and dark-aimed runs equal the pad's.
+# Timeout: 30 s floor; provisional.
+if(COGMASTER_FIXTURES)
+  set(gun_run ${runner_check} -DIMAGE=${PROJECT_BINARY_DIR}/fixtures/light_phaser.sms -DFRAMES=40
+    -DPHASER=${PROJECT_BINARY_DIR}/tests/phaser.input -DLEFT=${PROJECT_BINARY_DIR}/tests/phaser-left.input
+    -DPARKED=${PROJECT_BINARY_DIR}/tests/phaser-parked.input -DDARK=${PROJECT_BINARY_DIR}/tests/phaser-dark.input
+    -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv)
+  foreach(gun_case IN ITEMS crop noshot)
+    cogmaster_add_test(NAME runner.gun.${gun_case}
+      COMMAND ${gun_run} -DCASE=gun_${gun_case} -P ${CMAKE_CURRENT_LIST_FILE}
+      LABELS portable runner TIMEOUT 30)
+  endforeach()
+endif()
 
 # Fault prevented: a table default that never reaches a host, or a Paddle dump that loads as export and plays as a
 # pad, seen through the runner on the two owned device images.
