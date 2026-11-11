@@ -410,7 +410,9 @@ _Static_assert(offsetof(cogmaster_info, tv) == 52, "info.tv");
 _Static_assert(offsetof(cogmaster_info, video_mode) == 56, "info.video_mode");
 _Static_assert(offsetof(cogmaster_info, audio_channels) == 60, "info.audio_channels");
 _Static_assert(offsetof(cogmaster_info, fm) == 64, "info.fm");
-_Static_assert(sizeof(cogmaster_info) == 68, "info size");
+_Static_assert(offsetof(cogmaster_info, default_port1) == 68, "info.default_port1");
+_Static_assert(offsetof(cogmaster_info, default_port2) == 72, "info.default_port2");
+_Static_assert(sizeof(cogmaster_info) == 76, "info size");
 
 _Static_assert(offsetof(cogmaster_frame, size) == 0, "frame.size");
 _Static_assert(offsetof(cogmaster_frame, pixels) == COGMASTER__P, "frame.pixels");
@@ -429,8 +431,10 @@ _Static_assert(offsetof(cogmaster_run_result, size) == 0, "run_result.size");
 _Static_assert(offsetof(cogmaster_run_result, stop) == 4, "run_result.stop");
 _Static_assert(offsetof(cogmaster_run_result, overshoot_ticks) == 8, "run_result.overshoot_ticks");
 _Static_assert(offsetof(cogmaster_run_result, lagged) == 12, "run_result.lagged");
-_Static_assert(sizeof(cogmaster_run_result) == 20, "run_result size");
-_Static_assert(sizeof(cogmaster_input) == 32, "input size");
+_Static_assert(offsetof(cogmaster_run_result, display_enabled) == 16, "run_result.display_enabled");
+_Static_assert(offsetof(cogmaster_run_result, glasses) == 20, "run_result.glasses");
+_Static_assert(sizeof(cogmaster_run_result) == 24, "run_result size");
+_Static_assert(sizeof(cogmaster_input) == 48, "input size");
 _Static_assert(offsetof(cogmaster_input, p1) == 4, "input.p1");
 _Static_assert(offsetof(cogmaster_input, p2) == 8, "input.p2");
 _Static_assert(offsetof(cogmaster_input, pause) == 12, "input.pause");
@@ -438,6 +442,10 @@ _Static_assert(offsetof(cogmaster_input, reset) == 16, "input.reset");
 _Static_assert(offsetof(cogmaster_input, start) == 20, "input.start");
 _Static_assert(offsetof(cogmaster_input, port1) == 24, "input.port1");
 _Static_assert(offsetof(cogmaster_input, port2) == 28, "input.port2");
+_Static_assert(offsetof(cogmaster_input, x1) == 32, "input.x1");
+_Static_assert(offsetof(cogmaster_input, y1) == 36, "input.y1");
+_Static_assert(offsetof(cogmaster_input, x2) == 40, "input.x2");
+_Static_assert(offsetof(cogmaster_input, y2) == 44, "input.y2");
 
 _Static_assert(offsetof(cogmaster_fault, size) == 0, "fault.size");
 _Static_assert(offsetof(cogmaster_fault, present) == 4, "fault.present");
@@ -466,6 +474,9 @@ _Static_assert(offsetof(cogmaster_cart_info, machine_guess) == 40, "cart_info.ma
 _Static_assert(offsetof(cogmaster_cart_info, region_guess) == 44, "cart_info.region_guess");
 _Static_assert(offsetof(cogmaster_cart_info, board) == 48, "cart_info.board");
 _Static_assert(offsetof(cogmaster_cart_info, identified) == 52, "cart_info extension");
+_Static_assert(offsetof(cogmaster_cart_info, default_port1) == 528, "cart_info.default_port1");
+_Static_assert(offsetof(cogmaster_cart_info, default_port2) == 532, "cart_info.default_port2");
+_Static_assert(sizeof(cogmaster_cart_info) == 536, "cart_info size");
 
 /* cogmaster_audio: the buffer pointer first, then four counters. */
 _Static_assert(offsetof(cogmaster_audio, size) == 0, "audio.size");
