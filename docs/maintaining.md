@@ -167,6 +167,9 @@ Never run two macOS-using workflows at once (CI and Nightly).
 A job that fails at an `apt` step with "Temporary failure resolving" hit a runner DNS fault: `gh run rerun <id> --failed`
 reruns only the failed jobs, reuses the green ones and spends no macOS minutes.
 
+Local medians of three runs: `sh scripts/hygiene.sh --tree` fell from 27 s to 21 s (one read per file) and
+the analyzer test from 21 s to 16 s (four processes).
+
 ## Repository settings
 
 `scripts/apply-repo-settings.sh` holds the repository's settings as code, and `.github/rulesets/main.json` holds

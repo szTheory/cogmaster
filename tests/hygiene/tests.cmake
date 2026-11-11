@@ -135,11 +135,12 @@ cogmaster_add_test(NAME hygiene.no_float.self_test
 # Fault prevented: a defect the clang static analyzer can see in the core.
 # The Annex K check is off: the core may call only the C memory functions
 # (abi.undefined), and the _s variants it asks for are optional in C11 and
-# absent from glibc.
+# absent from glibc. The run is parallel, nine files per process, four at a
+# time; a failing run makes xargs exit non-zero (123 with GNU xargs).
 cogmaster_add_test(NAME hygiene.analyzer
-  COMMAND ${COGMASTER_SH} -c "cd \"$1\" && \"$2\" -p \"$3\" --quiet \
+  COMMAND ${COGMASTER_SH} -c "cd \"$1\" && printf '%s\\n' src/*.c | xargs -n 9 -P 4 \"$2\" -p \"$3\" --quiet \
 -checks='-*,clang-analyzer-*,-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling' \
---warnings-as-errors='*' src/*.c" sh
+--warnings-as-errors='*'" sh
     ${CMAKE_SOURCE_DIR} ${COGMASTER_CLANG_TIDY} ${CMAKE_BINARY_DIR}
   LABELS hygiene TIMEOUT 120)
 
