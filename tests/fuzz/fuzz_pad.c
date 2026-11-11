@@ -178,7 +178,8 @@ static void check_pad(const cogmaster *m)
         int gathered = b->edge != 0u || b->step != 0u;
         for (uint32_t a = 0u; a < 2u; a++) {
             expect(b->acc[a] >= -1023 && b->acc[a] <= 1023);
-            expect(b->val[a] >= -127 && b->val[a] <= 127);
+            /* val is int8_t, so 127 is its top and only the low end is a bound to test. */
+            expect(b->val[a] >= -127);
             gathered |= b->acc[a] != 0 || b->val[a] != 0;
         }
         switch (held[p]) {
