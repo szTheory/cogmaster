@@ -7,7 +7,6 @@
 #ifdef _WIN32
 #include <fcntl.h>
 #include <io.h>
-#include <process.h>
 #else
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -73,6 +72,37 @@ static char *save_path(const char *dir, const char *rom)
     return path;
 }
 
+static void save_remove(const char *path)
+{
+#ifdef _WIN32
+    wchar_t *wide = cogmaster__path_wide(path);
+    if (wide != NULL)
+        (void)DeleteFileW(wide);
+    free(wide);
+#else
+    (void)unlink(path);
+#endif
+}
+
+/* A killed run can leave its temporary behind. Both platforms name temporaries
+   <target>.tmp-<i> for i below 1024, so a load removes exactly those names of its
+   own target: no directory listing, bounded, and another save's files stay. A
+   temporary still held open (Windows) is not deleted and the failure is ignored. */
+#define SAVE_TEMPORARIES 1024u
+
+static void save_sweep(const char *path)
+{
+    size_t n = strlen(path);
+    char *tmp = (char *)malloc(n + 48u);
+    if (tmp == NULL)
+        return;
+    for (uint32_t i = 0u; i < SAVE_TEMPORARIES; i++) {
+        (void)snprintf(tmp, n + 48u, "%s.tmp-%lu", path, (unsigned long)i);
+        save_remove(tmp);
+    }
+    free(tmp);
+}
+
 int cogmaster__save_load(cogmaster__save *save, cogmaster *m, const char *dir, const char *rom)
 {
     if (!save_directory(dir))
@@ -92,6 +122,7 @@ int cogmaster__save_load(cogmaster__save *save, cogmaster *m, const char *dir, c
     save->path = save_path(dir, rom);
     if (save->path == NULL)
         return save_error("cannot construct path");
+    save_sweep(save->path);
     uint8_t *data = (uint8_t *)malloc(b.length + 1u);
     if (data == NULL)
         return save_error("out of memory");
@@ -113,7 +144,12 @@ int cogmaster__save_load(cogmaster__save *save, cogmaster *m, const char *dir, c
     if (status == COGMASTER__EXIT_OK) {
         cogmaster_status st = cogmaster_import_battery(m, data, n);
         if (st == COGMASTER_STATUS_ERR_SAVE_SIZE) {
-            fprintf(stderr, "cogmaster-run: save: oversized file\n");
+            if (n > b.length)
+                fprintf(stderr, "cogmaster-run: save: oversized file\n");
+            else
+                fprintf(stderr,
+                        "cogmaster-run: save: file length %lu does not match the %lu-byte save\n",
+                        (unsigned long)n, (unsigned long)b.length);
             status = COGMASTER__EXIT_SAVE_SIZE;
         } else if (st != COGMASTER_STATUS_OK) {
             status = save_error("cannot import battery");
@@ -134,9 +170,8 @@ static FILE *save_temporary(const char *path, char **temporary)
     if (tmp == NULL)
         return NULL;
 #ifdef _WIN32
-    for (uint32_t i = 0; i < 1024u; i++) {
-        (void)snprintf(tmp, n + 48u, "%s.tmp-%lu-%lu", path, (unsigned long)_getpid(),
-                       (unsigned long)i);
+    for (uint32_t i = 0u; i < SAVE_TEMPORARIES; i++) {
+        (void)snprintf(tmp, n + 48u, "%s.tmp-%lu", path, (unsigned long)i);
         wchar_t *wide = cogmaster__path_wide(tmp);
         HANDLE h = wide != NULL ? CreateFileW(wide, GENERIC_WRITE, 0, NULL, CREATE_NEW,
                                               FILE_ATTRIBUTE_NORMAL, NULL)
@@ -167,7 +202,7 @@ static FILE *save_temporary(const char *path, char **temporary)
 #else
     /* POSIX open(O_CREAT|O_EXCL) also works in WASI, whose libc omits
        mkstemp. Mode 0600 retains private native save-file permissions. */
-    for (uint32_t i = 0u; i < 1024u; i++) {
+    for (uint32_t i = 0u; i < SAVE_TEMPORARIES; i++) {
         (void)snprintf(tmp, n + 48u, "%s.tmp-%lu", path, (unsigned long)i);
         int fd = open(tmp, O_WRONLY | O_CREAT | O_EXCL, 0600);
         if (fd < 0) {
@@ -189,18 +224,6 @@ static FILE *save_temporary(const char *path, char **temporary)
     return NULL;
 }
 
-static void save_remove(const char *path)
-{
-#ifdef _WIN32
-    wchar_t *wide = cogmaster__path_wide(path);
-    if (wide != NULL)
-        (void)DeleteFileW(wide);
-    free(wide);
-#else
-    (void)unlink(path);
-#endif
-}
-
 static int save_replace(const char *tmp, const char *path)
 {
 #ifdef _WIN32
@@ -219,6 +242,41 @@ static int save_replace(const char *tmp, const char *path)
     return rename(tmp, path) == 0;
 #endif
 }
+
+#if !defined(_WIN32) && !defined(__wasi__)
+/* POSIX.1 rename() makes the new name atomic, but the directory entry is durable only
+   after fsync() of the directory itself. Filesystems that cannot sync a directory
+   answer EINVAL or ENOTSUP, which is not a failure. A directory that allows create and
+   rename but not read (open() answers EACCES or EPERM, POSIX.1 open()) cannot be synced
+   either; the rename is done and the sync is skipped. macOS fsync() does not flush the
+   drive cache and F_FULLFSYNC is not used. Windows has no directory sync: its
+   MoveFileExW call carries MOVEFILE_WRITE_THROUGH. WASI has no directory handle to sync. */
+static int save_sync_directory(const cogmaster__save *save)
+{
+    if (SAVE_FAULT(save, COGMASTER_SAVE_DIRSYNC))
+        return 0;
+    const char *slash = strrchr(save->path, '/');
+    size_t n = slash != NULL ? (size_t)(slash - save->path) : 0u;
+    char *dir = (char *)malloc(n + 2u);
+    if (dir == NULL)
+        return 0;
+    if (n == 0u) {
+        dir[0] = slash != NULL ? '/' : '.';
+        n = 1u;
+    } else {
+        memcpy(dir, save->path, n);
+    }
+    dir[n] = '\0';
+    int fd = open(dir, O_RDONLY | O_DIRECTORY);
+    free(dir);
+    if (fd < 0)
+        return errno == EACCES || errno == EPERM;
+    int ok = fsync(fd) == 0 || errno == EINVAL || errno == ENOTSUP;
+    if (close(fd) != 0)
+        ok = 0;
+    return ok;
+}
+#endif
 
 int cogmaster__save_flush(cogmaster__save *save, cogmaster *m)
 {
@@ -266,6 +324,12 @@ int cogmaster__save_flush(cogmaster__save *save, cogmaster *m)
     if (!ok)
         save_remove(tmp);
     free(tmp);
+#if !defined(_WIN32) && !defined(__wasi__)
+    /* The rename is done; a failed sync leaves the new bytes in place and the
+       generation unacknowledged, so the next flush writes them again. */
+    if (ok)
+        ok = save_sync_directory(save);
+#endif
     if (!ok)
         return save_error("cannot write, synchronize, close or replace file");
     save->acknowledged = b.generation;

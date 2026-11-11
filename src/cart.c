@@ -25,6 +25,7 @@
    Codemasters board (section 2). */
 #define CART_RAM_SEGA 32768u
 #define CART_RAM_CODEMASTERS 8192u
+#define CART_RAM_EEPROM 128u
 
 /* The ROM header's 16 bytes, its magic and the places it may sit
    (SMS-CARTRIDGES section 1.1). The magic is the ASCII text the BIOS
@@ -272,7 +273,7 @@ static cogmaster_status guess_board(const uint8_t *b, size_t body, cogmaster_car
 
 /* Copies one database row into the probe result. A row of board 0 is unsupported by
    design and names its slot and reason. Titles live in tests/compat/catalog.tsv, not
-   in the table. EEPROM has no public persistence value yet, so it reads as unknown. */
+   in the table. A persistence value above BATTERY is not public yet and reads as unknown. */
 cogmaster_status cogmaster__cart_fact_to_info(const struct cogmaster__cart_fact *fact,
                                               cogmaster_cart_info *out)
 {
@@ -335,6 +336,7 @@ cogmaster_status cogmaster__cart_copy(cogmaster *m, const uint8_t *image, size_t
     uint32_t size = (uint32_t)((body + CART_PAGE - 1u) & ~(size_t)(CART_PAGE - 1u));
     uint32_t ram_size = p->board == COGMASTER__BOARD_SEGA          ? CART_RAM_SEGA
                         : p->board == COGMASTER__BOARD_CODEMASTERS ? CART_RAM_CODEMASTERS
+                        : p->board == COGMASTER__BOARD_SEGA_EEPROM ? CART_RAM_EEPROM
                                                                    : 0u;
     if (p->persistence_geometry == COGMASTER_GEOMETRY_SUPPORTED &&
         p->board == COGMASTER__BOARD_SEGA)
@@ -345,7 +347,13 @@ cogmaster_status cogmaster__cart_copy(cogmaster *m, const uint8_t *image, size_t
     }
     memcpy(rom, image + off, body);
     memset(rom + body, 0xFF, size - body);
-    memset(rom + size, p->persistence == COGMASTER_PERSISTENCE_BATTERY ? 0xFF : 0, ram_size);
+    /* The EEPROM board's 128 bytes start erased, all ones, whatever the persistence. */
+    memset(rom + size,
+           p->persistence == COGMASTER_PERSISTENCE_BATTERY ||
+                   p->board == COGMASTER__BOARD_SEGA_EEPROM
+               ? 0xFF
+               : 0,
+           ram_size);
     out->rom = rom;
     out->ram = ram_size != 0u ? rom + size : NULL;
     out->size = size;

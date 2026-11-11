@@ -35,7 +35,7 @@ pull request and one automated release.
 
 - [x] **Phase 5: Tune-up** - The v1.0 debt merged away: measured timeouts, an armed perf gate, `quality.json`, budget headroom, the README's ROM step and the weekly digest (completed 2026-11-10)
 - [x] **Phase 6: Korean cartridges play** - The remaining mapper boards load and play with no setting, detected hash-first, with no shipped hash moving (completed 2026-11-10)
-- [ ] **Phase 7: Saves survive a restart** - 93C46 EEPROM and battery saves persist through the runner and RetroArch, with `.srm` interop only in measured layouts
+- [x] **Phase 7: Saves survive a restart** - 93C46 EEPROM and battery saves persist through the runner and RetroArch, with `.srm` interop only in measured layouts (completed 2026-11-10)
 - [ ] **Phase 8: Sports Pad, Paddle and 3-D glasses** - Pin-level ports and a grown input struct make the pad-device and 3-D titles play, with replays matching
 - [ ] **Phase 9: Light Phaser** - Light Phaser titles hit where the player aims, sensed from the emitted pixel at the beam
 - [ ] **Phase 10: BIOS boot** - A user boots from their own BIOS dump in the runner or RetroArch; fast boot stays the default
@@ -103,11 +103,23 @@ Plans:
 **Requirements**: SAVE-01, SAVE-02, SAVE-03, SAVE-04, SAVE-05, SAVE-06
 **Success Criteria** (what must be TRUE):
   1. EEPROM tests show the write-disabled power-up and the EWEN, EWDS, WRITE, ERASE, WRAL and ERAL commands behaving as the datasheet says, the 128-byte image riding the battery span, and the generation counter moving only on a completed change; a mid-command state round-trips byte for byte, and the bit-banger runs in the fuzz target (SAVE-01, SAVE-02).
-  2. The `.srm` sizes and EEPROM word order of released libretro cores are measured once, recorded as a command and exit status in the phase summary, and an import test accepts exactly the measured layouts and refuses others (SAVE-03).
+  2. The `.srm` sizes and EEPROM word order of released libretro cores are measured once, recorded as a command and exit status in the phase summary; import refuses lengths over the span, EEPROM import accepts only 0 or 128 bytes, and the layouts of other cores are claimed only where measured (SAVE-03).
   3. The libretro core reports saves enabled, and a guard test shows the exported span equals the battery span (SAVE-04).
   4. `cogmaster-run --save-interval N` writes the save after every N completed frames; a kill test between flushes leaves the last complete save readable, stale temporary files are swept on the next run, and the directory is synced after the rename on POSIX (SAVE-05).
   5. A hosted RetroArch run writes a battery save and an EEPROM save, restarts and reads both back, and the budget test keeps `tests/retroarch` at or under 300 lines (SAVE-06).
-**Plans**: TBD
+**Plans**: 10/10 plans complete
+
+Plans:
+- [x] 07-01-PLAN.md — 93C46 device from the data sheet with closed-form and differential tests (SAVE-01)
+- [x] 07-02-PLAN.md — API 11 surface: EEPROM board constant, versions 11/13/13, v11 program, probe name (SAVE-01, SAVE-02)
+- [x] 07-03-PLAN.md — EEPROM board arm behind default, 128-byte cart RAM, bounded state and mid-command round trips (SAVE-01, SAVE-02)
+- [x] 07-04-PLAN.md — eeprom slot flipped and table regenerated with equivalence proof; early perf delta (SAVE-01)
+- [x] 07-05-PLAN.md — owned eeprom.gg fixture, second facts row and its validation (SAVE-01)
+- [x] 07-06-PLAN.md — EEPROM fuzz entry and the runner continuation across two processes (SAVE-02, SAVE-01)
+- [x] 07-07-PLAN.md — import length rules and matrix, one-time .srm measurement, libretro span guard and saves flag (SAVE-03, SAVE-04)
+- [x] 07-08-PLAN.md — runner --save-interval with usage and periodic-failure tests, EEPROM length message (SAVE-05, SAVE-03)
+- [x] 07-09-PLAN.md — stale-temporary sweep, POSIX directory sync on every lane's registration, kill test (SAVE-05)
+- [x] 07-10-PLAN.md — hosted RetroArch save round trips, measured timeout, wording amendment, final run and ship list (SAVE-06, SAVE-03)
 
 ### Phase 8: Sports Pad, Paddle and 3-D glasses
 **Goal**: Sports Pad, Paddle and 3-D glasses titles play through the runner and the libretro core with the right device chosen per dump, peripheral input is recorded so replays match, and every pad-only hash stays fixed.
@@ -178,7 +190,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 5. Tune-up | v2.0 | 14/14 | Complete    | 2026-11-10 |
 | 6. Korean cartridges play | v2.0 | 11/11 | Complete    | 2026-11-10 |
-| 7. Saves survive a restart | v2.0 | 0/TBD | Not started | - |
+| 7. Saves survive a restart | v2.0 | 10/10 | Complete    | 2026-11-10 |
 | 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 0/TBD | Not started | - |
 | 9. Light Phaser | v2.0 | 0/TBD | Not started | - |
 | 10. BIOS boot | v2.0 | 0/TBD | Not started | - |

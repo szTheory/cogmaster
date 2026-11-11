@@ -1,1 +1,2 @@
 d9f9fbc463a136cdd5349da772abd0b4347787cb 65536 2 1 1 1 2 32768 1 cogmaster battery fixture
+0170c40f75d8ed3f3bbc9547fa2d9e89192fc3f0 65536 10 2 1 2 2 128 1 cogmaster eeprom fixture

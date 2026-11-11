@@ -180,3 +180,10 @@ add_executable(cogmaster-test-api-v10 ${PROJECT_SOURCE_DIR}/tests/api/v10.c)
 target_link_libraries(cogmaster-test-api-v10 PRIVATE cogmaster::cogmaster)
 cogmaster_warnings(cogmaster-test-api-v10)
 cogmaster_add_test(NAME abi.api_v10 COMMAND cogmaster-test-api-v10 LABELS abi portable TIMEOUT 10)
+
+# Fault prevented: the 93C46 board constant being renumbered or colliding with an earlier board,
+# or the version numbers a state refusal rests on not moving together.
+add_executable(cogmaster-test-api-v11 ${PROJECT_SOURCE_DIR}/tests/api/v11.c)
+target_link_libraries(cogmaster-test-api-v11 PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-api-v11)
+cogmaster_add_test(NAME abi.api_v11 COMMAND cogmaster-test-api-v11 LABELS abi portable TIMEOUT 10)

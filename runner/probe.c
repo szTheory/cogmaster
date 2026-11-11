@@ -140,9 +140,9 @@ static void print_field(const char *key, uint32_t value, int header)
  */
 const char *cogmaster__board_name(uint32_t board)
 {
-    static const char *const names[] = {"unsupported", "none",      "sega",  "codemasters",
-                                        "korean",      "korean_nb", "hicom", "zemina",
-                                        "nemesis",     "hes_4pak"};
+    static const char *const names[] = {"unsupported", "none",      "sega",       "codemasters",
+                                        "korean",      "korean_nb", "hicom",      "zemina",
+                                        "nemesis",     "hes_4pak",  "sega_eeprom"};
     return names[board < sizeof names / sizeof names[0] ? board : 0u];
 }
 

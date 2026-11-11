@@ -26,6 +26,7 @@ static const char synopsis[] =
     "  --expect FILE        judge bounded accepted frame/RAM/mailbox/boot predicates\n"
     "  --input FILE         absolute pad and console record per frame\n"
     "  --save-dir DIR       read and persist battery data in an existing directory\n"
+    "  --save-interval N    also write the save after every N frames (0 is off; needs --save-dir)\n"
     "  --port1 pad|none     first controller device (default pad)\n"
     "  --port2 pad|none     second controller device (default pad)\n"
     "  --png N:FILE         write frame N's crop to FILE as a PNG (1 <= N <= --frames)\n"
@@ -63,9 +64,9 @@ static void version(void)
            (unsigned long)v.library_minor, (unsigned long)v.library_patch);
 }
 
-/* Parses text as a decimal number from 1 to 4294967295. Returns 0 on any
+/* Parses text as a decimal number from 0 to 4294967295. Returns 0 on any
    other text. */
-static int parse_count(const char *text, uint32_t *out)
+static int parse_number(const char *text, uint32_t *out)
 {
     uint64_t v = 0;
     if (text == NULL || *text == '\0') {
@@ -80,11 +81,14 @@ static int parse_count(const char *text, uint32_t *out)
             return 0;
         }
     }
-    if (v == 0u) {
-        return 0;
-    }
     *out = (uint32_t)v;
     return 1;
+}
+
+/* The same from 1 to 4294967295. */
+static int parse_count(const char *text, uint32_t *out)
+{
+    return parse_number(text, out) && *out != 0u;
 }
 
 /* Parses "N:FILE" with N from 1 to 4294967295 and FILE not empty. Returns 0
@@ -171,7 +175,7 @@ static int check_combination(const cogmaster__run_options *o)
             return usage("--probe needs a file");
         }
         if (o->frames != 0u || o->hash || o->hash_audio || o->png_count != 0u || o->trace ||
-            o->mailbox || o->input || o->save_dir || o->expect) {
+            o->mailbox || o->input || o->save_dir || o->expect || o->save_interval != 0u) {
             return usage("--probe runs nothing, so it takes no run option");
         }
         return COGMASTER__EXIT_OK;
@@ -181,6 +185,8 @@ static int check_combination(const cogmaster__run_options *o)
     }
     if (o->save_dir != NULL && o->file == NULL)
         return usage("--save-dir requires content");
+    if (o->save_interval != 0u && o->save_dir == NULL)
+        return usage("--save-interval requires --save-dir");
     if (o->hash_audio && o->bench)
         return usage("--hash-audio needs --frames, not --bench");
     if (o->expect && (o->trace || o->mailbox || o->bench))
@@ -225,6 +231,10 @@ int cogmaster__parse_options(int argc, char **argv, cogmaster__run_options *o)
             if (value == NULL || *value == '\0' || o->save_dir != NULL)
                 return usage("--save-dir needs one directory");
             o->save_dir = value;
+            i++;
+        } else if (strcmp(arg, "--save-interval") == 0) {
+            if (!parse_number(value, &o->save_interval))
+                return usage("--save-interval needs a whole number of frames, 0 or more");
             i++;
         } else if (strcmp(arg, "--expect") == 0) {
             if (value == NULL || *value == '\0' || o->expect != NULL)

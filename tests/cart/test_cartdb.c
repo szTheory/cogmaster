@@ -119,6 +119,16 @@ int main(int argc, char **argv)
         CHECK_EQ_U64(f->ram_bytes, 24576u);
         CHECK_EQ_U64(f->geometry, COGMASTER_GEOMETRY_UNSUPPORTED);
     }
+    /* The owned EEPROM fixture, by the hash of the built image. */
+    f = find_hex("0170c40f75d8ed3f3bbc9547fa2d9e89192fc3f0");
+    CHECK(f != NULL);
+    if (f) {
+        CHECK_EQ_U64(f->board, COGMASTER_BOARD_SEGA_EEPROM);
+        CHECK_EQ_U64(f->persistence, COGMASTER_PERSISTENCE_BATTERY);
+        CHECK_EQ_U64(f->ram_bytes, 128u);
+        CHECK_EQ_U64(f->geometry, COGMASTER_GEOMETRY_SUPPORTED);
+        CHECK_EQ_U64(f->machine, COGMASTER_MACHINE_GG);
+    }
     CHECK(find_hex("0000000000000000000000000000000000000000") == NULL);
     f = find_hex("c3305d745792a931ea92da6e6457c43d7cc45cf2");
     CHECK(f != NULL);
@@ -175,6 +185,25 @@ int main(int argc, char **argv)
         CHECK_EQ_U64(korean_info.board, korean_board[k]);
         CHECK_EQ_U64(korean_info.board_source, COGMASTER_BOARD_SOURCE_DB);
     }
+    /* The first row of the eeprom slot probes as the EEPROM board with its 128-byte save. */
+    {
+        const struct cogmaster__cart_slot *slot = cogmaster__cartdb_slot_named("eeprom");
+        const struct cogmaster__cart_fact *row = NULL;
+        CHECK(slot != NULL);
+        for (size_t i = 0; slot != NULL && (row = cogmaster__cartdb_row(i)) != NULL; i++)
+            if (row->slot == slot->id)
+                break;
+        CHECK(row != NULL);
+        if (row != NULL) {
+            cogmaster_cart_info eeprom_info = {0};
+            eeprom_info.size = sizeof eeprom_info;
+            CHECK_EQ_U64(cogmaster__cart_fact_to_info(row, &eeprom_info), COGMASTER_STATUS_OK);
+            CHECK_EQ_U64(eeprom_info.board, COGMASTER_BOARD_SEGA_EEPROM);
+            CHECK_EQ_U64(eeprom_info.persistence, COGMASTER_PERSISTENCE_BATTERY);
+            CHECK_EQ_U64(eeprom_info.persistent_size, 128u);
+            CHECK_EQ_U64(eeprom_info.persistence_geometry, COGMASTER_GEOMETRY_SUPPORTED);
+        }
+    }
     /* A slot is a board or a reason, never both. */
     for (uint32_t id = 1; id <= 20u; id++) {
         const struct cogmaster__cart_slot *slot = cogmaster__cartdb_slot(id);
@@ -185,18 +214,19 @@ int main(int argc, char **argv)
     CHECK(cogmaster__cartdb_slot(0) == NULL);
     CHECK(cogmaster__cartdb_slot_named("zz_new") == NULL);
     /* Every supported board owns at least one row, so a slot-to-board slip fails here. */
-    static const uint8_t supported[9] = {
-        COGMASTER_BOARD_ROM_ONLY, COGMASTER_BOARD_SEGA,      COGMASTER_BOARD_CODEMASTERS,
-        COGMASTER_BOARD_KOREAN,   COGMASTER_BOARD_KOREAN_NB, COGMASTER_BOARD_HICOM,
-        COGMASTER_BOARD_ZEMINA,   COGMASTER_BOARD_NEMESIS,   COGMASTER_BOARD_4PAK};
-    uint32_t per_board[9] = {0};
+    static const uint8_t supported[10] = {COGMASTER_BOARD_ROM_ONLY,    COGMASTER_BOARD_SEGA,
+                                          COGMASTER_BOARD_CODEMASTERS, COGMASTER_BOARD_KOREAN,
+                                          COGMASTER_BOARD_KOREAN_NB,   COGMASTER_BOARD_HICOM,
+                                          COGMASTER_BOARD_ZEMINA,      COGMASTER_BOARD_NEMESIS,
+                                          COGMASTER_BOARD_4PAK,        COGMASTER_BOARD_SEGA_EEPROM};
+    uint32_t per_board[10] = {0};
     uint32_t per_persistence[4] = {0, 0, 0, 0};
     uint32_t per_ctrl1[5] = {0}, per_ctrl2[5] = {0};
     for (size_t i = 0;; i++) {
         const struct cogmaster__cart_fact *row = cogmaster__cartdb_row(i);
         if (row == NULL)
             break;
-        for (size_t b = 0; b < 9u; b++)
+        for (size_t b = 0; b < 10u; b++)
             per_board[b] += row->board == supported[b];
         if (!row_fits(row)) {
             fprintf(stderr, "row %lu: slot %u board %u size %lu does not fit\n", (unsigned long)i,
@@ -210,17 +240,17 @@ int main(int argc, char **argv)
             per_ctrl2[row->ctrl2]++;
         }
     }
-    for (size_t b = 0; b < 9u; b++)
+    for (size_t b = 0; b < 10u; b++)
         CHECK(per_board[b] > 0u);
     /* Row counts from the pinned lists: EEPROM, battery, and the controller defaults. */
-    CHECK_EQ_U64(per_persistence[2], 63u);
-    CHECK_EQ_U64(per_persistence[3], 7u);
-    CHECK_EQ_U64(per_ctrl1[0], 1636u);
+    CHECK_EQ_U64(per_persistence[2], 71u);
+    CHECK_EQ_U64(per_persistence[3], 0u);
+    CHECK_EQ_U64(per_ctrl1[0], 1637u);
     CHECK_EQ_U64(per_ctrl1[1], 13u);
     CHECK_EQ_U64(per_ctrl1[2], 4u);
     CHECK_EQ_U64(per_ctrl1[3], 3u);
     CHECK_EQ_U64(per_ctrl1[4], 1u);
-    CHECK_EQ_U64(per_ctrl2[0], 1652u);
+    CHECK_EQ_U64(per_ctrl2[0], 1653u);
     CHECK_EQ_U64(per_ctrl2[1], 1u);
     CHECK_EQ_U64(per_ctrl2[2], 1u);
     CHECK_EQ_U64(per_ctrl2[3], 3u);

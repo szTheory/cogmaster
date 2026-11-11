@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: The whole library
-current_phase: 7
-current_phase_name: Saves survive a restart
+current_phase: 8
+current_phase_name: Sports Pad, Paddle and 3-D glasses
 status: planning
-stopped_at: Phase 6 complete, ready to plan Phase 7
-last_updated: "2026-11-10T09:19:07.575Z"
-last_activity: 2026-11-10
-last_activity_desc: Phase 6 complete, transitioned to Phase 7
-state_head: d652bd5dfb07189df1464c83dab3953cdddae8b7
+stopped_at: Phase 7 complete, ready to plan Phase 8
+last_updated: "2026-11-11T02:44:32.001Z"
+last_activity: 2026-11-11
+last_activity_desc: Phase 7 complete, transitioned to Phase 8
+state_head: bbf2ada8a974b19cb80446ab4161d1b9115f3551
 progress:
   total_phases: 8
-  completed_phases: 2
-  total_plans: 25
-  completed_plans: 25
-  percent: 25
+  completed_phases: 3
+  total_plans: 35
+  completed_plans: 35
+  percent: 38
 ---
 
 # Project State
@@ -25,21 +25,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-10)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 6 — Korean cartridges play
+**Current focus:** Phase 7 — Saves survive a restart
 
 ## Current Position
 
-Phase: 7 — Saves survive a restart
+Phase: 8 — Sports Pad, Paddle and 3-D glasses
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-11-10 — Phase 6 complete, transitioned to Phase 7
+Last activity: 2026-11-10 — Phase 7 complete, transitioned to Phase 8
 
-Progress: [███░░░░░░░] 25% of v2.0
+Progress: [████░░░░░░] 38% of v2.0
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 87
+- Total plans completed: 97
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -53,6 +53,7 @@ Progress: [███░░░░░░░] 25% of v2.0
 | 04 | 15 | - | - |
 | 5 | 14 | - | - |
 | 6 | 11 | - | - |
+| 7 | 10 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -150,6 +151,16 @@ Progress: [███░░░░░░░] 25% of v2.0
 | Phase 06 P09 | 12 min | 2 tasks | 6 files |
 | Phase 06 P10 | 20min | 3 tasks | 12 files |
 | Phase 06 P11 | 25 min | 3 tasks | 3 files |
+| Phase 07 P01 | 45 min | 2 tasks | 7 files |
+| Phase 07 P02 | 12 min | 2 tasks | 9 files |
+| Phase 07 P03 | 5 min | 3 tasks | 9 files |
+| Phase 07 P04 | 45 min | 2 tasks | 7 files |
+| Phase 07 P05 | 12 min | 2 tasks | 10 files |
+| Phase 7 P06 | 25min | 2 tasks | 9 files |
+| Phase 07 P07 | 40 min | 3 tasks | 8 files |
+| Phase 07 P08 | 25 min | 3 tasks | 8 files |
+| Phase 7 P09 | 40min | 3 tasks | 7 files |
+| Phase 7 P10 | 35 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -187,6 +198,17 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 06]: 06-09: the refusal text lives in probe.c beside the board names and main.c makes one call; no test name added, three existing runner cases extended
 - [Phase 06]: 06-10: the Korean, Zemina and 4 PAK images are detected by the scan (board_source heuristic), not by fixture_facts rows; a 4 PAK slot powers up on page 0 (banks 0 and 1)
 - [Phase 06]: 06-11: no perf allow line; boot_to_play delta_bp 0 on final head run 42787536409, eight-lane hash equality green
+- [Phase 07]: 93C46: EWEN/EWDS act on the completing clock; WRITE, ERASE, WRAL and ERAL run when chip select falls, so one change is reported per completed command
+- [Phase 07]: 07-02: COGMASTER_BOARD_SEGA_EEPROM appended at 10 with API 11, behaviour 13 and state format 13; the probe word is sega_eeprom and the catalog generator must match it
+- [Phase 07]: 07-03: board 10 keeps its banks in the ext arm over the existing bank array; the chip is visited with per-phase count bounds (command 0-7, data and read 0-15) and CS low implies idle; a generation moves only while a battery span exists
+- [Phase 07]: 07-04: the eeprom slot sets persistence 2 and 128 bytes by board constant; persistence 3 is no longer emitted
+- [Phase 07]: 07-05: the owned EEPROM fixture row is region 1 (export, Game Gear header code 6); cartdb --fixture accepts exactly the battery and EEPROM row shapes
+- [Phase 7]: 07-06: the EEPROM fuzz entry opens the chip window itself and bounds the command phase at 7 clocks; a generated eeprom-clocks seed drives the replay
+- [Phase 07]: EEPROM import takes none or the whole 128-byte span; battery import unchanged; the libretro .info declares saves behind libretro.span.* host guards
+- [Phase 07]: 07-08: --save-interval 0 is accepted without --save-dir (off); a periodic flush failure ends the run at once and the exit flush is unchanged; the EEPROM refusal tells oversize from a wrong length by comparing the read length with the span
+- [Phase 7]: 07-09: the same test names are registered on every lane; only the asserted behaviour differs per platform (dirsync, next_index)
+- [Phase 7]: 07-09: the kill test locates the kill with a --png file because a killed process loses unflushed stdout
+- [Phase 7]: 07-10: RetroArch writes saves to saves/cogmaster/<name>.srm; the hosted restart steps compare that file with the runner after each pass and the control asserts exit 1 with REGEX ^ because compare_files is silent
 
 ### Pending Todos
 
@@ -265,6 +287,17 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-10 | Execute phase 6 plan 06-08 (gsd-execute-phase 06); cart_scan and guess_board replace other_board, cart.probe.scan decoys and families, row geometry property, boards prose, SEED-009 for the threshold measurement; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-10 | Execute phase 6 plan 06-09 (gsd-execute-phase 06); probe board_source and scan keys, every board named in mapper_guess, refusal message naming board and reason, Janggun-looking seed; 2 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 
+| 2026-11-10 | Discuss, plan, execute, verify and ship phase 6 (gsd-autonomous); 11 plans, review 0 critical (WR-01 fixed, rest SEED-009), verifier passed 5/5, hosted run 42787536409, PR #21 squash-merged on green PR run 42789733748 (eight-lane hash-equality, perf delta_bp 0), release PR #22 merged, v0.6.0 | Claude Code | claude-sonnet-5-5 (planner claude-opus-5-5) |
+| 2026-11-10 | Execute phase 7 plan 07-01 (gsd-execute-phase 07, retry after a rate-limit death); 93C46 device, closed-form and differential tests, two negative controls; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 7 plan 07-03 (gsd-execute-phase 07); Sega EEPROM board arm in mapper_ext.c, 128-byte erased cart RAM, bounded chip state visit, eight eeprom.* cases, saves.md section, one negative control; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 7 plan 07-04 (gsd-execute-phase 07); eeprom slot on board 10, table and catalog regenerated with 7 rows changed, early perf delta_bp=0 from two dispatch runs, one API 11 test fix; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 7 plan 07-05 (gsd-execute-phase 07); owned eeprom.gg fixture driving the 93C46, second fixture facts row with ROW support and a stricter generator, table regenerated with one new row; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 7 plan 07-06 (gsd-execute-phase 07); EEPROM fuzz entry with a generated clock-stream seed, fuzz.regress.eeprom on every portable lane, runner.save.continuation.eeprom across two processes; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 7 plan 07-07 (gsd-execute-phase 07); EEPROM import rule and length matrix, libretro span guard and libretro_saves flip, two-core srm measurement recorded; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 7 plan 07-08 (gsd-execute-phase 07); --save-interval with usage, byte-equality and fail-at-once tests, EEPROM wrong-length refusal naming 128, five negative controls; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 7 plan 07-09 (gsd-execute-phase 07); load-time sweep, POSIX directory sync, kill test on every lane; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 7 plan 07-10 (gsd-execute-phase 07); RetroArch restart round trips for battery and EEPROM, SAVE-03 wording, floors 465 and 434, hosted runs 42944235132 (retroarch path fix) and 42945252988 green; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
+
 ## Deferred Items
 
 Items acknowledged and deferred at milestone close, most recent first:
@@ -285,8 +318,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T09:09:15.688Z
-Stopped at: Phase 6 complete, ready to plan Phase 7
+Last session: 2026-11-11T02:25:17.981Z
+Stopped at: Phase 7 complete, ready to plan Phase 8
 Resume file: None
 
 ## Operator Next Steps

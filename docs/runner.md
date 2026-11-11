@@ -63,6 +63,7 @@ cogmaster-run --help | --version
 | `--hash` | After the last frame, print the SHA-256 of its picture. |
 | `--hash-audio` | After the last frame, print two lines hashing the sound's level changes and its samples, described under [Sound hashes](#sound-hashes). It does not need `--hash` and `--hash` does not need it. It is a usage error with `--bench` or `--probe`. |
 | `--save-dir DIR` | Import and persist raw battery data in an existing directory. Requires content. |
+| `--save-interval N` | Also write the save after every Nth frame, counted in frames and never in time. N is from 0 to 4294967295; 0 or no option is off. It needs `--save-dir`; a malformed N is a usage error. |
 | `--png N:FILE` | After frame N, write its picture to FILE as a PNG. N is from 1 to the frame count. Repeat the option to write more frames or files. If the run stops before frame N, FILE is not written and a line on standard error names it. |
 | `--trace first-fault` | After each frame, read the core's first-fault record; stop at the first fault and print it, described under [First fault](#first-fault). |
 | `--mailbox` | After each frame, read the RAM mailbox a diagnostic ROM fills; stop at the first frame whose status reads done after reading running, and print the mailbox, described under [Mailbox](#mailbox). |
@@ -290,14 +291,15 @@ started, as under `nohup`, stays ignored.
 ## Battery files
 
 Native POSIX and WASI create temporary files exclusively with `open`, then replace
-within the same directory with `rename`; native POSIX also synchronizes the file.
+within the same directory with `rename`; native POSIX also synchronizes the file and the directory.
 Windows uses wide paths and `MoveFileExW`. WASI filesystem rights and durable
 storage remain properties of the host's preopened directory.
 
 `--save-dir DIR` reads `<ROM stem>.srm` before emulation and saves changed battery data on exit.
 Only the last extension is removed: `round.trip.sms` uses `round.trip.srm`. Missing files start fresh
-with FF bytes; empty and short files pad with FF. An oversized file exits 4 before running and stays
-unchanged. Other file errors exit 1. Unknown persistence and unsupported geometry refuse with distinct
+with FF bytes; for a battery save, empty and short files pad with FF. An EEPROM save must be 0 or 128
+bytes. An oversized file, or an EEPROM file of any other length, exits 4 before running with a message
+that names the length wanted, and stays unchanged. Other file errors exit 1. Unknown persistence and unsupported geometry refuse with distinct
 messages and exit 77 before running. Classified nonbattery cartridges need no file. Without this option,
 the runner does no battery file I/O.
 
@@ -308,17 +310,31 @@ cleans only its own failed temporary. The previous target is never predeleted or
 SIGTERM finish the bounded frame, then flush in ordinary control flow; a failed flush exits 1.
 
 Replacement provides old-or-complete-new visibility on native local filesystems with atomic rename;
-it is not a universal power-loss guarantee. The containing directory is not synchronized; filesystem,
-device and network behavior can limit crash durability. WASI lacks the native sync request. Abrupt
-termination can leave this process's temporary; the next run does not delete arbitrary temporaries.
-Simultaneous writers to one target are unsupported. Same-stem ROMs share a save name: use separate
-directories to avoid collisions. Raw files have no game identity check, so exact-size wrong-game data
-cannot be detected. Windows uses Unicode paths; POSIX keeps path bytes unchanged.
+it is not a universal power-loss guarantee. On POSIX other than WASI the runner then opens the directory,
+calls `fsync` and closes it, so the new name is durable; a filesystem that answers EINVAL or ENOTSUP for a
+directory is accepted, as is a directory that refuses to open for reading (EACCES or EPERM) while still
+taking the rename; any other error fails the flush and the generation stays unacknowledged. macOS
+`fsync` does not flush the drive cache and `F_FULLFSYNC` is not used. Windows has no directory-sync
+analogue; `MoveFileExW` writes through. Filesystem, device and network behavior can still limit crash
+durability. Temporaries are named `<target>.tmp-<i>` for i from 0 to 1023 on every platform. At load the
+runner deletes exactly those 1024 names of its own target, listing no directory, so a killed run leaves
+nothing the next run trips on; another save's temporaries and any other file stay. A temporary created
+after the load is never overwritten: a flush takes the next free index. Simultaneous writers to one target
+are unsupported. Same-stem ROMs share a save name: use separate directories to avoid collisions. Raw files
+have no game identity check, so exact-size wrong-game data cannot be detected. Windows uses Unicode paths;
+POSIX keeps path bytes unchanged.
 
-Recurring save tests force create, short-write, flush, sync, close and replacement failures for both
+Recurring save tests force create, short-write, flush, sync, close, replacement and directory-sync failures for both
 first creation and overwrite. They check the old bytes, dirty retry, exclusive same-directory temporary
 cleanup and preservation of unrelated temporaries. Signal and abrupt-interruption runners are test-only
-builds; the installed runner has no fault injection. Periodic saves and SIGUSR1 remain deferred.
+builds; the installed runner has no fault injection. One such build is stopped at its first flush with the
+temporary complete and the target not yet replaced: the previous save stays byte for byte and the next run
+goes on from it.
+
+`--save-interval N` runs the same flush after the outputs of every frame whose number is a multiple of N,
+so a killed run loses at most N frames of progress. It counts frames, never time, and `--frames` runs get
+no special case: an N above the frame count writes only at exit. A periodic flush that fails ends the run
+at once with exit 1, with no later frame and no hash line. A SIGUSR1 or SIGBREAK flush remains deferred.
 
 ## Accepted expectations
 

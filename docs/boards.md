@@ -32,7 +32,7 @@ every other field filled when no supported board fits.
 | `product_code`, `version` | the product number (decimal) and the version nibble |
 | `region_code`, `rom_size_code` | the header's region and size nibbles |
 | `machine_guess`, `region_guess` | the machine and region the region code names (`COGMASTER_MACHINE_*`, `COGMASTER_REGION_*`), or 0 |
-| `board` | `COGMASTER_BOARD_ROM_ONLY` (1), `COGMASTER_BOARD_SEGA` (2), `COGMASTER_BOARD_CODEMASTERS` (3), `COGMASTER_BOARD_KOREAN` (4), `COGMASTER_BOARD_KOREAN_NB` (5), `COGMASTER_BOARD_HICOM` (6), `COGMASTER_BOARD_ZEMINA` (7), `COGMASTER_BOARD_NEMESIS` (8) or `COGMASTER_BOARD_4PAK` (9); 0 for none |
+| `board` | `COGMASTER_BOARD_ROM_ONLY` (1), `COGMASTER_BOARD_SEGA` (2), `COGMASTER_BOARD_CODEMASTERS` (3), `COGMASTER_BOARD_KOREAN` (4), `COGMASTER_BOARD_KOREAN_NB` (5), `COGMASTER_BOARD_HICOM` (6), `COGMASTER_BOARD_ZEMINA` (7), `COGMASTER_BOARD_NEMESIS` (8) `COGMASTER_BOARD_4PAK` (9) or `COGMASTER_BOARD_SEGA_EEPROM` (10); 0 for none |
 | `board_source` | what chose the board: `COGMASTER_BOARD_SOURCE_DB` (1, the table), `COGMASTER_BOARD_SOURCE_HEADER` (2), `COGMASTER_BOARD_SOURCE_HEURISTIC` (3, the scan) or `COGMASTER_BOARD_SOURCE_DEFAULT` (4, a size rule or no sign of another board); 0 when no board was chosen |
 | `board_candidate` | the board the scan pointed at, 0 for none; named even when the scan refused |
 | `scan_sega`, `scan_candidate`, `scan_runner_up` | store sites counted for the Sega registers, for the leading family and for the runner-up; 0 when the scan did not run |
@@ -90,7 +90,8 @@ The boards:
 The six boards after Codemasters bank in 8 KiB steps, and a bank number past the end wraps modulo the image. On an
 image whose size is not a power of two a register write past the end also records a `mapper_range` fault. Korean
 no-bank, Hi-Com, Seo Jin and 188-in-1 are found by their hash only: nothing in the image names them. Zemina, Nemesis and 4 PAK load
-from their table rows with no setting.
+from their table rows with no setting. The seven Game Gear cartridges with a 93C46 save chip load on the Sega
+EEPROM board the same way, with a 128-byte save; the chip is described in [saves.md](saves.md).
 
 The image is padded with `$FF` to whole 16 KiB banks, and a bank number past the end selects the bank number
 modulo the bank count. Cartridge RAM starts zeroed at load, is kept by both resets and is part of the saved state.
@@ -108,4 +109,3 @@ turns that status into exit 77. The slots and their reasons as the table states 
   emulated.
 - **Master Gear:** a converter, not a game.
 - **X-Terminator:** a cheat device.
-- **Game Gear EEPROM boards:** the 93C46 save chip is not emulated until saves support it.

@@ -48,6 +48,7 @@ API version 10 appends the board constants `COGMASTER_BOARD_KOREAN`, `COGMASTER_
 `COGMASTER_BOARD_ZEMINA`, `COGMASTER_BOARD_NEMESIS` and `COGMASTER_BOARD_4PAK`, the board source constants
 `COGMASTER_BOARD_SOURCE_DB`, `COGMASTER_BOARD_SOURCE_HEADER`, `COGMASTER_BOARD_SOURCE_HEURISTIC` and `COGMASTER_BOARD_SOURCE_DEFAULT`, and the
 `cogmaster_cart_info` fields from `board_source` to `unsupported_reason`, with behaviour revision 12 and state format 12; [Boards](boards.md) says what they mean.
+API version 11 appends the board constant `COGMASTER_BOARD_SEGA_EEPROM`, the Sega board with a 93C46 save chip, with behaviour revision 13 and state format 13, so older state bytes are refused; [Saves](saves.md) says what the chip and its window do.
 
 ## Getting it
 

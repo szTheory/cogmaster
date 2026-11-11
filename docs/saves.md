@@ -33,6 +33,11 @@ accepted length returns `COGMASTER_STATUS_ERR_ARGUMENT`. Before load, or for kno
 media, import returns `COGMASTER_STATUS_ERR_NO_CONTENT`; unknown or unsupported persistence
 returns `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD`. Every refusal preserves all instance state.
 
+On the 93C46 board an import takes either no bytes or exactly 128: any other length, even a
+shorter prefix, returns `COGMASTER_STATUS_ERR_SAVE_SIZE` before a source byte is read, because
+a prefix would split a two-byte word. Export is never padded, trimmed or converted, so a host
+sees the 128 bytes in the order the chip keeps them.
+
 The core accepts exact-size wrong-game data: raw bytes carry no identity. Hosts must bound
 file reads to expected length plus one and keep save namespaces separate. For a missing
 file, leave the fresh FF bytes or import NULL with length zero. Neither operation marks
@@ -49,13 +54,41 @@ fresh FF storage; hosts must discard prior pointers even if the address is reuse
 Other memory IDs, known nonbattery, unknown persistence and unsupported geometry
 return NULL/0. The adapter performs no filesystem I/O.
 
-`libretro_saves` remains false and the core remains experimental in its `.info`:
-memory export and in-process continuation do not prove the deferred hosted save-file
-round trip or interoperability with another emulator.
+The `.info` declares `libretro_saves`, and `libretro.span.battery`, `.eeprom` and `.plain`
+guard the claim: for the 32 KiB battery fixture, the 128-byte EEPROM fixture and a plain
+cartridge, the span the module exports equals the library's battery length (32768, 128 and
+NULL with zero). RetroArch decides how a differently sized `.srm` loads; only the runner
+refuses a layout that is not its own. The core stays experimental.
+
+## 93C46 EEPROM
+
+A Game Gear cartridge on the Sega EEPROM board (`COGMASTER_BOARD_SEGA_EEPROM`, named `sega_eeprom`) carries a
+93C46 serial EEPROM of 64 words of 16 bits. The 128 bytes are the cartridge RAM, so a host saves them through
+the battery calls above with a span of 128. Each word is two bytes, little-endian (the low byte first), and a
+fresh chip is all FF.
+
+The board pages 16 KiB banks through `$FFFD`-`$FFFF` as the Sega board does, and the first 1 KiB stays fixed.
+In `$FFFC`, bit 3 opens a window at exactly `$8000` and bit 7 resets the chip: chip select falls, a command in
+progress is dropped and writes are locked again. Through the open window a write drives data in from bit 0, the
+clock from bit 1 and chip select from bit 2, applied in that order, and a read returns the bits last written
+with the low two cleared, bit 1 set and Data Out in bit 0. A byte is taken on a rising clock edge with chip
+select high. The chip powers up write-disabled: WRITE, ERASE, WRAL and ERAL do nothing until EWEN, and again
+after EWDS; READ always works and continues from word 63 to word 0 while the clock runs. Ready is immediate:
+Data Out is high at all times except while a READ shifts data, so a game that polls for ready sees it on its
+first look. There is no busy time.
+
+The generation counter moves once per completed command that changed a byte, when chip select falls, never
+per clock edge and never per WRAL byte, and not for a command that wrote the value already stored. This is a
+rule of its own next to the same-value rule for battery RAM above. Importing a save does not move it.
+
+The wiring and the chip model follow the Microchip 93C46 data sheet and the MAME `sega8_eeprom` board. They are
+not verified on real hardware.
 
 ## Testing saves
 
-`runner.save.continuation.normal`, `.term` and `.int` verify fresh-process numeric
+The EEPROM board has its own cases: `eeprom.*` drive the chip bit by bit and the board through the bus, `fuzz.regress.eeprom`
+(and the nightly libFuzzer entry) clock it with hostile streams, and `runner.save.continuation.eeprom` continues the owned fixture's
+128-byte save across two fresh processes. `runner.save.continuation.normal`, `.term` and `.int` verify fresh-process numeric
 continuation, missing and exact-size wrong-save controls, full save bytes and unchanged
 oversize rejection; see [conformance](conformance.md). `libretro.battery.sms2` and
 `.gg` restore the real classified battery fixture through the frontend's SAVE_RAM
@@ -67,5 +100,11 @@ are unchanged, direct host writes and API imports are generation-neutral, and th
 next guest write increments generation once. `battery.excluded` covers known-none,
 unknown and unsupported geometry at the public battery-query boundary; mapper tests
 keep volatile RAM separate. In-process tests load the production module and do not
-count toward the hosted RetroArch code budget. They do not establish the deferred
-hosted save-file or cross-emulator interoperability claims.
+count toward the hosted RetroArch code budget. They do not establish the hosted
+save-file claim; the hosted RetroArch restart steps do. Interoperability with another emulator's save file is claimed only
+for layouts that cogmaster wrote or that were measured once with released binaries
+(2026-11-11, under the pinned RetroArch with the null drivers). Released Gearsystem
+(option `EEPROM 93C46`) wrote the owned EEPROM fixture's save as 128 bytes starting `34 12`,
+the little-endian word order cogmaster uses. Released Genesis Plus GX wrote the owned
+battery fixture's save as a 3-byte file `a5 5a 01`, the first bytes cogmaster holds, not
+the 32768-byte span; what it leaves beyond them is not measured. Nothing else is claimed.

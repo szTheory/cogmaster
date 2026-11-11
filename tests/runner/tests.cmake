@@ -118,18 +118,50 @@ if(CMAKE_SCRIPT_MODE_FILE)
     file(MAKE_DIRECTORY "${OUT}")
     file(REMOVE "${OUT}/round.trip.srm")
     file(WRITE "${OUT}/unrelated.tmp" "unrelated")
-    file(WRITE "${OUT}/round.trip.srm.tmp-0" "existing")
+    file(WRITE "${OUT}/other.srm.tmp-0" "other")
+    file(WRITE "${OUT}/round.trip.srm.tmp-0" "stale")
     execute_process(COMMAND ${EMULATOR} ${UNIT} ${SAVE_CASE} "${BATTERY}" "${OUT}"
       "${OUT}/round.trip.srm" RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE out)
     if(NOT rc STREQUAL "0")
       message(FATAL_ERROR "save ${SAVE_CASE}: exit ${rc}\n${out}")
     endif()
+    # A load removes this save's stale temporary, but only where the cartridge has a save at all.
     file(GLOB temps "${OUT}/*.tmp-*")
-    list(REMOVE_ITEM temps "${OUT}/round.trip.srm.tmp-0")
+    list(REMOVE_ITEM temps "${OUT}/other.srm.tmp-0")
+    if(SAVE_CASE STREQUAL "excluded")
+      list(REMOVE_ITEM temps "${OUT}/round.trip.srm.tmp-0")
+    endif()
     file(READ "${OUT}/unrelated.tmp" unrelated)
-    file(READ "${OUT}/round.trip.srm.tmp-0" collision)
-    if(temps OR NOT unrelated STREQUAL "unrelated" OR NOT collision STREQUAL "existing")
-      message(FATAL_ERROR "save temporary cleanup affected unrelated data or leaked its temporary")
+    file(READ "${OUT}/other.srm.tmp-0" other)
+    if(temps OR NOT unrelated STREQUAL "unrelated" OR NOT other STREQUAL "other")
+      message(FATAL_ERROR "save temporary cleanup affected unrelated data or leaked its temporary: ${temps}")
+    endif()
+  elseif(CASE STREQUAL "save_sweep")
+    # Temporaries 0 to 1023 of this save go at load; index 1024, a name that is no number, and
+    # another save's temporary stay.
+    file(MAKE_DIRECTORY "${OUT}")
+    file(REMOVE "${OUT}/battery.srm")
+    foreach(name IN ITEMS battery.srm.tmp-0 battery.srm.tmp-1023 battery.srm.tmp-1024
+        battery.srm.tmp-unrelated other.srm.tmp-0)
+      file(WRITE "${OUT}/${name}" "${name}")
+    endforeach()
+    expect_exit(0 "^$" --frames 1 --save-dir "${OUT}" "${BATTERY}")
+    foreach(name IN ITEMS battery.srm.tmp-0 battery.srm.tmp-1023)
+      if(EXISTS "${OUT}/${name}")
+        message(FATAL_ERROR "the load left the stale ${name}")
+      endif()
+    endforeach()
+    foreach(name IN ITEMS battery.srm.tmp-1024 battery.srm.tmp-unrelated other.srm.tmp-0)
+      if(NOT EXISTS "${OUT}/${name}")
+        message(FATAL_ERROR "the sweep removed ${name}")
+      endif()
+      file(READ "${OUT}/${name}" data)
+      if(NOT data STREQUAL name)
+        message(FATAL_ERROR "the sweep or the flush changed ${name}")
+      endif()
+    endforeach()
+    if(NOT EXISTS "${OUT}/battery.srm")
+      message(FATAL_ERROR "the run after the sweep wrote no save")
     endif()
   elseif(CASE STREQUAL "save_process")
     file(MAKE_DIRECTORY "${OUT}")
@@ -142,7 +174,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
       expect_exit(${CODE} "${REGEX}" --frames 60 --hash --save-dir "${OUT}" "${BATTERY}")
       file(GLOB temps "${OUT}/battery.srm.tmp-*")
       list(REMOVE_ITEM temps "${OUT}/battery.srm.tmp-unrelated")
-      if(CODE EQUAL 0)
+      if(CODE EQUAL 0 OR RENAMED)
         file(READ "${OUT}/battery.srm" data LIMIT 3 HEX)
         file(SIZE "${OUT}/battery.srm" n)
         if(NOT data STREQUAL "a55a01" OR NOT n EQUAL 32768)
@@ -176,6 +208,64 @@ if(CMAKE_SCRIPT_MODE_FILE)
         message(FATAL_ERROR "writer touched another process's temporary")
       endif()
     endforeach()
+  elseif(CASE STREQUAL "save_kill")
+    # RUN is a runner that ends the process at the first flush whose temporary is complete and
+    # before it replaces the save. Save A has counter 01; a run that goes on from A must show 02.
+    # A killed process does not flush standard output, so a frame line cannot tell where the kill
+    # fell. A --png for frame 2 can: it is written inside the frame loop, so it exists only if the
+    # run got past frame 1 before the kill.
+    file(REMOVE_RECURSE "${OUT}")
+    file(MAKE_DIRECTORY "${OUT}")
+    execute_process(COMMAND ${EMULATOR} ${PRODUCTION} --frames 60 --save-dir "${OUT}" "${BATTERY}"
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    file(READ "${OUT}/battery.srm" first LIMIT 3 HEX)
+    if(NOT rc STREQUAL "0" OR NOT first STREQUAL "a55a01")
+      message(FATAL_ERROR "save A: exit ${rc}, holds ${first}, expected a55a01\n${out}${err}")
+    endif()
+    configure_file("${OUT}/battery.srm" "${OUT}.A" COPYONLY)
+    set(png "${OUT}.frame2.png")
+    function(kill_run)
+      file(REMOVE "${png}")
+      execute_process(COMMAND ${EMULATOR} ${RUN} ${ARGN} --frames 10 --hash --png "2:${png}"
+        --save-dir "${OUT}" "${BATTERY}" RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+      set(rc "${rc}" PARENT_SCOPE)
+      set(out "${out}" PARENT_SCOPE)
+      set(err "${err}" PARENT_SCOPE)
+    endfunction()
+    # Control: with no interval the process is killed only at the end, after frame 2 was drawn.
+    kill_run()
+    if(NOT rc STREQUAL "93" OR NOT EXISTS "${png}")
+      message(FATAL_ERROR "control: exit ${rc}, frame 2 file ${png} missing\n${out}${err}")
+    endif()
+    file(GLOB leftover "${OUT}/battery.srm.tmp-*")
+    file(REMOVE ${leftover})
+    kill_run(--save-interval 1)
+    if(NOT rc STREQUAL "93" OR out MATCHES "frame [0-9]+ sha256" OR EXISTS "${png}")
+      message(FATAL_ERROR "kill at the first periodic flush: exit ${rc}, expected 93 before frame 2\n${out}${err}")
+    endif()
+    file(GLOB leftover "${OUT}/battery.srm.tmp-*")
+    list(LENGTH leftover n)
+    if(NOT n EQUAL 1)
+      message(FATAL_ERROR "expected exactly one leftover temporary, found: ${leftover}")
+    endif()
+    file(SIZE "${leftover}" size)
+    file(READ "${leftover}" head LIMIT 3 HEX)
+    if(NOT size EQUAL 32768 OR NOT head STREQUAL "a55a02")
+      message(FATAL_ERROR "the leftover temporary is ${size} bytes starting ${head}, not the complete next save")
+    endif()
+    execute_process(COMMAND ${CMAKE_COMMAND} -E compare_files "${OUT}.A" "${OUT}/battery.srm"
+      RESULT_VARIABLE same)
+    if(NOT same EQUAL 0)
+      message(FATAL_ERROR "the kill changed the previous save")
+    endif()
+    # The next production run loads that save, removes the temporary and goes on from it.
+    execute_process(COMMAND ${EMULATOR} ${PRODUCTION} --frames 1 --save-dir "${OUT}" "${BATTERY}"
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    file(GLOB leftover "${OUT}/battery.srm.tmp-*")
+    file(READ "${OUT}/battery.srm" head LIMIT 3 HEX)
+    if(NOT rc STREQUAL "0" OR leftover OR NOT head STREQUAL "a55a02")
+      message(FATAL_ERROR "after the kill: exit ${rc}, leftover ${leftover}, save ${head}\n${out}${err}")
+    endif()
   elseif(CASE STREQUAL "save_continuation")
     file(MAKE_DIRECTORY "${OUT}")
     file(REMOVE "${OUT}/battery.srm")
@@ -219,6 +309,38 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(NOT rc STREQUAL "4" OR NOT err MATCHES "oversized" OR NOT before STREQUAL after)
       message(FATAL_ERROR "oversize control: exit ${rc}; target changed or refusal missing: ${err}")
     endif()
+  elseif(CASE STREQUAL "save_eeprom")
+    # Two fresh processes continue one 128-byte EEPROM save. The first four
+    # bytes are the signature word 34 12 and the run counter, low byte first;
+    # the mailbox must also say the word read back was the one written
+    # (record 02) and the write after EWDS changed nothing (record 03).
+    # SECOND overrides the expected second prefix, for the negative control.
+    if(NOT DEFINED SECOND)
+      set(SECOND 34120200)
+    endif()
+    file(MAKE_DIRECTORY "${OUT}")
+    file(REMOVE "${OUT}/eeprom.srm")
+    function(continue_eeprom prefix counter)
+      execute_process(COMMAND ${EMULATOR} ${RUN} --frames 60 --mailbox
+        --save-dir "${OUT}" "${EEPROM}" RESULT_VARIABLE rc
+        OUTPUT_VARIABLE out ERROR_VARIABLE err)
+      if(NOT rc STREQUAL "0" OR NOT out MATCHES "status=00\nrom=0A\nmagic=ok\ncrc=ok\n"
+          OR NOT out MATCHES "01=${counter} flags=1\n"
+          OR NOT out MATCHES "02=0001 flags=1\n" OR NOT out MATCHES "03=0001 flags=1\n")
+        message(FATAL_ERROR "eeprom continuation: exit ${rc}\n${out}${err}")
+      endif()
+      file(SIZE "${OUT}/eeprom.srm" size)
+      file(READ "${OUT}/eeprom.srm" head HEX LIMIT 4)
+      if(NOT size EQUAL 128 OR NOT head STREQUAL "${prefix}")
+        message(FATAL_ERROR "eeprom save is ${size} bytes starting ${head}, expected 128 starting ${prefix}")
+      endif()
+      file(GLOB temps "${OUT}/eeprom.srm.tmp-*")
+      if(temps)
+        message(FATAL_ERROR "eeprom writer leaked temporary files")
+      endif()
+    endfunction()
+    continue_eeprom(34120100 0001)
+    continue_eeprom(${SECOND} 0002)
   elseif(CASE STREQUAL "save_import")
     file(MAKE_DIRECTORY "${OUT}")
     file(REMOVE "${OUT}/battery.srm")
@@ -247,6 +369,25 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(NOT before STREQUAL after)
       message(FATAL_ERROR "oversize save was changed")
     endif()
+    # An EEPROM save is 0 or 128 bytes: the refusal says which length it wanted, and the file stays.
+    file(MAKE_DIRECTORY "${OUT}/eeprom")
+    foreach(size 100 129)
+      string(REPEAT x ${size} wrong)
+      file(WRITE "${OUT}/eeprom/eeprom.srm" "${wrong}")
+      file(SHA256 "${OUT}/eeprom/eeprom.srm" before)
+      if(size EQUAL 100)
+        expect_exit(4 "(length|size)[^\n]*128" --frames 1 --save-dir "${OUT}/eeprom" "${EEPROM}")
+      else()
+        expect_exit(4 "oversized" --frames 1 --save-dir "${OUT}/eeprom" "${EEPROM}")
+      endif()
+      file(SHA256 "${OUT}/eeprom/eeprom.srm" after)
+      if(NOT before STREQUAL after)
+        message(FATAL_ERROR "a refused ${size}-byte EEPROM save was changed")
+      endif()
+    endforeach()
+    string(REPEAT x 128 whole)
+    file(WRITE "${OUT}/eeprom/eeprom.srm" "${whole}")
+    expect_exit(0 "^$" --frames 1 --save-dir "${OUT}/eeprom" "${EEPROM}")
     file(REMOVE "${OUT}/battery.srm")
     file(MAKE_DIRECTORY "${OUT}/battery.srm")
     expect_exit(1 "cannot read" --frames 1 --save-dir "${OUT}" "${BATTERY}")
@@ -256,6 +397,58 @@ if(CMAKE_SCRIPT_MODE_FILE)
     expect_exit(0 "^$" --frames 1 --save-dir "${OUT}/save café 游戏" "${OUT}/round.trip café 游戏.sms")
     if(NOT EXISTS "${OUT}/save café 游戏/round.trip café 游戏.srm")
       message(FATAL_ERROR "Unicode save target missing")
+    endif()
+  elseif(CASE STREQUAL "save_interval_usage")
+    expect_exit(2 "usage" --frames 1 --save-dir "${OUT}" "${OUT}/x.sms" --save-interval abc)
+    expect_exit(2 "usage" --frames 1 --save-dir "${OUT}" "${OUT}/x.sms" --save-interval 1x)
+    expect_exit(2 "usage" --frames 1 --save-dir "${OUT}" "${OUT}/x.sms" --save-interval 4294967296)
+    expect_exit(2 "usage" --frames 1 --save-dir "${OUT}" "${OUT}/x.sms" --save-interval)
+    expect_exit(2 "usage" --frames 1 "${OUT}/x.sms" --save-interval 5)
+    expect_exit(2 "usage" --probe "${OUT}/x.sms" --save-interval 5)
+  elseif(CASE STREQUAL "save_interval")
+    # Each run starts from an empty directory, so the saves compare byte for byte.
+    function(interval_run name)
+      file(REMOVE_RECURSE "${OUT}/${name}")
+      file(MAKE_DIRECTORY "${OUT}/${name}")
+      execute_process(COMMAND ${EMULATOR} ${RUN} --frames 10 --hash --save-dir "${OUT}/${name}"
+        ${ARGN} "${BATTERY}" RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+      if(NOT rc STREQUAL "0" OR NOT out MATCHES "^frame 10 sha256 [0-9a-f]+\n$")
+        message(FATAL_ERROR "interval run ${name}: exit ${rc}\n${out}${err}")
+      endif()
+      file(SHA256 "${OUT}/${name}/battery.srm" sum)
+      set(${name}_out "${out}" PARENT_SCOPE)
+      set(${name}_sum "${sum}" PARENT_SCOPE)
+    endfunction()
+    interval_run(plain)
+    interval_run(off --save-interval 0)
+    interval_run(every --save-interval 1)
+    interval_run(over --save-interval 20)
+    foreach(name off every over)
+      if(NOT ${name}_out STREQUAL plain_out OR NOT ${name}_sum STREQUAL plain_sum)
+        message(FATAL_ERROR "--save-interval changed the hash or the save bytes (${name})")
+      endif()
+    endforeach()
+    file(GLOB temps "${OUT}/*/battery.srm.tmp-*")
+    if(temps)
+      message(FATAL_ERROR "an interval run leaked a temporary: ${temps}")
+    endif()
+  elseif(CASE STREQUAL "save_interval_fault")
+    # RUN fails every write of the save, so a flush that happens is a failure that shows.
+    foreach(name every over)
+      file(REMOVE_RECURSE "${OUT}/${name}")
+      file(MAKE_DIRECTORY "${OUT}/${name}")
+    endforeach()
+    expect_exit(1 "save: cannot" --save-interval 1 --frames 10 --hash --save-dir "${OUT}/every" "${BATTERY}")
+    execute_process(COMMAND ${EMULATOR} ${RUN} --save-interval 1 --frames 10 --hash
+      --save-dir "${OUT}/every" "${BATTERY}" OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(out MATCHES "frame 10 sha256")
+      message(FATAL_ERROR "a periodic flush failure was deferred past frame 10:\n${out}")
+    endif()
+    # Standard output is flushed after the exit flush's message, so the two are checked apart.
+    execute_process(COMMAND ${EMULATOR} ${RUN} --save-interval 20 --frames 10 --hash
+      --save-dir "${OUT}/over" "${BATTERY}" RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "1" OR NOT out MATCHES "frame 10 sha256 [0-9a-f]+\n" OR NOT err MATCHES "save: cannot")
+      message(FATAL_ERROR "interval over the run: exit ${rc}, want 1 with the frame 10 line then the exit flush failing\n${out}${err}")
     endif()
   elseif(CASE STREQUAL "video_override")
     expect_exit(0 "^$" --frames 1 --machine sms1)
@@ -826,7 +1019,7 @@ if(COGMASTER_FIXTURES)
   target_compile_definitions(cogmaster-test-save PRIVATE _POSIX_C_SOURCE=200809L COGMASTER_SAVE_TEST)
   set_target_properties(cogmaster-test-save PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
   cogmaster_warnings(cogmaster-test-save)
-  foreach(case imports replacement excluded failures clean_sigint clean_sigterm native_error)
+  foreach(case imports replacement excluded failures next_index clean_sigint clean_sigterm native_error)
     # Fault prevented: raw import, clean flush or classified refusals corrupting host data.
     cogmaster_add_test(NAME runner.save.${case}
       COMMAND ${runner_check} -DCASE=save_unit -DSAVE_CASE=${case}
@@ -835,10 +1028,18 @@ if(COGMASTER_FIXTURES)
         -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
       LABELS runner portable TIMEOUT 10)
   endforeach()
+  # Fault prevented: a stale temporary of this save left behind forever, or another file deleted by the
+  # sweep.
+  cogmaster_add_test(NAME runner.save.sweep
+    COMMAND ${runner_check} -DCASE=save_sweep
+      -DOUT=${PROJECT_BINARY_DIR}/tests/save-sweep
+      -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS runner portable TIMEOUT 10)
   # Fault prevented: --save-dir silently dropping a guest battery write.
   cogmaster_add_test(NAME runner.save.import
     COMMAND ${runner_check} -DCASE=save_import
       -DOUT=${PROJECT_BINARY_DIR}/tests/save-import
+      -DEEPROM=${PROJECT_BINARY_DIR}/fixtures/eeprom.gg
       -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
     LABELS runner portable TIMEOUT 10)
 endif()
@@ -923,7 +1124,7 @@ if(COGMASTER_FIXTURES)
   target_link_libraries(cogmaster-test-save-support PRIVATE cogmaster::cogmaster cogmaster-host)
   target_compile_definitions(cogmaster-test-save-support PRIVATE _POSIX_C_SOURCE=200809L)
   cogmaster_warnings(cogmaster-test-save-support)
-  foreach(case term int create write flush sync close replace interrupt int_write normal_write)
+  foreach(case term int create write flush sync close replace interrupt dirsync int_write normal_write)
     set(run $<TARGET_FILE:cogmaster-test-run-stop>)
     set(code 0)
     set(regex "frame 3 sha256")
@@ -955,9 +1156,22 @@ if(COGMASTER_FIXTURES)
       set(code 93)
       set(regex ".*")
     endif()
+    # RENAMED: the fault comes after the rename, so the new bytes are in place whatever the exit.
+    set(renamed 0)
+    if(case STREQUAL "dirsync")
+      if(WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "WASI")
+        # No directory sync exists on this platform: the fault name is accepted, the point is never
+        # reached, and the save must still complete normally.
+        set(code 0)
+        set(regex "frame 3 sha256")
+      else()
+        set(renamed 1)
+      endif()
+    endif()
     # Fault prevented: signal/failure paths reporting success or damaging an old save.
     cogmaster_add_test(NAME runner.save.process.${case}
       COMMAND ${runner_check} -DRUN=${run} -DCASE=save_process -DCODE=${code} "-DREGEX=${regex}"
+        -DRENAMED=${renamed}
         -DOUT=${PROJECT_BINARY_DIR}/tests/save-process-${case}
         -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
       LABELS runner portable TIMEOUT 10)
@@ -971,6 +1185,21 @@ if(COGMASTER_FIXTURES)
         LABELS runner portable TIMEOUT 10)
     endif()
   endforeach()
+  # Fault prevented: a periodic save failure deferred to the end of the run, or a flush on every frame
+  # whatever the interval.
+  cogmaster_add_test(NAME runner.save.interval_fault
+    COMMAND ${runner_check} -DCASE=save_interval_fault -DRUN=$<TARGET_FILE:cogmaster-test-save-normal_write>
+      -DOUT=${PROJECT_BINARY_DIR}/tests/save-interval-fault
+      -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS runner portable TIMEOUT 30)
+  # Fault prevented: a process killed between flushes losing the last complete save, or leaving a
+  # temporary the next run trips on.
+  cogmaster_add_test(NAME runner.save.kill
+    COMMAND ${runner_check} -DCASE=save_kill -DRUN=$<TARGET_FILE:cogmaster-test-save-interrupt>
+      -DPRODUCTION=$<TARGET_FILE:cogmaster-run>
+      -DOUT=${PROJECT_BINARY_DIR}/tests/save-kill
+      -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS runner portable TIMEOUT 10)
   # Fault prevented: successful normal exit loses the numeric guest continuation.
   cogmaster_add_test(NAME runner.save.continuation.normal
     COMMAND ${runner_check} -DCONTINUE=$<TARGET_FILE:cogmaster-run>
@@ -978,6 +1207,19 @@ if(COGMASTER_FIXTURES)
       -DOUT=${PROJECT_BINARY_DIR}/tests/save-continuation-normal
       -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
     LABELS runner portable TIMEOUT 10)
+  # Fault prevented: an EEPROM save that a fresh process cannot continue, or a refused write that still lands.
+  cogmaster_add_test(NAME runner.save.continuation.eeprom
+    COMMAND ${runner_check} -DCASE=save_eeprom
+      -DOUT=${PROJECT_BINARY_DIR}/tests/save-continuation-eeprom
+      -DEEPROM=${PROJECT_BINARY_DIR}/fixtures/eeprom.gg -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS runner portable TIMEOUT 10)
+  # Fault prevented: a periodic flush that changes save bytes or hashes, accepts a malformed interval, or
+  # runs when the interval exceeds the run.
+  cogmaster_add_test(NAME runner.save.interval
+    COMMAND ${runner_check} -DCASE=save_interval
+      -DOUT=${PROJECT_BINARY_DIR}/tests/save-interval
+      -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS runner portable TIMEOUT 30)
 endif()
 
 set(bench_check ${runner_check} -DUNIT=$<TARGET_FILE:cogmaster-test-bench>)
@@ -1051,6 +1293,13 @@ foreach(case no_args unknown positional frame_range)
     COMMAND ${runner_check} -DCASE=${case} -P ${CMAKE_CURRENT_LIST_FILE}
     LABELS portable runner TIMEOUT 30)
 endforeach()
+
+# Fault prevented: a malformed or unusable --save-interval that is accepted instead of refused as a
+# usage error.
+cogmaster_add_test(NAME runner.usage.save_interval
+  COMMAND ${runner_check} -DCASE=save_interval_usage -DOUT=${PROJECT_BINARY_DIR}/tests/save-interval-usage
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 30)
 
 # Fault prevented: a hash that depends on the frame count for a card that
 # does not move, or a hash line that names the wrong frame.

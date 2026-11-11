@@ -2,6 +2,7 @@
 # Sorted; configure fails when this differs from what is registered.
 abi.api_v1	abi,portable
 abi.api_v10	abi,portable
+abi.api_v11	abi,portable
 abi.api_v2	abi,portable
 abi.api_v3	abi,portable
 abi.api_v4	abi,portable
@@ -98,6 +99,19 @@ docs.budgets.ratio_equal	policy
 docs.budgets.unclassified	policy
 docs.readme_play	portable,runner
 docs.readme_play.self_test	portable,runner
+eeprom.board.banks	mapper,portable
+eeprom.board.pins	mapper,portable
+eeprom.board.reset_bit	mapper,portable
+eeprom.board.span	mapper,portable
+eeprom.board.window	mapper,portable
+eeprom.changes	mapper,portable
+eeprom.commands	mapper,portable
+eeprom.differential	mapper,portable
+eeprom.lock	mapper,portable
+eeprom.read	mapper,portable
+eeprom.state.bounds	mapper,portable
+eeprom.state.mid_command	mapper,portable
+eeprom.state.window_open	mapper,portable
 embed.subdirectory	install
 fault.ed_undefined	bus,portable
 fault.mapper_range	bus,portable
@@ -170,6 +184,7 @@ fm.state_round_trip	fm,portable
 fm.sum_bound	fm,portable
 fm.test_register	fm,portable
 fm.through_bus	fm,portable
+fuzz.regress.eeprom	fuzz,portable
 fuzz.regress.loader	fuzz,portable
 fuzz.regress.run	fuzz,portable
 fuzz.regress.save	fuzz,portable
@@ -216,6 +231,10 @@ libretro.screenshot.fixture	libretro,portable
 libretro.screenshot.oracle	libretro,portable
 libretro.screenshot.oracle_control	libretro,portable
 libretro.screenshot.pixel_control	libretro,portable
+libretro.span.battery	libretro,portable
+libretro.span.eeprom	libretro,portable
+libretro.span.plain	libretro,portable
+libretro.span.self_test	libretro,portable
 libretro.vendored	libretro
 mapper.codemasters.banks	mapper,portable
 mapper.codemasters.ram	mapper,portable
@@ -320,6 +339,7 @@ runner.refuse.sg1000	portable,runner
 runner.refuse.size	portable,runner
 runner.save.clean_sigint	portable,runner
 runner.save.clean_sigterm	portable,runner
+runner.save.continuation.eeprom	portable,runner
 runner.save.continuation.int	portable,runner
 runner.save.continuation.normal	portable,runner
 runner.save.continuation.term	portable,runner
@@ -327,9 +347,14 @@ runner.save.excluded	portable,runner
 runner.save.failures	portable,runner
 runner.save.import	portable,runner
 runner.save.imports	portable,runner
+runner.save.interval	portable,runner
+runner.save.interval_fault	portable,runner
+runner.save.kill	portable,runner
 runner.save.native_error	portable,runner
+runner.save.next_index	portable,runner
 runner.save.process.close	portable,runner
 runner.save.process.create	portable,runner
+runner.save.process.dirsync	portable,runner
 runner.save.process.flush	portable,runner
 runner.save.process.int	portable,runner
 runner.save.process.int_write	portable,runner
@@ -340,6 +365,7 @@ runner.save.process.sync	portable,runner
 runner.save.process.term	portable,runner
 runner.save.process.write	portable,runner
 runner.save.replacement	portable,runner
+runner.save.sweep	portable,runner
 runner.stop	portable,runner
 runner.trace.fault	portable,runner
 runner.trace.none	portable,runner
@@ -347,6 +373,7 @@ runner.usage.frame_range	portable,runner
 runner.usage.no_args	portable,runner
 runner.usage.png_syntax	portable,runner
 runner.usage.positional	portable,runner
+runner.usage.save_interval	portable,runner
 runner.usage.unknown	portable,runner
 runner.version	portable,runner
 vdp.background	portable,vdp

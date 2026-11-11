@@ -53,3 +53,20 @@ foreach(case IN ITEMS spans generation excluded fixture import continuation)
   cogmaster_add_test(NAME battery.${case} COMMAND cogmaster-test-battery ${args}
     LABELS mapper portable TIMEOUT 10)
 endforeach()
+
+# The 93C46 serial EEPROM as a device with no board, clocked bit by bit, against
+# closed-form images and a model written from the data sheet.
+add_executable(cogmaster-test-eeprom ${CMAKE_CURRENT_LIST_DIR}/test_eeprom.c)
+target_include_directories(cogmaster-test-eeprom PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-eeprom PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-eeprom PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-eeprom)
+
+# Fault prevented: a 93C46 command that writes while locked, reads in the wrong order, or reports a change per clock edge, so a save is lost or rewritten on every frame; a board that wires the window, the bank registers or the chip's reset wrongly; or a state that resumes a command differently or loads an out-of-range chip state.
+foreach(case IN ITEMS commands lock read changes differential board.window board.pins
+                      board.reset_bit board.banks board.span state.window_open state.mid_command
+                      state.bounds)
+  # Timeout: 10 s floor; 13 x 0.05 s, slowest of 1 run, provisional.
+  cogmaster_add_test(NAME eeprom.${case} COMMAND cogmaster-test-eeprom ${case}
+    LABELS mapper portable TIMEOUT 10)
+endforeach()

@@ -1,5 +1,15 @@
-# Fault prevented: assembly changes silently losing the production hash-keyed battery fact.
-file(STRINGS "${FACT}" fact)
+# Fault prevented: assembly changes silently losing a production hash-keyed owned-fixture fact.
+# ROW picks the fact line to compare, counting from 1; the default is the first.
+if(NOT ROW)
+  set(ROW 1)
+endif()
+file(STRINGS "${FACT}" facts REGEX "^[0-9a-f]")
+math(EXPR index "${ROW} - 1")
+list(LENGTH facts fact_count)
+if(index LESS 0 OR index GREATER_EQUAL fact_count)
+  message(FATAL_ERROR "missing fixture identity fact")
+endif()
+list(GET facts ${index} fact)
 if(NOT fact MATCHES "^([0-9a-f]+) ")
   message(FATAL_ERROR "missing fixture identity fact")
 endif()

@@ -559,6 +559,84 @@ static int frame_test(const char *path, const char *frames, const char *digest)
 #include "battery.h"
 #include "audio.h"
 
+static void *span_alloc(void *user, size_t n)
+{
+    (void)user;
+    return malloc(n);
+}
+static void span_free(void *user, void *p, size_t n)
+{
+    (void)user;
+    (void)n;
+    free(p);
+}
+
+/* The module's SAVE_RAM size must equal what the library reports for the same bytes, and the
+   length the registration expects; the pointer is NULL exactly when the size is zero, and
+   neither changes across frames. */
+static int span_test(const char *path, const char *machine, const char *expected)
+{
+    static uint8_t image[262144];
+    FILE *f = fopen(path, "rb");
+    if (f == NULL)
+        return 1;
+    size_t n = fread(image, 1u, sizeof image, f);
+    CHECK(n != 0u && feof(f));
+    CHECK_EQ_U64(fclose(f), 0u);
+    bool gg = strcmp(machine, "gg") == 0;
+    option_machine = machine;
+    option_mode = gg ? "gg" : "sms";
+    want_w = gg ? 160u : 256u;
+    want_h = gg ? 144u : 192u;
+    cogmaster_config cfg = {0};
+    cfg.size = (uint32_t)sizeof cfg;
+    cfg.allocator.alloc = span_alloc;
+    cfg.allocator.free = span_free;
+    cogmaster *lib = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &lib), COGMASTER_STATUS_OK);
+    if (lib == NULL)
+        return 1;
+    cogmaster_media media = {0};
+    media.size = (uint32_t)sizeof media;
+    media.machine = gg ? COGMASTER_MACHINE_GG : COGMASTER_MACHINE_SMS2;
+    media.video_mode = gg ? COGMASTER_VIDEO_GG : COGMASTER_VIDEO_SMS;
+    media.image = image;
+    media.image_size = n;
+    CHECK_EQ_U64(cogmaster_load(lib, &media), COGMASTER_STATUS_OK);
+    cogmaster_battery b = {0};
+    b.size = (uint32_t)sizeof b;
+    CHECK_EQ_U64(cogmaster_get_battery(lib, &b), COGMASTER_STATUS_OK);
+    p_set_environment(env);
+    p_init();
+    set_callbacks();
+    CHECK(p_get_memory_data(RETRO_MEMORY_SAVE_RAM) == NULL);
+    CHECK_EQ_U64(p_get_memory_size(RETRO_MEMORY_SAVE_RAM), 0u);
+    struct retro_game_info game = {0};
+    game.data = image;
+    game.size = n;
+    CHECK(p_load_game(&game));
+    void *data = p_get_memory_data(RETRO_MEMORY_SAVE_RAM);
+    size_t got = p_get_memory_size(RETRO_MEMORY_SAVE_RAM);
+    size_t want = (size_t)parse(expected);
+    if (got != b.length || got != want) {
+        fprintf(stderr, "span mismatch: module %lu, library %lu, expected %lu\n",
+                (unsigned long)got, (unsigned long)b.length, (unsigned long)want);
+        check_failures++;
+    }
+    CHECK(p_get_memory_data(RETRO_MEMORY_SAVE_RAM) == data);
+    CHECK((data != NULL) == (got != 0u));
+    for (uint32_t i = 0; i < 4u; i++)
+        (void)run_one();
+    CHECK(p_get_memory_data(RETRO_MEMORY_SAVE_RAM) == data);
+    CHECK_EQ_U64(p_get_memory_size(RETRO_MEMORY_SAVE_RAM), got);
+    p_unload_game();
+    CHECK(p_get_memory_data(RETRO_MEMORY_SAVE_RAM) == NULL);
+    CHECK_EQ_U64(p_get_memory_size(RETRO_MEMORY_SAVE_RAM), 0u);
+    p_deinit();
+    cogmaster_destroy(lib);
+    return check_failures != 0 ? 1 : 0;
+}
+
 int main(int argc, char **argv)
 {
     static unsigned char first[MAX_W * MAX_H * 4u];
@@ -586,6 +664,15 @@ int main(int argc, char **argv)
             return 1;
         resolve_all();
         int rc = missing != NULL ? 1 : audio_test(argv[3], argv[4], argv[5], argv[6]);
+        module_close();
+        return rc;
+    }
+
+    if (argc == 6 && strcmp(argv[2], "span") == 0) {
+        if (!module_open(argv[1]))
+            return 1;
+        resolve_all();
+        int rc = missing != NULL ? 1 : span_test(argv[3], argv[4], argv[5]);
         module_close();
         return rc;
     }

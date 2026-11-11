@@ -28,6 +28,12 @@ so it never skips itself off macOS. On `macos-15` it:
    requires the movie, `afinfo` exit 0, 188,000 to 196,000 audio bytes, no non-zero byte in the control and at
    least 8,192 in each sound session. It reads no log text.
 
+**Saves across a restart.** `battery.sms` and `eeprom.gg` each run twice in RetroArch on one directory, the second
+time with `-DKEEP=1` so `ra-save-<name>/saves` survives. After each run the `.srm` must equal, byte for byte, the one
+`cogmaster-run --save-dir` writes after the same number of runs from an empty directory. A control compares the
+runner's first and second `.srm` and must fail through `expect_fail.cmake`: the images change their save on every
+run, so equality after the second pass shows RetroArch handed the first save back to the core.
+
 The shared driver, helpers, checker, synthetic comparator fixture and pixel oracle total at most 300 physical
 lines; `policy.e2e_budget` counts them. The BMP reader accepts the uncompressed RGB24 output from `sips`.
 The test-only replay module compiles the production adapter unchanged and forwards only its three state

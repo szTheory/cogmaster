@@ -153,7 +153,8 @@ enum {
     COGMASTER__BOARD_HICOM = COGMASTER_BOARD_HICOM,
     COGMASTER__BOARD_ZEMINA = COGMASTER_BOARD_ZEMINA,
     COGMASTER__BOARD_NEMESIS = COGMASTER_BOARD_NEMESIS,
-    COGMASTER__BOARD_4PAK = COGMASTER_BOARD_4PAK
+    COGMASTER__BOARD_4PAK = COGMASTER_BOARD_4PAK,
+    COGMASTER__BOARD_SEGA_EEPROM = COGMASTER_BOARD_SEGA_EEPROM
 };
 
 /* The mapper's registers. The board is the cartridge's; these are what the
@@ -166,6 +167,32 @@ struct cogmaster__mapper {
     uint8_t bank8[6];
     /* boards 4 and up: register values a board needs to recompute a bank */
     uint8_t raw[2];
+};
+
+/* The 93C46 serial EEPROM a Game Gear cartridge can carry: 64 words of 16 bits,
+   128 bytes in the cartridge RAM, little-endian. The device is a pure state
+   machine over the byte a game writes to the cartridge window (b0 data in, b1
+   clock, b2 chip select) and shows nothing of the board. Every field is
+   bounded so a hostile clock stream costs O(1) per write.
+   last: the byte last written to the window.
+   phase: 0 idle, 1 command, 2 data in, 3 read, 4 command complete.
+   count: bits taken in the phase; at most 8 in a command (after the start
+   bit), 16 in WRITE or WRAL data, 15 in READ (the dummy bit shows when the
+   command completes, so a read never counts more than the 17 bits it shows).
+   cmd: the 2 opcode and 6 address bits, shifted in; in a read it follows the
+   address.
+   data: the word clocked in for WRITE or WRAL.
+   flags: b0 data out is driven low, b1 writes enabled, b2 chip select, b3
+   clock, b4 a write-type command is complete and waits for chip select to
+   fall. Chip select low means phase 0 and count 0; the zeroed value is the
+   powered-up chip. */
+struct cogmaster__eeprom {
+    uint8_t last;
+    uint8_t phase;
+    uint8_t count;
+    uint8_t cmd;
+    uint16_t data;
+    uint8_t flags;
 };
 
 /* The I/O chip's ports as the CPU last wrote them (SMS-SYSTEM section 4). */
@@ -281,6 +308,8 @@ struct cogmaster {
     struct cogmaster__vdp vdp;
     struct cogmaster__cart cart;
     struct cogmaster__mapper mapper;
+    /* The 93C46 on the Sega EEPROM board; zero and unused on every other board. */
+    struct cogmaster__eeprom eeprom;
     struct cogmaster__io io;
     uint32_t render_line;
     uint32_t render_x; /* next unrendered dot of render_line */
@@ -599,6 +628,15 @@ cogmaster_status cogmaster__cart_copy(cogmaster *m, const uint8_t *image, size_t
 void cogmaster__cart_install(cogmaster *m, const struct cogmaster__cart *c);
 uint32_t cogmaster__battery_length(const cogmaster *m);
 void cogmaster__battery_write(cogmaster *m, uint32_t offset, uint8_t value);
+
+/* The 93C46. reset gives the powered-up chip: writes disabled, idle, chip select
+   low. write takes the byte a game wrote to the cartridge window and changes
+   image, 128 bytes, only when it completes a WRITE, ERASE, WRAL or ERAL that
+   leaves a byte different; it returns 1 then and 0 otherwise. read is the byte
+   a game reads back from the window. */
+void cogmaster__eeprom_reset(struct cogmaster__eeprom *e);
+uint32_t cogmaster__eeprom_write(struct cogmaster__eeprom *e, uint8_t *image, uint8_t v);
+uint8_t cogmaster__eeprom_read(const struct cogmaster__eeprom *e);
 
 /* The mapper. read and write take an address below $C000; write also takes
    the Sega registers at $FFFC-$FFFF, which the bus stores in work RAM too.

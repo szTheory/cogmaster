@@ -8,8 +8,8 @@
     "size.wasm": 1037312
   },
   "floors": {
-    "tests.ci": 438,
-    "tests.wasm32": 411
+    "tests.ci": 465,
+    "tests.wasm32": 434
   },
   "reasons": [
     {

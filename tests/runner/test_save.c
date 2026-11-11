@@ -68,6 +68,18 @@ static void check_file(const char *path, const uint8_t *expected, size_t n)
     CHECK(memcmp(bytes, expected, n) == 0);
     CHECK_EQ_U64(fclose(f), 0);
 }
+static void remove_file(const char *path)
+{
+#ifdef _WIN32
+    wchar_t *wide = cogmaster__path_wide(path);
+    CHECK(wide != NULL);
+    if (wide != NULL)
+        (void)DeleteFileW(wide);
+    free(wide);
+#else
+    (void)remove(path);
+#endif
+}
 static cogmaster_battery battery(cogmaster *m)
 {
     cogmaster_battery b = {0};
@@ -141,21 +153,49 @@ static void excluded(cogmaster *m, const char *dir)
     CHECK_EQ_U64(cogmaster__save_flush(&s, m), 0);
     CHECK(s.path == NULL);
 }
+/* The platforms where save.c syncs the directory after the rename. */
+#if defined(_WIN32) || defined(__wasi__)
+#define HAS_DIRSYNC 0
+#else
+#define HAS_DIRSYNC 1
+#endif
+#if HAS_DIRSYNC
+/* A directory that takes a create and a rename but cannot be opened for reading keeps the
+   save in place and acknowledges it: only a real durability error fails the flush. Mode 0300
+   is no obstacle to a privileged user, for whom the flush is an ordinary one. */
+static void unreadable_directory(cogmaster *m, const char *dir)
+{
+    char sub[1024];
+    CHECK(strlen(dir) + 8u < sizeof sub);
+    (void)snprintf(sub, sizeof sub, "%s/unread", dir);
+    CHECK_EQ_U64(mkdir(sub, 0700), 0);
+    cogmaster__save s = {0};
+    CHECK_EQ_U64(cogmaster__save_load(&s, m, sub, "round.trip.sms"), 0);
+    cogmaster__bus_write(m, 0xfffcu, 8u);
+    cogmaster__bus_write(m, 0x8000u, 0x42u);
+    CHECK_EQ_U64(chmod(sub, 0300), 0);
+    CHECK_EQ_U64(cogmaster__save_flush(&s, m), 0);
+    CHECK_EQ_U64(chmod(sub, 0700), 0);
+    cogmaster_battery b = battery(m);
+    CHECK_EQ_U64(s.acknowledged, b.generation);
+    check_file(s.path, b.data, b.length);
+    remove_file(s.path);
+    CHECK_EQ_U64(rmdir(sub), 0);
+    cogmaster__save_dispose(&s);
+}
+#endif
 static void failures(cogmaster *m, const char *dir, const char *path)
 {
-    static const char *const stages[] = {"",     "create", "write",  "flush",
-                                         "sync", "close",  "replace"};
-    for (int stage = COGMASTER_SAVE_CREATE; stage <= COGMASTER_SAVE_REPLACE; stage++) {
+    static const char *const stages[] = {"",      "create",  "write",     "flush",  "sync",
+                                         "close", "replace", "interrupt", "dirsync"};
+    for (int stage = COGMASTER_SAVE_CREATE; stage <= COGMASTER_SAVE_DIRSYNC; stage++) {
+        if (stage == COGMASTER_SAVE_INTERRUPT)
+            continue; /* it ends the process */
+        /* The directory sync follows the rename, so its failure leaves the new bytes in place. */
+        int renamed = stage == COGMASTER_SAVE_DIRSYNC;
+        int fails = !renamed || HAS_DIRSYNC;
         for (int existing = 0; existing <= 1; existing++) {
-#ifdef _WIN32
-            wchar_t *wide = cogmaster__path_wide(path);
-            CHECK(wide != NULL);
-            if (wide != NULL)
-                (void)DeleteFileW(wide);
-            free(wide);
-#else
-            (void)remove(path);
-#endif
+            remove_file(path);
             memset(raw, 0x19, sizeof raw);
             if (existing)
                 write_file(path, 3u);
@@ -168,10 +208,12 @@ static void failures(cogmaster *m, const char *dir, const char *path)
             cogmaster__bus_write(m, 0x8000u, 0x42u);
             cogmaster_battery b = battery(m);
             CHECK(b.generation != acknowledged);
-            CHECK_EQ_U64(cogmaster__save_flush(&s, m), 1);
-            CHECK_EQ_U64(s.acknowledged, acknowledged);
+            CHECK_EQ_U64(cogmaster__save_flush(&s, m), fails ? 1 : 0);
+            CHECK_EQ_U64(s.acknowledged, fails ? acknowledged : b.generation);
             CHECK_EQ_U64(battery(m).generation, b.generation);
-            if (existing) {
+            if (renamed) {
+                check_file(path, b.data, b.length);
+            } else if (existing) {
                 check_file(path, raw, 3u);
             } else {
                 FILE *f = cogmaster__path_open(path, "rb");
@@ -188,6 +230,29 @@ static void failures(cogmaster *m, const char *dir, const char *path)
             cogmaster__save_dispose(&s);
         }
     }
+#if HAS_DIRSYNC
+    unreadable_directory(m, dir);
+#endif
+}
+/* A temporary that appears after load is never overwritten: the flush takes the next index. */
+static void next_index(cogmaster *m, const char *dir, const char *path)
+{
+    char temporary[1024];
+    CHECK(strlen(path) + 8u < sizeof temporary);
+    (void)snprintf(temporary, sizeof temporary, "%s.tmp-0", path);
+    cogmaster__save s = {0};
+    CHECK_EQ_U64(cogmaster__save_load(&s, m, dir, "round.trip.sms"), 0);
+    memset(raw, 0x6b, sizeof raw);
+    write_file(temporary, 5u);
+    cogmaster__bus_write(m, 0xfffcu, 8u);
+    cogmaster__bus_write(m, 0x8000u, 0x42u);
+    CHECK_EQ_U64(cogmaster__save_flush(&s, m), 0);
+    cogmaster_battery b = battery(m);
+    CHECK_EQ_U64(s.acknowledged, b.generation);
+    check_file(path, b.data, b.length);
+    check_file(temporary, raw, 5u);
+    remove_file(temporary);
+    cogmaster__save_dispose(&s);
 }
 static void clean_signal(cogmaster *m, const char *dir, const char *path, int sig)
 {
@@ -247,6 +312,8 @@ int main(int argc, char **argv)
         excluded(m, argv[3]);
     else if (strcmp(argv[1], "failures") == 0)
         failures(m, argv[3], argv[4]);
+    else if (strcmp(argv[1], "next_index") == 0)
+        next_index(m, argv[3], argv[4]);
     else if (strcmp(argv[1], "clean_sigint") == 0)
         clean_signal(m, argv[3], argv[4], SIGINT);
     else if (strcmp(argv[1], "clean_sigterm") == 0)

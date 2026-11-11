@@ -57,7 +57,9 @@ cogmaster_status cogmaster_import_battery(cogmaster *m, const void *data, size_t
         return m->cart.rom == NULL || m->cart.persistence == COGMASTER_PERSISTENCE_NONE
                    ? COGMASTER_STATUS_ERR_NO_CONTENT
                    : COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD;
-    if (length > span)
+    /* A 93C46 word is two bytes, so a prefix would split one: the chip takes none or all. */
+    if (length > span ||
+        (m->cart.board == COGMASTER__BOARD_SEGA_EEPROM && length != 0u && length != span))
         return COGMASTER_STATUS_ERR_SAVE_SIZE;
     if (data == NULL && length != 0u)
         return COGMASTER_STATUS_ERR_ARGUMENT;
