@@ -17,8 +17,9 @@
 #define FIRST_SIZE_INPUT 32u
 _Static_assert(FIRST_SIZE_INPUT == offsetof(cogmaster_input, x1), "first input size");
 
-/* The axis words are motion since the last call, in the host's units; the sum of a port's calls
-   between two frames is kept, within the same range. */
+/* The axis words of a Sports Pad or Paddle port are motion since the last call, in the host's
+   units; the sum of a port's calls between two frames is kept, within the same range. On a Light
+   Phaser port they are an absolute aim instead and the last call wins. */
 #define AXIS_MAX 32767
 
 static int axis_ok(int32_t v)
@@ -32,6 +33,10 @@ static int32_t axis_add(int32_t pending, int32_t d)
     int32_t sum = pending + d;
     return sum < -AXIS_MAX ? -AXIS_MAX : (sum > AXIS_MAX ? AXIS_MAX : sum);
 }
+
+/* A Light Phaser aim is a field dot, 1 to 256 across and 1 to 240 down, and 0 0 means none. */
+#define AIM_MAX_X 256
+#define AIM_MAX_Y 240
 
 /* Adds one port's motion to the pending record. A different device than the pending one restarts
    the port's axes; an axis the device does not take is dropped. */
@@ -51,6 +56,14 @@ static void add_motion(cogmaster_input *pend, const cogmaster_input *in, uint32_
         *py = axis_add(*py, y);
     } else if (device == COGMASTER_DEVICE_PADDLE) {
         *px = axis_add(*px, x);
+    } else if (device == COGMASTER_DEVICE_LIGHT_PHASER) {
+        /* The call replaces the aim, and an aim that is not a field dot is the parked state, never
+           moved to an edge dot. A stored aim has |dx| and |dy| of at most 256 against any dot, so
+           the sensor's squared sum stays below 2 to the 17th and nothing overflows. A later call
+           in the same frame without axes parks the aim. */
+        int on = x >= 1 && x <= AIM_MAX_X && y >= 1 && y <= AIM_MAX_Y;
+        *px = on ? x : 0;
+        *py = on ? y : 0;
     }
 }
 

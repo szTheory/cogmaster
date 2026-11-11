@@ -10,6 +10,8 @@
    MAME's sms_ctrl/sports.cpp and sms_ctrl/paddle.cpp (BSD-3, pin 1d7a454ed79e)
    and ares ms/controller/sports-pad and ms/controller/paddle (ISC, pin
    9408cb43d494); nothing is copied. */
+#include <string.h>
+
 #include "internal.h"
 
 #define PORT_PINS 0x3Fu
@@ -62,6 +64,12 @@ uint8_t cogmaster__ports_pins(const cogmaster *m, uint32_t port, uint64_t tick)
         return paddle_pins(&m->ports[port], held, tick);
     case COGMASTER_DEVICE_SPORTS_PAD:
         return (uint8_t)(sports_nibble(&m->ports[port]) | (~held & (PIN_TL | PIN_TR)));
+    case COGMASTER_DEVICE_LIGHT_PHASER:
+        /* The Light Phaser's trigger is TL, low while pulled; the other five pins are undriven
+           and read high, and the sensor's own line is TH, which belongs to the console and is
+           not a port pin here (SMS Power, Light Phaser; SMS-CARTRIDGES-AND-PERIPHERALS section
+           3.3). Direction bits and every other held bit change nothing. */
+        return (uint8_t)(0x2Fu | (~held & PIN_TL));
     case COGMASTER_DEVICE_NONE:
     default:
         return PORT_PINS;
@@ -116,17 +124,22 @@ void cogmaster__ports_th(cogmaster *m, uint32_t port, uint32_t wire, uint64_t ti
 #define SPORTS_ACC_MAX 1023
 #define PADDLE_MAX 255
 
+/* A port's motion axes are consumed at frame start, except a Light Phaser's aim, which is a
+   position and stays in force until the next call replaces it. The sensor reads the aim through
+   the block's snapshot and m->input, never pending_input. */
 void cogmaster__ports_frame(cogmaster *m)
 {
     for (uint32_t port = 0u; port < 2u; port++) {
         uint32_t device = port == 0u ? m->pending_input.port1 : m->pending_input.port2;
         uint32_t active = port == 0u ? m->input.port1 : m->input.port2;
-        int32_t axis[2] = {port == 0u ? m->pending_input.x1 : m->pending_input.x2,
-                           port == 0u ? m->pending_input.y1 : m->pending_input.y2};
+        int32_t *px = port == 0u ? &m->pending_input.x1 : &m->pending_input.x2;
+        int32_t *py = port == 0u ? &m->pending_input.y1 : &m->pending_input.y2;
+        int32_t *ax = port == 0u ? &m->input.x1 : &m->input.x2;
+        int32_t *ay = port == 0u ? &m->input.y1 : &m->input.y2;
+        int32_t axis[2] = {*px, *py};
         struct cogmaster__port *p = &m->ports[port];
         if (device != active) {
-            struct cogmaster__port none = {0u, {0, 0}, {0, 0}, 0u, 0u};
-            *p = none;
+            memset(p, 0, sizeof *p);
         }
         if (device == COGMASTER_DEVICE_SPORTS_PAD) {
             for (uint32_t i = 0u; i < 2u; i++) {
@@ -136,14 +149,17 @@ void cogmaster__ports_frame(cogmaster *m)
             int32_t at = (int32_t)(p->pos ^ 0x80u) + axis[0];
             p->pos = (uint8_t)((uint32_t)clamp32(at, 0, PADDLE_MAX) ^ 0x80u);
         }
+        if (device != COGMASTER_DEVICE_LIGHT_PHASER) {
+            *px = *py = *ax = *ay = 0;
+        }
     }
-    m->pending_input.x1 = m->pending_input.y1 = m->pending_input.x2 = m->pending_input.y2 = 0;
-    m->input.x1 = m->input.y1 = m->input.x2 = m->input.y2 = 0;
 }
 
 /* The Sports Pad rides the Master System's ports on any region; the Paddle was made for the
    Japanese console alone (MAME sms_ctrl/paddle.cpp notes: a Japanese release only, and no pin 7
-   for the export protocol). The Game Gear has no controller ports to attach either to. */
+   for the export protocol). The Light Phaser plugs into either port of any Master System region.
+   The Game Gear has no controller ports to attach any of them to (it has no TH pins here, and MAME
+   models a Game Gear gun only as a to-do). */
 int cogmaster__device_ok(const cogmaster *m, uint32_t device)
 {
     switch (device) {
@@ -151,6 +167,7 @@ int cogmaster__device_ok(const cogmaster *m, uint32_t device)
     case COGMASTER_DEVICE_NONE:
         return 1;
     case COGMASTER_DEVICE_SPORTS_PAD:
+    case COGMASTER_DEVICE_LIGHT_PHASER:
         return m->machine != COGMASTER_MACHINE_GG;
     case COGMASTER_DEVICE_PADDLE:
         return m->machine != COGMASTER_MACHINE_GG && m->region == COGMASTER_REGION_JAPAN;

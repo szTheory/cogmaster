@@ -218,7 +218,7 @@ struct cogmaster__io {
 #define COGMASTER__GLASSES_CUT_TICKS(frame_lines) (((frame_lines) - 96u) * 684u - 607u)
 
 /* The highest device a port can hold; one constant for set_input and the saved-state bound. */
-#define COGMASTER__DEVICE_LAST COGMASTER_DEVICE_SPORTS_PAD
+#define COGMASTER__DEVICE_LAST COGMASTER_DEVICE_LIGHT_PHASER
 
 /* A Sports Pad abandons a read sequence when TH has been high for 512 Z80 cycles, which is 1,536
    ticks (MAME sms_ctrl/sports.cpp, BSD-3, timeout of the console clock over 3 over 512; the
@@ -235,17 +235,27 @@ struct cogmaster__io {
 /* One port's device block, zero for no device and for a device just attached. A Sports Pad uses
    edge (tick of the last TH wire rise), acc (the motion not yet delivered, per axis), val (the
    negated byte latched for the sequence, per axis) and step (0 idle, 1 to 4 the nibble on offer);
-   a Paddle uses pos, its position XOR $80 so that zero is the centre. */
+   a Paddle uses pos, its position XOR $80 so that zero is the centre. A Light Phaser uses the last
+   six members: the aim of the picture being scanned (g_ax, g_ay, 1-based field dots, 0 for none),
+   the scan cursor (the row g_line and the next dot g_dot, 256 being the closing dot after the last
+   one, while g_scan is 1), and g_sense, whose b0 is the sensor seeing light and b1 a light pulse
+   seen since the last $DD read or the end of the picture. A zero block is parked. */
 struct cogmaster__port {
     uint64_t edge;
     int16_t acc[2];
     int8_t val[2];
     uint8_t step;
     uint8_t pos;
+    uint16_t g_ax;
+    uint16_t g_dot;
+    uint8_t g_ay;
+    uint8_t g_line;
+    uint8_t g_sense;
+    uint8_t g_scan;
 };
-_Static_assert(sizeof(struct cogmaster__port) == 16u, "port block size");
+_Static_assert(sizeof(struct cogmaster__port) == 24u, "port block size");
 _Static_assert(sizeof(uint64_t) + 2u * sizeof(int16_t) + 2u * sizeof(int8_t) +
-                       2u * sizeof(uint8_t) ==
+                       2u * sizeof(uint8_t) + 2u * sizeof(uint16_t) + 4u * sizeof(uint8_t) ==
                    sizeof(struct cogmaster__port),
                "port block has no padding");
 

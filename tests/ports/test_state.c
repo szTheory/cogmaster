@@ -252,11 +252,15 @@ static const struct {
     const char *name;
     int is_signed, fixed;
 } watched[] = {
-    {"machine", 0, 1},    {"region", 0, 1},           {"ticks", 0, 1},       {"pending_x1", 1, 0},
-    {"pending_y1", 1, 0}, {"pending_x2", 1, 0},       {"pending_y2", 1, 0},  {"active_x1", 1, 0},
-    {"active_y1", 1, 0},  {"active_x2", 1, 0},        {"active_y2", 1, 0},   {"port_edge", 0, 0},
-    {"port_acc", 1, 0},   {"port_val", 1, 0},         {"port_step", 0, 0},   {"port_pos", 0, 0},
-    {"io_glasses", 0, 0}, {"io_glasses_frame", 0, 0}, {"input_port1", 0, 0}, {"input_port2", 0, 0},
+    {"machine", 0, 1},        {"region", 0, 1},        {"ticks", 0, 1},
+    {"pending_x1", 1, 0},     {"pending_y1", 1, 0},    {"pending_x2", 1, 0},
+    {"pending_y2", 1, 0},     {"active_x1", 1, 0},     {"active_y1", 1, 0},
+    {"active_x2", 1, 0},      {"active_y2", 1, 0},     {"port_edge", 0, 0},
+    {"port_acc", 1, 0},       {"port_val", 1, 0},      {"port_step", 0, 0},
+    {"port_pos", 0, 0},       {"io_glasses", 0, 0},    {"io_glasses_frame", 0, 0},
+    {"input_port1", 0, 0},    {"input_port2", 0, 0},   {"port_gun_ax", 0, 0},
+    {"port_gun_dot", 0, 0},   {"port_gun_ay", 0, 0},   {"port_gun_line", 0, 0},
+    {"port_gun_sense", 0, 0}, {"port_gun_scan", 0, 0}, {"vdp_height", 0, 1},
 };
 #define WATCHED (sizeof watched / sizeof watched[0])
 
@@ -319,8 +323,12 @@ struct snap {
     uint64_t edge[2];
     int64_t acc[2][2], val[2][2];
     uint64_t step[2], pos[2];
+    uint64_t gun[2][6]; /* ax, dot, ay, line, sense, scan, per port */
+    uint64_t height;
     uint64_t eye, eye_frame;
 };
+
+enum { G_AX, G_DOT, G_AY, G_LINE, G_SENSE, G_SCAN };
 
 static void snap_from_buffer(struct snap *s, const struct layout *L, const uint8_t *b)
 {
@@ -329,6 +337,8 @@ static void snap_from_buffer(struct snap *s, const struct layout *L, const uint8
     static const char *const act_names[2][2] = {{"active_x1", "active_y1"},
                                                 {"active_x2", "active_y2"}};
     static const char *const dev_names[2] = {"input_port1", "input_port2"};
+    static const char *const gun_names[6] = {"port_gun_ax",   "port_gun_dot",   "port_gun_ay",
+                                             "port_gun_line", "port_gun_sense", "port_gun_scan"};
     memset(s, 0, sizeof *s);
     s->machine = rd(L, b, "machine", 0u);
     s->region = rd(L, b, "region", 0u);
@@ -345,7 +355,11 @@ static void snap_from_buffer(struct snap *s, const struct layout *L, const uint8
         s->edge[p] = rd(L, b, "port_edge", p);
         s->step[p] = rd(L, b, "port_step", p);
         s->pos[p] = rd(L, b, "port_pos", p);
+        for (uint32_t g = 0u; g < 6u; g++) {
+            s->gun[p][g] = rd(L, b, gun_names[g], p);
+        }
     }
+    s->height = rd(L, b, "vdp_height", 0u);
     s->eye = rd(L, b, "io_glasses", 0u);
     s->eye_frame = rd(L, b, "io_glasses_frame", 0u);
 }
@@ -375,11 +389,18 @@ static void snap_from_instance(struct snap *s, const cogmaster *m)
         s->edge[p] = m->ports[p].edge;
         s->step[p] = m->ports[p].step;
         s->pos[p] = m->ports[p].pos;
+        s->gun[p][G_AX] = m->ports[p].g_ax;
+        s->gun[p][G_DOT] = m->ports[p].g_dot;
+        s->gun[p][G_AY] = m->ports[p].g_ay;
+        s->gun[p][G_LINE] = m->ports[p].g_line;
+        s->gun[p][G_SENSE] = m->ports[p].g_sense;
+        s->gun[p][G_SCAN] = m->ports[p].g_scan;
         for (uint32_t a = 0u; a < 2u; a++) {
             s->acc[p][a] = m->ports[p].acc[a];
             s->val[p][a] = m->ports[p].val[a];
         }
     }
+    s->height = m->vdp.height;
     s->eye = m->io.glasses;
     s->eye_frame = m->io.glasses_frame;
 }
@@ -390,14 +411,15 @@ static int in_range(int64_t v, int64_t lo, int64_t hi)
 }
 
 /* A Game Gear has no ports to attach anything to but a pad; a Paddle exists only on a Japanese
-   console (SMS-CARTRIDGES-AND-PERIPHERALS section 3.4 and the two after it). */
+   console (SMS-CARTRIDGES-AND-PERIPHERALS section 3.4 and the two after it); a Light Phaser plugs
+   into either port of any Master System (section 3.3 there). */
 static int available(const struct snap *s, uint64_t device)
 {
     int gg = s->machine == COGMASTER_MACHINE_GG;
     if (device == COGMASTER_DEVICE_PAD || device == COGMASTER_DEVICE_NONE) {
         return 1;
     }
-    if (device == COGMASTER_DEVICE_SPORTS_PAD) {
+    if (device == COGMASTER_DEVICE_SPORTS_PAD || device == COGMASTER_DEVICE_LIGHT_PHASER) {
         return !gg;
     }
     if (device == COGMASTER_DEVICE_PADDLE) {
@@ -406,11 +428,28 @@ static int available(const struct snap *s, uint64_t device)
     return 0;
 }
 
+/* An aim is a field dot, 1 to 256 across and 1 to 240 down, and 0 0 is none; a half is no aim. */
+static int aim_model(int64_t x, int64_t y)
+{
+    return in_range(x, 0, 256) && in_range(y, 0, 240) && (x == 0) == (y == 0);
+}
+
 static int model_ok(const struct snap *s)
 {
     for (uint32_t p = 0u; p < 2u; p++) {
+        const uint64_t *g = s->gun[p];
         int ok = in_range(s->pend[p][0], -32767, 32767) && in_range(s->pend[p][1], -32767, 32767);
-        ok = ok && s->act[p][0] == 0 && s->act[p][1] == 0;
+        if (s->dev[p][1] == COGMASTER_DEVICE_LIGHT_PHASER) {
+            ok = ok && aim_model(s->act[p][0], s->act[p][1]);
+        } else {
+            ok = ok && s->act[p][0] == 0 && s->act[p][1] == 0;
+        }
+        ok = ok && g[G_AX] <= 256u && g[G_DOT] <= 256u && g[G_AY] <= 240u && g[G_LINE] <= 239u &&
+             g[G_SENSE] <= 3u && g[G_SCAN] <= 1u;
+        ok = ok && (g[G_AX] == 0u) == (g[G_AY] == 0u);
+        ok = ok &&
+             (g[G_SCAN] != 0u || (g[G_LINE] == 0u && g[G_DOT] == 0u && (g[G_SENSE] & 1u) == 0u));
+        ok = ok && (g[G_SCAN] == 0u || (g[G_AX] != 0u && g[G_LINE] < s->height));
         ok = ok && s->edge[p] <= s->ticks && s->step[p] <= 4u && s->pos[p] <= 255u;
         for (uint32_t a = 0u; a < 2u; a++) {
             ok = ok && in_range(s->acc[p][a], -1023, 1023) && in_range(s->val[p][a], -127, 127);
@@ -420,7 +459,11 @@ static int model_ok(const struct snap *s)
         ok = ok && available(s, next) && available(s, held);
         int block = s->edge[p] != 0u || s->acc[p][0] != 0 || s->acc[p][1] != 0 ||
                     s->val[p][0] != 0 || s->val[p][1] != 0 || s->step[p] != 0u;
-        if (held == COGMASTER_DEVICE_PAD || held == COGMASTER_DEVICE_NONE) {
+        int gun_any = g[G_AX] != 0u || g[G_DOT] != 0u || g[G_AY] != 0u || g[G_LINE] != 0u ||
+                      g[G_SENSE] != 0u || g[G_SCAN] != 0u;
+        ok = ok && (held == COGMASTER_DEVICE_LIGHT_PHASER || !gun_any);
+        if (held == COGMASTER_DEVICE_PAD || held == COGMASTER_DEVICE_NONE ||
+            held == COGMASTER_DEVICE_LIGHT_PHASER) {
             ok = ok && !block && s->pos[p] == 0u;
         } else if (held == COGMASTER_DEVICE_SPORTS_PAD) {
             ok = ok && s->pos[p] == 0u;
@@ -432,6 +475,8 @@ static int model_ok(const struct snap *s)
             ok = ok && s->pend[p][0] == 0 && s->pend[p][1] == 0;
         } else if (next == COGMASTER_DEVICE_PADDLE) {
             ok = ok && s->pend[p][1] == 0;
+        } else if (next == COGMASTER_DEVICE_LIGHT_PHASER) {
+            ok = ok && aim_model(s->pend[p][0], s->pend[p][1]);
         }
         if (!ok) {
             return 0;
@@ -581,6 +626,7 @@ struct outside {
 
 #define D_SPORTS COGMASTER_DEVICE_SPORTS_PAD
 #define D_PADDLE COGMASTER_DEVICE_PADDLE
+#define D_PHASER COGMASTER_DEVICE_LIGHT_PHASER
 
 static const struct outside outside_table[] = {
     /* Each bound just outside its range, on both sides where the type has room. */
@@ -601,8 +647,8 @@ static const struct outside outside_table[] = {
     {SPORTS, "step 255", 1, {{"port_step", 1u, 255}}},
     {SPORTS, "step 4", 0, {{"port_step", 0u, 4}}},
     {SPORTS, "edge past the tick count", 1, {{"port_edge", 0u, PAST_TICKS}}},
-    {SPORTS, "device 4 pending", 1, {{"input_port1", 0u, 4}}},
-    {SPORTS, "device 4 in force", 1, {{"input_port2", 1u, 4}}},
+    {SPORTS, "device 5 pending", 1, {{"input_port1", 0u, 5}}},
+    {SPORTS, "device 5 in force", 1, {{"input_port2", 1u, 5}}},
     {EYE_A, "eye 3", 1, {{"io_glasses", 0u, 3}}},
     {EYE_A, "eye of the frame 3", 1, {{"io_glasses_frame", 0u, 3}}},
     {EYE_A, "eye of the frame 0", 0, {{"io_glasses_frame", 0u, 0}}},
@@ -634,6 +680,20 @@ static const struct outside outside_table[] = {
     {PADDLE, "a Sports Pad with a pos", 1, {{"port_pos", 1u, 5}}},
     {PADDLE, "a Paddle at its far end", 0, {{"port_pos", 0u, 255}}},
     {PADDLE, "a Paddle pending with an x", 0, {{"pending_x1", 0u, -32767}}},
+    {GG, "a phaser in force on a Game Gear", 1, {{"input_port1", 1u, D_PHASER}}},
+    {GG, "a gun field on a pad", 1, {{"port_gun_ax", 0u, 1}, {"port_gun_ay", 0u, 1}}},
+    {SPORTS,
+     "a phaser pending with an aim",
+     0,
+     {{"input_port1", 0u, D_PHASER}, {"pending_x1", 0u, 256}, {"pending_y1", 0u, 240}}},
+    {SPORTS,
+     "a phaser pending with half an aim",
+     1,
+     {{"input_port1", 0u, D_PHASER}, {"pending_x1", 0u, 5}, {"pending_y1", 0u, 0}}},
+    {SPORTS,
+     "a phaser pending off the field",
+     1,
+     {{"input_port1", 0u, D_PHASER}, {"pending_x1", 0u, 257}, {"pending_y1", 0u, 5}}},
     {EYE_B, "an eye of the frame with no eye", 1, {{"io_glasses", 0u, 0}}},
     {EYE_B, "the same eye twice", 0, {{"io_glasses_frame", 0u, 2}}},
     {EYE_B, "an eye with none of the frame", 0, {{"io_glasses_frame", 0u, 0}}},

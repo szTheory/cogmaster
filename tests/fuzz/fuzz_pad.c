@@ -62,7 +62,7 @@ static const uint32_t device_table[8] = {COGMASTER_DEVICE_PAD,
                                          COGMASTER_DEVICE_SPORTS_PAD,
                                          COGMASTER_DEVICE_SPORTS_PAD,
                                          COGMASTER_DEVICE_PAD,
-                                         COGMASTER_DEVICE_SPORTS_PAD + 1u,
+                                         COGMASTER_DEVICE_LIGHT_PHASER + 1u,
                                          255u};
 static const int32_t axis_table[16] = {
     0, 1, -1, 3, -3, 127, 128, 255, -255, 1000, 32767, -32767, 32768, -32768, INT32_MIN, INT32_MAX};
@@ -139,6 +139,7 @@ static int attachable(const cogmaster *m, uint32_t device)
     case COGMASTER_DEVICE_NONE:
         return 1;
     case COGMASTER_DEVICE_SPORTS_PAD:
+    case COGMASTER_DEVICE_LIGHT_PHASER:
         return m->machine != COGMASTER_MACHINE_GG;
     case COGMASTER_DEVICE_PADDLE:
         return m->machine != COGMASTER_MACHINE_GG && m->region == COGMASTER_REGION_JAPAN;
@@ -159,6 +160,13 @@ static int axis_in(int32_t v)
     return v >= -32767 && v <= 32767;
 }
 
+/* A Light Phaser's aim: a field dot, 1 to 256 across and 1 to 240 down, or 0 0 for none. A pair
+   with only one half zero is not one a call or a load can leave. */
+static int aim_canonical(int32_t x, int32_t y)
+{
+    return x >= 0 && x <= 256 && y >= 0 && y <= 240 && (x == 0) == (y == 0);
+}
+
 /* The bounds of every device field and the rules that tie them to the device in force, the motion
    to the device pending and the eyes to the machine. A run, a reset and a load reach every pair of
    edge and step the bounds allow, so none is ruled out beyond the edge being a past tick. */
@@ -169,9 +177,14 @@ static void check_pad(const cogmaster *m)
     const uint32_t held[2] = {active->port1, active->port2};
     const uint32_t next[2] = {pending->port1, pending->port2};
     const int32_t moved[2][2] = {{pending->x1, pending->y1}, {pending->x2, pending->y2}};
-    expect(active->x1 == 0 && active->y1 == 0 && active->x2 == 0 && active->y2 == 0);
+    const int32_t aimed[2][2] = {{active->x1, active->y1}, {active->x2, active->y2}};
     for (uint32_t p = 0u; p < 2u; p++) {
         const struct cogmaster__port *b = &m->ports[p];
+        if (held[p] == COGMASTER_DEVICE_LIGHT_PHASER) {
+            expect(aim_canonical(aimed[p][0], aimed[p][1]));
+        } else {
+            expect(aimed[p][0] == 0 && aimed[p][1] == 0);
+        }
         expect(axis_in(moved[p][0]) && axis_in(moved[p][1]));
         expect(attachable(m, held[p]) && attachable(m, next[p]));
         expect(b->edge <= m->ticks && b->step <= 4u);
@@ -196,8 +209,21 @@ static void check_pad(const cogmaster *m)
         if (b->step == 0u) {
             expect(b->val[0] == 0 && b->val[1] == 0);
         }
+        /* The gun's six fields: all zero unless a phaser is in force, then inside their bounds with
+           a cursor only while a scan runs. */
+        uint32_t aim = (uint32_t)b->g_ax + b->g_ay;
+        uint32_t cursor = (uint32_t)b->g_dot + b->g_line + (b->g_sense & 1u);
+        if (held[p] != COGMASTER_DEVICE_LIGHT_PHASER) {
+            expect(aim == 0u && cursor == 0u && b->g_sense == 0u && b->g_scan == 0u);
+        } else {
+            expect(b->g_ax <= 256u && b->g_dot <= 256u && b->g_ay <= 240u && b->g_line <= 239u);
+            expect(b->g_sense <= 3u && b->g_scan <= 1u && (b->g_ax == 0u) == (b->g_ay == 0u));
+            expect(b->g_scan != 0u ? (b->g_ax != 0u && b->g_line < m->vdp.height) : cursor == 0u);
+        }
         if (next[p] == COGMASTER_DEVICE_PADDLE) {
             expect(moved[p][1] == 0);
+        } else if (next[p] == COGMASTER_DEVICE_LIGHT_PHASER) {
+            expect(aim_canonical(moved[p][0], moved[p][1]));
         } else if (next[p] != COGMASTER_DEVICE_SPORTS_PAD) {
             expect(moved[p][0] == 0 && moved[p][1] == 0);
         }
@@ -241,8 +267,8 @@ static void op_set_input(cogmaster *m, struct stream *s)
     in.x2 = pick_axis(s);
     in.y2 = pick_axis(s);
     int range = in.p1 <= 63u && in.p2 <= 63u && in.pause <= 1u && in.reset <= 1u &&
-                in.start <= 1u && in.port1 <= COGMASTER_DEVICE_SPORTS_PAD &&
-                in.port2 <= COGMASTER_DEVICE_SPORTS_PAD && axis_in(in.x1) && axis_in(in.y1) &&
+                in.start <= 1u && in.port1 <= COGMASTER_DEVICE_LIGHT_PHASER &&
+                in.port2 <= COGMASTER_DEVICE_LIGHT_PHASER && axis_in(in.x1) && axis_in(in.y1) &&
                 axis_in(in.x2) && axis_in(in.y2);
     cogmaster_status want = !range ? COGMASTER_STATUS_ERR_ARGUMENT
                             : !attachable(m, in.port1) || !attachable(m, in.port2)
