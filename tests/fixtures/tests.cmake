@@ -210,9 +210,13 @@ foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_t
   endif()
   set(image ${COGMASTER_FIXTURES_DIR}/${image_name}.${extension})
   set(identity_check "")
+  set(owned_fixture_check ${CMAKE_COMMAND} -DHASH_ONLY=1 -DIMAGE=${image}
+    -DFACT=${PROJECT_SOURCE_DIR}/tests/cart/fixture_facts.txt)
   if(name STREQUAL "battery")
-    set(identity_check COMMAND ${CMAKE_COMMAND} -DHASH_ONLY=1 -DIMAGE=${image}
-      -DFACT=${PROJECT_SOURCE_DIR}/tests/cart/fixture_facts.txt
+    set(identity_check COMMAND ${owned_fixture_check} -DROW=1
+      -P ${PROJECT_SOURCE_DIR}/tests/cart/fixture.cmake)
+  elseif(name STREQUAL "eeprom")
+    set(identity_check COMMAND ${owned_fixture_check} -DROW=2
       -P ${PROJECT_SOURCE_DIR}/tests/cart/fixture.cmake)
   endif()
   # The source directory is the assembler's working directory, so .INCLUDE

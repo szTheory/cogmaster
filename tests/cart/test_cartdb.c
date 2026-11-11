@@ -119,6 +119,16 @@ int main(int argc, char **argv)
         CHECK_EQ_U64(f->ram_bytes, 24576u);
         CHECK_EQ_U64(f->geometry, COGMASTER_GEOMETRY_UNSUPPORTED);
     }
+    /* The owned EEPROM fixture, by the hash of the built image. */
+    f = find_hex("0170c40f75d8ed3f3bbc9547fa2d9e89192fc3f0");
+    CHECK(f != NULL);
+    if (f) {
+        CHECK_EQ_U64(f->board, COGMASTER_BOARD_SEGA_EEPROM);
+        CHECK_EQ_U64(f->persistence, COGMASTER_PERSISTENCE_BATTERY);
+        CHECK_EQ_U64(f->ram_bytes, 128u);
+        CHECK_EQ_U64(f->geometry, COGMASTER_GEOMETRY_SUPPORTED);
+        CHECK_EQ_U64(f->machine, COGMASTER_MACHINE_GG);
+    }
     CHECK(find_hex("0000000000000000000000000000000000000000") == NULL);
     f = find_hex("c3305d745792a931ea92da6e6457c43d7cc45cf2");
     CHECK(f != NULL);
@@ -233,14 +243,14 @@ int main(int argc, char **argv)
     for (size_t b = 0; b < 10u; b++)
         CHECK(per_board[b] > 0u);
     /* Row counts from the pinned lists: EEPROM, battery, and the controller defaults. */
-    CHECK_EQ_U64(per_persistence[2], 70u);
+    CHECK_EQ_U64(per_persistence[2], 71u);
     CHECK_EQ_U64(per_persistence[3], 0u);
-    CHECK_EQ_U64(per_ctrl1[0], 1636u);
+    CHECK_EQ_U64(per_ctrl1[0], 1637u);
     CHECK_EQ_U64(per_ctrl1[1], 13u);
     CHECK_EQ_U64(per_ctrl1[2], 4u);
     CHECK_EQ_U64(per_ctrl1[3], 3u);
     CHECK_EQ_U64(per_ctrl1[4], 1u);
-    CHECK_EQ_U64(per_ctrl2[0], 1652u);
+    CHECK_EQ_U64(per_ctrl2[0], 1653u);
     CHECK_EQ_U64(per_ctrl2[1], 1u);
     CHECK_EQ_U64(per_ctrl2[2], 1u);
     CHECK_EQ_U64(per_ctrl2[3], 3u);

@@ -424,6 +424,17 @@ static void write_catalog(const char *path)
         fail("cannot write catalog");
 }
 
+/* The two owned fixtures: the Sega battery image and the Game Gear 93C46 EEPROM image,
+   both 64 KiB with supported geometry. Any other row is not an owned fixture. */
+static int owned_fixture(const struct fact *f)
+{
+    if (!is_hex40(f->sha) || f->bytes != 65536u || f->persistence != 2u || f->geometry != 1u)
+        return 0;
+    if (f->board == 2u && f->declared == 32768u)
+        return 1;
+    return f->board == 10u && f->machine == COGMASTER_MACHINE_GG && f->declared == 128u;
+}
+
 int main(int argc, char **argv)
 {
     const char *pin = NULL, *catalog = NULL;
@@ -448,28 +459,33 @@ int main(int argc, char **argv)
             continue;
         }
         if (!strcmp(argv[i], "--fixture")) {
-            if (++i == argc || count == CAP)
+            if (++i == argc)
                 fail("missing fixture facts");
             FILE *file = fopen(argv[i], "rb");
             if (!file)
                 fail("cannot open fixture facts");
-            struct fact f = {0};
-            int fields = fscanf(file,
-                                "%40s %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32
-                                " %" SCNu32 " %" SCNu32 " %" SCNu32 " %255[^\n]",
-                                f.sha, &f.bytes, &f.board, &f.machine, &f.region, &f.video,
-                                &f.persistence, &f.declared, &f.geometry, f.title);
-            if (fields != 10 || !is_hex40(f.sha) || f.bytes != 65536u || f.board != 2u ||
-                f.persistence != 2u || f.declared != 32768u || f.geometry != 1u)
-                fail("invalid owned fixture facts");
-            while (fgets(input, sizeof input, file)) {
-                if (strspn(input, " \t\r\n") != strlen(input))
-                    fail("extra fixture facts");
+            size_t rows = 0;
+            for (;;) {
+                if (count == CAP)
+                    fail("missing fixture facts");
+                struct fact f = {0};
+                int fields = fscanf(file,
+                                    "%40s %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32
+                                    " %" SCNu32 " %" SCNu32 " %" SCNu32 " %255[^\n]",
+                                    f.sha, &f.bytes, &f.board, &f.machine, &f.region, &f.video,
+                                    &f.persistence, &f.declared, &f.geometry, f.title);
+                if (fields == EOF && rows)
+                    break;
+                if (fields != 10)
+                    fail(rows ? "extra fixture facts" : "invalid owned fixture facts");
+                if (!owned_fixture(&f))
+                    fail("invalid owned fixture facts");
+                facts[count++] = f;
+                rows++;
             }
             if (ferror(file))
                 fail("unreadable fixture facts");
             fclose(file);
-            facts[count++] = f;
             continue;
         }
         FILE *file = fopen(argv[i], "rb");
