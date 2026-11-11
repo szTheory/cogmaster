@@ -191,15 +191,15 @@ Plans:
 
 Plans:
 - [ ] 10-01-PLAN.md — release firmware scan, the digest table checked both ways against ASSET_POLICY, the BIOS directory read check, the BSD-3 digest notice (BIOS-01)
-- [ ] 10-02-PLAN.md — local firmware-window scan, the retyped-bytes tripwire and the staged and pre-push hook, their controls in the hygiene lane, hosted dispatch D1 (BIOS-01)
+- [ ] 10-02-PLAN.md — local firmware-window scan, the retyped-bytes tripwire and the staged and pre-push hook with a control for each branch, their controls in the hygiene lane, hosted dispatch D1 (BIOS-01)
 - [ ] 10-03-PLAN.md — header delta inert: media bios and bios_size, versions 14/16/16, v14 pins on three lanes, the commit-order evidence (BIOS-01, BIOS-03)
 - [ ] 10-04-PLAN.md — the derived flag, the shared decoder and the per-machine arbitration with its closed-form table and controls, the SMS-SYSTEM amendments (BIOS-05)
 - [ ] 10-05-PLAN.md — load validation and ownership, power-on boot path, state binding, the last recompute legs, hosted dispatch D2 with the perf delta (BIOS-03, BIOS-05)
-- [ ] 10-06-PLAN.md — hostile BIOS images, the BIOS fuzz harness and seeds, the testing-guide rows (BIOS-03)
-- [ ] 10-07-PLAN.md — the self-authored BIOS-shaped image, the classification-complete hand-off equivalence with controls, hosted dispatch D2b (BIOS-03)
-- [ ] 10-08-PLAN.md — the host BIOS helper: label-only recognition and the capped reader, provenance and environment text (BIOS-02)
+- [ ] 10-06-PLAN.md — hostile BIOS images, the BIOS fuzz harness and seeds, the testing-guide rows and the fuzzing-guide counts (BIOS-03)
+- [ ] 10-07-PLAN.md — the self-authored BIOS-shaped image, the classification-complete hand-off equivalence with controls (BIOS-03)
+- [ ] 10-08-PLAN.md — the host BIOS helper: label-only recognition proved through the real identify path with an injected table, and the capped reader, provenance and environment text (BIOS-02)
 - [ ] 10-09-PLAN.md — runner: --boot and --bios, the 77 refusals with no path echo, exit meanings, one device row (BIOS-02)
-- [ ] 10-10-PLAN.md — libretro: the boot option, three optional firmware rows, the in-process test, docs/bios.md and the README sentence, hosted dispatch D3 (BIOS-04, BIOS-05)
+- [ ] 10-10-PLAN.md — libretro: the boot option, three optional firmware rows, the in-process test, docs/bios.md and the README sentence, hosted dispatch D3 with the libretro timeouts (BIOS-04, BIOS-05)
 - [ ] 10-11-PLAN.md — requirement and roadmap amendments, seeds, floors, last timeouts, local judgments, final hosted runs and ship list (BIOS-01, BIOS-02, BIOS-03, BIOS-04, BIOS-05)
 
 ### Phase 11: PAL and Japanese FM
