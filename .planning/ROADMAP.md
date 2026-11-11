@@ -36,7 +36,7 @@ pull request and one automated release.
 - [x] **Phase 5: Tune-up** - The v1.0 debt merged away: measured timeouts, an armed perf gate, `quality.json`, budget headroom, the README's ROM step and the weekly digest (completed 2026-11-10)
 - [x] **Phase 6: Korean cartridges play** - The remaining mapper boards load and play with no setting, detected hash-first, with no shipped hash moving (completed 2026-11-10)
 - [x] **Phase 7: Saves survive a restart** - 93C46 EEPROM and battery saves persist through the runner and RetroArch, with `.srm` interop only in measured layouts (completed 2026-11-10)
-- [ ] **Phase 8: Sports Pad, Paddle and 3-D glasses** - Pin-level ports and a grown input struct make the pad-device and 3-D titles play, with replays matching
+- [x] **Phase 8: Sports Pad, Paddle and 3-D glasses** - Pin-level ports and a grown input struct make the pad-device and 3-D titles play, with replays matching (completed 2026-11-11)
 - [ ] **Phase 9: Light Phaser** - Light Phaser titles hit where the player aims, sensed from the emitted pixel at the beam
 - [ ] **Phase 10: BIOS boot** - A user boots from their own BIOS dump in the runner or RetroArch; fast boot stays the default
 - [ ] **Phase 11: PAL and Japanese FM** - PAL timing proven on every lane and the owner's PAL and FM carts judged under the right profile
@@ -131,7 +131,7 @@ Plans:
   3. The 3-D glasses eye is reported with each frame on every Master System profile whatever `$3E` says, is 0 on a Game Gear and when nothing wrote it, and the frame hash is the same whether or not the host composes the eyes (PAD-04).
   4. A caller built against the 32-byte `cogmaster_input` of API versions 1 to 11 passes its smaller struct and an ASan test shows `cogmaster_set_input` never reads past it, copying the smaller size and zeroing the rest (PAD-05).
   5. A dump's default device comes from the hash table with no option, a user option overrides it, the ledger key carries the device, the state visitor refuses out-of-range device state, and each device is in the fuzz target (PAD-06, PAD-07).
-**Plans**: 17/17 plans executed
+**Plans**: 17/17 plans complete
 
 Plans:
 - [x] 08-01-PLAN.md — pin-level port layer with the pad arm and the one TH-change function, proven by a 256 x 256 latch and pin differential (PAD-01)
@@ -210,7 +210,7 @@ Plans:
 | 5. Tune-up | v2.0 | 14/14 | Complete    | 2026-11-10 |
 | 6. Korean cartridges play | v2.0 | 11/11 | Complete    | 2026-11-10 |
 | 7. Saves survive a restart | v2.0 | 10/10 | Complete    | 2026-11-10 |
-| 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 17/17 | In Progress | - |
+| 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 17/17 | Complete    | 2026-11-11 |
 | 9. Light Phaser | v2.0 | 0/TBD | Not started | - |
 | 10. BIOS boot | v2.0 | 0/TBD | Not started | - |
 | 11. PAL and Japanese FM | v2.0 | 0/TBD | Not started | - |
