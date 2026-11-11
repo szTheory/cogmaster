@@ -66,7 +66,7 @@ cogmaster_warnings(cogmaster-test-ports-gun)
 # instead of replaced; a trigger on the wrong pin or a gun that leaks the pad's reads; a sensor that
 # is unbounded under a hostile polling schedule, that renders early and changes a picture, a hash or
 # a fault record, that latches at the read instead of the edge, or that depends on the order of two
-# guns' edges.
+# guns' edges; a delay or aim rule keyed on the header of the loaded image.
 foreach(case IN ITEMS latch_at aim pins hostile_aim model edge luma control order fault_neutral lag
     seen_expiry peek noshot hammer walk th_toggle)
   if(case STREQUAL "noshot")
@@ -85,6 +85,30 @@ foreach(case IN ITEMS latch_at aim pins hostile_aim model edge luma control orde
   cogmaster_add_test(NAME ports.gun.${case} COMMAND cogmaster-test-ports-gun ${case}
     LABELS ports portable TIMEOUT ${gun_timeout})
 endforeach()
+
+# The owned fixture runs with the product code, the checksum and the region nibble of its header
+# flipped and the aim at the square's right edge (from the source's own defines): the mailbox and the
+# frame must not move. It catches a branch on the owned image only; the static check over the
+# sensor's files covers the rest.
+if(COGMASTER_FIXTURES)
+  file(STRINGS ${PROJECT_SOURCE_DIR}/tests/roms/src/light_phaser.asm gun_square
+    REGEX "^[.]DEFINE SQ_[XY] [0-9]+$")
+  foreach(define IN LISTS gun_square)
+    string(REGEX REPLACE "^[.]DEFINE (SQ_[XY]) ([0-9]+)$" "\\1" key "${define}")
+    string(REGEX REPLACE "^[.]DEFINE (SQ_[XY]) ([0-9]+)$" "\\2" value "${define}")
+    set(gun_${key} ${value})
+  endforeach()
+  if(NOT DEFINED gun_SQ_X OR NOT DEFINED gun_SQ_Y)
+    message(FATAL_ERROR "tests/roms/src/light_phaser.asm: no .DEFINE SQ_X or SQ_Y")
+  endif()
+  math(EXPR gun_aim_x "${gun_SQ_X} + 16")
+  math(EXPR gun_aim_y "${gun_SQ_Y} + 9")
+  # Timeout: 20 s floor; provisional.
+  cogmaster_add_test(NAME ports.gun.identity
+    COMMAND cogmaster-test-ports-gun identity ${PROJECT_BINARY_DIR}/fixtures/light_phaser.sms
+      ${gun_aim_x} ${gun_aim_y}
+    LABELS ports portable TIMEOUT 20)
+endif()
 
 # The Sports Pad and the Paddle on the internal API: the read sequence at the tick limits, the walk
 # and its buttons, the clamps, the sum of pending motion, device changes, resets, profiles and

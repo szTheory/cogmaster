@@ -1530,6 +1530,89 @@ static void test_th_toggle(void)
     cogmaster_destroy(m);
 }
 
+/* ---- the one delay does not read the header ---- */
+
+#define FIXTURE_SIZE 32768u
+#define MAILBOX_AT 0x100u
+#define MAILBOX_LEN 0x100u
+#define MAILBOX_STATUS 0x105u
+#define IDENTITY_CAP 600u
+
+static uint8_t fixture_image[FIXTURE_SIZE];
+static uint8_t fixture_flipped[FIXTURE_SIZE];
+
+/* An instance of the fixture with the phaser on port 1 at a fixed aim, run until the mailbox says
+   done (magic written, status 0) or the cap. The frames it took are returned. */
+static cogmaster *identity_run(const uint8_t *img, uint32_t pr, int32_t ax, int32_t ay,
+                               uint32_t *frames)
+{
+    cogmaster_config cfg;
+    memset(&cfg, 0, sizeof cfg);
+    cfg.size = (uint32_t)sizeof cfg;
+    cfg.allocator.alloc = test_alloc;
+    cfg.allocator.free = test_free;
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    if (m == NULL) {
+        exit(1);
+    }
+    cogmaster_media media;
+    memset(&media, 0, sizeof media);
+    media.size = (uint32_t)sizeof media;
+    media.image = img;
+    media.image_size = FIXTURE_SIZE;
+    media.machine = profiles[pr].machine;
+    media.region = profiles[pr].region;
+    media.tv = profiles[pr].tv;
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    const int32_t axis[4] = {ax, ay, 0, 0};
+    CHECK_EQ_U64(send(m, PHASER, COGMASTER_DEVICE_PAD, 0u, 0u, axis), COGMASTER_STATUS_OK);
+    uint32_t f = 0u;
+    while (f < IDENTITY_CAP &&
+           !(memcmp(&m->ram[MAILBOX_AT], "CMDG", 4u) == 0 && m->ram[MAILBOX_STATUS] == 0u)) {
+        frame(m);
+        f++;
+    }
+    CHECK(f < IDENTITY_CAP);
+    *frames = f;
+    return m;
+}
+
+/* The fixture with the product code, the checksum and the region nibble of its header flipped, and
+   the same aim, gives the same mailbox, the same picture and the same frame count on every profile,
+   and a run with the aim parked does not, so the equality compares a run that senses. This catches
+   a branch keyed on the header of the owned image only; the static check over the sensor's files is
+   what covers the rest. The flipped bytes are in the test's copy; nothing is written to disk. */
+static void test_identity(const char *path, int32_t ax, int32_t ay)
+{
+    FILE *in = fopen(path, "rb");
+    if (in == NULL || fread(fixture_image, 1u, FIXTURE_SIZE, in) != FIXTURE_SIZE ||
+        fgetc(in) != EOF) {
+        fprintf(stderr, "cogmaster-test-ports-gun: %s is not a 32768-byte image\n", path);
+        exit(1);
+    }
+    fclose(in);
+    memcpy(fixture_flipped, fixture_image, FIXTURE_SIZE);
+    for (uint32_t i = 0x7FFAu; i < 0x7FFFu; i++) {
+        fixture_flipped[i] ^= 0xFFu;
+    }
+    fixture_flipped[0x7FFFu] ^= 0x70u;
+    CHECK(memcmp(fixture_flipped, fixture_image, FIXTURE_SIZE) != 0);
+    for (uint32_t pr = 0u; pr < 4u; pr++) {
+        uint32_t fa, fb, fp;
+        cogmaster *a = identity_run(fixture_image, pr, ax, ay, &fa);
+        cogmaster *b = identity_run(fixture_flipped, pr, ax, ay, &fb);
+        cogmaster *p = identity_run(fixture_image, pr, 0, 0, &fp);
+        CHECK_EQ_U64(fa, fb);
+        CHECK(memcmp(&a->ram[MAILBOX_AT], &b->ram[MAILBOX_AT], MAILBOX_LEN) == 0);
+        CHECK(memcmp(&a->completed, &b->completed, sizeof a->completed) == 0);
+        CHECK(memcmp(&a->ram[MAILBOX_AT], &p->ram[MAILBOX_AT], MAILBOX_LEN) != 0);
+        cogmaster_destroy(a);
+        cogmaster_destroy(b);
+        cogmaster_destroy(p);
+    }
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
@@ -1555,6 +1638,11 @@ static const struct {
 
 int main(int argc, char **argv)
 {
+    if (argc == 5 && strcmp(argv[1], "identity") == 0) {
+        test_identity(argv[2], (int32_t)strtol(argv[3], NULL, 10),
+                      (int32_t)strtol(argv[4], NULL, 10));
+        CHECK_DONE();
+    }
     if (argc == 2) {
         for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
             if (strcmp(argv[1], cases[i].name) == 0) {

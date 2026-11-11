@@ -326,6 +326,7 @@ ports.gun.edge	portable,ports
 ports.gun.fault_neutral	portable,ports
 ports.gun.hammer	portable,ports
 ports.gun.hostile_aim	portable,ports
+ports.gun.identity	portable,ports
 ports.gun.lag	portable,ports
 ports.gun.latch_at	portable,ports
 ports.gun.luma	portable,ports
