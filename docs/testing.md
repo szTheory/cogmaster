@@ -157,7 +157,8 @@ fixture), `wasm32.txt` (the `ci` list without the `libretro` tests), `fuzz.txt` 
 | `bus` | Images run through the bus: the frame deadline and overshoot bound, the frame origin and the CPU's first fault. |
 | `portable` | Tests that hold on every platform, including the frame hashes; the emulated lanes run these. |
 | `abi` | The public header compiled alone as C17 and C++17, the API tests, and the core library's symbols. |
-| `host` | The palette helper shared by the runner and the core. |
+| `host` | The palette helper and the anaglyph mixer shared by the runner and the libretro core. |
+| `ports` | The controller ports: the pin layer, `set_input`, the Sports Pad, the Paddle, the 3-D eye, and the saved device state ([controllers.md](controllers.md)). |
 | `runner` | `cogmaster-run` options, output, exit statuses, signals and the PNG writer. |
 | `bench` | The runner's bench report. |
 | `libretro` | The libretro core in an in-process host, its `.info` file and its vendored header. |
@@ -250,6 +251,26 @@ The `perf.gate.*` tests feed the instructions-per-frame comparison its edge case
 +1.01 %, an allowed exception, unstable bases, no base and a missing measurement. `policy.publish_ref` and
 `policy.publish_signer` show that a release verifies only from `refs/heads/main` and only as signed by
 `release.yml`, using logging `gh` and `curl` stubs.
+
+## Controller tests
+
+Each family guards one fault in the controller path ([controllers.md](controllers.md)); every one has a negative
+control that must fail.
+
+| Tests | What they guard |
+|---|---|
+| `ports.latch`, `ports.pins` | Every `$3F` write pair latches the H counter, and every pad state reads the same `$DC` and `$DD`, as before the port layer; `ports.latch_control` shows an oracle that latches on the wrong edge disagrees. |
+| `ports.input.*` | `cogmaster_set_input` never reads past a smaller caller (poison bytes, an exact-size allocation on the `asan` lane), refuses every bad tag, device and axis without changing state, and writes only the bytes a short result or info caller can hold. |
+| `ports.glasses.*` | The eye of a frame by the cut rule at its boundaries on NTSC, PAL and the taller modes; the Game Gear always none; a store is never a poll and never changes the RAM-off fault; the saved eye pair. |
+| `ports.devices.*` | The Sports Pad's tick cases, the Paddle's position and clock, delta accumulation and clamps, availability, resets, replay from recorded deltas and the poll hammer. |
+| `ports.state.*` | Every byte of every device field in a saved state, patched and loaded: a refusal leaves the instance unchanged and an acceptance saves back equal. |
+| `fuzz.regress.pad` | The pad fuzz target's seeds and regressions on every lane. |
+| `fixtures.sports_pad.*`, `fixtures.paddle.*`, `fixtures.glasses.*` | Self-written images read the devices from Z80 code and report what they decode; the expected values come from the scripted motion, not from the core. The controls run the pad on the device image, freeze the clock, drop a delta and degrade the Paddle. |
+| `runner.device.*`, `runner.input.axes_*`, `runner.eyes.*` | The runner's controller options, exit 77, probe keys, the 75-byte script line and the `--eyes` line. |
+| `cart.device.*`, `cart.fixture_identity.*` | The table's default for every row, the region rule, and the two owned fixtures' rows. |
+| `host.eyes` | The anaglyph mix with a variant that writes into its input as the control. |
+| `libretro.host.devices.*`, `libretro.host.stereo.*` | The adapter's option resolution, input sums, clamps and motion, and the view rule: alternating titles composed, one-eye titles untouched. |
+| `compat.device_key`, `compat.device_rejected` | A ledger key names its controller on each port; `auto` and the phaser are refused. |
 
 ## Pinned card hashes
 
