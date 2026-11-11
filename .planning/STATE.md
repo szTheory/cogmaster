@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 9
 current_phase_name: Light Phaser
 status: planning
-stopped_at: Completed 09-07-PLAN.md
-last_updated: "2026-11-11T11:22:21.143Z"
+stopped_at: Completed 09-08-PLAN.md
+last_updated: "2026-11-11T11:28:34.968Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 8 complete, transitioned to Phase 9
-state_head: ade085d46f26bacefc87651f0bfee86bf667fa6a
+state_head: 4384ebd88fdbff8d5cbfdaa47085833eccb1637d
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 64
-  completed_plans: 59
+  completed_plans: 60
   percent: 50
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 9 — Light Phaser
-Plan: 07 of 12 complete; next 08
+Plan: 08 of 12 complete; next 09
 Status: Executing
-Last activity: 2026-11-11 — Plan 09-07 complete (the light_phaser fixture, its CMake-derived rows on four profiles and both ports with three failing controls, runner.gun.crop and runner.gun.noshot, one cross-lane hash row, hosted dispatch 2 green, the gun and fixture timeouts settled)
+Last activity: 2026-11-11 — Plan 09-08 complete (policy.no_title_table, a comment-stripping check over the five files the sensor reaches with three self-tests, ports.gun.identity over four profiles, the sensor's early-render paragraph in docs/hardware/video.md)
 
 Progress: [█████░░░░░] 50% of v2.0
 
@@ -186,6 +186,7 @@ Progress: [█████░░░░░] 50% of v2.0
 | Phase 09 P05 | 75min | 3 tasks | 7 files |
 | Phase 09 P06 | 25min | 2 tasks | 10 files |
 | Phase 09 P07 | 95min | 3 tasks | 11 files |
+| Phase 09 P08 | 6min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -265,6 +266,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 09]: Phase 09 plan 5: a fuzz frame brings the lazy sensor up to the beam before run_frame because a device change applied from a mid-window state drops dots a lazy sensor has not yet looked at (unreachable through the public API); the noshot case runs 160 frames per profile, past the last new poll-loop alignment, instead of 600
 - [Phase 09]: Plan 09-06: runner phaser aim is validated per device in input_motion_ok (0 0, or x 1 to 256 and y 1 to 240); no crosshair or mapping in the runner
 - [Phase 09]: Plan 09-07: the fixture's rows are derived by a CMake oracle from the image's .DEFINEs and judged on the port1 and port2 profile labels, the first part runs in frame 4 after a two-flag set-up wait, and ports.state.gun is settled at 20 s (4.52 s hosted) instead of its provisional 120 s
+- [Phase 09]: Plan 09-08: no_title_table strips comments then scans exactly five sensor files (a 12-line awk case, 735 of 922 counted lines), and ports.gun.identity flips the whole header identity of the owned fixture over four profiles and compares mailbox, frame and frame count against an unflipped and a parked run
 
 ### Pending Todos
 
@@ -368,6 +370,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 9 plan 09-05 (gsd-execute-phase 09); ports.state.gun with a 31-row just-outside table, the pad fuzz target drawing the phaser with a paint op, an unsupported-mode op and a polled twin that saves the same bytes at every frame, four phaser seeds, ports.gun.noshot cut from 600 to 160 frames per profile (be32 about 35 s from 124 s), three one-shot controls, no push; 2 tasks and the extra task, 3 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 9 plan 09-06 (gsd-execute-phase 09); the runner's lphaser word, a strict per-device aim check beside input_motion_ok, the probe word, runner.gun.args and runner.gun.gg_refused with a one-shot control, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 9 plan 09-07 (gsd-execute-phase 09); the light_phaser fixture with an oracle derived in CMake, 29 rows judged on four profiles and port 2, three controls and two one-shot mutations, runner.gun.crop and runner.gun.noshot, one device hash row, hosted dispatch 2 (run 43010180943 green on every lane, ports.gun.noshot 34.46 s on be32), timeouts settled; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 9 plan 09-08 (gsd-execute-phase 09); the no_title_table case of repository.sh (12 counted lines, 735 of 922) with three self-tests, ports.gun.identity flipping the fixture's header over four profiles with a parked control, one-shot controls on src/gun.c and src/ports.c, the early-render paragraph of video.md, no push; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -389,8 +392,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T11:22:20.994Z
-Stopped at: Completed 09-07-PLAN.md
+Last session: 2026-11-11T11:28:34.845Z
+Stopped at: Completed 09-08-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
