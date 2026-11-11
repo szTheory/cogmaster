@@ -257,6 +257,17 @@ policy.quality.missing_key	policy
 policy.quality.new_reason	policy
 policy.quality.reused_reason	policy
 policy.quality.tightened	policy
+ports.devices.clamp	portable,ports
+ports.devices.device_switch	portable,ports
+ports.devices.hammer	portable,ports
+ports.devices.paddle	portable,ports
+ports.devices.pending	portable,ports
+ports.devices.profiles	portable,ports
+ports.devices.replay	portable,ports
+ports.devices.resets	portable,ports
+ports.devices.roundtrip	portable,ports
+ports.devices.sports_ticks	portable,ports
+ports.devices.sports_walk	portable,ports
 ports.glasses.control	portable,ports
 ports.glasses.gate	portable,ports
 ports.glasses.nolag	portable,ports

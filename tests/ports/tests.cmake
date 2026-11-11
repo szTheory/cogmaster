@@ -49,3 +49,27 @@ foreach(case IN ITEMS rule control gate profiles nolag state)
   cogmaster_add_test(NAME ports.glasses.${case} COMMAND cogmaster-test-ports-glasses ${case}
     LABELS ports portable TIMEOUT 20)
 endforeach()
+
+# The Sports Pad and the Paddle on the internal API: the read sequence at the tick limits, the walk
+# and its buttons, the clamps, the sum of pending motion, device changes, resets, profiles and
+# availability, a poll hammer, a state round trip and a replay of recorded motion.
+add_executable(cogmaster-test-ports-devices ${CMAKE_CURRENT_LIST_DIR}/test_devices.c)
+target_include_directories(cogmaster-test-ports-devices PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-ports-devices PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-ports-devices PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-ports-devices)
+
+# Fault prevented: a device that desyncs a read sequence, drops or doubles motion, hoards unbounded
+# motion, or saves a state the core could not have produced, so a replay or a restart changes the game.
+foreach(case IN ITEMS sports_ticks sports_walk clamp pending device_switch resets paddle profiles
+    hammer roundtrip replay)
+  # Timeout: 20 s floor, 60 s for the million-iteration hammer; provisional until a hosted run
+  # measures it.
+  set(timeout 20)
+  if(case STREQUAL "hammer")
+    set(timeout 60)
+  endif()
+  cogmaster_add_test(NAME ports.devices.${case} COMMAND cogmaster-test-ports-devices ${case}
+    LABELS ports portable TIMEOUT ${timeout})
+endforeach()
