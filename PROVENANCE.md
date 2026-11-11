@@ -112,7 +112,8 @@ file has a notices section, and that the libretro `.info` `license` field names 
   leaves, and the Z80 registers and stack. It writes no BIOS code into RAM. The BIOS's own behaviour (header
   check, checksum, slot order) is documented from SMS Power! and MAME's driver notes, never from a disassembly
   of the BIOS kept in the workspace.
-- **BIOS boot** (`--boot bios`) runs the user's own dump from `COGMASTER_BIOS_DIR`, recognised by digest.
+- **BIOS boot** (`--boot bios`) runs the dump named by `--bios FILE` or found in the libretro system folder, recognised by digest for its label only;
+  `COGMASTER_BIOS_DIR` is read only by the local window scan.
 
 ## 7. Data licences
 - **Hash lists.** MAME's three CC0 lists at `1d7a454ed79e` may be converted by our own generator and bundled in
