@@ -1,6 +1,7 @@
 # Every test the hygiene preset registers: name<TAB>labels.
 # Sorted; configure fails when this differs from what is registered.
 ci.classify	hygiene
+ci.durations_tests	hygiene
 compat.csv	compat,hygiene
 compat.device_key	compat,hygiene
 compat.device_rejected	compat,hygiene

@@ -264,6 +264,33 @@ cogmaster_add_test(NAME ci.classify
   COMMAND ${COGMASTER_SH} -c "${hygiene_classify}" sh ${CMAKE_SOURCE_DIR}/scripts/classify-changes.sh
   LABELS hygiene TIMEOUT 30)
 
+# Fault prevented: a timeout guessed from one local run instead of twice the
+# slowest hosted time, and a duration report that counts a failed or timed-out
+# test as a measurement. The fixture log has a test on two lanes at different
+# times, one on a single lane, a Failed and a Timeout line, and the report must
+# list the first two slowest first and never name the others.
+set(hygiene_durations ${CMAKE_BINARY_DIR}/hygiene/durations_fixture)
+file(REMOVE_RECURSE ${hygiene_durations})
+file(CONFIGURE OUTPUT ${hygiene_durations}/log.txt NEWLINE_STYLE UNIX CONTENT [=[
+lane-a  Run ctest  2026-11-11T22:24:54.6Z  1/9 Test  #1: z_slow ........   Passed    0.50 sec
+lane-a  Run ctest  2026-11-11T22:24:55.1Z  2/9 Test  #2: a_fast ........   Passed    1.00 sec
+lane-a  Run ctest  2026-11-11T22:24:55.2Z  3/9 Test  #3: c_failed .....***Failed    0.30 sec
+lane-b  Run ctest  2026-11-11T22:25:01.0Z  1/9 Test  #1: z_slow ........   Passed    2.10 sec
+lane-b  Run ctest  2026-11-11T22:25:02.0Z  4/9 Test  #4: d_timeout ..***Timeout   20.00 sec
+]=])
+set(hygiene_durations_test [=[
+sh "$1" tests-summarise < "$2" > "$3" || exit 1
+want=$(printf 'test\tlanes\tslowest_s\nz_slow\t2\t2.10\na_fast\t1\t1.00\n')
+[ "$(cat "$3")" = "$want" ] || { echo "ci.durations_tests: unexpected table"; cat "$3"; exit 1; }
+sh "$1" tests abc > /dev/null 2>&1 && { echo "ci.durations_tests: a run id that is not a number was accepted"; exit 1; }
+echo "ci.durations_tests: two tests listed, the failed and the timed-out one left out"
+]=])
+# Timeout: 20 s floor; 0.02 s slowest local run, no hosted run yet, so provisional.
+cogmaster_add_test(NAME ci.durations_tests
+  COMMAND ${COGMASTER_SH} -c "${hygiene_durations_test}" sh ${CMAKE_SOURCE_DIR}/scripts/ci-durations.sh
+    ${hygiene_durations}/log.txt ${hygiene_durations}/table.tsv
+  LABELS hygiene TIMEOUT 20)
+
 # Fault prevented: a release with a missing archive, or a SHA256SUMS whose
 # order differs from host to host. scripts/publish.sh prepare runs on 18
 # empty placeholder zips and six build legs' commit.txt, and SHA256SUMS must
