@@ -243,6 +243,39 @@ static int save_replace(const char *tmp, const char *path)
 #endif
 }
 
+#if !defined(_WIN32) && !defined(__wasi__)
+/* POSIX.1 rename() makes the new name atomic, but the directory entry is durable only
+   after fsync() of the directory itself. Filesystems that cannot sync a directory
+   answer EINVAL or ENOTSUP, which is not a failure. macOS fsync() does not flush the
+   drive cache and F_FULLFSYNC is not used. Windows has no directory sync: its
+   MoveFileExW call carries MOVEFILE_WRITE_THROUGH. WASI has no directory handle to sync. */
+static int save_sync_directory(const cogmaster__save *save)
+{
+    if (SAVE_FAULT(save, COGMASTER_SAVE_DIRSYNC))
+        return 0;
+    const char *slash = strrchr(save->path, '/');
+    size_t n = slash != NULL ? (size_t)(slash - save->path) : 0u;
+    char *dir = (char *)malloc(n + 2u);
+    if (dir == NULL)
+        return 0;
+    if (n == 0u) {
+        dir[0] = slash != NULL ? '/' : '.';
+        n = 1u;
+    } else {
+        memcpy(dir, save->path, n);
+    }
+    dir[n] = '\0';
+    int fd = open(dir, O_RDONLY | O_DIRECTORY);
+    free(dir);
+    if (fd < 0)
+        return 0;
+    int ok = fsync(fd) == 0 || errno == EINVAL || errno == ENOTSUP;
+    if (close(fd) != 0)
+        ok = 0;
+    return ok;
+}
+#endif
+
 int cogmaster__save_flush(cogmaster__save *save, cogmaster *m)
 {
     if (save->path == NULL)
@@ -289,6 +322,12 @@ int cogmaster__save_flush(cogmaster__save *save, cogmaster *m)
     if (!ok)
         save_remove(tmp);
     free(tmp);
+#if !defined(_WIN32) && !defined(__wasi__)
+    /* The rename is done; a failed sync leaves the new bytes in place and the
+       generation unacknowledged, so the next flush writes them again. */
+    if (ok)
+        ok = save_sync_directory(save);
+#endif
     if (!ok)
         return save_error("cannot write, synchronize, close or replace file");
     save->acknowledged = b.generation;

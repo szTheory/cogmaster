@@ -153,11 +153,22 @@ static void excluded(cogmaster *m, const char *dir)
     CHECK_EQ_U64(cogmaster__save_flush(&s, m), 0);
     CHECK(s.path == NULL);
 }
+/* The platforms where save.c syncs the directory after the rename. */
+#if defined(_WIN32) || defined(__wasi__)
+#define HAS_DIRSYNC 0
+#else
+#define HAS_DIRSYNC 1
+#endif
 static void failures(cogmaster *m, const char *dir, const char *path)
 {
-    static const char *const stages[] = {"",     "create", "write",  "flush",
-                                         "sync", "close",  "replace"};
-    for (int stage = COGMASTER_SAVE_CREATE; stage <= COGMASTER_SAVE_REPLACE; stage++) {
+    static const char *const stages[] = {"",      "create",  "write",     "flush",  "sync",
+                                         "close", "replace", "interrupt", "dirsync"};
+    for (int stage = COGMASTER_SAVE_CREATE; stage <= COGMASTER_SAVE_DIRSYNC; stage++) {
+        if (stage == COGMASTER_SAVE_INTERRUPT)
+            continue; /* it ends the process */
+        /* The directory sync follows the rename, so its failure leaves the new bytes in place. */
+        int renamed = stage == COGMASTER_SAVE_DIRSYNC;
+        int fails = !renamed || HAS_DIRSYNC;
         for (int existing = 0; existing <= 1; existing++) {
             remove_file(path);
             memset(raw, 0x19, sizeof raw);
@@ -172,10 +183,12 @@ static void failures(cogmaster *m, const char *dir, const char *path)
             cogmaster__bus_write(m, 0x8000u, 0x42u);
             cogmaster_battery b = battery(m);
             CHECK(b.generation != acknowledged);
-            CHECK_EQ_U64(cogmaster__save_flush(&s, m), 1);
-            CHECK_EQ_U64(s.acknowledged, acknowledged);
+            CHECK_EQ_U64(cogmaster__save_flush(&s, m), fails ? 1 : 0);
+            CHECK_EQ_U64(s.acknowledged, fails ? acknowledged : b.generation);
             CHECK_EQ_U64(battery(m).generation, b.generation);
-            if (existing) {
+            if (renamed) {
+                check_file(path, b.data, b.length);
+            } else if (existing) {
                 check_file(path, raw, 3u);
             } else {
                 FILE *f = cogmaster__path_open(path, "rb");

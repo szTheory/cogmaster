@@ -174,7 +174,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
       expect_exit(${CODE} "${REGEX}" --frames 60 --hash --save-dir "${OUT}" "${BATTERY}")
       file(GLOB temps "${OUT}/battery.srm.tmp-*")
       list(REMOVE_ITEM temps "${OUT}/battery.srm.tmp-unrelated")
-      if(CODE EQUAL 0)
+      if(CODE EQUAL 0 OR RENAMED)
         file(READ "${OUT}/battery.srm" data LIMIT 3 HEX)
         file(SIZE "${OUT}/battery.srm" n)
         if(NOT data STREQUAL "a55a01" OR NOT n EQUAL 32768)
@@ -1066,7 +1066,7 @@ if(COGMASTER_FIXTURES)
   target_link_libraries(cogmaster-test-save-support PRIVATE cogmaster::cogmaster cogmaster-host)
   target_compile_definitions(cogmaster-test-save-support PRIVATE _POSIX_C_SOURCE=200809L)
   cogmaster_warnings(cogmaster-test-save-support)
-  foreach(case term int create write flush sync close replace interrupt int_write normal_write)
+  foreach(case term int create write flush sync close replace interrupt dirsync int_write normal_write)
     set(run $<TARGET_FILE:cogmaster-test-run-stop>)
     set(code 0)
     set(regex "frame 3 sha256")
@@ -1098,9 +1098,22 @@ if(COGMASTER_FIXTURES)
       set(code 93)
       set(regex ".*")
     endif()
+    # RENAMED: the fault comes after the rename, so the new bytes are in place whatever the exit.
+    set(renamed 0)
+    if(case STREQUAL "dirsync")
+      if(WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "WASI")
+        # No directory sync exists on this platform: the fault name is accepted, the point is never
+        # reached, and the save must still complete normally.
+        set(code 0)
+        set(regex "frame 3 sha256")
+      else()
+        set(renamed 1)
+      endif()
+    endif()
     # Fault prevented: signal/failure paths reporting success or damaging an old save.
     cogmaster_add_test(NAME runner.save.process.${case}
       COMMAND ${runner_check} -DRUN=${run} -DCASE=save_process -DCODE=${code} "-DREGEX=${regex}"
+        -DRENAMED=${renamed}
         -DOUT=${PROJECT_BINARY_DIR}/tests/save-process-${case}
         -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
       LABELS runner portable TIMEOUT 10)

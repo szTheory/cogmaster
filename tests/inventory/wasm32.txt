@@ -324,6 +324,7 @@ runner.save.native_error	portable,runner
 runner.save.next_index	portable,runner
 runner.save.process.close	portable,runner
 runner.save.process.create	portable,runner
+runner.save.process.dirsync	portable,runner
 runner.save.process.flush	portable,runner
 runner.save.process.int	portable,runner
 runner.save.process.int_write	portable,runner

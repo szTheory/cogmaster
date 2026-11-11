@@ -17,7 +17,8 @@ enum {
     COGMASTER_SAVE_SYNC,
     COGMASTER_SAVE_CLOSE,
     COGMASTER_SAVE_REPLACE,
-    COGMASTER_SAVE_INTERRUPT
+    COGMASTER_SAVE_INTERRUPT,
+    COGMASTER_SAVE_DIRSYNC
 };
 #endif
 /* Initialize a zeroed context, validate directory and import at most N+1 bytes. */
