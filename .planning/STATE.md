@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 8
 current_phase_name: Sports Pad, Paddle and 3-D glasses
 status: planning
-stopped_at: Phase 7 complete, ready to plan Phase 8
-last_updated: "2026-11-11T02:44:32.001Z"
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-11-11T04:48:16.921Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 7 complete, transitioned to Phase 8
-state_head: bbf2ada8a974b19cb80446ab4161d1b9115f3551
+state_head: ecea8efadded52d665ba4b047d5f5fdd97cb4087
 progress:
   total_phases: 8
   completed_phases: 3
-  total_plans: 35
-  completed_plans: 35
+  total_plans: 52
+  completed_plans: 36
   percent: 38
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 8 — Sports Pad, Paddle and 3-D glasses
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-10 — Phase 7 complete, transitioned to Phase 8
+Plan: 1 of 17 complete (08-01 port layer); next 08-02
+Status: Executing
+Last activity: 2026-11-11 — Completed 08-01 (pin-level port layer, one TH write function)
 
 Progress: [████░░░░░░] 38% of v2.0
 
@@ -161,6 +161,7 @@ Progress: [████░░░░░░] 38% of v2.0
 | Phase 07 P08 | 25 min | 3 tasks | 8 files |
 | Phase 7 P09 | 40min | 3 tasks | 7 files |
 | Phase 7 P10 | 35 min | 3 tasks | 6 files |
+| Phase 08 P01 | 25min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -209,6 +210,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 7]: 07-09: the same test names are registered on every lane; only the asserted behaviour differs per platform (dirsync, next_index)
 - [Phase 7]: 07-09: the kill test locates the kill with a --png file because a killed process loses unflushed stdout
 - [Phase 7]: 07-10: RetroArch writes saves to saves/cogmaster/<name>.srm; the hosted restart steps compare that file with the runner after each pass and the control asserts exit 1 with REGEX ^ because compare_files is silent
+- [Phase 08]: Port layer: cogmaster__ports_pins and cogmaster__io_th_changed take every pad pin and every TH write, pinned by a 65536-pair differential; no behaviour change
 
 ### Pending Todos
 
@@ -318,8 +320,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T02:25:17.981Z
-Stopped at: Phase 7 complete, ready to plan Phase 8
+Last session: 2026-11-11T04:48:16.800Z
+Stopped at: Completed 08-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
