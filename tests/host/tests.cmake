@@ -10,3 +10,17 @@ cogmaster_warnings(cogmaster-test-host)
 cogmaster_add_test(NAME host.palette
   COMMAND cogmaster-test-host palette
   LABELS host portable TIMEOUT 10)
+
+# The red-cyan composition for the 3-D view.
+add_executable(cogmaster-test-eyes ${CMAKE_CURRENT_LIST_DIR}/test_eyes.c)
+target_link_libraries(cogmaster-test-eyes PRIVATE cogmaster-host)
+set_target_properties(cogmaster-test-eyes PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-eyes)
+
+# Fault prevented: an anaglyph that swaps or drops a channel, or writes into a
+# picture the core still owns, so the 3-D view is wrong or the frame changes.
+# The 10 s limit is provisional until the slowest lane has run it.
+cogmaster_add_test(NAME host.eyes
+  COMMAND cogmaster-test-eyes eyes
+  LABELS host portable TIMEOUT 10)
