@@ -375,6 +375,8 @@ runner.exit.table	runner
 runner.expect.predicates	portable,runner
 runner.eyes.line	portable,runner
 runner.eyes.probe	portable,runner
+runner.gun.args	portable,runner
+runner.gun.gg_refused	portable,runner
 runner.hash.gg	portable,runner
 runner.hash.repeat	portable,runner
 runner.hash.self_test	runner

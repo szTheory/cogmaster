@@ -59,7 +59,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
       "persistence_geometry=[012]\nvideo_mode=[012]\nidentity_sha1=(${h40}|)\ntitle=[^\n]*\n"
       "board_source=(db|header|heuristic|default|none)\nboard_candidate=[a-z0-9_]+\nscan_sega=[0-9]+\n"
       "scan_candidate=[0-9]+\nscan_runner_up=[0-9]+\nunsupported_id=[0-9]+\nunsupported_reason=[^\n]*\n"
-      "port1_default=(pad|paddle|sports)\nport2_default=(pad|paddle|sports)\n"
+      "port1_default=(pad|paddle|sports|lphaser)\nport2_default=(pad|paddle|sports|lphaser)\n"
       "$")
     string(CONCAT form ${form})
     if(NOT out MATCHES "${form}")
@@ -522,7 +522,11 @@ if(CMAKE_SCRIPT_MODE_FILE)
     expect_exit(0 "frame 1 sha256" --frames 1 --port1 auto --hash)
     expect_exit(0 "frame 1 sha256" --frames 1 --port1 paddle --region ntsc-j --hash)
     expect_exit(0 "frame 1 sha256" --frames 1 --port2 sports --hash)
-    expect_exit(2 "usage" --frames 1 --port1 lphaser)
+    expect_exit(0 "frame 1 sha256" --frames 1 --port1 lphaser --hash)
+    expect_exit(0 "frame 1 sha256" --frames 1 --port2 lphaser --hash)
+    expect_exit(2 "usage" --frames 1 --port1 phaser)
+    expect_exit(2 "usage" --frames 1 --port2 Lphaser)
+    expect_exit(2 "usage" --frames 1 --port1 lightgun)
     expect_exit(2 "usage" --frames 1 --port1 AUTO)
     expect_exit(2 "usage" --frames 1 --port2 Paddle)
   elseif(CASE STREQUAL "axes_grammar")
@@ -662,6 +666,47 @@ if(CMAKE_SCRIPT_MODE_FILE)
     expect_exit(2 "usage.*--probe" --eyes --probe ${SEEDS}/di-halt.sms)
     expect_exit(2 "usage.*--probe" --probe ${SEEDS}/di-halt.sms --eyes)
     expect_exit(2 "usage" --eyes)
+  elseif(CASE STREQUAL "gun_args")
+    # A phaser's aim is a 1-based field dot, 0 0 or the short line is no aim, and every other pair is exit 2
+    # before frame 1 naming the port and the device; the same file on a pad port is exit 2 too.
+    set(base "p1=00 p2=00 pause=0 reset=0 start=0")
+    set(refused "^cogmaster-run: input file error: port ([12]) is lphaser, which takes[^\n]*\n$")
+    foreach(axes IN ITEMS "+00257 y1=+00001" "+00001 y1=+00241" "-00001 y1=+00001" "+00001 y1=-00001"
+        "+00005 y1=+00000" "+00000 y1=+00005")
+      write_bytes("${OUT}" UNIX "${base} x1=${axes} x2=+00000 y2=+00000\n${base}\n")
+      expect_exit(2 "${refused}" --frames 2 --port1 lphaser --input ${OUT} --hash)
+      string(REPLACE "y1=" "y2=" swapped "${axes}")
+      write_bytes("${OUT}" UNIX "${base} x1=+00000 y1=+00000 x2=${swapped}\n${base}\n")
+      expect_exit(2 "${refused}" --frames 2 --port2 lphaser --input ${OUT} --hash)
+    endforeach()
+    # A refusal on the last record still stops before frame 1.
+    write_bytes("${OUT}" UNIX "${base}\n${base} x1=+00257 y1=+00001 x2=+00000 y2=+00000\n")
+    expect_exit(2 "port 1 is lphaser" --frames 2 --port1 lphaser --input ${OUT} --hash)
+    foreach(axes IN ITEMS "x1=+00001 y1=+00001" "x1=+00256 y1=+00240" "x1=+00000 y1=+00000")
+      write_bytes("${OUT}" UNIX "${base} ${axes} x2=+00000 y2=+00000\n${base}\n")
+      expect_exit(0 "frame 2 sha256" --frames 2 --port1 lphaser --input ${OUT} --hash)
+      string(REPLACE "x1=" "x2=" moved "${axes}")
+      string(REPLACE "y1=" "y2=" moved "${moved}")
+      write_bytes("${OUT}" UNIX "${base} x1=+00000 y1=+00000 ${moved}\n${base}\n")
+      expect_exit(0 "frame 2 sha256" --frames 2 --port2 lphaser --input ${OUT} --hash)
+    endforeach()
+    # The short line and a held trigger (bit 4 of p1) are accepted.
+    write_bytes("${OUT}" UNIX "${base}\np1=10 p2=00 pause=0 reset=0 start=0\n")
+    expect_exit(0 "frame 2 sha256" --frames 2 --port1 lphaser --input ${OUT} --hash)
+    # Control: a valid aim sent to a pad is exit 2, so the strict check is not why a pad refuses.
+    write_bytes("${OUT}" UNIX "${base} x1=+00001 y1=+00001 x2=+00000 y2=+00000\n${base}\n")
+    expect_exit(2 "port 1 is pad, which takes no motion" --frames 2 --port1 pad --input ${OUT} --hash)
+    expect_exit(0 "frame 2 sha256" --frames 2 --port1 lphaser --input ${OUT} --hash)
+    write_bytes("${OUT}" UNIX "${base} x1=+00000 y1=+00000 x2=+00001 y2=+00001\n${base}\n")
+    expect_exit(2 "port 2 is pad, which takes no motion" --frames 2 --port1 lphaser --input ${OUT}
+      --hash)
+  elseif(CASE STREQUAL "gun_gg_refused")
+    # The Game Gear has no controller ports, so a phaser there is the shipped refusal without a region hint.
+    set(refused "^cogmaster-run: unsupported: lphaser on port ([12]) is not available here; the Game Gear[^\n]*\n$")
+    expect_exit(77 "${refused}" --frames 1 --port1 lphaser --machine gg)
+    expect_exit(77 "unsupported: lphaser on port 1" --frames 1 --port1 lphaser --machine gg)
+    expect_exit(77 "unsupported: lphaser on port 2" --frames 1 --port2 lphaser --machine gg)
+    expect_exit(0 "frame 1 sha256" --frames 1 --port1 pad --machine gg --hash)
   elseif(CASE STREQUAL "device_names")
     # The execution line names each device and keeps the prefix older checks match.
     write_bytes("${OUT}" UNIX "ram@2:$C200=00\n")
@@ -1273,6 +1318,16 @@ foreach(device_case IN ITEMS usage names refused auto)
   cogmaster_add_test(NAME runner.device.${device_case}
     COMMAND ${runner_check} -DCASE=device_${device_case}
       -DOUT=${PROJECT_BINARY_DIR}/tests/device-${device_case}.expect -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS portable runner TIMEOUT 30)
+endforeach()
+
+# Fault prevented: a gun aim typo that runs as no aim and hides a broken script, an aim sent to a pad that is
+# silently dropped, or a Game Gear that runs a gun it cannot have.
+# Timeout: 30 s floor; provisional.
+foreach(gun_case IN ITEMS args gg_refused)
+  cogmaster_add_test(NAME runner.gun.${gun_case}
+    COMMAND ${runner_check} -DCASE=gun_${gun_case}
+      -DOUT=${PROJECT_BINARY_DIR}/tests/gun-${gun_case}.input -P ${CMAKE_CURRENT_LIST_FILE}
     LABELS portable runner TIMEOUT 30)
 endforeach()
 
