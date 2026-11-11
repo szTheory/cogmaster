@@ -159,6 +159,31 @@ static void excluded(cogmaster *m, const char *dir)
 #else
 #define HAS_DIRSYNC 1
 #endif
+#if HAS_DIRSYNC
+/* A directory that takes a create and a rename but cannot be opened for reading keeps the
+   save in place and acknowledges it: only a real durability error fails the flush. Mode 0300
+   is no obstacle to a privileged user, for whom the flush is an ordinary one. */
+static void unreadable_directory(cogmaster *m, const char *dir)
+{
+    char sub[1024];
+    CHECK(strlen(dir) + 8u < sizeof sub);
+    (void)snprintf(sub, sizeof sub, "%s/unread", dir);
+    CHECK_EQ_U64(mkdir(sub, 0700), 0);
+    cogmaster__save s = {0};
+    CHECK_EQ_U64(cogmaster__save_load(&s, m, sub, "round.trip.sms"), 0);
+    cogmaster__bus_write(m, 0xfffcu, 8u);
+    cogmaster__bus_write(m, 0x8000u, 0x42u);
+    CHECK_EQ_U64(chmod(sub, 0300), 0);
+    CHECK_EQ_U64(cogmaster__save_flush(&s, m), 0);
+    CHECK_EQ_U64(chmod(sub, 0700), 0);
+    cogmaster_battery b = battery(m);
+    CHECK_EQ_U64(s.acknowledged, b.generation);
+    check_file(s.path, b.data, b.length);
+    remove_file(s.path);
+    CHECK_EQ_U64(rmdir(sub), 0);
+    cogmaster__save_dispose(&s);
+}
+#endif
 static void failures(cogmaster *m, const char *dir, const char *path)
 {
     static const char *const stages[] = {"",      "create",  "write",     "flush",  "sync",
@@ -205,6 +230,9 @@ static void failures(cogmaster *m, const char *dir, const char *path)
             cogmaster__save_dispose(&s);
         }
     }
+#if HAS_DIRSYNC
+    unreadable_directory(m, dir);
+#endif
 }
 /* A temporary that appears after load is never overwritten: the flush takes the next index. */
 static void next_index(cogmaster *m, const char *dir, const char *path)

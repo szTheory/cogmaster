@@ -312,7 +312,8 @@ SIGTERM finish the bounded frame, then flush in ordinary control flow; a failed 
 Replacement provides old-or-complete-new visibility on native local filesystems with atomic rename;
 it is not a universal power-loss guarantee. On POSIX other than WASI the runner then opens the directory,
 calls `fsync` and closes it, so the new name is durable; a filesystem that answers EINVAL or ENOTSUP for a
-directory is accepted, any other error fails the flush and the generation stays unacknowledged. macOS
+directory is accepted, as is a directory that refuses to open for reading (EACCES or EPERM) while still
+taking the rename; any other error fails the flush and the generation stays unacknowledged. macOS
 `fsync` does not flush the drive cache and `F_FULLFSYNC` is not used. Windows has no directory-sync
 analogue; `MoveFileExW` writes through. Filesystem, device and network behavior can still limit crash
 durability. Temporaries are named `<target>.tmp-<i>` for i from 0 to 1023 on every platform. At load the

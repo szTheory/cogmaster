@@ -246,7 +246,9 @@ static int save_replace(const char *tmp, const char *path)
 #if !defined(_WIN32) && !defined(__wasi__)
 /* POSIX.1 rename() makes the new name atomic, but the directory entry is durable only
    after fsync() of the directory itself. Filesystems that cannot sync a directory
-   answer EINVAL or ENOTSUP, which is not a failure. macOS fsync() does not flush the
+   answer EINVAL or ENOTSUP, which is not a failure. A directory that allows create and
+   rename but not read (open() answers EACCES or EPERM, POSIX.1 open()) cannot be synced
+   either; the rename is done and the sync is skipped. macOS fsync() does not flush the
    drive cache and F_FULLFSYNC is not used. Windows has no directory sync: its
    MoveFileExW call carries MOVEFILE_WRITE_THROUGH. WASI has no directory handle to sync. */
 static int save_sync_directory(const cogmaster__save *save)
@@ -268,7 +270,7 @@ static int save_sync_directory(const cogmaster__save *save)
     int fd = open(dir, O_RDONLY | O_DIRECTORY);
     free(dir);
     if (fd < 0)
-        return 0;
+        return errno == EACCES || errno == EPERM;
     int ok = fsync(fd) == 0 || errno == EINVAL || errno == ENOTSUP;
     if (close(fd) != 0)
         ok = 0;
