@@ -101,7 +101,7 @@ fwin_tree(unreadable "printf x > a_unreadable.txt && ${fwin_slice} > s.bin && pr
 fwin_case(unreadable FAIL "matches s\\.bin\nfirmware window: cannot read a_unreadable\\.txt\n$" ${CMAKE_COMMAND} -E env ${fwin_var}=${fwin}/dump
   ${COGMASTER_SH} -c [=[cd "$1" && PATH="$PWD/build/shim:$PATH" sh scripts/firmware-window.sh]=] sh ${fwin}/unreadable)
 # A configured directory that cannot be used is not "no dump configured": a quoted value in .env.local, and an empty directory.
-fwin_tree(quoted "printf 'COGMASTER_BIOS_DIR=\"%s\"\\n' \"$2\" > .env.local")
+fwin_tree(quoted "printf '${fwin_var}=\"%s\"\\n' \"$2\" > .env.local")
 fwin_case(quoted FAIL2 "the configured directory is not usable" ${CMAKE_COMMAND} -E env --unset=${fwin_var}
   ${COGMASTER_SH} -c [=[cd "$1" && sh scripts/firmware-window.sh]=] sh ${fwin}/quoted)
 fwin_case(dir_empty FAIL2 "no usable dump file in the directory" ${CMAKE_COMMAND} -E env ${fwin_var}=${fwin}/dump_none
