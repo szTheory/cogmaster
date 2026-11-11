@@ -72,6 +72,28 @@ if(TARGET cogmaster_libretro)
           battery ${PROJECT_BINARY_DIR}/fixtures/battery.sms ${machine}
         LABELS libretro portable TIMEOUT 60)
     endforeach()
+    # Fault prevented: a frontend told saves are supported while the exported span differs from the
+    # battery span, so RetroArch writes a file of the wrong size or none.
+    foreach(span IN ITEMS "battery|battery.sms|sms2|32768" "eeprom|eeprom.gg|gg|128"
+        "plain|boot_to_play.sms|sms2|0")
+      string(REPLACE "|" ";" span "${span}")
+      list(GET span 0 name)
+      list(GET span 1 image)
+      list(GET span 2 machine)
+      list(GET span 3 length)
+      cogmaster_add_test(NAME libretro.span.${name}
+        COMMAND cogmaster-test-libretro-host $<TARGET_FILE:cogmaster_libretro>
+          span ${PROJECT_BINARY_DIR}/fixtures/${image} ${machine} ${length}
+        LABELS libretro portable TIMEOUT 60)
+    endforeach()
+    # Fault prevented: a span guard that passes whatever length the core exports.
+    set(span_cmd ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:cogmaster-test-libretro-host>
+      $<TARGET_FILE:cogmaster_libretro> span ${PROJECT_BINARY_DIR}/fixtures/eeprom.gg gg 127)
+    string(REPLACE ";" "$<SEMICOLON>" span_cmd "${span_cmd}")
+    cogmaster_add_test(NAME libretro.span.self_test
+      COMMAND ${CMAKE_COMMAND} "-DCMD=${span_cmd}" -DCODE=1 "-DREGEX=span mismatch"
+        -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+      LABELS libretro portable TIMEOUT 60)
     # Fault prevented: the installed adapter refusing content or polling after a frame starts.
     foreach(adapter content replay)
       foreach(machine sms gg)

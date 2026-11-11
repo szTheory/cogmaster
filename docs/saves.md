@@ -54,9 +54,11 @@ fresh FF storage; hosts must discard prior pointers even if the address is reuse
 Other memory IDs, known nonbattery, unknown persistence and unsupported geometry
 return NULL/0. The adapter performs no filesystem I/O.
 
-`libretro_saves` remains false and the core remains experimental in its `.info`:
-memory export and in-process continuation do not prove the deferred hosted save-file
-round trip or interoperability with another emulator.
+The `.info` declares `libretro_saves`, and `libretro.span.battery`, `.eeprom` and `.plain`
+guard the claim: for the 32 KiB battery fixture, the 128-byte EEPROM fixture and a plain
+cartridge, the span the module exports equals the library's battery length (32768, 128 and
+NULL with zero). RetroArch decides how a differently sized `.srm` loads; only the runner
+refuses a layout that is not its own. The core stays experimental.
 
 ## 93C46 EEPROM
 

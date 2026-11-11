@@ -231,6 +231,10 @@ libretro.screenshot.fixture	libretro,portable
 libretro.screenshot.oracle	libretro,portable
 libretro.screenshot.oracle_control	libretro,portable
 libretro.screenshot.pixel_control	libretro,portable
+libretro.span.battery	libretro,portable
+libretro.span.eeprom	libretro,portable
+libretro.span.plain	libretro,portable
+libretro.span.self_test	libretro,portable
 libretro.vendored	libretro
 mapper.codemasters.banks	mapper,portable
 mapper.codemasters.ram	mapper,portable
