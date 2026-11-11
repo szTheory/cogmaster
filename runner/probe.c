@@ -169,10 +169,12 @@ int cogmaster__refusal_board(const uint8_t *image, size_t n)
     return 1;
 }
 
-/* The table's raw intent: a pad for any code other than the paddle and the sports pad. */
+/* The table's raw intent: a pad for any code other than the paddle, the sports pad and the
+   phaser. */
 static const char *default_name(uint32_t device)
 {
-    return device == COGMASTER_DEVICE_PADDLE || device == COGMASTER_DEVICE_SPORTS_PAD
+    return device == COGMASTER_DEVICE_PADDLE || device == COGMASTER_DEVICE_SPORTS_PAD ||
+                   device == COGMASTER_DEVICE_LIGHT_PHASER
                ? cogmaster__device_name(device)
                : "pad";
 }

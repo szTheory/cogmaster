@@ -27,8 +27,8 @@ static const char synopsis[] =
     "  --input FILE         absolute pad and console record per frame\n"
     "  --save-dir DIR       read and persist battery data in an existing directory\n"
     "  --save-interval N    also write the save after every N frames (0 is off; needs --save-dir)\n"
-    "  --port1 NAME         first controller: auto (default), pad, none, paddle or sports\n"
-    "  --port2 NAME         second controller: auto (default), pad, none, paddle or sports\n"
+    "  --port1 NAME         first controller: auto (default), pad, none, paddle, sports, lphaser\n"
+    "  --port2 NAME         second controller: auto (default), pad, none, paddle, sports, lphaser\n"
     "  --png N:FILE         write frame N's crop to FILE as a PNG (1 <= N <= --frames)\n"
     "  --trace first-fault  stop at the first fault and print it, or 'fault none'\n"
     "  --eyes               after the last frame, print how often each 3-D glasses eye showed\n"
@@ -124,6 +124,7 @@ static const struct {
     {"none", COGMASTER_DEVICE_NONE},
     {"paddle", COGMASTER_DEVICE_PADDLE},
     {"sports", COGMASTER_DEVICE_SPORTS_PAD},
+    {"lphaser", COGMASTER_DEVICE_LIGHT_PHASER},
 };
 
 const char *cogmaster__device_name(uint32_t device)
@@ -288,7 +289,7 @@ int cogmaster__parse_options(int argc, char **argv, cogmaster__run_options *o)
             int first = strcmp(arg, "--port1") == 0;
             if (!parse_device(value, first ? &o->port1 : &o->port2,
                               first ? &o->port1_given : &o->port2_given)) {
-                return usage("--port1 and --port2 need auto, pad, none, paddle or sports");
+                return usage("--port1 and --port2 need auto, pad, none, paddle, sports or lphaser");
             }
             i++;
         } else if (strcmp(arg, "--hash") == 0) {

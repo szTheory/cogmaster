@@ -95,9 +95,14 @@ int cogmaster__input_read(FILE *f, cogmaster_input *out)
 }
 
 /* Only a Sports Pad moves on both axes and a Paddle on x alone (its y is accepted and ignored by
-   the core); a pad or an empty port takes no motion. */
+   the core); a pad or an empty port takes no motion. A Light Phaser takes a field aim: 0 0 for no
+   aim, otherwise x 1 to 256 and y 1 to 240. The core would park a pair with one zero; the runner
+   refuses it so a typo is loud. */
 static int input_motion_ok(uint32_t device, int32_t x, int32_t y)
 {
+    if (device == COGMASTER_DEVICE_LIGHT_PHASER) {
+        return (x == 0 && y == 0) || (x >= 1 && x <= 256 && y >= 1 && y <= 240);
+    }
     return device == COGMASTER_DEVICE_SPORTS_PAD || device == COGMASTER_DEVICE_PADDLE ||
            (x == 0 && y == 0);
 }

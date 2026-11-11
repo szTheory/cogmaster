@@ -41,7 +41,7 @@ typedef struct cogmaster__run_options {
    entries. */
 int cogmaster__parse_options(int argc, char **argv, cogmaster__run_options *o);
 
-/* The option word for a COGMASTER_DEVICE_* value: pad, none, paddle or sports. */
+/* The option word for a COGMASTER_DEVICE_* value: pad, none, paddle, sports or lphaser. */
 const char *cogmaster__device_name(uint32_t device);
 
 #endif /* COGMASTER_RUNNER_ARGS_H */

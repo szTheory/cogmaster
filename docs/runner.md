@@ -29,8 +29,8 @@ can inspect the resolved machine and video mode through `cogmaster_get_info`.
 Right, button 1 and button 2. Console values are 0 or 1. LF, CRLF and an optional final newline work.
 Blank lines, comments, unknown or repeated fields, high mask bits, overlong lines, missing and surplus
 records exit 2 before running. File errors exit 1. The reader uses fixed memory and validates the whole
-body before execution. Without `--input`, all levels are released. `--port1` and `--port2` take `auto`, `pad`, `none`, `paddle` or
-`sports`; `none` releases that port's pins. Opposing directions remain independent.
+body before execution. Without `--input`, all levels are released. `--port1` and `--port2` take `auto`, `pad`, `none`, `paddle`,
+`sports` or `lphaser`; `none` releases that port's pins. Opposing directions remain independent.
 With `--input`, a successful run appends `lag_frames=N` to standard output,
 counting completed frames without a decoded guest controller read. Host polling, peeks, disabled and
 undriven port reads do not remove lag. Early stops count only the frames actually completed.
@@ -39,8 +39,11 @@ A record may instead carry the four axis deltas of that frame, 75 bytes: the 35 
 ` x1=+00005 y1=-00003 x2=+00000 y2=+00000`. Each field has its sign and exactly five digits, from -32767 to
 +32767, and the order is fixed. A line is 35 or 75 bytes and nothing between; the 35-byte form means all four
 axes are 0. Port 1 takes `x1` and `y1`, port 2 takes `x2` and `y2`. A Sports Pad takes both axes and a Paddle
-takes `x` and ignores `y`. A value out of range, a malformed field, or a non-zero axis for a port whose
-controller takes no motion (a pad or `none`) exits 2 before frame 1; the second case names the port and the
+takes `x` and ignores `y`. A Light Phaser takes an aim: `x` 1 to 256 and `y` 1 to 240 are the
+field dot the gun points at, `0 0` or the 35-byte form is no aim, and bit 4 of `p1` (or `p2`) is the trigger. The
+runner draws no crosshair and maps nothing. A value out of range, a malformed field, or a non-zero axis for a port whose
+controller takes no motion (a pad or `none`), or an aim a phaser cannot have (a negative axis, `x` above 256, `y` above 240, or
+only one of the pair 0), exits 2 before frame 1; the second case names the port and the
 controller. Deltas apply once per frame, so the same digits in two records are two moves. The script's bytes
 are in the digest the `--expect` line prints, so a delta script is told apart from the same buttons without
 motion.
@@ -67,7 +70,7 @@ cogmaster-run --help | --version
 | `--region NAME` | Region and TV standard together: `ntsc-u` is export NTSC, `ntsc-j` Japanese NTSC and `pal` export PAL. `auto` uses probe metadata/header region when present, otherwise export NTSC. |
 | `--video-mode NAME` | `auto`, `sms` or `gg`; video selection is independent of the machine profile. |
 | `--input FILE` | Exactly one absolute input record per requested frame, applied before that frame. |
-| `--port1 NAME`, `--port2 NAME` | `auto` (the default), `pad`, `none`, `paddle` or `sports`. `auto` takes the controller the loaded cartridge was made for, a pad for any other content. A `paddle` needs `--region ntsc-j` on a Master System, and `sports` needs a Master System. |
+| `--port1 NAME`, `--port2 NAME` | `auto` (the default), `pad`, `none`, `paddle`, `sports` or `lphaser`. `auto` takes the controller the loaded cartridge was made for, a pad for any other content. A `paddle` needs `--region ntsc-j` on a Master System, and `sports` needs a Master System. |
 | `--frames N` | Run N frames, N from 1 to 4294967295. Give either `--frames` or `--bench`, once. |
 | `--bench N` | Run N frames, time each one and print the report described under [Bench report](#bench-report). N is from 1 to 1073741823. The runner keeps 4 bytes per frame, so a very large N can exit 1 because memory ran out. |
 | `--hash` | After the last frame, print the SHA-256 of its picture. |
@@ -96,7 +99,7 @@ The runner exits 77 and runs nothing when it cannot run what was asked:
   the Sega mapper and the Codemasters mapper;
 - an 8 KiB image on the Game Gear, which is the X-Terminator cheat device rather than a game;
 - a machine and region no console had: PAL with the Game Gear or with `ntsc-j`'s Japanese console;
-- a controller the machine and region cannot take: `--port1 paddle` without `--region ntsc-j`, or any `paddle` or `sports` choice on the Game Gear; the message names the fix;
+- a controller the machine and region cannot take: `--port1 paddle` without `--region ntsc-j`, or any `paddle`, `sports` or `lphaser` choice on the Game Gear; the message names the fix;
 - a file whose name ends in `.sg` or `.sc`, refused unread with `unsupported: SG-1000 (planned)`.
 
 A file that cannot be read exits 1.
@@ -184,7 +187,7 @@ add keys at the end. Integers are decimal and digests lowercase hexadecimal.
 | `scan_sega`, `scan_candidate`, `scan_runner_up` | store sites counted for the Sega board, for the leading other family and for the runner-up |
 | `unsupported_id` | the number of the named unsupported board a database row or the scan matched, 0 for none |
 | `unsupported_reason` | that board's name and the reason, empty for none |
-| `port1_default`, `port2_default` | the controller each port's table row names: `pad`, `paddle` or `sports` |
+| `port1_default`, `port2_default` | the controller each port's table row names: `pad`, `paddle`, `sports` or `lphaser` |
 
 Each header field from `checksum` to `rom_size_code` is `none` when the image has no ROM header. `md5` is the
 RetroAchievements hash for both machines: the MD5 of the whole file, copier header included. `crc32` is the value
