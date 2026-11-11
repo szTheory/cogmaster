@@ -657,6 +657,11 @@ uint8_t cogmaster__io_in(cogmaster *m, uint16_t port);
 void cogmaster__io_out(cogmaster *m, uint16_t port, uint8_t v);
 uint8_t cogmaster__io_open_bus(cogmaster *m);
 void cogmaster__io_reset(cogmaster *m);
+/* Every $3F write: the latch of the H counter on a rising TH lives here. */
+void cogmaster__io_th_changed(cogmaster *m, uint8_t old_ctrl, uint8_t new_ctrl, uint64_t tick);
+/* The six pins a port's device drives (b0-b3 D0-D3, b4 TL, b5 TR), 0 = low.
+   Port is 0 or 1. Pure. */
+uint8_t cogmaster__ports_pins(const cogmaster *m, uint32_t port, uint64_t tick);
 
 /* The fast-boot hand-off: the CPU and RAM as the BIOS leaves them. power
    also clears work RAM first. */

@@ -57,6 +57,7 @@ add_library(cogmaster STATIC
   src/fault.c
   src/instance.c
   src/io.c
+  src/ports.c
   src/frame.c
   src/mapper.c
   src/mapper_ext.c

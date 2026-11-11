@@ -106,9 +106,9 @@ static uint8_t tr_pin(const cogmaster *m, uint8_t v, uint8_t pin, uint8_t dir, u
    pressed. Independent direction bits pass through, including SOCD. */
 static uint8_t port_dc(const cogmaster *m)
 {
-    uint32_t p1 = m->input.port1 == COGMASTER_DEVICE_NONE ? 0u : m->input.p1;
-    uint32_t p2 = m->input.port2 == COGMASTER_DEVICE_NONE || is_gg(m) ? 0u : m->input.p2;
-    return tr_pin(m, (uint8_t)~(p1 | ((p2 & 3u) << 6)), 0x20u, 1u, 0x10u);
+    uint8_t a = cogmaster__ports_pins(m, 0u, m->ticks);
+    uint8_t b = cogmaster__ports_pins(m, 1u, m->ticks);
+    return tr_pin(m, (uint8_t)(a | ((b & 3u) << 6)), 0x20u, 1u, 0x10u);
 }
 
 /* Effective TH pins, shared by readback and the rising-edge H latch.
@@ -129,15 +129,24 @@ static uint8_t th_pins(const cogmaster *m, uint8_t ctrl)
     return pins;
 }
 
-static void io_control(cogmaster *m, uint8_t ctrl)
+/* Every $3F write comes here with the level before and after it, and the
+   tick it lands on (the tick is for the devices that watch TH). Low-to-high
+   on either effective TH captures, including release to the input pull-up
+   (SMS-SYSTEM section 4). */
+void cogmaster__io_th_changed(cogmaster *m, uint8_t old_ctrl, uint8_t new_ctrl, uint64_t tick)
 {
-    uint8_t old = th_pins(m, m->io.io_ctrl);
-    m->io.io_ctrl = ctrl;
-    /* Low-to-high on either effective TH captures, including release to
-       the input pull-up (SMS-SYSTEM section 4). */
-    if (((uint8_t)~old & th_pins(m, ctrl) & 0xC0u) != 0u) {
+    (void)tick;
+    uint8_t old = th_pins(m, old_ctrl);
+    if (((uint8_t)~old & th_pins(m, new_ctrl) & 0xC0u) != 0u) {
         cogmaster__vdp_latch_h(m);
     }
+}
+
+static void io_control(cogmaster *m, uint8_t ctrl)
+{
+    uint8_t old = m->io.io_ctrl;
+    m->io.io_ctrl = ctrl;
+    cogmaster__io_th_changed(m, old, ctrl, m->ticks);
 }
 
 /* $DD: b3-0 port B left, right, TL, TR; b4 the reset button, 1 where there
@@ -148,13 +157,13 @@ static void io_control(cogmaster *m, uint8_t ctrl)
    the regions apart (section 5). The Game Gear has no TH lines. */
 static uint8_t port_dd(const cogmaster *m)
 {
-    uint32_t p2 = m->input.port2 == COGMASTER_DEVICE_NONE || is_gg(m) ? 0u : m->input.p2;
     /* Only export SMS1 has the physical switch (SMS-SYSTEM section 7). */
     uint32_t reset = m->machine == COGMASTER_MACHINE_SMS1 && m->region == COGMASTER_REGION_EXPORT &&
                              m->input.port1 != COGMASTER_DEVICE_NONE
                          ? m->input.reset
                          : 0u;
-    uint8_t v = tr_pin(m, (uint8_t)~((p2 >> 2) | (reset << 4)), 8u, 4u, 0x40u);
+    uint8_t b = cogmaster__ports_pins(m, 1u, m->ticks);
+    uint8_t v = tr_pin(m, (uint8_t)(~(reset << 4) & ((b >> 2) | 0xF0u)), 8u, 4u, 0x40u);
     return (uint8_t)((v & 0x3Fu) | th_pins(m, m->io.io_ctrl));
 }
 
