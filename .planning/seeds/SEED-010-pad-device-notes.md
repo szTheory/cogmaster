@@ -23,6 +23,30 @@ motion versus an all-zero script (they must differ while the dump reads the devi
 (`cogmaster_3d_view`), the delta sign and one doc sentence; never a hash. Batch it with the phase 11 and phase 12
 library runs.
 
+## The Light Phaser local judge (hand-off, not a requirement)
+
+With the owner's library path set, for each library dump the table defaults to the gun (both ports for the two-port
+row), run `cogmaster-run <dump> --frames N --input <script> --hash` with a scripted aim at a known on-screen target
+and the trigger pressed, and again with an all-zero script of equal length. The hashes, a RAM change or a `--png`
+pair must show the target hit. Run the 3-D gun title with `--eyes`, and read a title that polls TH with no trigger
+(a title screen) for what it shows. Batch it with the phase 11 and 12 library runs.
+
+What a run can change, and nothing else: `GUN_DELAY_TICKS` (38 ticks, 19 dots, MAME's mode), the sticky bit (set at
+each fall, cleared by a `$DD` read and at the wrap) and the edge predicate (the one test in `th_edge`'s call site,
+named in `docs/controllers.md`: the latch fires where the sensor releases TH). Radius 6 and luma 127 with weights 77,
+150 and 29 are constants of the same kind. The edge rule is unmeasured: MAME and ares latch on the release, SMS Power
+on the fall, MacDonald on either. A run of the 13 dumps can only move those constants or the predicate; it can never
+change a hash of an existing run, because no pad-only, no-shot or committed-fixture run reads them. A disagreement on a
+bright frame points at the edge rule; one on a lit shape smaller than the disc points at the shape rule.
+
+## A core sync at the start of `run_frame` (review leftover)
+
+The fuzz leg that cuts a frame into pieces had to bring the sensor up to the beam before each `run_frame`, because a
+device change is applied at the start of the call and drops the port's scan block while dots of the picture are
+still unscanned. A host never calls `run_frame` mid-window, so this is unreachable through the API: hosts call at
+frame boundaries, after the end-of-frame sync. A sync at the start of `run_frame` as well would remove the harness
+workaround; it is a change to the five sync sites and is not worth it unless a host can reach the case.
+
 ## Review leftovers (rule 7: seeds, not requirements)
 
 - **Gating written twice (core IN-01).** `cogmaster__io_glasses_write` in `src/io.c` repeats the `$3E` cart and RAM
