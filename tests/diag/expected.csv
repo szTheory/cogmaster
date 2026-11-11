@@ -320,3 +320,27 @@ light_phaser,1A:th_bit_that_saw_light,port1,0040,doc,SMS Power Light Phaser and 
 light_phaser,1A:th_bit_that_saw_light,port2,0080,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
 light_phaser,1B:line_after_th_high,*,0053-0055,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
 light_phaser,1C:line_after_poll,*,0053-0055,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+pause_nmi_192,01:n_at_first_nmi,ntsc,00C5-00C6,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_192,02:v_at_first_nmi,ntsc,00FF,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_192,03:nmi_after_first_edge,ntsc,0001,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_192,04:nmi_final,ntsc,0002,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_192,01:n_at_first_nmi,pal,015A-015B,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_192,02:v_at_first_nmi,pal,00FF,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_192,03:nmi_after_first_edge,pal,0001,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_192,04:nmi_final,pal,0002,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_192,01:n_at_first_nmi,gg,0000,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_192,02:v_at_first_nmi,gg,0000,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_192,03:nmi_after_first_edge,gg,0000,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_192,04:nmi_final,gg,0000,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_224,01:n_at_first_nmi,ntsc,0067-0068,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_224,02:v_at_first_nmi,ntsc,00FF,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_224,03:nmi_after_first_edge,ntsc,0001,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_224,04:nmi_final,ntsc,0002,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_224,01:n_at_first_nmi,pal,00FC-00FD,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_224,02:v_at_first_nmi,pal,00FF,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_224,03:nmi_after_first_edge,pal,0001,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_224,04:nmi_final,pal,0002,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_240,01:n_at_first_nmi,pal,00CD-00CF,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_240,02:v_at_first_nmi,pal,00FF,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_240,03:nmi_after_first_edge,pal,0001,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+pause_nmi_240,04:nmi_final,pal,0002,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts

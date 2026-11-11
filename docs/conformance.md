@@ -377,7 +377,7 @@ rows with profile `gg`. The records:
 - on the Game Gear, port `$00` (Start up, the region bit, the NTSC bit) and ports `$01`-`$06` at their power-on
   values.
 
-The H counter latch, the Pause NMI counter and the Pause movies need input and are not in this fixture yet.
+The H counter latch and the Pause movies are not in this fixture yet.
 
 ## Video geometry and timing fixture
 
@@ -412,6 +412,13 @@ minimum, and a drift check that fails if the loop is not one line long. The
 rows come from the documented jump intervals and `fixtures.vdp_vtable.closed_form`
 recomputes them. The first model runs the 192 rows. NTSC 240 rolls and is not
 judged. Controls: `judge.*` and `control.wrong_profile` (PAL image, NTSC run).
+
+## The Pause NMI fixture
+
+`pause_nmi` counts in a fixed loop from the frame interrupt and records the count and V at the Pause
+NMI, then the NMI count after a held press and a second one. The NMI follows the interrupt by
+(lines - 2 - height) x 684 + 4 ticks; `fixtures.pause_nmi.closed_form` computes the count band from the listing's
+cycles, and V reads `$FF`. PAL placement is derived, not captured; the Game Gear has none.
 
 ## Frontend play evidence
 

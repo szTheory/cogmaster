@@ -191,6 +191,17 @@ fixtures.paddle.mailbox.export	fixtures,portable
 fixtures.paddle.mailbox.japan	fixtures,portable
 fixtures.paddle.replay	fixtures,portable
 fixtures.paddle.replay_control	fixtures,portable
+fixtures.pause_nmi.closed_form	fixtures,portable
+fixtures.pause_nmi.control.wrong_profile	fixtures,portable
+fixtures.pause_nmi.gg	fixtures,portable
+fixtures.pause_nmi.judge.hang	fixtures,portable
+fixtures.pause_nmi.judge.missing_row	fixtures,portable
+fixtures.pause_nmi.judge.wrong_value	fixtures,portable
+fixtures.pause_nmi.mailbox.ntsc.192	fixtures,portable
+fixtures.pause_nmi.mailbox.ntsc.224	fixtures,portable
+fixtures.pause_nmi.mailbox.pal.192	fixtures,portable
+fixtures.pause_nmi.mailbox.pal.224	fixtures,portable
+fixtures.pause_nmi.mailbox.pal.240	fixtures,portable
 fixtures.ports.gg	fixtures,portable
 fixtures.ports.sms-export	fixtures,portable
 fixtures.ports.sms-japan	fixtures,portable
