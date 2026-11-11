@@ -356,8 +356,10 @@ static uint32_t lr_mouse_button(unsigned port, unsigned id)
 
 /* One axis of a motion port, 0 for x and 1 for y: the mouse delta (already relative), the left
    stick past the dead zone and the D-pad, summed and held inside what the library accepts. pad
-   holds the D-pad bits, up, down, left, right from bit 0. Only base device ids are asked. */
-static int32_t lr_axis(unsigned port, unsigned axis, int32_t k, uint32_t pad)
+   holds the D-pad bits, up, down, left, right from bit 0. Only base device ids are asked. The
+   stick's k counts are cut toward zero, which gives k - 1 at +32767 and k at -32768; the phaser's
+   cursor asks for rounding (nearest), so that full deflection is k counts to either side. */
+static int32_t lr_axis(unsigned port, unsigned axis, int32_t k, int nearest, uint32_t pad)
 {
     static const unsigned mouse_id[2] = {RETRO_DEVICE_ID_MOUSE_X, RETRO_DEVICE_ID_MOUSE_Y};
     static const unsigned stick_id[2] = {RETRO_DEVICE_ID_ANALOG_X, RETRO_DEVICE_ID_ANALOG_Y};
@@ -367,9 +369,10 @@ static int32_t lr_axis(unsigned port, unsigned axis, int32_t k, uint32_t pad)
     uint32_t more = axis == 0u ? pad >> 3 : pad >> 1;
     uint32_t less = axis == 0u ? pad >> 2 : pad;
     int32_t dpad = (int32_t)(more & 1u) - (int32_t)(less & 1u);
-    int32_t sum = mouse +
-                  (stick > -LR_STICK_DEAD && stick < LR_STICK_DEAD ? 0 : stick * k / 32768) +
-                  dpad * LR_DPAD_COUNTS;
+    int32_t half = nearest ? (stick < 0 ? -16384 : 16384) : 0;
+    int32_t sum =
+        mouse + (stick > -LR_STICK_DEAD && stick < LR_STICK_DEAD ? 0 : (stick * k + half) / 32768) +
+        dpad * LR_DPAD_COUNTS;
     return sum > LR_AXIS_MAX ? LR_AXIS_MAX : (sum < -LR_AXIS_MAX ? -LR_AXIS_MAX : sum);
 }
 
@@ -394,8 +397,8 @@ static uint32_t lr_phaser(unsigned port, uint32_t pad)
                    : 0u;
     }
     cogmaster__aim_step(&aim_rect, &phaser_cursor[port][0], &phaser_cursor[port][1],
-                        lr_axis(port, 0u, LR_STICK_PHASER, pad),
-                        lr_axis(port, 1u, LR_STICK_PHASER, pad));
+                        lr_axis(port, 0u, LR_STICK_PHASER, 1, pad),
+                        lr_axis(port, 1u, LR_STICK_PHASER, 1, pad));
     at[0] = phaser_cursor[port][0];
     at[1] = phaser_cursor[port][1];
     return ((pad >> 4 | pad >> 5 | lr_mouse_button(port, RETRO_DEVICE_ID_MOUSE_LEFT)) & 1u) << 4;
@@ -435,8 +438,8 @@ static void lr_input(void)
                    (device == COGMASTER_DEVICE_SPORTS_PAD || device == COGMASTER_DEVICE_PADDLE)) {
             /* A frontend light gun on a port whose option is not the phaser is ignored. */
             int32_t k = device == COGMASTER_DEVICE_SPORTS_PAD ? LR_STICK_SPORTS : LR_STICK_PADDLE;
-            axis[port][0] = lr_axis(port, 0u, k, pad[port]);
-            axis[port][1] = lr_axis(port, 1u, k, pad[port]);
+            axis[port][0] = lr_axis(port, 0u, k, 0, pad[port]);
+            axis[port][1] = lr_axis(port, 1u, k, 0, pad[port]);
             /* Buttons 1 and 2: RetroPad B and A, or the mouse buttons. */
             pad[port] = (pad[port] & 0x30u) |
                         lr_mouse_button(port, RETRO_DEVICE_ID_MOUSE_LEFT) << 4 |

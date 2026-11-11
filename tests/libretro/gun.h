@@ -354,14 +354,14 @@ static void gun_cursor_frame(uint16_t colour)
 {
     int32_t dx, dy;
     uint32_t bad = 0u;
-    dx = dev_sum(gun_in.mouse[0][0], gun_in.stick[0][0],
-                 (int32_t)((gun_in.pad[0] >> RETRO_DEVICE_ID_JOYPAD_RIGHT) & 1u) -
-                     (int32_t)((gun_in.pad[0] >> RETRO_DEVICE_ID_JOYPAD_LEFT) & 1u),
-                 4);
-    dy = dev_sum(gun_in.mouse[0][1], gun_in.stick[0][1],
-                 (int32_t)((gun_in.pad[0] >> RETRO_DEVICE_ID_JOYPAD_DOWN) & 1u) -
-                     (int32_t)((gun_in.pad[0] >> RETRO_DEVICE_ID_JOYPAD_UP) & 1u),
-                 4);
+    dx = dev_sum_by(gun_in.mouse[0][0], gun_in.stick[0][0],
+                    (int32_t)((gun_in.pad[0] >> RETRO_DEVICE_ID_JOYPAD_RIGHT) & 1u) -
+                        (int32_t)((gun_in.pad[0] >> RETRO_DEVICE_ID_JOYPAD_LEFT) & 1u),
+                    4, 1);
+    dy = dev_sum_by(gun_in.mouse[0][1], gun_in.stick[0][1],
+                    (int32_t)((gun_in.pad[0] >> RETRO_DEVICE_ID_JOYPAD_DOWN) & 1u) -
+                        (int32_t)((gun_in.pad[0] >> RETRO_DEVICE_ID_JOYPAD_UP) & 1u),
+                    4, 1);
     gun_cx = gun_clamp(gun_cx + dx, (int32_t)GUN_W - 1);
     gun_cy = gun_clamp(gun_cy + dy, (int32_t)GUN_H - 1);
     gun_frames(1u);
@@ -400,12 +400,19 @@ static void gun_cursor_test(void)
         gun_cursor_frame(red);
     }
     gun_in.pad[0] = 0u;
-    /* The stick: past the dead zone it moves 4 counts at full deflection, inside it nothing. */
+    /* The stick: past the dead zone it moves 4 counts at full deflection, inside it nothing. The
+       model must say 4 both ways, or it would follow the adapter's cut. */
+    CHECK(dev_sum_by(0, 32767, 0, 4, 1) == 4 && dev_sum_by(0, -32768, 0, 4, 1) == -4);
     gun_in.stick[0][0] = 6553;
     gun_cursor_frame(red);
     gun_in.stick[0][0] = 32767;
     gun_in.stick[0][1] = -32768;
-    for (unsigned i = 0u; i < 5u; i++) {
+    {
+        int32_t was_x = gun_cx, was_y = gun_cy;
+        gun_cursor_frame(red);
+        CHECK(gun_cx - was_x == 4 && was_y - gun_cy == 4);
+    }
+    for (unsigned i = 0u; i < 4u; i++) {
         gun_cursor_frame(red);
     }
     gun_in.stick[0][0] = gun_in.stick[0][1] = 0;

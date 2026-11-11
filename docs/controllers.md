@@ -140,7 +140,7 @@ on a Game Gear is exit 77.
 comes from. With the Light Gun device, the pointer's screen position and off-screen flag give the aim through the
 rectangle of the last completed frame, and the trigger is the gun's trigger. With a joypad (the guaranteed path) a
 per-port cursor starts at the centre and moves by the mouse delta, the left stick past a 20 percent dead zone (4
-counts a frame at full deflection) and the D-pad (2 a frame), clamped to the picture and never off screen; the trigger
+counts a frame at full deflection, rounded to the nearest count so it is 4 either way) and the D-pad (2 a frame), clamped to the picture and never off screen; the trigger
 is RetroPad B or A or the mouse's left button. The cursor resets at load, at reset and at unload. When port 0 is a
 gun, Pause and Reset read that port's Start and Select. A mode change from 192 to 224 lines moves the rectangle one
 frame late. The crosshair (`cogmaster_crosshair`, on by default, and `cogmaster_crosshair_colour`: white, red, green
