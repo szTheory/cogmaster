@@ -35,7 +35,7 @@ cogmaster_warnings(cogmaster-test-aim)
 # Fault prevented: a pointer mapped without the crop offset or off by one dot, an
 # off-screen pointer clamped onto an edge pixel, or a crosshair written outside
 # its points, so a light-gun title is aimed somewhere else than the player points.
-# Timeout: 10 s floor; provisional.
+# Timeout: 10 s floor; 2 x 0.07 s (be32), slowest of 9 runs, run 43015673654.
 cogmaster_add_test(NAME host.aim
   COMMAND cogmaster-test-aim aim
   LABELS host portable TIMEOUT 10)

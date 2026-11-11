@@ -103,7 +103,7 @@ if(COGMASTER_FIXTURES)
   endif()
   math(EXPR gun_aim_x "${gun_SQ_X} + 16")
   math(EXPR gun_aim_y "${gun_SQ_Y} + 9")
-  # Timeout: 20 s floor; provisional.
+  # Timeout: 20 s floor; 2 x 2.39 s (be32), slowest of 9 runs, run 43015673654.
   cogmaster_add_test(NAME ports.gun.identity
     COMMAND cogmaster-test-ports-gun identity ${PROJECT_BINARY_DIR}/fixtures/light_phaser.sms
       ${gun_aim_x} ${gun_aim_y}

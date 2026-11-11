@@ -169,14 +169,21 @@ if(TARGET cogmaster_libretro)
     # mapped without the crop, a crosshair drawn into a hashed or persistent buffer, or a Pause that
     # a gun on port 0 loses.
     foreach(adapter_case IN ITEMS devices.options devices.sources devices.clamp devices.motion
-        stereo.alternate stereo.one_eye gun.aim gun.cursor gun.crosshair)
+        stereo.alternate stereo.one_eye)
       string(REGEX REPLACE "^[a-z]+\\." "" adapter_name "${adapter_case}")
-      # Timeout: 60 s; 2 x 15.76 s, slowest of 1 run, run 42978311844 (be32 lane); the three gun
-      # cases: 60 s floor; provisional.
+      # Timeout: 60 s; 2 x 15.76 s, slowest of 1 run, run 42978311844 (be32 lane).
       cogmaster_add_test(NAME libretro.host.${adapter_case}
         COMMAND cogmaster-test-libretro-host $<TARGET_FILE:cogmaster_libretro> adapter ${adapter_name}
           ${PROJECT_BINARY_DIR}/fixtures
         LABELS libretro portable TIMEOUT 60)
+    endforeach()
+    foreach(adapter_case IN ITEMS gun.aim gun.cursor gun.crosshair)
+      string(REGEX REPLACE "^[a-z]+\\." "" adapter_name "${adapter_case}")
+      # Timeout: 10 s floor; 2 x 1.72 s (gun.crosshair on be32), slowest of 8 runs, run 43015673654.
+      cogmaster_add_test(NAME libretro.host.${adapter_case}
+        COMMAND cogmaster-test-libretro-host $<TARGET_FILE:cogmaster_libretro> adapter ${adapter_name}
+          ${PROJECT_BINARY_DIR}/fixtures
+        LABELS libretro portable TIMEOUT 10)
     endforeach()
     # Fault prevented: the FM option attaching, detaching or refusing the unit differently from the
     # library's setting, or failing the load of Game Gear content.
