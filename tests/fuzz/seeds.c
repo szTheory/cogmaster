@@ -280,12 +280,27 @@ static void eeprom_stream(void)
 
 /* The stream fuzz_pad.c reads: a profile byte, ten bytes that name saved fields to change, then
    operations. The operation numbers and the selector tables are that file's: devices 0 pad, 1 none,
-   2 Paddle, 3 Sports Pad, 6 one past the last; an axis or tick count with its top bit or selector 5
-   set is a raw word that follows; tick selector 2 is one short of the Sports Pad's idle limit and 3
-   is the limit itself. The program walks a Sports Pad read on port 1 and a Paddle on port 2,
-   abandons a read just inside the limit and restarts one at it, writes the glasses mirror, resets
-   both ways and sends a hostile axis and an unknown device. */
-enum { P_SET, P_TH, P_TH2, P_CTRL, P_READ, P_EYE, P_TICKS, P_RESET, P_FRAME };
+   2 Paddle, 3 Sports Pad, 4 Light Phaser, 6 one past the last; an axis or tick count with its top
+   bit or selector 5 set is a raw word that follows; tick selector 2 is one short of the Sports
+   Pad's idle limit and 3 is the limit itself. The program walks a Sports Pad read on port 1 and a
+   Paddle on port 2, abandons a read just inside the limit and restarts one at it, writes the
+   glasses mirror, resets both ways and sends a hostile axis and an unknown device. The gun streams
+   below paint the backdrop, aim a phaser at it from one port or both, wait a picture out and poll.
+ */
+enum {
+    P_SET,
+    P_TH,
+    P_TH2,
+    P_CTRL,
+    P_READ,
+    P_EYE,
+    P_TICKS,
+    P_RESET,
+    P_FRAME,
+    P_TICKS2,
+    P_PAINT,
+    P_MODE
+};
 
 static void pad_put(uint8_t v)
 {
@@ -427,6 +442,123 @@ static void pad_stream(uint8_t profile, const char *name)
     write_image(name, stream_n);
 }
 
+static void pad_header(uint8_t profile)
+{
+    stream_n = 0u;
+    pad_put(profile);
+    for (uint32_t i = 0u; i < 10u; i++) {
+        pad_put(0u);
+    }
+}
+
+/* n waits of 2000 ticks, the most one operation moves time on, about three lines each: 55 of them
+   from the end of a frame are the rest of the blanking and the rows down to a disc at row 100. */
+static void pad_wait_rows(uint32_t n)
+{
+    for (uint32_t i = 0u; i < n; i++) {
+        pad_wait_raw(2000u);
+    }
+}
+
+/* A gun on each port aimed at one band of the painted picture, the first port's far to the
+   right of the second's, so that its edges are the later ones in every row, in force after a frame,
+   then a poll of $DD and of the H counter a few rows into the scan, a toggle of TH and the rest
+   of the picture. */
+static void pad_gun_band(void)
+{
+    pad_header(0u);
+    pad_set(4u, 4u, 200, 100, 40, 100);
+    pad_put(P_PAINT);
+    pad_th(0xFFu);
+    pad_put(P_FRAME);
+    pad_wait_rows(55u);
+    pad_read(1u);
+    pad_wait_raw(14u);
+    pad_read(1u);
+    pad_th(0xF5u);
+    pad_th(0xFFu);
+    pad_wait_rows(8u); /* the disc goes by with nothing reading, so only the twin looks */
+    pad_put(P_FRAME);
+    pad_set(4u, 0u, 200, 100, 0, 0); /* the second port goes back to a pad: its block clears */
+    pad_wait_rows(55u);
+    pad_read(1u);
+    pad_wait_rows(8u);
+    pad_put(P_FRAME);
+    write_image("pad-gun-band.bin", stream_n);
+}
+
+/* A gun parked, then aimed at each edge of the field and just past it: a pair that is no field
+   dot is stored as no aim, and the picture is painted so each one that is a dot is scanned. */
+static void pad_gun_edges(void)
+{
+    static const int32_t aims[][2] = {{256, 240}, {1, 1},   {257, 1},   {1, 241},
+                                      {0, 5},     {256, 0}, {255, 239}, {-1, 5}};
+    pad_header(1u);
+    pad_set(4u, 1u, 0, 0, 0, 0);
+    pad_put(P_FRAME);
+    pad_read(1u);
+    pad_put(P_PAINT);
+    pad_th(0xFFu);
+    for (size_t i = 0u; i < sizeof aims / sizeof aims[0]; i++) {
+        pad_set(4u, 4u, aims[i][0], aims[i][1], aims[i][1], aims[i][0]);
+        pad_wait_rows(2u);
+        pad_read(1u);
+        pad_put(P_FRAME);
+    }
+    write_image("pad-gun-edges.bin", stream_n);
+}
+
+/* A gun at a painted band, a switch to a mode the core does not draw with the display on in the
+   middle of its picture, polls inside it and after it, and the paint again. */
+static void pad_gun_mode(void)
+{
+    pad_header(2u);
+    pad_set(4u, 3u, 120, 96, 7, 7);
+    pad_put(P_PAINT);
+    pad_th(0xFFu);
+    pad_put(P_FRAME);
+    pad_wait_rows(30u);
+    pad_put(P_MODE);
+    pad_wait_rows(2u);
+    pad_read(1u);
+    pad_wait_raw(40u);
+    pad_read(1u);
+    pad_put(P_FRAME);
+    pad_read(1u);
+    pad_put(P_PAINT);
+    pad_wait_rows(4u);
+    pad_put(P_FRAME);
+    write_image("pad-gun-mode.bin", stream_n);
+}
+
+/* Small steps of time with a poll between them over a lit disc on both ports, a reset in the
+   middle of a scan, the paint again and a device change under a scan. */
+static void pad_gun_split(void)
+{
+    pad_header(0u);
+    pad_set(4u, 4u, 40, 30, 44, 34);
+    pad_put(P_PAINT);
+    pad_th(0xFFu);
+    pad_put(P_FRAME);
+    pad_wait_rows(32u);
+    for (uint32_t i = 0u; i < 12u; i++) {
+        pad_wait_raw(400u);
+        pad_read(1u);
+        pad_th((uint8_t)(i % 2u == 0u ? 0xF5u : 0xFFu));
+    }
+    pad_put(P_RESET);
+    pad_put(0u);
+    pad_put(P_PAINT);
+    pad_set(0u, 4u, 0, 0, 200, 150);
+    pad_th(0xFFu);
+    pad_put(P_FRAME);
+    pad_wait_rows(34u);
+    pad_read(1u);
+    pad_set(4u, 2u, 40, 30, 3, 3);
+    pad_put(P_FRAME);
+    write_image("pad-gun-split.bin", stream_n);
+}
+
 /* One byte at offset 64 MiB: the file system can leave the rest as a hole. */
 static int oversize(const char *path)
 {
@@ -460,6 +592,10 @@ int main(int argc, char **argv)
     pad_stream(2u, "pad-ops.bin");
     pad_stream(0u, "pad-ops-export.bin");
     pad_stream(3u, "pad-ops-gg.bin");
+    pad_gun_band();
+    pad_gun_edges();
+    pad_gun_mode();
+    pad_gun_split();
     memset(image, 0x3c, 32769u);
     write_image("save-empty.bin", 0u);
     write_image("save-one.bin", 1u);
