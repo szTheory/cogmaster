@@ -352,6 +352,8 @@ runner.device.usage	portable,runner
 runner.exit.failure	portable,runner
 runner.exit.table	runner
 runner.expect.predicates	portable,runner
+runner.eyes.line	portable,runner
+runner.eyes.probe	portable,runner
 runner.hash.gg	portable,runner
 runner.hash.repeat	portable,runner
 runner.hash.self_test	runner
@@ -362,6 +364,9 @@ runner.hashes_compare.byte.self_test	runner
 runner.hashes_compare.count.self_test	runner
 runner.hashes_file	portable,runner
 runner.input	portable,runner
+runner.input.axes_device	portable,runner
+runner.input.axes_equivalent	portable,runner
+runner.input.axes_grammar	portable,runner
 runner.lag	portable,runner
 runner.load.machine_auto	portable,runner
 runner.load.region	portable,runner

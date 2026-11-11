@@ -397,7 +397,7 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
                      : COGMASTER__EXIT_FAILURE;
         if (bad_port != 0) {
             fprintf(stderr,
-                    "cogmaster-run: input file error: motion for port %d, whose %s takes none\n",
+                    "cogmaster-run: input file error: port %d is %s, which takes no motion\n",
                     bad_port, cogmaster__device_name(bad_port == 1 ? port1 : port2));
         } else if (status != COGMASTER__EXIT_OK) {
             fprintf(stderr, "cogmaster-run: input file error (status %d)\n", status);

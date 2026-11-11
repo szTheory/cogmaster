@@ -518,6 +518,142 @@ if(CMAKE_SCRIPT_MODE_FILE)
     expect_exit(2 "usage" --frames 1 --port1 lphaser)
     expect_exit(2 "usage" --frames 1 --port1 AUTO)
     expect_exit(2 "usage" --frames 1 --port2 Paddle)
+  elseif(CASE STREQUAL "axes_grammar")
+    # The 75-byte line: every malformed form is exit 2 with one message and no frame run.
+    set(base "p1=00 p2=00 pause=0 reset=0 start=0")
+    set(good "${base} x1=+00000 y1=+00000 x2=+00000 y2=+00000")
+    set(bad "")
+    foreach(len RANGE 36 74)
+      string(SUBSTRING "${good}" 0 ${len} cut)
+      list(APPEND bad "${cut}\n")
+    endforeach()
+    list(APPEND bad "${good}0\n" "${good}\n${good}\n" "${good} \n"
+      "${base} y1=+00000 x1=+00000 x2=+00000 y2=+00000\n"
+      "${base} x1=+00000 y1=+00000 x2=+00000 x1=+00000\n"
+      "${base} x1=+00000 y1=+00000 x2=+00000 z2=+00000\n"
+      "${base} x1=+00000 y1=+00000 x2=+00000 y2=+00000 \n"
+      "${base} x1=+0000 y1=+000000 x2=+00000 y2=+00000\n"
+      "${base} x1=000000 y1=+00000 x2=+00000 y2=+00000\n"
+      "${base} x1=+00000 y1=+00000 x2=+00000 y2=*00000\n"
+      "${base} x1=+00000 y1=+00000 x2=+00000 y2=+0000a\n"
+      "${base} x1=+32768 y1=+00000 x2=+00000 y2=+00000\n"
+      "${base} x1=+00000 y1=-32768 x2=+00000 y2=+00000\n"
+      "${base} x1=+00000 y1=+00000 x2=+99999 y2=+00000\n"
+      "${base} x1=+00000 y1=+00000 x2=+00000 y2=-99999\n"
+      "${base}  x1=+00000 y1=+00000 x2=+00000 y2=+0000\n")
+    foreach(body IN LISTS bad)
+      file(WRITE "${OUT}" "${body}")
+      expect_exit(2 "^cogmaster-run: input file error[^\n]*\n$" --frames 1 --port1 sports
+        --port2 sports --input ${OUT} --hash)
+    endforeach()
+    # A refusal on the last record still stops before frame 1.
+    file(WRITE "${OUT}" "${good}\n${base} x1=+32768 y1=+00000 x2=+00000 y2=+00000\n")
+    expect_exit(2 "^cogmaster-run: input file error[^\n]*\n$" --frames 2 --port1 sports
+      --input ${OUT} --hash)
+    # The edges of the range, a CRLF ending and a missing final newline are accepted.
+    file(WRITE "${OUT}" "${base} x1=+32767 y1=-32767 x2=-32767 y2=+32767\r\n${good}")
+    expect_exit(0 "frame 2 sha256" --frames 2 --port1 sports --port2 sports --input ${OUT} --hash)
+  elseif(CASE STREQUAL "axes_device")
+    # Motion on a port whose resolved device takes none is exit 2 before frame 1, naming both.
+    set(base "p1=00 p2=00 pause=0 reset=0 start=0")
+    set(refused "^cogmaster-run: input file error: port ([12]) is ([a-z]+), which takes no motion\n$")
+    foreach(axes IN ITEMS "x1=+00001 y1=+00000 x2=+00000 y2=+00000"
+        "x1=+00000 y1=-00001 x2=+00000 y2=+00000")
+      file(WRITE "${OUT}" "${base}\n${base} ${axes}\n")
+      expect_exit(2 "port 1 is pad, which takes no motion" --frames 2 --input ${OUT} --hash)
+      expect_exit(2 "port 1 is none, which takes no motion" --frames 2 --port1 none --input ${OUT}
+        --hash)
+      expect_exit(2 "${refused}" --frames 2 --port1 none --input ${OUT} --hash)
+    endforeach()
+    foreach(axes IN ITEMS "x1=+00000 y1=+00000 x2=+00001 y2=+00000"
+        "x1=+00000 y1=+00000 x2=+00000 y2=-00001")
+      file(WRITE "${OUT}" "${base} ${axes}\n")
+      expect_exit(2 "port 2 is pad, which takes no motion" --frames 1 --port1 sports --input ${OUT}
+        --hash)
+      expect_exit(2 "port 2 is none, which takes no motion" --frames 1 --port1 sports
+        --port2 none --input ${OUT} --hash)
+    endforeach()
+    # A Sports Pad takes both axes; a Paddle takes x and accepts y, which the core ignores.
+    file(WRITE "${OUT}" "${base} x1=+00005 y1=-00003 x2=-00007 y2=+00009\n")
+    expect_exit(0 "frame 1 sha256" --frames 1 --port1 sports --port2 sports --input ${OUT} --hash)
+    expect_exit(0 "frame 1 sha256" --frames 1 --region ntsc-j --port1 paddle --port2 paddle
+      --input ${OUT} --hash)
+    # An all-zero 75-byte line is accepted for any device.
+    file(WRITE "${OUT}" "${base} x1=+00000 y1=+00000 x2=+00000 y2=+00000\n")
+    expect_exit(0 "frame 1 sha256" --frames 1 --port1 none --port2 pad --input ${OUT} --hash)
+  elseif(CASE STREQUAL "axes_equivalent")
+    # The 35-byte line means all four axes are 0; a script that differs in one digit is told apart
+    # by the digest in the execution line.
+    set(base "p1=10 p2=00 pause=0 reset=0 start=0")
+    string(REPEAT "${base}\n" 3 short)
+    string(REPEAT "${base} x1=+00000 y1=+00000 x2=+00000 y2=+00000\n" 3 long)
+    file(WRITE "${OUT}.short" "${short}")
+    file(WRITE "${OUT}.long" "${long}")
+    file(WRITE "${OUT}.a" "${base} x1=+00004 y1=+00000 x2=+00000 y2=+00000\n${base}\n${base}\n")
+    file(WRITE "${OUT}.b" "${base} x1=+00005 y1=+00000 x2=+00000 y2=+00000\n${base}\n${base}\n")
+    file(WRITE "${OUT}.expect" "ram@2:$C200=00\n")
+    set(digest "script_sha256=([0-9a-f]+) ")
+    foreach(device IN ITEMS pad sports)
+      foreach(form IN ITEMS short long)
+        execute_process(COMMAND ${EMULATOR} ${RUN} --frames 3 --port1 ${device} --input ${OUT}.${form}
+          --hash RESULT_VARIABLE rc OUTPUT_VARIABLE run_${form} ERROR_VARIABLE run_${form})
+        if(NOT rc STREQUAL "0" OR NOT run_${form} MATCHES "frame 3 sha256 [0-9a-f]+\nlag_frames=[0-9]+\n$")
+          message(FATAL_ERROR "${device} ${form}: exit ${rc}\n${run_${form}}")
+        endif()
+      endforeach()
+      if(NOT run_short STREQUAL run_long)
+        message(FATAL_ERROR "${device}: the 35-byte and the all-zero 75-byte forms differ:\n"
+          "${run_short}\n${run_long}")
+      endif()
+    endforeach()
+    foreach(form IN ITEMS short long a b)
+      execute_process(COMMAND ${EMULATOR} ${RUN} --frames 3 --port1 sports --input ${OUT}.${form}
+        --expect ${OUT}.expect RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE out)
+      if(NOT rc STREQUAL "0" OR NOT out MATCHES "${digest}")
+        message(FATAL_ERROR "${form}: exit ${rc}\n${out}")
+      endif()
+      set(digest_${form} "${CMAKE_MATCH_1}")
+    endforeach()
+    if(digest_a STREQUAL digest_b OR digest_a STREQUAL digest_short OR digest_short STREQUAL digest_long)
+      message(FATAL_ERROR "the script digests do not tell the scripts apart: "
+        "${digest_short} ${digest_long} ${digest_a} ${digest_b}")
+    endif()
+    # The test card never reads a controller, so the two scripts differing in one digit give the
+    # same frame hash here; what they differ in is the digest above.
+    foreach(form IN ITEMS a b)
+      execute_process(COMMAND ${EMULATOR} ${RUN} --frames 3 --port1 sports --input ${OUT}.${form}
+        --hash RESULT_VARIABLE rc OUTPUT_VARIABLE hash_${form} ERROR_VARIABLE hash_${form})
+    endforeach()
+    if(NOT hash_a STREQUAL hash_b)
+      message(FATAL_ERROR "a pad-only image changed its hash with the delta:\n${hash_a}\n${hash_b}")
+    endif()
+  elseif(CASE STREQUAL "eyes_line")
+    # The test card writes no eye: all frames count as none, and the report changes no other line.
+    set(eyes "eyes frames=([0-9]+) none=([0-9]+) left=([0-9]+) right=([0-9]+) flips=([0-9]+) last=(left|right|none)\n$")
+    execute_process(COMMAND ${EMULATOR} ${RUN} --frames 5 --hash --eyes RESULT_VARIABLE rc
+      OUTPUT_VARIABLE with ERROR_VARIABLE with)
+    execute_process(COMMAND ${EMULATOR} ${RUN} --frames 5 --hash RESULT_VARIABLE rc2
+      OUTPUT_VARIABLE without ERROR_VARIABLE without)
+    if(NOT rc STREQUAL "0" OR NOT rc2 STREQUAL "0" OR NOT with MATCHES "${eyes}")
+      message(FATAL_ERROR "--eyes: exit ${rc} ${rc2}, output\n${with}")
+    endif()
+    math(EXPR total "${CMAKE_MATCH_2} + ${CMAKE_MATCH_3} + ${CMAKE_MATCH_4}")
+    if(NOT CMAKE_MATCH_1 STREQUAL "5" OR NOT total STREQUAL "5" OR NOT CMAKE_MATCH_5 STREQUAL "0"
+        OR NOT CMAKE_MATCH_6 STREQUAL "none")
+      message(FATAL_ERROR "--eyes: the counts do not add up to the frames run:\n${with}")
+    endif()
+    string(REGEX REPLACE "eyes [^\n]*\n$" "" stripped "${with}")
+    if(NOT stripped STREQUAL without)
+      message(FATAL_ERROR "--eyes changed the other output:\n${with}\n${without}")
+    endif()
+    # The report follows the lag line of a scripted run and an early stop counts frames run.
+    file(WRITE "${OUT}" "p1=00 p2=00 pause=0 reset=0 start=0\n")
+    expect_exit(0 "lag_frames=[0-9]+\neyes frames=1 none=1 left=0 right=0 flips=0 last=none\n$"
+      --frames 1 --input ${OUT} --eyes)
+  elseif(CASE STREQUAL "eyes_probe")
+    expect_exit(2 "usage.*--probe" --eyes --probe ${SEEDS}/di-halt.sms)
+    expect_exit(2 "usage.*--probe" --probe ${SEEDS}/di-halt.sms --eyes)
+    expect_exit(2 "usage" --eyes)
   elseif(CASE STREQUAL "device_names")
     # The execution line names each device and keeps the prefix older checks match.
     file(WRITE "${OUT}" "ram@2:$C200=00\n")
@@ -1108,6 +1244,21 @@ cogmaster_add_test(NAME runner.input
   COMMAND ${runner_check} -DCASE=input -DOUT=${PROJECT_BINARY_DIR}/tests/input.txt
     -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS runner portable TIMEOUT 30)
+
+# Fault prevented: a delta script that is half-parsed, accepted out of range or applied to a port that cannot move, so a replay differs from the recording without an error.
+# Timeout: 30 s floor; each case is a few short runs, provisional.
+foreach(axes_case IN ITEMS axes_grammar axes_device axes_equivalent)
+  cogmaster_add_test(NAME runner.input.${axes_case}
+    COMMAND ${runner_check} -DCASE=${axes_case}
+      -DOUT=${PROJECT_BINARY_DIR}/tests/${axes_case}.expect -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS portable runner TIMEOUT 30)
+endforeach()
+foreach(eyes_case IN ITEMS line probe)
+  cogmaster_add_test(NAME runner.eyes.${eyes_case}
+    COMMAND ${runner_check} -DCASE=eyes_${eyes_case}
+      -DOUT=${PROJECT_BINARY_DIR}/tests/eyes_${eyes_case}.expect -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS portable runner TIMEOUT 30)
+endforeach()
 
 # Fault prevented: the reference PNG the RetroArch screenshot is compared
 # with changes bytes (palette, layout or encoder) while the frame hash still

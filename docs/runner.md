@@ -35,6 +35,16 @@ With `--input`, a successful run appends `lag_frames=N` to standard output,
 counting completed frames without a decoded guest controller read. Host polling, peeks, disabled and
 undriven port reads do not remove lag. Early stops count only the frames actually completed.
 
+A record may instead carry the four axis deltas of that frame, 75 bytes: the 35 bytes, then
+` x1=+00005 y1=-00003 x2=+00000 y2=+00000`. Each field has its sign and exactly five digits, from -32767 to
++32767, and the order is fixed. A line is 35 or 75 bytes and nothing between; the 35-byte form means all four
+axes are 0. Port 1 takes `x1` and `y1`, port 2 takes `x2` and `y2`. A Sports Pad takes both axes and a Paddle
+takes `x` and ignores `y`. A value out of range, a malformed field, or a non-zero axis for a port whose
+controller takes no motion (a pad or `none`) exits 2 before frame 1; the second case names the port and the
+controller. Deltas apply once per frame, so the same digits in two records are two moves. The script's bytes
+are in the digest the `--expect` line prints, so a delta script is told apart from the same buttons without
+motion.
+
 Record 1 applies before frame 1. For example, released, `p1=10`, `p1=10`, released means the first press
 is visible to CPU reads in frame 2, remains held in frame 3, and releases in frame 4. All five fields are
 required on every record. Pause is edge-triggered by the core; Reset and native Game Gear Start are levels.
@@ -66,6 +76,7 @@ cogmaster-run --help | --version
 | `--save-interval N` | Also write the save after every Nth frame, counted in frames and never in time. N is from 0 to 4294967295; 0 or no option is off. It needs `--save-dir`; a malformed N is a usage error. |
 | `--png N:FILE` | After frame N, write its picture to FILE as a PNG. N is from 1 to the frame count. Repeat the option to write more frames or files. If the run stops before frame N, FILE is not written and a line on standard error names it. |
 | `--trace first-fault` | After each frame, read the core's first-fault record; stop at the first fault and print it, described under [First fault](#first-fault). |
+| `--eyes` | After the last frame, print one line `eyes frames=F none=N left=L right=R flips=X last=left\|right\|none`: how many frames reported each 3-D glasses eye, how many frames showed a non-zero eye different from the last non-zero one, and the last eye shown. It only counts: `--hash`, `--png` and `--expect` stay the plain picture and nothing is composed. It is a usage error with `--probe`. |
 | `--mailbox` | After each frame, read the RAM mailbox a diagnostic ROM fills; stop at the first frame whose status reads done after reading running, and print the mailbox, described under [Mailbox](#mailbox). |
 | `--probe` | Print the file's header fields and digests, described under [Probe](#probe), and run nothing. Give it only with a file. |
 | `--expect FILE` | Judge accepted bounded frame, RAM, mailbox and boot observations. |
