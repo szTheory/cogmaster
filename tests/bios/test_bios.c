@@ -926,6 +926,653 @@ static void test_hostile(void)
     sweep_sizes();
 }
 
+/* ---- equivalence: the fast-boot hand-off against the state an owned BIOS-shaped image reaches
+   ----
+
+   Instance A is fast boot over the probe cartridge (a CPU frozen at a halt); instance B boots the
+   same cartridge through bios_shape.bin and is stepped to the instant it jumps to address 0 with
+   port $3E at $AB, then both are walked field by field with cogmaster__state_record. The image
+   was written from SMS-SYSTEM section 3, section 6 and the hand-off table in C7, never from
+   src/boot.c, and the literals below are typed from those places, so the image and boot.c cannot
+   both be wrong the same way unseen.
+
+   The honest limit: the image writes the constants fast boot sets, so this proves the mechanism
+   (the BIOS window, the $3E walk, the hand-off through the mapper) and the single source of the
+   constants in boot.c. It does not prove what Sega's BIOS leaves behind; that is checked only on
+   a dump its owner holds, in the local library preset, as predicates. */
+
+#define EQ_MAX_FIELDS 220000u
+#define EQ_STEP_BOUND 40000u
+#define EQ_SHORT_BOUND 1000u
+#define EQ_COMPARED_NAMES 88u
+#define EQ_EXCLUDED_NAMES 69u
+#define EQ_REQUIRED_NAMES 16u
+#define EQ_WINDOW_FIRST 0x100u
+#define EQ_WINDOW_LAST 0x1FFu
+#define EQ_RESULTS 0x1D0u
+#define EQ_RESULT_BYTES 18u
+#define EQ_NAMES_MAX 8u
+#define EQ_PROBE_SIZE 65536u
+#define EQ_BIOS_SIZE 8192u
+
+static struct cogmaster__state_field eq_fields[EQ_MAX_FIELDS];
+static uint8_t eq_probe[EQ_PROBE_SIZE + 1u];
+static uint8_t eq_bios[EQ_BIOS_SIZE + 1u];
+static const char *eq_probe_path;
+static const char *eq_bios_path;
+
+/* A field that is not compared, with the reason it is not. */
+struct eq_exclusion {
+    const char *name;
+    const char *why;
+};
+
+/* The two lists a record name must be in one of. */
+struct eq_rules {
+    const char *const *compared;
+    size_t n_compared;
+    const struct eq_exclusion *excluded;
+    size_t n_excluded;
+};
+
+static const char why_time[] =
+    "the master clock and frame count: the image ran frames, fast boot none";
+static const char why_bus[] =
+    "the bus stamps and the record of the last instruction, which follow the instructions run";
+static const char why_derived[] = "the body checksum, derived from every field";
+static const char why_source[] =
+    "the boot source and the BIOS digest header fields, which differ by construction";
+static const char why_count[] = "a diagnostic counter of the frames the image ran";
+static const char why_beam[] = "beam position and interrupt flags, which follow time";
+static const char why_port[] =
+    "guest-visible VDP port state: the image's own VDP programming can leave a different address, "
+    "code, pending command byte and read buffer than fast boot";
+static const char why_cpu[] = "hidden Z80 state: the M1 count (R) and the internal registers";
+static const char why_out[] =
+    "the pictures, samples and renderer scratch of the frames the image ran, not machine state";
+
+/* Every field name a state record holds is in exactly one of these two lists: a name in neither
+   fails the comparison naming it, so a field added later cannot be ignored without a decision.
+   The lists were derived from a first run and are pinned by EQ_COMPARED_NAMES and
+   EQ_EXCLUDED_NAMES. */
+static const char *const eq_compared[] = {
+    "active_x1",
+    "active_x2",
+    "active_y1",
+    "active_y2",
+    "api_version",
+    "battery_generation",
+    "behaviour_revision",
+    "cart_ram",
+    "cram_latch",
+    "fault_addr",
+    "fault_device",
+    "fault_dot",
+    "fault_frame",
+    "fault_kind",
+    "fault_line",
+    "fault_opcode",
+    "fault_pc",
+    "fault_present",
+    "fault_width",
+    "fm_unit",
+    "format_version",
+    "header_size",
+    "input_p1",
+    "input_p2",
+    "input_pause",
+    "input_port1",
+    "input_port2",
+    "input_read",
+    "input_reset",
+    "input_start",
+    "io_audio_ctrl",
+    "io_ctrl",
+    "io_gg",
+    "io_glasses",
+    "io_glasses_frame",
+    "io_mem_ctrl",
+    "machine",
+    "magic",
+    "mapper_bank",
+    "mapper_board",
+    "mapper_ctrl",
+    "pending_x1",
+    "pending_x2",
+    "pending_y1",
+    "pending_y2",
+    "port_acc",
+    "port_edge",
+    "port_gun_ax",
+    "port_gun_ay",
+    "port_gun_dot",
+    "port_gun_line",
+    "port_gun_scan",
+    "port_gun_sense",
+    "port_pos",
+    "port_step",
+    "port_val",
+    "psg_att",
+    "psg_latch",
+    "psg_noise",
+    "psg_period",
+    "ram",
+    "region",
+    "reserved",
+    "rom_crc32",
+    "total_size",
+    "tv",
+    "vdp_cram",
+    "vdp_display",
+    "vdp_height",
+    "vdp_hscroll",
+    "vdp_latch",
+    "vdp_pause",
+    "vdp_reg",
+    "vdp_vram",
+    "vdp_vscroll",
+    "video_mode",
+    "z80_ei",
+    "z80_halted",
+    "z80_i",
+    "z80_idx",
+    "z80_iff1",
+    "z80_iff2",
+    "z80_im",
+    "z80_int_line",
+    "z80_nmi_pending",
+    "z80_pc",
+    "z80_reg",
+    "z80_sp",
+};
+
+static const struct eq_exclusion eq_excluded[] = {
+    {"ticks", why_time},
+    {"frame", why_time},
+    {"bus_deadline", why_bus},
+    {"bus_at", why_bus},
+    {"bus_vdp_at", why_bus},
+    {"bus_line", why_bus},
+    {"bus_t", why_bus},
+    {"bus_op_pc", why_bus},
+    {"bus_op", why_bus},
+    {"bus_data", why_bus},
+    {"body_crc32", why_derived},
+    {"boot", why_source},
+    {"bios_crc32", why_source},
+    {"lag_frames", why_count},
+    {"frame_ints", why_count},
+    {"line_ints", why_count},
+    {"nmis", why_count},
+    {"open_bus_reads", why_count},
+    {"audio_dropped", why_count},
+    {"vdp_writes_active", why_count},
+    {"vdp_fast_accesses", why_count},
+    {"sprite_overflow_lines", why_count},
+    {"collision_frames", why_count},
+    {"vdp_vline", why_beam},
+    {"vdp_hcounter", why_beam},
+    {"vdp_hheld", why_beam},
+    {"vdp_line_counter", why_beam},
+    {"vdp_line_pending", why_beam},
+    {"vdp_status", why_beam},
+    {"vdp_addr", why_port},
+    {"vdp_code", why_port},
+    {"vdp_first", why_port},
+    {"vdp_buffer", why_port},
+    {"z80_r", why_cpu},
+    {"z80_wz", why_cpu},
+    {"z80_p", why_cpu},
+    {"z80_q", why_cpu},
+    {"render_line", why_out},
+    {"render_x", why_out},
+    {"sprite_count", why_out},
+    {"sprite_line", why_out},
+    {"sprite_overflow", why_out},
+    {"sprite_row", why_out},
+    {"sprite_scanned", why_out},
+    {"sprite_shift", why_out},
+    {"sprite_tile", why_out},
+    {"sprite_x", why_out},
+    {"sprite_zoom", why_out},
+    {"synth_dc", why_out},
+    {"synth_gained", why_out},
+    {"synth_head", why_out},
+    {"synth_integ", why_out},
+    {"synth_level", why_out},
+    {"synth_phase", why_out},
+    {"synth_ring", why_out},
+    {"completed_backdrop", why_out},
+    {"completed_height", why_out},
+    {"completed_pixel", why_out},
+    {"field_pixel", why_out},
+    {"lcd_backdrop", why_out},
+    {"lcd_frozen", why_out},
+    {"lcd_height", why_out},
+    {"lcd_pixel", why_out},
+    {"lcd_y", why_out},
+    {"psg_at", why_out},
+    {"psg_counter", why_out},
+    {"psg_lfsr", why_out},
+    {"psg_noise_div", why_out},
+    {"psg_out", why_out},
+};
+
+/* The fields the comparison exists for: each must be compared, never excluded. The work RAM is
+   compared everywhere except the named scratch window, work RAM bytes EQ_WINDOW_FIRST to
+   EQ_WINDOW_LAST, where the image keeps its code, its results and its stack. */
+static const char *const eq_required[EQ_REQUIRED_NAMES] = {
+    "z80_reg",  "z80_idx",  "z80_sp",      "z80_pc",   "z80_i",       "z80_im",
+    "z80_iff1", "z80_iff2", "io_mem_ctrl", "io_ctrl",  "mapper_ctrl", "mapper_bank",
+    "ram",      "vdp_reg",  "vdp_cram",    "vdp_vram",
+};
+
+static const struct eq_rules eq_good = {
+    eq_compared,
+    sizeof eq_compared / sizeof eq_compared[0],
+    eq_excluded,
+    sizeof eq_excluded / sizeof eq_excluded[0],
+};
+
+/* How a rule set can be wrong, as bits. */
+#define EQ_PIN_COMPARED 1u
+#define EQ_PIN_EXCLUDED 2u
+#define EQ_PIN_REQUIRED 4u
+#define EQ_PIN_REASON 8u
+#define EQ_PIN_BOTH 16u
+
+static int eq_in(const char *name, const char *const *list, size_t n)
+{
+    for (size_t i = 0; i < n; i++) {
+        if (strcmp(name, list[i]) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int eq_in_excluded(const struct eq_rules *rules, const char *name)
+{
+    for (size_t i = 0; i < rules->n_excluded; i++) {
+        if (strcmp(name, rules->excluded[i].name) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/* The counts are literals, every required name is compared and none is excluded, no name is in
+   both lists and every excluded name has a reason. */
+static uint32_t eq_pins(const struct eq_rules *rules)
+{
+    uint32_t bad = 0;
+    if (rules->n_compared != EQ_COMPARED_NAMES) {
+        bad |= EQ_PIN_COMPARED;
+    }
+    if (rules->n_excluded != EQ_EXCLUDED_NAMES) {
+        bad |= EQ_PIN_EXCLUDED;
+    }
+    for (size_t i = 0; i < EQ_REQUIRED_NAMES; i++) {
+        if (!eq_in(eq_required[i], rules->compared, rules->n_compared)) {
+            bad |= EQ_PIN_REQUIRED;
+        }
+    }
+    for (size_t i = 0; i < rules->n_excluded; i++) {
+        if (rules->excluded[i].why == NULL || rules->excluded[i].why[0] == '\0') {
+            bad |= EQ_PIN_REASON;
+        }
+        if (eq_in(rules->excluded[i].name, rules->compared, rules->n_compared)) {
+            bad |= EQ_PIN_BOTH;
+        }
+    }
+    return bad;
+}
+
+/* 1 compared, 0 excluded, -1 in neither list. */
+static int eq_class(const struct eq_rules *rules, const char *name)
+{
+    if (eq_in(name, rules->compared, rules->n_compared)) {
+        return 1;
+    }
+    return eq_in_excluded(rules, name) ? 0 : -1;
+}
+
+struct eq_result {
+    const char *names[EQ_NAMES_MAX]; /* the compared fields that differ, each once */
+    size_t count;
+    const char *unclassified; /* the first record name in neither list, or NULL */
+};
+
+static void eq_note(struct eq_result *out, const char *name)
+{
+    for (size_t i = 0; i < out->count && i < EQ_NAMES_MAX; i++) {
+        if (strcmp(out->names[i], name) == 0) {
+            return;
+        }
+    }
+    if (out->count < EQ_NAMES_MAX) {
+        out->names[out->count] = name;
+    }
+    out->count++;
+}
+
+/* Walks n records and compares the two saved states by field name. */
+static void eq_compare(const struct eq_rules *rules, size_t n, const uint8_t *sa, const uint8_t *sb,
+                       struct eq_result *out)
+{
+    const char *last = "";
+    int cls = 0;
+    int is_ram = 0;
+    int have_ram = 0;
+    uint32_t ram_base = 0;
+    memset(out, 0, sizeof *out);
+    for (size_t i = 0; i < n; i++) {
+        const struct cogmaster__state_field *f = &eq_fields[i];
+        if (strcmp(f->name, last) != 0) {
+            last = f->name;
+            cls = eq_class(rules, last);
+            is_ram = strcmp(last, "ram") == 0;
+        }
+        if (is_ram && !have_ram) {
+            have_ram = 1;
+            ram_base = f->offset;
+        }
+        if (cls < 0) {
+            if (out->unclassified == NULL) {
+                out->unclassified = f->name;
+            }
+            continue;
+        }
+        if (cls == 0 || memcmp(sa + f->offset, sb + f->offset, f->width) == 0) {
+            continue;
+        }
+        if (is_ram && f->offset - ram_base >= EQ_WINDOW_FIRST &&
+            f->offset - ram_base <= EQ_WINDOW_LAST) {
+            continue;
+        }
+        eq_note(out, f->name);
+    }
+}
+
+/* Prints a result in the one format the bad-image controls anchor to; true when it is clean. */
+static int eq_report(const struct eq_result *res)
+{
+    if (res->unclassified != NULL) {
+        fprintf(stderr, "equivalence: unclassified field %s\n", res->unclassified);
+        check_failures++;
+    }
+    if (res->count != 0) {
+        fprintf(stderr, "equivalence: differing fields [");
+        for (size_t i = 0; i < res->count && i < EQ_NAMES_MAX; i++) {
+            fprintf(stderr, "%s%s", i == 0 ? "" : ",", res->names[i]);
+        }
+        fprintf(stderr, "]\n");
+        check_failures++;
+    }
+    return res->count == 0 && res->unclassified == NULL;
+}
+
+/* Whether the result is exactly the one differing field name, and nothing unclassified. */
+static int eq_is_only(const struct eq_result *res, const char *name)
+{
+    return res->unclassified == NULL && res->count == 1 && strcmp(res->names[0], name) == 0;
+}
+
+static int eq_reached(const cogmaster *m)
+{
+    return m->z80.pc == 0u && m->io.mem_ctrl == 0xABu;
+}
+
+/* Steps instance m with the Z80 until it is at address 0 with $3E at $AB, closing each frame the
+   way cogmaster_run_frame does (a frame already past its deadline runs no instruction), so every
+   field stays what a host could have saved. 1 when reached, 0 after bound steps. */
+static int eq_run(cogmaster *m, uint32_t bound)
+{
+    uint32_t steps = 0;
+    for (;;) {
+        while (!eq_reached(m) && m->ticks < m->bus.deadline) {
+            if (steps++ >= bound) {
+                return 0;
+            }
+            cogmaster__z80_step(m);
+        }
+        if (eq_reached(m)) {
+            return 1;
+        }
+        CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    }
+}
+
+static size_t eq_read(const char *path, uint8_t *buf, size_t want)
+{
+    FILE *f = path == NULL ? NULL : fopen(path, "rb");
+    size_t n = 0;
+    if (f != NULL) {
+        n = fread(buf, 1u, want + 1u, f);
+        fclose(f);
+    }
+    return n;
+}
+
+/* Typed from the hand-off table of SMS-SYSTEM C7: $3E $AB written to the port and stored at the
+   top of work RAM, $3F $FF, SP $DFF0, AF $FFFF, the mapper at 0, 0, 1, 2 and PC 0. */
+static void eq_literals(const cogmaster *m, const char *which)
+{
+    int bad = check_failures;
+    CHECK_EQ_HEX(m->io.mem_ctrl, 0xABu);
+    CHECK_EQ_HEX(m->ram[0], 0xABu);
+    CHECK_EQ_HEX(m->io.io_ctrl, 0xFFu);
+    CHECK_EQ_HEX(m->z80.sp, 0xDFF0u);
+    CHECK_EQ_HEX(m->z80.reg[COGMASTER__Z80_A], 0xFFu);
+    CHECK_EQ_HEX(m->z80.reg[COGMASTER__Z80_F], 0xFFu);
+    CHECK_EQ_HEX(m->mapper.ctrl, 0u);
+    CHECK_EQ_HEX(m->mapper.bank[0], 0u);
+    CHECK_EQ_HEX(m->mapper.bank[1], 1u);
+    CHECK_EQ_HEX(m->mapper.bank[2], 2u);
+    CHECK_EQ_HEX(m->z80.pc, 0u);
+    if (check_failures != bad) {
+        fprintf(stderr, "equivalence: the %s instance is not the hand-off of SMS-SYSTEM C7\n",
+                which);
+    }
+}
+
+/* What the image recorded while it walked the enables, typed from SMS-SYSTEM section 3: BIOS on
+   and cartridge off reads the BIOS's own bytes (the image's second byte is $C3, the probe's is
+   $76, so the two sources differ); neither reads open bus, the retained byte $00 on an SMS and
+   the pull-up $FF on an SMS 2 (C5); cartridge on and BIOS off reads the probe's bytes; and each
+   write then read of $FFFC to $FFFF gives back $20 to $23, as work RAM answers the mirror. */
+static void eq_walk_results(const cogmaster *b, uint32_t machine, const char *name)
+{
+    uint8_t open = machine == COGMASTER_MACHINE_SMS1 ? 0x00u : 0xFFu;
+    const uint8_t want[EQ_RESULT_BYTES] = {0xF3u, 0xC3u, 0x20u, 0x21u, 0x22u, 0x23u,
+                                           open,  open,  0x20u, 0x21u, 0x22u, 0x23u,
+                                           0xF3u, 0x76u, 0x20u, 0x21u, 0x22u, 0x23u};
+    for (uint32_t i = 0; i < EQ_RESULT_BYTES; i++) {
+        if (b->ram[EQ_RESULTS + i] != want[i]) {
+            fprintf(stderr, "equivalence: %s walk result %u is %02x, want %02x\n", name, i,
+                    (unsigned)b->ram[EQ_RESULTS + i], (unsigned)want[i]);
+            check_failures++;
+        }
+    }
+}
+
+/* One mutation of the fast-boot instance, which the comparator must name exactly. */
+static void eq_mutation(cogmaster *a, size_t n, const uint8_t *sb, uint8_t *target, uint8_t bit,
+                        const char *name)
+{
+    struct eq_result res;
+    *target ^= bit;
+    CHECK_EQ_U64(cogmaster__state_save(a, state_a, STATE_BUF), COGMASTER_STATUS_OK);
+    eq_compare(&eq_good, n, state_a, sb, &res);
+    if (name == NULL ? res.count != 0 || res.unclassified != NULL : !eq_is_only(&res, name)) {
+        fprintf(stderr, "equivalence control: a change in %s was not reported as exactly that\n",
+                name == NULL ? "an excluded field" : name);
+        check_failures++;
+    }
+    *target ^= bit;
+}
+
+static void eq_controls(cogmaster *a, size_t n, const uint8_t *sb)
+{
+    /* Each required field changed in the fast-boot instance is named, and only it. */
+    eq_mutation(a, n, sb, &a->ram[0], 1u, "ram");
+    eq_mutation(a, n, sb, &a->mapper.bank[1], 1u, "mapper_bank");
+    eq_mutation(a, n, sb, &a->mapper.ctrl, 1u, "mapper_ctrl");
+    eq_mutation(a, n, sb, &a->io.mem_ctrl, 1u, "io_mem_ctrl");
+    eq_mutation(a, n, sb, &a->io.io_ctrl, 1u, "io_ctrl");
+    eq_mutation(a, n, sb, &a->vdp.reg[1], 1u, "vdp_reg");
+    eq_mutation(a, n, sb, &a->vdp.vram[5], 1u, "vdp_vram");
+    eq_mutation(a, n, sb, &a->vdp.cram[3], 1u, "vdp_cram");
+    eq_mutation(a, n, sb, &a->z80.i, 1u, "z80_i");
+    eq_mutation(a, n, sb, &a->z80.im, 1u, "z80_im");
+    eq_mutation(a, n, sb, &a->z80.iff1, 1u, "z80_iff1");
+    eq_mutation(a, n, sb, &a->z80.reg[COGMASTER__Z80_B], 1u, "z80_reg");
+    eq_mutation(a, n, sb, &a->z80.idx, 1u, "z80_idx");
+    {
+        uint16_t sp = a->z80.sp;
+        a->z80.sp = (uint16_t)(sp ^ 1u);
+        struct eq_result res;
+        CHECK_EQ_U64(cogmaster__state_save(a, state_a, STATE_BUF), COGMASTER_STATUS_OK);
+        eq_compare(&eq_good, n, state_a, sb, &res);
+        CHECK(eq_is_only(&res, "z80_sp"));
+        a->z80.sp = sp;
+        uint16_t pc = a->z80.pc;
+        a->z80.pc = (uint16_t)(pc ^ 1u);
+        CHECK_EQ_U64(cogmaster__state_save(a, state_a, STATE_BUF), COGMASTER_STATUS_OK);
+        eq_compare(&eq_good, n, state_a, sb, &res);
+        CHECK(eq_is_only(&res, "z80_pc"));
+        a->z80.pc = pc;
+    }
+    /* The scratch window edges: the byte before and after the window are compared, the first and
+       last byte inside it are not. */
+    eq_mutation(a, n, sb, &a->ram[EQ_WINDOW_FIRST - 1u], 1u, "ram");
+    eq_mutation(a, n, sb, &a->ram[EQ_WINDOW_LAST + 1u], 1u, "ram");
+    eq_mutation(a, n, sb, &a->ram[EQ_WINDOW_FIRST], 1u, NULL);
+    eq_mutation(a, n, sb, &a->ram[EQ_WINDOW_LAST], 1u, NULL);
+    /* The named exceptions are never reported. */
+    eq_mutation(a, n, sb, &a->z80.r, 1u, NULL);
+    eq_mutation(a, n, sb, &a->vdp.buffer, 1u, NULL);
+    eq_mutation(a, n, sb, &a->vdp.code, 1u, NULL);
+    eq_mutation(a, n, sb, &a->vdp.first, 1u, NULL);
+}
+
+/* The rules themselves: a name in neither list is named, and a rule set that moves or adds a
+   required name fails a pin. */
+static void eq_rule_controls(size_t n, const uint8_t *sa, const uint8_t *sb)
+{
+    struct eq_result res;
+    struct eq_rules rules = eq_good;
+    CHECK_EQ_U64(eq_pins(&eq_good), 0u);
+    /* A compared list without vdp_reg leaves it unclassified, named. */
+    static const char *shorter[EQ_COMPARED_NAMES];
+    size_t kept = 0;
+    for (size_t i = 0; i < eq_good.n_compared; i++) {
+        if (strcmp(eq_good.compared[i], "vdp_reg") != 0) {
+            shorter[kept++] = eq_good.compared[i];
+        }
+    }
+    rules.compared = shorter;
+    rules.n_compared = kept;
+    eq_compare(&rules, n, sa, sb, &res);
+    CHECK(res.unclassified != NULL && strcmp(res.unclassified, "vdp_reg") == 0);
+    CHECK_EQ_U64(eq_pins(&rules), EQ_PIN_COMPARED | EQ_PIN_REQUIRED);
+    /* An excluded list extended by one required name fails the pinned count (and the overlap). */
+    static struct eq_exclusion longer[EQ_EXCLUDED_NAMES + 1u];
+    memcpy(longer, eq_excluded, sizeof eq_excluded);
+    longer[EQ_EXCLUDED_NAMES].name = "z80_sp";
+    longer[EQ_EXCLUDED_NAMES].why = why_out;
+    rules = eq_good;
+    rules.excluded = longer;
+    rules.n_excluded = EQ_EXCLUDED_NAMES + 1u;
+    CHECK_EQ_U64(eq_pins(&rules), EQ_PIN_EXCLUDED | EQ_PIN_BOTH);
+    /* A required name moved from compared to excluded fails three pins at once. */
+    static const char *moved[EQ_COMPARED_NAMES];
+    kept = 0;
+    for (size_t i = 0; i < eq_good.n_compared; i++) {
+        if (strcmp(eq_good.compared[i], "z80_sp") != 0) {
+            moved[kept++] = eq_good.compared[i];
+        }
+    }
+    rules.compared = moved;
+    rules.n_compared = kept;
+    CHECK_EQ_U64(eq_pins(&rules), EQ_PIN_COMPARED | EQ_PIN_EXCLUDED | EQ_PIN_REQUIRED);
+    /* An excluded entry with no reason fails. */
+    longer[0].why = "";
+    rules = eq_good;
+    rules.excluded = longer;
+    CHECK_EQ_U64(eq_pins(&rules), EQ_PIN_REASON);
+}
+
+static void eq_leg(uint32_t machine)
+{
+    cogmaster *a = blank();
+    cogmaster *b = blank();
+    cogmaster *c = blank();
+    cogmaster *d = blank();
+    cogmaster_media ma = media_of(eq_probe, EQ_PROBE_SIZE, machine, NULL, 0u);
+    cogmaster_media mb = media_of(eq_probe, EQ_PROBE_SIZE, machine, eq_bios, EQ_BIOS_SIZE);
+    CHECK_EQ_U64(cogmaster_load(a, &ma), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster_load(b, &mb), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster_load(c, &mb), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster_load(d, &mb), COGMASTER_STATUS_OK);
+    if (!eq_run(b, EQ_STEP_BOUND)) {
+        fprintf(stderr,
+                "equivalence: the image never reached address 0 with $3E at AB in %u steps\n",
+                EQ_STEP_BOUND);
+        check_failures++;
+    } else {
+        /* The stepped state is one a host could have saved: a third instance accepts it. */
+        size_t size = save_to(b, state_b);
+        CHECK_EQ_U64(cogmaster__state_load(c, state_b, size), COGMASTER_STATUS_OK);
+        /* The image ran its two frames of backdrop before it handed off. */
+        CHECK(b->frame >= 2u);
+        eq_literals(a, "fast boot");
+        eq_literals(b, "BIOS");
+        eq_walk_results(b, machine, "BIOS");
+        size_t n = cogmaster__state_record(a, eq_fields, EQ_MAX_FIELDS);
+        CHECK(n != 0u && n <= EQ_MAX_FIELDS);
+        CHECK_EQ_U64(save_to(a, state_a), size);
+        uint32_t pins = eq_pins(&eq_good);
+        if (pins != 0u) {
+            fprintf(stderr,
+                    "equivalence: the pinned lists are wrong (code %u): %zu compared names, want "
+                    "%u, and %zu excluded, want %u\n",
+                    pins, eq_good.n_compared, EQ_COMPARED_NAMES, eq_good.n_excluded,
+                    EQ_EXCLUDED_NAMES);
+            check_failures++;
+        }
+        struct eq_result res;
+        eq_compare(&eq_good, n, state_a, state_b, &res);
+        /* The controls expect a clean baseline, so a bad image stops at its own report. */
+        if (eq_report(&res)) {
+            eq_controls(a, n, state_b);
+            eq_rule_controls(n, state_a, state_b);
+        }
+        /* A bound too short for the image is a named failure, not a hang. */
+        CHECK_EQ_U64(eq_run(d, EQ_SHORT_BOUND), 0u);
+    }
+    cogmaster_destroy(a);
+    cogmaster_destroy(b);
+    cogmaster_destroy(c);
+    cogmaster_destroy(d);
+}
+
+/* Fault prevented: a fast-boot hand-off that drifts from the state the hand-off facts describe, a
+   comparator that ignores a field silently, and a vacuous equivalence that passes because both
+   sides came from the same constants. */
+static void test_equivalence(void)
+{
+    if (eq_read(eq_probe_path, eq_probe, EQ_PROBE_SIZE) != EQ_PROBE_SIZE ||
+        eq_read(eq_bios_path, eq_bios, EQ_BIOS_SIZE) != EQ_BIOS_SIZE) {
+        fprintf(stderr, "equivalence: the probe and the image must be %u and %u bytes\n",
+                EQ_PROBE_SIZE, EQ_BIOS_SIZE);
+        check_failures++;
+        return;
+    }
+    eq_leg(COGMASTER_MACHINE_SMS1);
+    eq_leg(COGMASTER_MACHINE_SMS2);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
@@ -935,14 +1582,17 @@ static const struct {
     {"load", test_load},
     {"state", test_state},
     {"hostile", test_hostile},
+    {"equivalence", test_equivalence},
 };
 
 int main(int argc, char **argv)
 {
-    if (argc != 2) {
-        fprintf(stderr, "usage: cogmaster-test-bios <case>\n");
+    if (argc != 2 && argc != 4) {
+        fprintf(stderr, "usage: cogmaster-test-bios <case> [<probe cartridge> <BIOS image>]\n");
         return 2;
     }
+    eq_probe_path = argc == 4 ? argv[2] : NULL;
+    eq_bios_path = argc == 4 ? argv[3] : NULL;
     for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
         if (strcmp(argv[1], cases[i].name) == 0) {
             cases[i].run();

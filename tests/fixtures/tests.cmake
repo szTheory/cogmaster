@@ -546,6 +546,35 @@ foreach(name IN LISTS bios_images)
     LABELS fixtures portable TIMEOUT 20)
 endforeach()
 
+# Fault prevented: a fast-boot hand-off that drifts from the state the hand-off facts describe, a
+# comparator that ignores a field silently, and a vacuous equivalence that passes because both
+# sides came from the same constants. The probe cartridge and the owned BIOS-shaped image are
+# passed as the built paths; the honest limit (the mechanism and the single source of constants,
+# not what Sega's BIOS leaves behind) is stated in the test.
+# Timeout: 20 s floor; 0.20 s slowest local run, no hosted run yet, so provisional.
+cogmaster_add_test(NAME bios.equivalence
+  COMMAND cogmaster-test-bios equivalence ${COGMASTER_FIXTURES_DIR}/bios_probe.sms
+    ${COGMASTER_FIXTURES_DIR}/bios_shape.bin
+  LABELS bios fixtures portable TIMEOUT 20)
+
+# Fault prevented: a bad image (the top-of-RAM store left out, SP two bytes high) that passes, or
+# fails for another reason than the field the comparator names; the pattern is the comparator's own
+# fixed failure line, which a missing file or a crash does not print.
+# Timeout: 20 s floor; 0.04 s slowest local run, no hosted run yet, so provisional.
+foreach(spec IN ITEMS bad_ram:ram bad_sp:z80_sp)
+  string(REPLACE ":" ";" spec "${spec}")
+  list(GET spec 0 bad)
+  list(GET spec 1 field)
+  set(bad_cmd ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:cogmaster-test-bios> equivalence
+    ${COGMASTER_FIXTURES_DIR}/bios_probe.sms ${COGMASTER_FIXTURES_DIR}/bios_shape_${bad}.bin)
+  string(REPLACE ";" "$<SEMICOLON>" bad_cmd "${bad_cmd}")
+  cogmaster_add_test(NAME bios.equivalence.${bad}
+    COMMAND ${CMAKE_COMMAND} "-DCMD=${bad_cmd}" -DCODE=1
+      "-DREGEX=equivalence: differing fields \\[${field}\\]"
+      -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+    LABELS bios fixtures portable TIMEOUT 20)
+endforeach()
+
 # Fault prevented: a fixture whose measurements are printed but never
 # compared, so a core that pages the wrong bank passes. The image's digest is
 # checked, then its mailbox records are judged against tests/diag/expected.csv.
