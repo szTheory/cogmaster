@@ -60,3 +60,13 @@ Each is a heuristic-quality or test-and-tooling item, so it waits here instead o
   `counted` mask is 32 bits) or a name of 16 or more characters (the struct field is 16 bytes). The longest name is
   13 characters and there are 20 slots, so nothing breaks today; add both conditions to the
   "slot table row is not consistent" failure when a slot is added near either limit.
+
+## Phase 7 review (saves)
+
+- **Fixture-facts cap misreports a well-formed file (review IN-01).** In `tools/cartdb.c` the row-count cap is checked
+  before the next row is read, so a file that has exactly the cap's number of rows fails with "missing fixture facts".
+  Move the check after the read, or compare against `cap + 1`. No fixture file is near the cap today.
+- **`--save-interval` argument edges (review IN-02).** `--save-interval 0` without `--save-dir` is accepted (0 means
+  off) though `docs/runner.md` says the option needs `--save-dir`, and a repeated `--save-interval` is last-wins
+  where `--expect` rejects a repeat. Pick one rule, document it in the option row, and add the case to
+  `runner.usage.save_interval`.

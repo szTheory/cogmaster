@@ -27,7 +27,7 @@ status: all_fixed
 
 **Files modified:** `src/state.c`, `tests/mapper/test_eeprom.c`
 **Commits:** a67a3d9, d9625cb (clang-format of the new lines)
-**Status:** fixed: requires human verification (state-validity logic)
+**Status:** fixed (verified by `eeprom.state.bounds` with a negative control: checks removed, test fails)
 **Applied fix:** `eeprom_io` now also refuses a state with Data Out low outside a read, a read whose command
 is not READ, a data-in phase whose command is neither WRITE nor WRAL, and a waiting program (flag b4) unless
 the phase is command complete, writes are enabled and the command is WRITE, ERASE, WRAL or ERAL. The checks use
