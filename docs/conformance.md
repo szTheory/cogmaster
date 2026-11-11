@@ -49,17 +49,18 @@ embedded record newlines, empty records and duplicate normalized cases reject. H
 zero evaluated coverage. Output is deterministic under row permutation. `policy.compat_doc_fresh`
 regenerates the public page; its corruption control and parser controls run in CI and hygiene.
 
-The nine columns are `id,title,machine,region,mapper,predicate,status,evidence,date`. Normalization
-resolves region `any` to `ntsc-u`, inserts default SMS/GG video and pad devices, and uses the empty
-SHA-256 for no script. A configuration prefix has the fixed grammar
-`cfg:video=sms;port1=pad;port2=pad;script=none;sha256=DIGEST/` before the runner predicate;
-video accepts `sms|gg`, devices accept `pad|none|paddle|sports|lphaser`, and script is a logical identifier plus
-its content SHA-256. A row for a device title names its device in its prefix, so a pad run never satisfies
-it; a row proves a boot or a frame hash and never that motion tracks. `auto` is
-not accepted. Frame numbers are decimal; RAM addresses and expected bytes normalize to uppercase hex.
-Expected hashes/bytes remain separate from identity, which includes the resolved profile, board,
-devices, script identity/content, predicate kind, frame and address. A boot cap is at most 1,000,000
-frames; sound predicates are unavailable. The libretro core stays experimental through v2.0.
+The header is `id,title,machine,region,tv,mapper,predicate,status,evidence,date`. `region` is `export` or
+`japan` and `tv` is `ntsc` or `pal`; no `any` or `auto`: a row names the setting a run used, not
+a fact about the cartridge. A prefix `cfg:video=sms;fm=off;port1=pad;port2=pad;script=none;sha256=DIGEST/` comes
+before the predicate: video `sms|gg`, `fm` `on|off`, devices `pad|none|paddle|sports|lphaser`, script a logical
+identifier plus its content SHA-256. An omitted prefix or `fm` takes the default (`fm` on only for a Japanese
+Master System) and normalization prints the long form. A row's identity is id, machine, region, tv, mapper, the
+whole prefix and the predicate kind, frame and address, so rows differing only in `fm` are separate. Predicates:
+`frame@F=HASH`, `ram@F:$ADDR=BYTE`, `mailbox@F`, `boots@F` and `audio@F=HASH` (the chips' stream of changes
+over frames 1 to F, for an owned fixture, no script; a regression lock, never a claim about sound), F up to
+1,000,000. `pal` with the Game Gear or `japan`, and `fm=on` with the Game Gear, are refused as the core refuses
+them. Format 1 files (`ntsc-u|ntsc-j|pal|any`, no `tv`, no `fm`) are still read and always written as format 2;
+`cases` prints a row's fields for readers. The libretro core stays experimental through v2.0.
 
 Cartridge classification is covered by `cart.database` and `cart.generator`: known nonbattery, unknown,
 known battery and unsupported geometry are distinct from board allocation and ledger membership.
