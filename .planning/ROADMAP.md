@@ -131,7 +131,7 @@ Plans:
   3. The 3-D glasses eye state is reported at frame end only while the cartridge enable bit is set, and the frame hash is the same whether or not the host composes the eyes (PAD-04).
   4. A caller built against the version 9 `cogmaster_input` passes its smaller struct and an ASan test shows `cogmaster_set_input` never reads past it, copying the smaller size and zeroing the rest (PAD-05).
   5. A dump's default device comes from the hash table with no option, a user option overrides it, the ledger key carries the device, the state visitor refuses out-of-range device state, and each device is in the fuzz target (PAD-06, PAD-07).
-**Plans**: 5/17 plans executed
+**Plans**: 6/17 plans executed
 
 Plans:
 - [x] 08-01-PLAN.md — pin-level port layer with the pad arm and the one TH-change function, proven by a 256 x 256 latch and pin differential (PAD-01)
@@ -139,7 +139,7 @@ Plans:
 - [x] 08-03-PLAN.md — abi.api_v12 registration, the bounded input copy and its proof (poison, exact malloc, tags, refusals) (PAD-05)
 - [x] 08-04-PLAN.md — glasses eye hook, cut rule, state bytes and hosted dispatch 1 with a computed perf delta (PAD-04, PAD-07)
 - [x] 08-05-PLAN.md — Sports Pad and Paddle models, availability, delta accumulation and saved device state (PAD-01, PAD-02, PAD-03, PAD-07)
-- [ ] 08-06-PLAN.md — state-bound byte-mutation proof and the pad fuzz target (PAD-07)
+- [x] 08-06-PLAN.md — state-bound byte-mutation proof and the pad fuzz target (PAD-07)
 - [ ] 08-07-PLAN.md — library table defaults, profile resolution and the region rule (PAD-06)
 - [ ] 08-08-PLAN.md — runner device grammar, resolved defaults, exit 77 refusal and probe keys (PAD-06, PAD-02)
 - [ ] 08-09-PLAN.md — runner 75-byte delta script line and the --eyes report (PAD-02, PAD-03, PAD-04)
@@ -210,7 +210,7 @@ Plans:
 | 5. Tune-up | v2.0 | 14/14 | Complete    | 2026-11-10 |
 | 6. Korean cartridges play | v2.0 | 11/11 | Complete    | 2026-11-10 |
 | 7. Saves survive a restart | v2.0 | 10/10 | Complete    | 2026-11-10 |
-| 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 5/17 | In Progress | - |
+| 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 6/17 | In Progress | - |
 | 9. Light Phaser | v2.0 | 0/TBD | Not started | - |
 | 10. BIOS boot | v2.0 | 0/TBD | Not started | - |
 | 11. PAL and Japanese FM | v2.0 | 0/TBD | Not started | - |
