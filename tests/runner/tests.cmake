@@ -1602,14 +1602,13 @@ set(runner_fixtures "")
 if(COGMASTER_FIXTURES)
   set(runner_fixtures -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures)
 endif()
-# Timeout: 30 s floor; 2 x 2.3 s, slowest of 5 local runs with the sound rows (1.2 s alone to 2.3 s
-# inside the parallel ci workflow), no hosted run yet, so provisional until the be32 (x8) and wasm32 (x5) timings of the first hosted run are read.
+# Timeout: 107 s; 2 x 53.07 s (be32 lane), slowest of 4 runs, run 43115877197.
 cogmaster_add_test(NAME runner.hashes_file
   COMMAND ${CMAKE_COMMAND} -DCASE=hash_matrix -DRUN=$<TARGET_FILE:cogmaster-run>
     "-DEMULATOR=${runner_emulator}" -DOUT=${PROJECT_BINARY_DIR} ${runner_fixtures}
     -DHASHES=${runner_hashes} -DPINS=${PROJECT_SOURCE_DIR}/tests/audio
     -P ${CMAKE_CURRENT_LIST_FILE}
-  LABELS runner portable TIMEOUT 30)
+  LABELS runner portable TIMEOUT 107)
 
 # Fault prevented: a comparison that passes lanes which differ, or a lane
 # that silently drops out. Two files one hex digit apart must fail, and two
@@ -2021,7 +2020,7 @@ cogmaster_add_test(NAME runner.usage.save_interval
 # Fault prevented: a runner that cannot name the FM state a ledger row used, so a row judged with the unit
 # off could pass for the unit on; a misspelt or repeated --fm taken as a word; a request the console never
 # had run instead of refused.
-# Timeout: 20 s floor; 0.09 s slowest local run, no hosted run yet, so provisional.
+# Timeout: 20 s floor; 2 x 1.27 s (be32 lane), slowest of 4 runs, run 43115877197.
 cogmaster_add_test(NAME runner.usage.fm
   COMMAND ${runner_check} -DCASE=fm_usage -DOUT=${PROJECT_BINARY_DIR}/tests/fm-usage.expect
     -P ${CMAKE_CURRENT_LIST_FILE}
@@ -2048,7 +2047,7 @@ cogmaster_add_test(NAME runner.hash_audio
 
 # Fault prevented: a PAL frame that carries one sample too many or too few passing as 965 or 966, so a
 # drifting audio clock would go unseen by the hashes. The control adds one to every expected total.
-# Timeout: 20 s floor; 0.4 s slowest local run, no hosted run yet, so provisional.
+# Timeout: 20 s floor; 2 x 1.37 s (be32 lane), slowest of 4 runs, run 43115877197.
 cogmaster_add_test(NAME runner.audio_cadence
   COMMAND ${runner_check} -DCASE=audio_cadence -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS portable runner TIMEOUT 20)
@@ -2056,7 +2055,7 @@ string(REPLACE ";" "\;" cadence_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
 set(cmd ${CMAKE_COMMAND} -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${cadence_emulator}"
   -DCASE=audio_cadence -DNUDGE=1 -P ${CMAKE_CURRENT_LIST_FILE})
 string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
-# Timeout: 20 s floor; 0.1 s slowest local run, no hosted run yet, so provisional.
+# Timeout: 20 s floor; 2 x 0.16 s (windows-arm64 lane), slowest of 4 runs, run 43115877197.
 cogmaster_add_test(NAME runner.audio_cadence.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=audio_cadence:.*samples"
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
@@ -2065,13 +2064,13 @@ cogmaster_add_test(NAME runner.audio_cadence.self_test
 # Fault prevented: a sound claim that is only a frame hash (the transition stream, which shows the chips'
 # writes, can differ while the picture stays equal), an audio expectation that reads an empty trace because
 # only --hash-audio enabled it, and two readers draining the log so one sees nothing.
-# Timeout: 20 s floor; 2.8 s slowest local run, no hosted run yet, so provisional.
+# Timeout: 114 s; 2 x 56.72 s (be32 lane), slowest of 4 runs, run 43115877197.
 if(COGMASTER_FIXTURES)
   cogmaster_add_test(NAME runner.expect.audio
     COMMAND ${runner_check} -DCASE=expect_audio -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures
       -DSHORT=$<TARGET_FILE:cogmaster-test-run-audio-short> -DPINS=${PROJECT_SOURCE_DIR}/tests/audio
       -DOUT=${PROJECT_BINARY_DIR}/tests/expect-audio -P ${CMAKE_CURRENT_LIST_FILE}
-    LABELS fm portable runner TIMEOUT 20)
+    LABELS fm portable runner TIMEOUT 114)
 endif()
 
 # Fault prevented: an FM unit whose sound differs between two runs, between lanes or from the

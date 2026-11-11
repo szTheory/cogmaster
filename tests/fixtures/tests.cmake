@@ -1014,7 +1014,7 @@ endforeach()
 # transcription error that passes because the same error is in the fixture, and a PAL image that
 # passes on an NTSC run. The first model has no 224 or 240 height, so its two runs use the 224 image
 # and the rows of 192 lines.
-# Timeout: 20 s floor; 0.2 s slowest local run, no hosted run yet, so provisional.
+# Timeout: 20 s floor; 2 x 1.50 s (macos-x64 lane for closed_form), slowest of 4 runs, run 43111533403.
 foreach(tv IN ITEMS ntsc pal)
   set(region ntsc-u)
   set(heights 192 224)
@@ -1050,7 +1050,7 @@ cogmaster_add_test(NAME fixtures.vdp_vtable.closed_form
 # again later; the n band comes from the listing's cycle counts (closed_form), not from a run. The
 # Game Gear in its own mode has no Pause NMI, so its four records are 0. PAL placement is derived,
 # not measured: no logic-analyser capture of a PAL console exists.
-# Timeout: 20 s floor; 0.3 s slowest local run, no hosted run yet, so provisional.
+# Timeout: 20 s floor; 2 x 0.69 s (be32 lane for pal.240), slowest of 4 runs, run 43115877197.
 foreach(tv IN ITEMS ntsc pal)
   set(region ntsc-u)
   set(heights 192 224)

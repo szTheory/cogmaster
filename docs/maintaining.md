@@ -165,10 +165,12 @@ critical path. The static analyzer and the tree scan cost runner minutes, not wa
 Never run two macOS-using workflows at once (CI and Nightly).
 
 A job that fails at an `apt` step with "Temporary failure resolving" hit a runner DNS fault: `gh run rerun <id> --failed`
-reruns only the failed jobs, reuses the green ones and spends no macOS minutes.
+reruns only the failed jobs and spends no macOS minutes.
 
-Local medians of three runs: `sh scripts/hygiene.sh --tree` fell from 27 s to 21 s (one read per file) and
-the analyzer test from 21 s to 16 s (four processes).
+`sh scripts/ci-durations.sh tests <run-id>` lists each test with the lanes that passed it and its slowest seconds. Settle
+a timeout from two runs, never one. Measured: the hash file takes 4 s on Linux x64 and 53 s on be32; the sound
+expectations 4.6 and 57 s. When the weekly digest names a slowest job or a flaky one, rerun only the failed jobs and read
+the table before raising any timeout.
 
 ## Repository settings
 

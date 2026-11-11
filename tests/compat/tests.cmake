@@ -374,17 +374,17 @@ set(compat_labels compat)
 if(COGMASTER_HYGIENE)
   list(APPEND compat_labels hygiene)
 endif()
-# Windows ARM64 exceeded 30 s of shell-process work in run 39510295360; provisional 2x bound.
+# Timeout: 98 s; 2 x 48.90 s (windows-arm64 lane), slowest of 4 runs, run 43111533403.
 cogmaster_add_test(NAME compat.ratchet
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat-ratchet
-    -P ${CMAKE_CURRENT_LIST_DIR}/ratchet.cmake LABELS ${compat_labels} TIMEOUT 60)
+    -P ${CMAKE_CURRENT_LIST_DIR}/ratchet.cmake LABELS ${compat_labels} TIMEOUT 98)
 cogmaster_add_test(NAME compat.trusted_judge
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=trusted
     -DOUT=${PROJECT_BINARY_DIR}/tests/compat-trusted -P ${CMAKE_CURRENT_LIST_DIR}/ratchet.cmake
   LABELS ${compat_labels} TIMEOUT 30)
 # Fault prevented: a migration that silently moves a status, an evidence text or a date, drops a row or maps a
 # legacy region to the wrong profile, and a parser that accepts a ledger it must refuse.
-# Timeout: 60 s floor; 5 s slowest local run, no hosted run yet, so provisional.
+# Timeout: 60 s floor; 2 x 10.21 s (windows-arm64 lane), slowest of 4 runs, run 43111533403.
 cogmaster_add_test(NAME compat.migration
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat-migration
     -P ${CMAKE_CURRENT_LIST_DIR}/migration.cmake LABELS ${compat_labels} TIMEOUT 60)
@@ -403,11 +403,10 @@ string(REPLACE ";" "$<SEMICOLON>" compat_device_rejected "${compat_device_reject
 cogmaster_add_test(NAME compat.device_rejected
   COMMAND ${CMAKE_COMMAND} "-DCMD=${compat_device_rejected}" -DCODE=1 "-DREGEX=device tokens refused: 10[^0-9]"
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake LABELS ${compat_labels} TIMEOUT 30)
-# Timeout: 90 s; the adopt cases made Windows ARM64 run past 30 s in run 43115877197 (killed at 30.02 s and 30.01 s, so
-# its real time is unknown), so provisional until a hosted run with the wider limit shows it.
+# Timeout: 91 s; 2 x 45.10 s (windows-arm64 lane), slowest of 4 runs, run 43117518796.
 cogmaster_add_test(NAME compat.public_update
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat-update
-    -P ${CMAKE_CURRENT_LIST_DIR}/update.cmake LABELS ${compat_labels} TIMEOUT 90)
+    -P ${CMAKE_CURRENT_LIST_DIR}/update.cmake LABELS ${compat_labels} TIMEOUT 91)
 cogmaster_add_test(NAME policy.compat_doc_fresh
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=fresh -DOUT=${PROJECT_BINARY_DIR}/tests/compat-doc
     -P ${CMAKE_CURRENT_LIST_FILE} LABELS ${compat_labels} policy TIMEOUT 30)
@@ -419,10 +418,10 @@ cogmaster_add_test(NAME policy.compat_doc_fresh.self_test
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake LABELS ${compat_labels} policy TIMEOUT 30)
 if(COGMASTER_FIXTURES AND NOT COGMASTER_HYGIENE)
   string(REPLACE ";" "$<SEMICOLON>" compat_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
-  # Timeout: 60 s floor; 2.5 s slowest local run, no hosted run yet, so provisional.
+  # Timeout: 89 s; 2 x 44.07 s (be32 lane), slowest of 4 runs, run 43115877197.
   cogmaster_add_test(NAME compat.fixtures
     COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=fixtures
       -DOUT=${PROJECT_BINARY_DIR}/tests/compat-fixtures -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures
       -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${compat_emulator}"
-      -P ${CMAKE_CURRENT_LIST_FILE} LABELS compat portable TIMEOUT 60)
+      -P ${CMAKE_CURRENT_LIST_FILE} LABELS compat portable TIMEOUT 89)
 endif()

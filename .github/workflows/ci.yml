@@ -80,7 +80,7 @@ jobs:
   # The image has clang-format-21, clang-tidy-21 and jq; configure finds them.
   hygiene:
     runs-on: ubuntu-26.04
-    timeout-minutes: 5  # 2 x 138 s, slowest of 4 runs, run 43082065462
+    timeout-minutes: 5  # 2 x 138 s, slowest of 40 runs, run 43082065462
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -307,7 +307,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.heavy == 'true'
     runs-on: ubuntu-26.04
-    timeout-minutes: 10  # 2 x 275 s, slowest of 37 runs, run 42741490263
+    timeout-minutes: 15  # 2 x 445 s, slowest of 40 runs, run 43062734904
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

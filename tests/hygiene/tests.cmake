@@ -63,7 +63,7 @@ endforeach()
 # read-once scan dropped an offset or read the wrong copy, and a pre-commit scan
 # that rereads every file six times. An untracked data.txt holds the Sega header
 # marker at byte 32,752 only (no ROM-like name, no manifest row).
-# Timeout: 20 s floor; 0.06 s slowest local run, no hosted run yet, so provisional.
+# Timeout: 20 s floor; 2 x 0.05 s (hygiene lane), slowest of 4 runs, run 43117518796.
 set(tree ${CMAKE_BINARY_DIR}/hygiene/header_offset)
 file(REMOVE_RECURSE ${tree})
 file(MAKE_DIRECTORY ${tree}/scripts)
@@ -285,7 +285,7 @@ want=$(printf 'test\tlanes\tslowest_s\nz_slow\t2\t2.10\na_fast\t1\t1.00\n')
 sh "$1" tests abc > /dev/null 2>&1 && { echo "ci.durations_tests: a run id that is not a number was accepted"; exit 1; }
 echo "ci.durations_tests: two tests listed, the failed and the timed-out one left out"
 ]=])
-# Timeout: 20 s floor; 0.02 s slowest local run, no hosted run yet, so provisional.
+# Timeout: 20 s floor; 2 x 0.01 s (hygiene lane), slowest of 1 run, run 43117518796.
 cogmaster_add_test(NAME ci.durations_tests
   COMMAND ${COGMASTER_SH} -c "${hygiene_durations_test}" sh ${CMAKE_SOURCE_DIR}/scripts/ci-durations.sh
     ${hygiene_durations}/log.txt ${hygiene_durations}/table.tsv
