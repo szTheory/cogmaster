@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 11
 current_phase_name: PAL and Japanese FM
 status: planning
-stopped_at: Completed 11-02-PLAN.md
-last_updated: "2026-11-11T21:33:18.285Z"
+stopped_at: Completed 11-03-PLAN.md
+last_updated: "2026-11-11T21:47:36.855Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 10 complete, transitioned to Phase 11
-state_head: aba0a5c14693662d8ed94946324092b1fdd189fa
+state_head: 617b89a93b00bccbb7c895407fc24e240d3d4f46
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 84
-  completed_plans: 77
+  completed_plans: 78
   percent: 75
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 11 — PAL and Japanese FM
-Plan: 3 of 9
+Plan: 4 of 9
 Status: Ready to execute
-Last activity: 2026-11-11 — Completed 11-02-PLAN.md
+Last activity: 2026-11-11 — Completed 11-03-PLAN.md
 
 Progress: [████████░░] 75% of v2.0
 
@@ -206,6 +206,7 @@ Progress: [████████░░] 75% of v2.0
 | Phase 10 P11 | 60min | 3 tasks | 11 files |
 | Phase 11 P01 | 50min | 3 tasks | 8 files |
 | Phase 11 P02 | 75min | 3 tasks | 14 files |
+| Phase 11 P03 | 25min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -306,6 +307,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 10]: 10-11: BIOS wording amended to what was built, BIOS-01..05 complete; every phase timeout settled at the 20 s floor from run 43074158512; final dispatch run 43076225840 and nightly 43076276567 green, perf delta -11 bp; real-BIOS residue stays an owner hand-off in SEED-010
 - [Phase 11]: Plan 01: the tree scan reads each file once into one temporary file (counted lines unchanged at 845) and the analyzer runs four processes at a time; local medians 27 to 21 s and 21 to 16 s
 - [Phase 11]: Plan 02: --fm is strict and once and the core's profile refusal gives exit 77 for a Game Gear; audio@F=H copies the running transition hash so one drain serves several frames; an audio case with a reset script exits 2 at load; every frame holds exactly floor(f x N / D) minus floor((f - 1) x N / D) samples on both TVs
+- [Phase 11]: Ledger parser: a format 1 row is widened to ten slots at read time and the default fm is resolved once in predicate(); audio is accepted only for fixture or built ids with script none
 
 ### Pending Todos
 
@@ -429,6 +431,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Code review and verify phase 10 (autonomous run); core review 0 critical 2 warning, host review 2 critical (window scan false negatives) 7 warning, fix round 1 fixed 11, hygiene job and seven window controls settled from run 43082065462, verification passed 5 of 5, counted check code 845 of 940 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 11 plan 11-01 (gsd-execute-phase 11); controller and sound-hash prose moved to controllers.md and audio.md, MAME provenance row corrected, hygiene.sh reads each file once with header_offset control, analyzer parallel, CI speed section; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 11 plan 11-02 (gsd-execute-phase 11); runner --fm and the fm= execution field, audio@F=H over the transition stream with one drain and a reset refusal, exact samples per frame on NTSC and PAL, four new tests with negative controls; counted check code 845, docs/runner.md 34,054 bytes, no dispatch; 3 tasks, 3 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 11 plan 11-03 (gsd-execute-phase 11); one ledger parser reads format 1 or 2 and writes format 2 (tv column, export or japan, fm in the cfg with its default resolved once, audio kind, impossible profiles refused), cases fields read by the library judge and the fixtures check, compat.migration on literals with 26 controls, eight cross-format ratchet cases, grammar stated once in conformance.md (30,081 bytes); counted check code 852, no dispatch; 3 tasks, 3 code commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -450,8 +453,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T21:33:17.974Z
-Stopped at: Completed 11-02-PLAN.md
+Last session: 2026-11-11T21:47:36.515Z
+Stopped at: Completed 11-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
