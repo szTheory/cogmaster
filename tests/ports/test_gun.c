@@ -450,11 +450,17 @@ static uint32_t name_base(uint32_t height)
     return height == 192u ? 0x3800u : 0x3700u;
 }
 
+/* The video mode registers of a picture height, as the picture helper writes them. */
+static void height_mode(cogmaster *m, uint32_t height)
+{
+    m->vdp.reg[0] = height == 192u ? 0x04u : 0x06u;
+    m->vdp.reg[1] = (uint8_t)(0x40u | (height == 224u ? 0x10u : height == 240u ? 0x08u : 0u));
+}
+
 static void draw(cogmaster *m, uint32_t height)
 {
     struct cogmaster__vdp *v = &m->vdp;
-    v->reg[0] = height == 192u ? 0x04u : 0x06u;
-    v->reg[1] = (uint8_t)(0x40u | (height == 224u ? 0x10u : height == 240u ? 0x08u : 0u));
+    height_mode(m, height);
     v->reg[2] = 0x0Eu;
     v->reg[5] = 0x7Eu;
     v->reg[7] = 0u;
@@ -1475,10 +1481,66 @@ static void walk_pair(int two)
     cogmaster_destroy(y);
 }
 
+/* A picture of height `from` with white tile rows across the bottom of its disc, a gun aimed at
+   `ay`, and rows from `from` down bright in the field: the leftovers of an earlier, taller
+   picture, which a sensor still scanning past the old picture's height would read. The beam is one
+   tick past the wrap that armed the gun for the picture of height `from`. */
+static cogmaster *height_machine(uint32_t from, int32_t ay)
+{
+    cogmaster *m = picture(from, COGMASTER_REGION_EXPORT);
+    for (uint32_t row = ((uint32_t)ay - 1u) / 8u - 1u; row < from / 8u; row++) {
+        band(m, from, row);
+    }
+    aim_one(m, 0u, BAND_X2, ay);
+    walk_past_wrap(m);
+    for (uint32_t y = from; y < 240u; y++) {
+        for (uint32_t x = 0u; x < 256u; x++) {
+            m->field[y][x] = 0x0FFFu;
+        }
+    }
+    return m;
+}
+
+/* A height change between two pictures, with the aim on the old picture's last rows, so the disc is
+   cut by the old bottom and its first and last rows differ in chord. One twin is
+   read at every tick from the frame's end-of-window catch-up (line 192) to the wrap, the other not
+   at all. The mode registers change after the old picture is drawn, line 230 being past the bottom
+   of every old height here. The two must hold the same sensor state, and the H latch must be that
+   of the last row the old picture has. */
+static void walk_height(uint32_t from, uint32_t to, int32_t ay)
+{
+    cogmaster *twin[2] = {height_machine(from, ay), height_machine(from, ay)};
+    for (uint32_t i = 0u; i < 2u; i++) {
+        cogmaster *m = twin[i];
+        uint32_t last = cogmaster__frame_lines(m) - 1u;
+        walk_ticks(m, ticks_to(m, 192u, 0u), 0);
+        cogmaster__gun_sync(m);
+        walk_ticks(m, ticks_to(m, 230u, 0u), (int)(i == 0u));
+        height_mode(m, to);
+        walk_ticks(m, ticks_to(m, last, COGMASTER__VDP_WRAP_TICK + 1u), (int)(i == 0u));
+        CHECK_EQ_U64(m->vdp.height, to);
+    }
+    CHECK(same_sensor_state(twin[0], twin[1]));
+    /* The last disc row inside the old picture: its release is the last rising TH. */
+    uint32_t aim_row = (uint32_t)ay - 1u;
+    uint32_t last = aim_row + GUN_RADIUS < from ? aim_row + GUN_RADIUS : from - 1u;
+    uint32_t dy = last > aim_row ? last - aim_row : aim_row - last;
+    uint32_t release = 2u * ((uint32_t)BAND_X2 - 1u + chord_half(dy) + 1u) + GUN_DELAY_TICKS;
+    for (uint32_t i = 0u; i < 2u; i++) {
+        CHECK_EQ_U64(twin[i]->vdp.hheld, 1u);
+        CHECK_EQ_HEX(twin[i]->vdp.hcounter, oracle_h(release));
+        cogmaster_destroy(twin[i]);
+    }
+}
+
 static void test_walk(void)
 {
     walk_pair(0);
     walk_pair(1);
+    walk_height(224u, 192u, 221);
+    walk_height(224u, 240u, 223);
+    walk_height(192u, 240u, 190);
+    walk_height(192u, 224u, 190);
 }
 
 /* ---- TH written while the sensor sees light ---- */

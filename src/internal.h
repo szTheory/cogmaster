@@ -771,8 +771,10 @@ void cogmaster__io_reset(cogmaster *m);
 void cogmaster__io_glasses_write(cogmaster *m, uint16_t addr, uint8_t v);
 /* Every $3F write: the latch of the H counter on a rising TH lives here. */
 void cogmaster__io_th_changed(cogmaster *m, uint8_t old_ctrl, uint8_t new_ctrl, uint64_t tick);
-/* The Light Phaser sensor: sync runs it up to the beam, wrap ends a picture and arms the next. */
+/* The Light Phaser sensor: sync runs it up to the beam, finish ends the old picture's scan and wrap
+   arms the next picture (after the height changes). */
 void cogmaster__gun_sync(cogmaster *m);
+void cogmaster__gun_finish(cogmaster *m);
 void cogmaster__gun_wrap(cogmaster *m);
 /* The sensor of a port saw light (lit 1) or stopped seeing it (0) at an in-line tick. */
 void cogmaster__io_sensor_edge(cogmaster *m, uint32_t port, uint32_t lit, uint32_t tick);

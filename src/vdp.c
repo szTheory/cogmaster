@@ -191,6 +191,10 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t)
         m->vdp.hscroll = m->vdp.reg[8];
         m->vdp.display = (uint8_t)((m->vdp.reg[1] >> 6) & 1u);
         if (line + 1u == cogmaster__frame_lines(m)) {
+            /* Before the height update: the old picture's height ends its scan. */
+            if (cogmaster__gun_attached(m)) {
+                cogmaster__gun_finish(m);
+            }
             m->vdp.vscroll = m->vdp.reg[9];
             int rolling = vdp_rolling(m);
             m->vdp.height = (uint8_t)vdp_pending_height(m);
@@ -200,7 +204,7 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t)
             m->render_line = 0u;
             m->render_x = 0u;
             m->vdp.sprite_line = m->vdp.height;
-            /* After the height update, so the sensor arms for the height this picture has. */
+            /* After the height update, so the sensor arms for the height the new picture has. */
             if (cogmaster__gun_attached(m)) {
                 cogmaster__gun_wrap(m);
             }

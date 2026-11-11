@@ -183,12 +183,18 @@ static void arm(cogmaster *m, uint32_t port)
     }
 }
 
-/* The wrap to the next picture, at the tick the VDP latches its registers. The old picture is
-   over, so what the sensor has left of it is finished first, then the light pulse bit of every
-   port is dropped (a pulse never outlives its picture) and each gun is armed. */
-void cogmaster__gun_wrap(cogmaster *m)
+/* The old picture is over: what the sensor has left of it is finished. The VDP calls this before
+   the height changes, because the picture's own height ends its scan. */
+void cogmaster__gun_finish(cogmaster *m)
 {
     run(m, UINT32_MAX, 0u);
+}
+
+/* The wrap to the next picture, at the tick the VDP latches its registers, after the old picture
+   is finished and its height is replaced: the light pulse bit of every port is dropped (a pulse
+   never outlives its picture) and each gun is armed for the height the new picture has. */
+void cogmaster__gun_wrap(cogmaster *m)
+{
     for (uint32_t port = 0u; port < 2u; port++) {
         uint32_t device = port == 0u ? m->input.port1 : m->input.port2;
         if (device == COGMASTER_DEVICE_LIGHT_PHASER) {
