@@ -65,6 +65,8 @@ cart.probe.pure	cart,portable
 cart.probe.scan	cart,portable
 cart.probe.sizes	cart,portable
 compat.csv	compat
+compat.device_key	compat
+compat.device_rejected	compat
 compat.fixtures	compat,portable
 compat.public_update	compat
 compat.ratchet	compat
