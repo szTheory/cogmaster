@@ -68,8 +68,8 @@ cogmaster_warnings(cogmaster-test-ports-gun)
 # a fault record, that latches at the read instead of the edge, or that depends on the order of two
 # guns' edges.
 foreach(case IN ITEMS latch_at aim pins hostile_aim model edge luma control order fault_neutral lag
-    seen_expiry peek)
-  if(case MATCHES "^(hostile_aim|model)$")
+    seen_expiry peek noshot hammer walk th_toggle)
+  if(case MATCHES "^(hostile_aim|model|noshot|hammer|walk|th_toggle)$")
     # Timeout: 60 s floor; provisional.
     set(gun_timeout 60)
   else()

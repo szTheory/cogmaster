@@ -1119,6 +1119,413 @@ static void test_peek(void)
     cogmaster_destroy(m);
 }
 
+/* ---- the invariant: no shot, no light ---- */
+
+static const char *const noshot_masked[] = {
+    "input_port1", "input_port2",   "pending_x1",     "pending_y1",
+    "pending_x2",  "pending_y2",    "active_x1",      "active_y1",
+    "active_x2",   "active_y2",     "port_gun_ax",    "port_gun_dot",
+    "port_gun_ay", "port_gun_line", "port_gun_sense", "port_gun_scan",
+};
+
+static int is_masked(const char *name)
+{
+    for (size_t i = 0; i < sizeof noshot_masked / sizeof noshot_masked[0]; i++) {
+        if (strcmp(name, noshot_masked[i]) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+#define MAX_FIELDS 240000u
+static struct cogmaster__state_field fields[MAX_FIELDS];
+
+/* The name of the first saved field the two instances differ in, apart from the masked ones, or
+   NULL when there is none. */
+static const char *first_difference(cogmaster *a, cogmaster *b)
+{
+    size_t size = cogmaster__state_size(a);
+    uint8_t *sa = malloc(size);
+    uint8_t *sb = malloc(size);
+    const char *found = NULL;
+    CHECK_EQ_U64(cogmaster__state_size(b), size);
+    if (sa == NULL || sb == NULL) {
+        exit(1);
+    }
+    CHECK_EQ_U64(cogmaster__state_save(a, sa, size), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster__state_save(b, sb, size), COGMASTER_STATUS_OK);
+    size_t n = cogmaster__state_record(a, fields, MAX_FIELDS);
+    CHECK(n <= MAX_FIELDS);
+    for (size_t i = 0; i < n && i < MAX_FIELDS && found == NULL; i++) {
+        /* The body's checksum is derived from every field, the masked ones included, so it is the
+           one name besides them that is not compared. */
+        if (!is_masked(fields[i].name) && strcmp(fields[i].name, "body_crc32") != 0 &&
+            memcmp(sa + fields[i].offset, sb + fields[i].offset, fields[i].width) != 0) {
+            found = fields[i].name;
+        }
+    }
+    free(sa);
+    free(sb);
+    return found;
+}
+
+static int16_t audio_a[2u * COGMASTER__AUDIO_MAX_FRAMES];
+static int16_t audio_b[2u * COGMASTER__AUDIO_MAX_FRAMES];
+
+/* The audio a frame produced, in frames written. */
+static uint32_t drain(cogmaster *m, int16_t *buf)
+{
+    cogmaster_audio a;
+    memset(&a, 0, sizeof a);
+    a.size = (uint32_t)sizeof a;
+    a.samples = buf;
+    a.capacity = COGMASTER__AUDIO_MAX_FRAMES;
+    CHECK_EQ_U64(cogmaster_get_audio(m, &a), COGMASTER_STATUS_OK);
+    return a.written;
+}
+
+/* The reference run's frame: its sound is taken once, and every other run's frame is compared with
+ * it. */
+static cogmaster *reference;
+static uint32_t reference_frames;
+
+static void take_reference(cogmaster *m)
+{
+    reference = m;
+    reference_frames = drain(m, audio_b);
+}
+
+/* The picture and the sound a frame produced equal the reference's. */
+static int same_as_reference(cogmaster *a)
+{
+    uint32_t na = drain(a, audio_a);
+    return na == reference_frames &&
+           memcmp(audio_a, audio_b, (size_t)na * 2u * sizeof audio_a[0]) == 0 &&
+           memcmp(&a->completed, &reference->completed, sizeof a->completed) == 0;
+}
+
+#define NOSHOT_FRAMES 600u
+#define NOSHOT_SHORT 40u
+#define TRIGGER 0x10u
+
+static cogmaster *noshot_machine(uint32_t pr, uint32_t d1, int32_t ax, int32_t ay, uint32_t held)
+{
+    cogmaster *m =
+        machine_running(PROG_POLL, profiles[pr].machine, profiles[pr].region, profiles[pr].tv);
+    const int32_t axis[4] = {ax, ay, 0, 0};
+    CHECK_EQ_U64(send(m, d1, COGMASTER_DEVICE_PAD, held, 0u, axis), COGMASTER_STATUS_OK);
+    return m;
+}
+
+/* A game that polls every port, with the gun plugged in, the trigger never pulled and nothing lit
+   in the sensor's view, plays exactly as with a pad and nothing pressed: the picture and sound of
+   every frame and the whole saved state, apart from the gun's own fields. The control: aimed at a
+   lit square it does not, and a pulled trigger changes the picture. */
+static void test_noshot(void)
+{
+    /* Over black dots, with the lit squares elsewhere in the picture; and over the second square.
+     */
+    const int32_t dark_x = DARK_X;
+    const int32_t dark_y = DARK_Y;
+    const int32_t lit_x = (int32_t)(squares[1].x + SQUARE_SIZE / 2u + 1u);
+    const int32_t lit_y = (int32_t)(squares[1].y + SQUARE_SIZE / 2u + 1u);
+    for (uint32_t pr = 0u; pr < 4u; pr++) {
+        cogmaster *pad = noshot_machine(pr, COGMASTER_DEVICE_PAD, 0, 0, 0u);
+        cogmaster *dark = noshot_machine(pr, PHASER, dark_x, dark_y, 0u);
+        cogmaster *parked = noshot_machine(pr, PHASER, 0, 0, 0u);
+        cogmaster *lit = noshot_machine(pr, PHASER, lit_x, lit_y, 0u);
+        cogmaster *shot = noshot_machine(pr, PHASER, dark_x, dark_y, TRIGGER);
+        uint32_t shot_differs = 0u;
+        for (uint32_t f = 0u; f < NOSHOT_FRAMES; f++) {
+            frame(pad);
+            frame(dark);
+            frame(parked);
+            take_reference(pad);
+            CHECK(same_as_reference(dark));
+            CHECK(same_as_reference(parked));
+            if (f < NOSHOT_SHORT) {
+                frame(lit);
+                frame(shot);
+                if (memcmp(&shot->completed, &pad->completed, sizeof pad->completed) != 0) {
+                    shot_differs = 1u;
+                }
+            }
+        }
+        const char *diff = first_difference(dark, pad);
+        if (diff != NULL) {
+            fprintf(stderr, "profile %u: dark aim differs in %s\n", (unsigned)pr, diff);
+        }
+        CHECK(diff == NULL);
+        diff = first_difference(parked, pad);
+        if (diff != NULL) {
+            fprintf(stderr, "profile %u: parked aim differs in %s\n", (unsigned)pr, diff);
+        }
+        CHECK(diff == NULL);
+        /* The controls: the lit aim changes the state the program can see, the trigger the image.
+         */
+        CHECK(first_difference(lit, pad) != NULL);
+        CHECK(shot_differs != 0u);
+        /* The scanner ran over the whole disc in the dark run, so the pass above is not parked. */
+        CHECK(dark->gun_stats.samples > 100u);
+        CHECK_EQ_U64(dark->gun_stats.edges, 0u);
+        CHECK_EQ_U64(parked->gun_stats.samples, 0u);
+        cogmaster_destroy(pad);
+        cogmaster_destroy(dark);
+        cogmaster_destroy(parked);
+        cogmaster_destroy(lit);
+        cogmaster_destroy(shot);
+    }
+}
+
+/* ---- bounds ---- */
+
+static void gun_hammer_tick(cogmaster *m)
+{
+    (void)cogmaster__io_in(m, 0xDDu);
+    (void)cogmaster__vdp_read(m, COGMASTER__VDP_HCOUNT);
+    cogmaster__io_out(m, 0x3Fu, 0xFFu);
+}
+
+#define HAMMER_ACCESSES 1000000u
+/* The dots of the disc by a plain count, one chord of at most 2 R + 1 dots on each of 2 R + 1 rows,
+   and the closing dot each row adds. */
+static uint32_t disc_dots(void)
+{
+    uint32_t n = 0u;
+    for (int32_t dy = -(int32_t)GUN_RADIUS; dy <= (int32_t)GUN_RADIUS; dy++) {
+        for (int32_t dx = -(int32_t)GUN_RADIUS; dx <= (int32_t)GUN_RADIUS; dx++) {
+            n += dx * dx + dy * dy <= (int32_t)(GUN_RADIUS * GUN_RADIUS) ? 1u : 0u;
+        }
+    }
+    return n;
+}
+#define MAX_SAMPLES_ROW (2u * GUN_RADIUS + 2u)
+#define MAX_SAMPLES_PICTURE (disc_dots() + 2u * GUN_RADIUS + 1u)
+
+/* A million of each access at one tick leave the sensor where its first call put it, and a
+   hammer at every tick of a picture still looks at each dot once. */
+static void test_hammer(void)
+{
+    cogmaster *m = pulse_machine();
+    walk_to(m, 30u, 200u);
+    gun_hammer_tick(m);
+    struct cogmaster__port block[2];
+    memcpy(block, m->ports, sizeof block);
+    uint8_t h = m->vdp.hcounter;
+    uint32_t held = m->vdp.hheld;
+    uint32_t line = m->render_line;
+    uint32_t dot = m->render_x;
+    uint32_t samples = m->gun_stats.samples;
+    uint32_t edges = m->gun_stats.edges;
+    uint32_t syncs = m->gun_stats.syncs;
+    for (uint32_t i = 0u; i < HAMMER_ACCESSES; i++) {
+        gun_hammer_tick(m);
+    }
+    CHECK(memcmp(block, m->ports, sizeof block) == 0);
+    CHECK_EQ_HEX(m->vdp.hcounter, h);
+    CHECK_EQ_U64(m->vdp.hheld, held);
+    CHECK_EQ_U64(m->render_line, line);
+    CHECK_EQ_U64(m->render_x, dot);
+    CHECK_EQ_U64(m->gun_stats.samples, samples);
+    CHECK_EQ_U64(m->gun_stats.edges, edges);
+    CHECK_EQ_U64(m->gun_stats.syncs, syncs + 3u * HAMMER_ACCESSES);
+    cogmaster_destroy(m);
+
+    /* Every tick of a picture, three accesses each. */
+    m = pulse_machine();
+    uint32_t base = m->gun_stats.samples;
+    uint32_t row_start = base;
+    for (uint32_t y = 0u; y < 192u; y++) {
+        for (uint32_t t = 0u; t < LINE_TICKS; t++) {
+            walk_to(m, y, t);
+            gun_hammer_tick(m);
+        }
+        CHECK(m->gun_stats.samples - row_start <= MAX_SAMPLES_ROW);
+        row_start = m->gun_stats.samples;
+    }
+    CHECK(m->gun_stats.samples > base);
+    CHECK(m->gun_stats.samples - base <= MAX_SAMPLES_PICTURE);
+    cogmaster_destroy(m);
+}
+
+/* ---- schedule independence ---- */
+
+/* A white band across the picture, one tile row tall, so two discs aimed at different columns meet
+   light on the same rows. Aims are one-based dots. */
+#define BAND_TILE_ROW 15u
+#define BAND_AIM_Y 124
+#define BAND_X1 150
+#define BAND_X2 100
+
+static void band(cogmaster *m, uint32_t height, uint32_t tile_row)
+{
+    for (uint32_t col = 0u; col < 32u; col++) {
+        m->vdp.vram[name_base(height) + (tile_row * 32u + col) * 2u] = 1u;
+    }
+}
+
+/* The state a poll schedule must not change: both blocks but the pulse bit (a read takes it), the
+   H counter and its hold, and the picture. The render cursor is not in it: the sensor renders only
+   as far as a dot it needs, so a polled run's cursor is where its last need put it. */
+static int same_sensor_state(const cogmaster *a, const cogmaster *b)
+{
+    int same = a->vdp.hheld == b->vdp.hheld && a->vdp.hcounter == b->vdp.hcounter &&
+               memcmp(a->field, b->field, sizeof a->field) == 0;
+    for (uint32_t port = 0u; port < 2u; port++) {
+        struct cogmaster__port pa = a->ports[port];
+        struct cogmaster__port pb = b->ports[port];
+        pa.g_sense &= 1u;
+        pb.g_sense &= 1u;
+        same = same && memcmp(&pa, &pb, sizeof pa) == 0;
+    }
+    return same;
+}
+
+static cogmaster *walk_machine(int two)
+{
+    cogmaster *m = picture(192u, COGMASTER_REGION_EXPORT);
+    band(m, 192u, BAND_TILE_ROW);
+    if (two) {
+        aim_ports(m, PHASER, BAND_X1, BAND_AIM_Y, PHASER, BAND_X2, BAND_AIM_Y);
+    } else {
+        aim_ports(m, PHASER, (int32_t)(squares[0].x + SQUARE_SIZE),
+                  (int32_t)(squares[0].y + SQUARE_SIZE / 2u + 1u), COGMASTER_DEVICE_PAD, 0, 0);
+    }
+    walk_past_wrap(m);
+    return m;
+}
+
+static uint32_t ticks_to(const cogmaster *m, uint32_t line, uint32_t t)
+{
+    uint32_t total = cogmaster__frame_lines(m) * LINE_TICKS;
+    return (line * LINE_TICKS + t + total - (m->bus.line * LINE_TICKS + m->bus.t)) % total;
+}
+
+/* Moves the beam n ticks: one tick at a time with a $DD read at each, or in steps to the next line
+   start with no access at all. */
+static void walk_ticks(cogmaster *m, uint32_t n, int polled)
+{
+    while (n > 0u) {
+        uint32_t step = polled ? 1u : LINE_TICKS - m->bus.t;
+        step = step > n ? n : step;
+        m->ticks += step;
+        cogmaster__bus_sync(m);
+        if (polled) {
+            (void)cogmaster__io_in(m, 0xDDu);
+        }
+        n -= step;
+    }
+}
+
+/* The half width of a row's chord, found by growing it, not by the core's shrinking loop. */
+static uint32_t chord_half(uint32_t dy)
+{
+    uint32_t h = 0u;
+    while ((h + 1u) * (h + 1u) + dy * dy <= GUN_RADIUS * GUN_RADIUS) {
+        h++;
+    }
+    return h;
+}
+
+/* The tick the sensor releases a band row at, for an aim: one dot past the chord, a delay later. */
+static uint32_t band_release(uint32_t ax, uint32_t row)
+{
+    uint32_t aim_row = (uint32_t)BAND_AIM_Y - 1u;
+    uint32_t dy = row > aim_row ? row - aim_row : aim_row - row;
+    return 2u * (ax - 1u + chord_half(dy) + 1u) + GUN_DELAY_TICKS;
+}
+
+/* A read at every tick for two frames equals steps of whole lines with no read, at the frame
+   boundary the library syncs at and at the end, for one gun and for two. */
+static void walk_pair(int two)
+{
+    cogmaster *x = walk_machine(two);
+    cogmaster *y = walk_machine(two);
+    uint32_t frame_ticks = cogmaster__frame_lines(x) * LINE_TICKS;
+    /* The checkpoints: inside the first band row, at the end of the band, the frame boundary. */
+    static const uint32_t at[3][2] = {{120u, 500u}, {127u, 683u}, {192u, 610u}};
+    for (uint32_t c = 0u; c < 3u; c++) {
+        uint32_t nx = ticks_to(x, at[c][0], at[c][1]);
+        walk_ticks(x, nx, 1);
+        walk_ticks(y, ticks_to(y, at[c][0], at[c][1]), 0);
+        cogmaster__gun_sync(y);
+        CHECK(same_sensor_state(x, y));
+        CHECK_EQ_U64(x->vdp.hheld, 1u);
+        if (two && c < 2u) {
+            /* Port 1 releases later than port 2 on every band row, so its edge is the latch. */
+            uint32_t row = at[c][0] == 120u ? 120u : 127u;
+            CHECK(band_release(BAND_X1, row) > band_release(BAND_X2, row));
+            CHECK_EQ_HEX(x->vdp.hcounter, oracle_h(band_release(BAND_X1, row)));
+            CHECK(oracle_h(band_release(BAND_X1, row)) != oracle_h(band_release(BAND_X2, row)));
+        }
+    }
+    walk_ticks(
+        x, ticks_to(x, frame_ticks / LINE_TICKS - 1u, COGMASTER__VDP_WRAP_TICK + 1u) + frame_ticks,
+        1);
+    walk_ticks(
+        y, ticks_to(y, frame_ticks / LINE_TICKS - 1u, COGMASTER__VDP_WRAP_TICK + 1u) + frame_ticks,
+        0);
+    CHECK(same_sensor_state(x, y));
+    cogmaster_destroy(x);
+    cogmaster_destroy(y);
+}
+
+static void test_walk(void)
+{
+    walk_pair(0);
+    walk_pair(1);
+}
+
+/* ---- TH written while the sensor sees light ---- */
+
+/* The effective TH pins of the export console from $3F and the sensor's level, written again
+   here: an input TH reads the sensor, an output one its level bit, and port 2 has no gun. */
+static uint8_t model_th(uint8_t ctrl, int lit)
+{
+    uint8_t th1 = (uint8_t)((ctrl & 2u) != 0u ? (lit ? 0u : 1u) : ((ctrl >> 5) & 1u));
+    uint8_t th2 = (ctrl & 8u) != 0u ? 1u : (uint8_t)((ctrl >> 7) & 1u);
+    return (uint8_t)((th1 << 6) | (th2 << 7));
+}
+
+/* A million $3F writes at one tick while the sensor sees light: the H counter is latched exactly
+   when the model's effective TH rises, so the number of latches is the model's edge count. */
+static void test_th_toggle(void)
+{
+    cogmaster *m = picture(192u, COGMASTER_REGION_EXPORT);
+    band(m, 192u, BAND_TILE_ROW);
+    aim_one(m, 0u, 129, BAND_AIM_Y);
+    walk_past_wrap(m);
+    walk_to(m, BAND_AIM_Y - 1, 2u * 128u + GUN_DELAY_TICKS);
+    CHECK_EQ_U64(th_low(m, 0u), 1u);
+    struct cogmaster__port block[2];
+    memcpy(block, m->ports, sizeof block);
+    uint8_t ctrl = 0xFFu;
+    uint32_t seed = 12345u;
+    uint32_t latches = 0u;
+    uint32_t model = 0u;
+    uint32_t wrong = 0u;
+    for (uint32_t i = 0u; i < HAMMER_ACCESSES; i++) {
+        seed ^= seed << 13;
+        seed ^= seed >> 17;
+        seed ^= seed << 5;
+        uint8_t next = (uint8_t)(seed >> 8);
+        uint32_t rises = ((uint8_t)~model_th(ctrl, 1) & model_th(next, 1) & 0xC0u) != 0u ? 1u : 0u;
+        m->vdp.hheld = 0u;
+        cogmaster__io_out(m, 0x3Fu, next);
+        wrong += m->vdp.hheld != rises ? 1u : 0u;
+        latches += m->vdp.hheld;
+        model += rises;
+        ctrl = next;
+    }
+    CHECK_EQ_U64(wrong, 0u);
+    CHECK_EQ_U64(latches, model);
+    CHECK(latches > 0u);
+    /* Nothing grew: the sensor's cursor is where the one sync left it. */
+    CHECK(memcmp(block, m->ports, sizeof block) == 0);
+    cogmaster_destroy(m);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
@@ -1136,6 +1543,10 @@ static const struct {
     {"lag", test_lag},
     {"seen_expiry", test_seen_expiry},
     {"peek", test_peek},
+    {"noshot", test_noshot},
+    {"hammer", test_hammer},
+    {"walk", test_walk},
+    {"th_toggle", test_th_toggle},
 };
 
 int main(int argc, char **argv)
