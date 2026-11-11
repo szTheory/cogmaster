@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 11
 current_phase_name: PAL and Japanese FM
 status: planning
-stopped_at: Completed 11-07-PLAN.md
-last_updated: "2026-11-11T22:43:55.863Z"
+stopped_at: Completed 11-08-PLAN.md
+last_updated: "2026-11-11T22:56:02.190Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 10 complete, transitioned to Phase 11
-state_head: 1c720da0f7daafdac63cd3591cab6c5f371f7606
+state_head: 1809f95a87b89f9a61db67eaa2fec294eb1483eb
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 84
-  completed_plans: 82
+  completed_plans: 83
   percent: 75
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 11 — PAL and Japanese FM
-Plan: 8 of 9
+Plan: 9 of 9
 Status: Ready to execute
 Last activity: 2026-11-11 — Completed 11-05-PLAN.md
 
@@ -211,6 +211,7 @@ Progress: [████████░░] 75% of v2.0
 | Phase 11 P05 | 25 min | 2 tasks | 7 files |
 | Phase 11 P06 | 40 min | 2 tasks | 9 files |
 | Phase 11 P07 | 35 min | 3 tasks | 15 files |
+| Phase 11 P08 | 55 min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -316,6 +317,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 11]: Plan 05: audio rows copied by script from the transition pins; compat.fixtures compares region, tv and fm with the runner's execution line against literal tables and the core default with the awk default read through normalize on a ledger that omits fm
 - [Phase 11]: Plan 11-06: vdp_vtable expectations come from the literal V counter intervals and are recomputed in closed_form; a one-line core mutation was shown to fail the PAL 192 mailbox test (restored); NTSC 240 is built but not judged
 - [Phase 11]: Plan 11-07: the Pause count band is [floor((C - 132) / 78), floor((C - 36) / 78)] derived from the listing (guarded 78-cycle body, 76-cycle frame handler), a one-shot core one line late fails it and moves V to 0000; dispatch D1 run 43111533403 is green on all eight lanes and draft pull request #31 ran the ledger bridge (run 43112269415, cleanup rerun for a read-after-delete race)
+- [Phase 11]: Plan 11-08: compat-update adopts a new key only for a catalog id with the catalog machine and mapper, boots@600 under the default config, pass or fail, on the judge's profile whitelist; the library judge derives profiles from the catalog and probe, and the merge is held unless the ratchet passes and the page stays under the docs cap; REG-04 is amended to the synthetic proof and the owner's own-library run is SEED-013
 
 ### Pending Todos
 
@@ -444,6 +446,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 11 plan 11-05 (gsd-execute-phase 11); five own-fixture audio@300 rows copied by script from the transition pins, compat.fixtures judging nine rows with region, tv and fm compared with the runner's execution line (literal tables, three controls) and the core default compared with the awk default, six ratchet audio cases, page counts pal rows judged, commercial-digest sentence in ASSET_POLICY.md and regression-lock paragraph in conformance.md (30,977 bytes); counted check code 852, no dispatch; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 11 plan 11-06 (gsd-execute-phase 11); owned vdp_vtable fixture reads the V counter once per 228-cycle line at 192, 224 and 240 lines, 33 literal rows judged and recomputed in closed_form, controls shown able to fail including a one-line core mutation | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 11 plan 11-07 (gsd-execute-phase 11); owned pause_nmi fixture counts between the frame interrupt and the Pause NMI inside a band derived from its listing (one-shot core mutation, halved slack and a changed body each shown red), mailbox, PAL device and PAL FM rows in the lane hash file, hosted dispatch D1 run 43111533403 green on all eight lanes, draft pull request #31 with the ledger bridge proven on run 43112269415; counted check code 852; 3 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 11 plan 11-08 (gsd-execute-phase 11); compat-update adopts only catalog boots@600 rows on the judge's profiles (five negative controls shown red), library judge derives profiles from the catalog and probe, count-only run with a merge held unless the ratchet passes and the page fits the cap, fm_sweep_jp Japan-header fixture, synthetic proof of four adopted rows and a held merge, REG-04 amended and the owner's own-library run recorded as SEED-013; counted check code 859, conformance.md 32,217 bytes, no dispatch; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -465,8 +468,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T22:43:55.654Z
-Stopped at: Completed 11-07-PLAN.md
+Last session: 2026-11-11T22:56:01.977Z
+Stopped at: Completed 11-08-PLAN.md
 Resume file: None
 Phase 11 ship pull request: #31, open as a draft since plan 07; ship reuses it (gh pr ready, title check, gh pr merge --auto --squash at ship only; no new gh pr create)
 

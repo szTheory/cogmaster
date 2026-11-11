@@ -211,7 +211,7 @@ Plans:
   2. PAL fixtures for the V-counter tables, Pause at line 311 and exact samples per frame give equal hashes on all eight lanes (REG-02).
   3. The `audio@F=H` predicate passes on a matching transition-stream hash and fails on its negative control, and `fm` is part of the row identity (REG-03).
   4. The library judge adds PAL and Japanese FM rows for catalog-identified carts through `compat-update.sh`, proven in CI by a synthetic library run through `library.sh run`, and the ratchet passes (REG-04).
-**Plans**: 7/9 plans executed
+**Plans**: 8/9 plans executed
 - [x] 11-01-PLAN.md
 - [x] 11-02-PLAN.md
 - [x] 11-03-PLAN.md
@@ -219,7 +219,7 @@ Plans:
 - [x] 11-05-PLAN.md
 - [x] 11-06-PLAN.md
 - [x] 11-07-PLAN.md
-- [ ] 11-08-PLAN.md
+- [x] 11-08-PLAN.md
 - [ ] 11-09-PLAN.md
 
 ### Phase 12: The whole list in the ledger
@@ -249,5 +249,5 @@ Plans:
 | 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 17/17 | Complete    | 2026-11-11 |
 | 9. Light Phaser | v2.0 | 12/12 | Complete    | 2026-11-11 |
 | 10. BIOS boot | v2.0 | 11/11 | Complete    | 2026-11-11 |
-| 11. PAL and Japanese FM | v2.0 | 7/9 | In Progress | - |
+| 11. PAL and Japanese FM | v2.0 | 8/9 | In Progress | - |
 | 12. The whole list in the ledger | v2.0 | 0/TBD | Not started | - |
