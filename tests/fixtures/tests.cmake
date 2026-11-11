@@ -283,7 +283,7 @@ set(COGMASTER_FIXTURES_DIR ${PROJECT_BINARY_DIR}/fixtures)
 set(fixtures_src ${PROJECT_SOURCE_DIR}/tests/roms/src)
 set(fixtures_images "")
 foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_to_play boot_to_play_gg battery eeprom
-    psg_sweep psg_sweep_gg fm_sweep sports_pad paddle glasses)
+    psg_sweep psg_sweep_gg fm_sweep sports_pad paddle glasses light_phaser)
   set(extension sms)
   set(image_name ${name})
   if(name STREQUAL "boot_to_play_gg")
