@@ -187,6 +187,7 @@ fm.test_register	fm,portable
 fm.through_bus	fm,portable
 fuzz.regress.eeprom	fuzz,portable
 fuzz.regress.loader	fuzz,portable
+fuzz.regress.pad	fuzz,portable
 fuzz.regress.run	fuzz,portable
 fuzz.regress.save	fuzz,portable
 host.palette	host,portable
