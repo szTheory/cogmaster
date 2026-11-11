@@ -101,11 +101,21 @@ are in HOSTS-AND-INTEGRATION 1.
   .eeprom`, as in `.gitignore`), the `TMR SEGA` signature at `$7FF0`, `$3FF0` or `$1FF0` (compared as hex so the
   script never carries the signature as text [AP.05]), and any file containing a NUL byte. `policy.rom_hash_coverage`
   ties manifest rows to files.
-- `release.firmware_scan` (planned, v1.0 phase 1) hashes every member of every release zip and every tracked
-  binary (SHA-1, SHA-256): whole, and again without the first 512 bytes when a copier header is present. It fails
-  on any §4 digest or any ROM SHA-1 in MAME's CC0 lists. A synthetic headered image is its negative control.
-- `local.firmware_window_scan` (local only, planned) fails if any 32-byte window of a dump in `COGMASTER_BIOS_DIR`,
-  with at least 8 distinct byte values, appears in a built core, runner or libretro module.
+- `release.firmware_scan` (label `release`, run after packaging on every build leg) copies the leg's three zips into
+  `build/release/firmware_stage`, extracts each, and takes the SHA-1 of every member, of any loose file beside the
+  zips and of every file the manifest lists. It fails when a digest appears in `host/bios_table.inc` or in
+  `src/cartdb.inc`, or in an extra list a caller may add to but never remove from, and when a zip member has a
+  firmware-class size plus a 512 byte copier header (1,536, 8,704, 16,896, 131,584 or 262,656 bytes) and a NUL
+  byte in its first 4,096 bytes. The message names the zip and member, never a byte. A scan
+  that sees an empty directory, fewer zips than expected or a table without rows fails as vacuous. The 1,660
+  `.sha1` rows of `src/cartdb.inc` are a subset of the 1,690 entries in MAME's CC0 lists; no second list exists.
+  Not covered: a padded dump, an archive nested inside a zip, and an unknown file of an ordinary size. The first
+  two are the window scan's job; `release.archive_contents` pins each zip's member set. Its negative controls
+  (`policy.firmware_scan.*`) use owned bytes and run in the `ci` test step.
+- `local.firmware_window_scan` (local only, `library` preset, and the pre-commit and pre-push hooks) fails if any
+  32-byte window of a dump in `COGMASTER_BIOS_DIR`, with at least 8 distinct byte values, appears in a staged or
+  pushed file, the working tree, or a built core, runner or libretro module, at any offset and in the byte-literal
+  forms of C arrays and assembler lines. Its negative controls run in the Linux `hygiene` lane.
 
 ## 6. Names
 "Sega", "Master System", "Mark III", "Game Gear", "SG-1000" and "SC-3000" are used only to say what the core

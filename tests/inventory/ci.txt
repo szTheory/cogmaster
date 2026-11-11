@@ -327,6 +327,17 @@ policy.dependabot.self_test	policy
 policy.e2e_budget	hygiene,policy
 policy.e2e_budget.self_test	hygiene,policy
 policy.e2e_budget.shared_helper	hygiene,policy
+policy.firmware_scan.cartdb	policy
+policy.firmware_scan.clean	policy
+policy.firmware_scan.headered	policy
+policy.firmware_scan.loose	policy
+policy.firmware_scan.manifest	policy
+policy.firmware_scan.member	policy
+policy.firmware_scan.short	policy
+policy.firmware_scan.text	policy
+policy.firmware_scan.vacuous_dir	policy
+policy.firmware_scan.vacuous_table	policy
+policy.firmware_scan.whole	policy
 policy.lessons_unique	policy
 policy.lessons_unique.empty	policy
 policy.lessons_unique.self_test	policy
@@ -414,6 +425,7 @@ psg.tie_rule	portable,psg
 psg.volumes	portable,psg
 release.archive_contents	release
 release.archive_contents.self_test	release
+release.firmware_scan	release
 release.floor	release
 release.floor.self_test	release
 release.single_version_source	policy

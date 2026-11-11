@@ -3,6 +3,7 @@ behavior|tests/cmake/archive_contents.cmake|Extracts packaged deliverables and c
 check|tests/cmake/budgets.cmake|Document and repository source budgets
 check|tests/cmake/ci_required.cmake|Workflow required-job policy and its negative cases
 check|tests/cmake/expect_fail.cmake|Shared exact exit status and tolerant diagnostic negative-control helper
+check|tests/cmake/firmware_scan.cmake|Release firmware scan: digests of firmware and ROMs and copier-headered firmware-class members, with vacuous guards
 behavior|tests/cmake/floor.cmake|Examines packaged deliverables for loader compatibility on supported operating systems
 check|tests/cmake/quality.cmake|Quality ceilings and floors read from quality.json with string(JSON)
 check|tests/cmake/readme.cmake|README play steps: the command runs, its printed line, ROM extensions and the no-BIOS sentence
