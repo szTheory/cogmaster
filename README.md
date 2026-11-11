@@ -34,6 +34,8 @@ On other systems, download `cogmaster-libretro-<os>-<arch>.zip` from the
 ## Play a game
 
 cogmaster ships no BIOS and no game; bring a `.sms` or `.gg` file you own, no BIOS is needed.
+To start through a BIOS dump of your own instead, see [docs/bios.md](docs/bios.md); the real BIOS checks the cartridge header, so some games that run with the
+default lock up under it.
 
 In RetroArch: Main Menu → Load Core → **Sega - MS/GG (cogmaster)**, then Load Content and pick your file. Start
 Core with no content shows the built-in test card instead; [docs/runner.md](docs/runner.md#test-card) explains
@@ -53,7 +55,7 @@ frame 600 sha256 <64 hex digits>
 ```
 
 Add `--png 600:shot.png` to write the picture to a PNG file. Exit status 77 means the cartridge, its size or the
-machine is not supported; see [docs/runner.md](docs/runner.md#exit-status).
+machine is not supported, or a BIOS you asked for is missing; see [docs/runner.md](docs/runner.md#exit-status).
 
 With no file, the runner shows the test card, and `--machine gg` picks the Game Gear card:
 
@@ -64,6 +66,7 @@ bin/cogmaster-run --frames 60 --hash
 ## Documentation
 
 - [docs/runner.md](docs/runner.md): `cogmaster-run` options, output, exit statuses and the test card.
+- [docs/bios.md](docs/bios.md): starting through a BIOS dump of your own, in the runner and in RetroArch.
 - [docs/controllers.md](docs/controllers.md): Sports Pad, Paddle, Light Phaser and 3-D glasses titles, and the controller options.
 - [docs/embedding.md](docs/embedding.md): using the C library from CMake, pkg-config or `add_subdirectory`.
 
