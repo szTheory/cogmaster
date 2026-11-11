@@ -320,6 +320,7 @@ runner.save.import	portable,runner
 runner.save.imports	portable,runner
 runner.save.interval	portable,runner
 runner.save.interval_fault	portable,runner
+runner.save.kill	portable,runner
 runner.save.native_error	portable,runner
 runner.save.next_index	portable,runner
 runner.save.process.close	portable,runner

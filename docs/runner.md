@@ -291,7 +291,7 @@ started, as under `nohup`, stays ignored.
 ## Battery files
 
 Native POSIX and WASI create temporary files exclusively with `open`, then replace
-within the same directory with `rename`; native POSIX also synchronizes the file.
+within the same directory with `rename`; native POSIX also synchronizes the file and the directory.
 Windows uses wide paths and `MoveFileExW`. WASI filesystem rights and durable
 storage remain properties of the host's preopened directory.
 
@@ -310,22 +310,30 @@ cleans only its own failed temporary. The previous target is never predeleted or
 SIGTERM finish the bounded frame, then flush in ordinary control flow; a failed flush exits 1.
 
 Replacement provides old-or-complete-new visibility on native local filesystems with atomic rename;
-it is not a universal power-loss guarantee. The containing directory is not synchronized; filesystem,
-device and network behavior can limit crash durability. WASI lacks the native sync request. Abrupt
-termination can leave this process's temporary; the next run does not delete arbitrary temporaries.
-Simultaneous writers to one target are unsupported. Same-stem ROMs share a save name: use separate
-directories to avoid collisions. Raw files have no game identity check, so exact-size wrong-game data
-cannot be detected. Windows uses Unicode paths; POSIX keeps path bytes unchanged.
+it is not a universal power-loss guarantee. On POSIX other than WASI the runner then opens the directory,
+calls `fsync` and closes it, so the new name is durable; a filesystem that answers EINVAL or ENOTSUP for a
+directory is accepted, any other error fails the flush and the generation stays unacknowledged. macOS
+`fsync` does not flush the drive cache and `F_FULLFSYNC` is not used. Windows has no directory-sync
+analogue; `MoveFileExW` writes through. Filesystem, device and network behavior can still limit crash
+durability. Temporaries are named `<target>.tmp-<i>` for i from 0 to 1023 on every platform. At load the
+runner deletes exactly those 1024 names of its own target, listing no directory, so a killed run leaves
+nothing the next run trips on; another save's temporaries and any other file stay. A temporary created
+after the load is never overwritten: a flush takes the next free index. Simultaneous writers to one target
+are unsupported. Same-stem ROMs share a save name: use separate directories to avoid collisions. Raw files
+have no game identity check, so exact-size wrong-game data cannot be detected. Windows uses Unicode paths;
+POSIX keeps path bytes unchanged.
 
-Recurring save tests force create, short-write, flush, sync, close and replacement failures for both
+Recurring save tests force create, short-write, flush, sync, close, replacement and directory-sync failures for both
 first creation and overwrite. They check the old bytes, dirty retry, exclusive same-directory temporary
 cleanup and preservation of unrelated temporaries. Signal and abrupt-interruption runners are test-only
-builds; the installed runner has no fault injection.
+builds; the installed runner has no fault injection. One such build is stopped at its first flush with the
+temporary complete and the target not yet replaced: the previous save stays byte for byte and the next run
+goes on from it.
 
 `--save-interval N` runs the same flush after the outputs of every frame whose number is a multiple of N,
-so a long run loses at most N frames of progress. It counts frames, never time, and `--frames` runs get
+so a killed run loses at most N frames of progress. It counts frames, never time, and `--frames` runs get
 no special case: an N above the frame count writes only at exit. A periodic flush that fails ends the run
-at once with exit 1, with no later frame and no hash line. SIGUSR1 and SIGBREAK flushes remain deferred.
+at once with exit 1, with no later frame and no hash line. A SIGUSR1 or SIGBREAK flush remains deferred.
 
 ## Accepted expectations
 

@@ -208,6 +208,64 @@ if(CMAKE_SCRIPT_MODE_FILE)
         message(FATAL_ERROR "writer touched another process's temporary")
       endif()
     endforeach()
+  elseif(CASE STREQUAL "save_kill")
+    # RUN is a runner that ends the process at the first flush whose temporary is complete and
+    # before it replaces the save. Save A has counter 01; a run that goes on from A must show 02.
+    # A killed process does not flush standard output, so a frame line cannot tell where the kill
+    # fell. A --png for frame 2 can: it is written inside the frame loop, so it exists only if the
+    # run got past frame 1 before the kill.
+    file(REMOVE_RECURSE "${OUT}")
+    file(MAKE_DIRECTORY "${OUT}")
+    execute_process(COMMAND ${EMULATOR} ${PRODUCTION} --frames 60 --save-dir "${OUT}" "${BATTERY}"
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    file(READ "${OUT}/battery.srm" first LIMIT 3 HEX)
+    if(NOT rc STREQUAL "0" OR NOT first STREQUAL "a55a01")
+      message(FATAL_ERROR "save A: exit ${rc}, holds ${first}, expected a55a01\n${out}${err}")
+    endif()
+    configure_file("${OUT}/battery.srm" "${OUT}.A" COPYONLY)
+    set(png "${OUT}.frame2.png")
+    function(kill_run)
+      file(REMOVE "${png}")
+      execute_process(COMMAND ${EMULATOR} ${RUN} ${ARGN} --frames 10 --hash --png "2:${png}"
+        --save-dir "${OUT}" "${BATTERY}" RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+      set(rc "${rc}" PARENT_SCOPE)
+      set(out "${out}" PARENT_SCOPE)
+      set(err "${err}" PARENT_SCOPE)
+    endfunction()
+    # Control: with no interval the process is killed only at the end, after frame 2 was drawn.
+    kill_run()
+    if(NOT rc STREQUAL "93" OR NOT EXISTS "${png}")
+      message(FATAL_ERROR "control: exit ${rc}, frame 2 file ${png} missing\n${out}${err}")
+    endif()
+    file(GLOB leftover "${OUT}/battery.srm.tmp-*")
+    file(REMOVE ${leftover})
+    kill_run(--save-interval 1)
+    if(NOT rc STREQUAL "93" OR out MATCHES "frame [0-9]+ sha256" OR EXISTS "${png}")
+      message(FATAL_ERROR "kill at the first periodic flush: exit ${rc}, expected 93 before frame 2\n${out}${err}")
+    endif()
+    file(GLOB leftover "${OUT}/battery.srm.tmp-*")
+    list(LENGTH leftover n)
+    if(NOT n EQUAL 1)
+      message(FATAL_ERROR "expected exactly one leftover temporary, found: ${leftover}")
+    endif()
+    file(SIZE "${leftover}" size)
+    file(READ "${leftover}" head LIMIT 3 HEX)
+    if(NOT size EQUAL 32768 OR NOT head STREQUAL "a55a02")
+      message(FATAL_ERROR "the leftover temporary is ${size} bytes starting ${head}, not the complete next save")
+    endif()
+    execute_process(COMMAND ${CMAKE_COMMAND} -E compare_files "${OUT}.A" "${OUT}/battery.srm"
+      RESULT_VARIABLE same)
+    if(NOT same EQUAL 0)
+      message(FATAL_ERROR "the kill changed the previous save")
+    endif()
+    # The next production run loads that save, removes the temporary and goes on from it.
+    execute_process(COMMAND ${EMULATOR} ${PRODUCTION} --frames 1 --save-dir "${OUT}" "${BATTERY}"
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    file(GLOB leftover "${OUT}/battery.srm.tmp-*")
+    file(READ "${OUT}/battery.srm" head LIMIT 3 HEX)
+    if(NOT rc STREQUAL "0" OR leftover OR NOT head STREQUAL "a55a02")
+      message(FATAL_ERROR "after the kill: exit ${rc}, leftover ${leftover}, save ${head}\n${out}${err}")
+    endif()
   elseif(CASE STREQUAL "save_continuation")
     file(MAKE_DIRECTORY "${OUT}")
     file(REMOVE "${OUT}/battery.srm")
@@ -1134,6 +1192,14 @@ if(COGMASTER_FIXTURES)
       -DOUT=${PROJECT_BINARY_DIR}/tests/save-interval-fault
       -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
     LABELS runner portable TIMEOUT 30)
+  # Fault prevented: a process killed between flushes losing the last complete save, or leaving a
+  # temporary the next run trips on.
+  cogmaster_add_test(NAME runner.save.kill
+    COMMAND ${runner_check} -DCASE=save_kill -DRUN=$<TARGET_FILE:cogmaster-test-save-interrupt>
+      -DPRODUCTION=$<TARGET_FILE:cogmaster-run>
+      -DOUT=${PROJECT_BINARY_DIR}/tests/save-kill
+      -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS runner portable TIMEOUT 10)
   # Fault prevented: successful normal exit loses the numeric guest continuation.
   cogmaster_add_test(NAME runner.save.continuation.normal
     COMMAND ${runner_check} -DCONTINUE=$<TARGET_FILE:cogmaster-run>
