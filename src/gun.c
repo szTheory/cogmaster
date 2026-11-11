@@ -192,7 +192,7 @@ void cogmaster__gun_wrap(cogmaster *m)
     for (uint32_t port = 0u; port < 2u; port++) {
         uint32_t device = port == 0u ? m->input.port1 : m->input.port2;
         if (device == COGMASTER_DEVICE_LIGHT_PHASER) {
-            m->ports[port].g_sense &= (uint8_t)~2u;
+            m->ports[port].g_sense &= 1u;
             arm(m, port);
         }
     }

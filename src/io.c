@@ -430,10 +430,10 @@ static uint8_t chip_in(cogmaster *m, uint32_t p)
     cogmaster__gun_sync(m);
     uint8_t v = port_dd(m);
     if ((m->io.io_ctrl & 2u) != 0u) {
-        m->ports[0].g_sense &= (uint8_t)~2u;
+        m->ports[0].g_sense &= 1u;
     }
     if ((m->io.io_ctrl & 8u) != 0u) {
-        m->ports[1].g_sense &= (uint8_t)~2u;
+        m->ports[1].g_sense &= 1u;
     }
     return v;
 }
