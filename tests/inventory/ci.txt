@@ -343,6 +343,7 @@ ports.glasses.nolag	portable,ports
 ports.glasses.profiles	portable,ports
 ports.glasses.rule	portable,ports
 ports.glasses.state	portable,ports
+ports.gun.latch_at	portable,ports
 ports.input.exact_malloc	portable,ports
 ports.input.outputs	portable,ports
 ports.input.poison	portable,ports

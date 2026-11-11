@@ -50,6 +50,22 @@ foreach(case IN ITEMS rule control gate profiles nolag state)
     LABELS ports portable TIMEOUT 20)
 endforeach()
 
+# The Light Phaser on the internal API: the tick-to-H function against the formula it replaced.
+add_executable(cogmaster-test-ports-gun ${CMAKE_CURRENT_LIST_DIR}/test_gun.c)
+target_include_directories(cogmaster-test-ports-gun PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-ports-gun PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-ports-gun PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-ports-gun)
+
+# Fault prevented: a refactor of the H-counter origin or of the latch site that moves a latch
+# position, so every light-gun, H-counter and pad game changes behaviour without a test noticing.
+foreach(case IN ITEMS latch_at)
+  # Timeout: 20 s floor; provisional.
+  cogmaster_add_test(NAME ports.gun.${case} COMMAND cogmaster-test-ports-gun ${case}
+    LABELS ports portable TIMEOUT 20)
+endforeach()
+
 # The Sports Pad and the Paddle on the internal API: the read sequence at the tick limits, the walk
 # and its buttons, the clamps, the sum of pending motion, device changes, resets, profiles and
 # availability, a poll hammer, a state round trip and a replay of recorded motion. Its record mode is the
