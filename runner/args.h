@@ -25,6 +25,8 @@ typedef struct cogmaster__run_options {
     uint32_t machine;             /* COGMASTER_MACHINE_*; AUTO is resolved from the file */
     uint32_t video_mode;
     uint32_t region, tv;          /* COGMASTER_REGION_* and COGMASTER_TV_* */
+    uint32_t fm;                  /* COGMASTER_FM_*; AUTO is the library's default for the region */
+    int fm_given;                 /* --fm was spelled */
     const char *file;             /* the cartridge image, or NULL for the test card */
     int probe;                    /* --probe: print the file's report, run nothing */
     int trace;                    /* --trace first-fault */

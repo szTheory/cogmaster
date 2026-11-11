@@ -771,12 +771,52 @@ if(CMAKE_SCRIPT_MODE_FILE)
   elseif(CASE STREQUAL "device_names")
     # The execution line names each device and keeps the prefix older checks match.
     write_bytes("${OUT}" UNIX "ram@2:$C200=00\n")
-    set(line "execution machine=[0-9]+ region=[0-9]+ tv=[0-9]+ video=[0-9]+ mapper=[0-9]+ port1=")
+    set(line "execution machine=[0-9]+ region=[0-9]+ tv=[0-9]+ fm=[0-9]+ video=[0-9]+ mapper=[0-9]+ port1=")
     expect_exit(0 "${line}pad port2=pad " --frames 2 --expect ${OUT})
     expect_exit(0 "${line}sports port2=none " --frames 2 --expect ${OUT}
       --port1 sports --port2 none)
     expect_exit(0 "${line}paddle port2=pad " --frames 2 --expect ${OUT}
       --port1 paddle --region ntsc-j)
+  elseif(CASE STREQUAL "fm_usage")
+    # The execution line names the FM state the run used: auto is on for a Japanese console and off elsewhere
+    # (raw values: off 1, on 2), a word is taken exactly once, and an impossible request is a refusal.
+    write_bytes("${OUT}" UNIX "ram@2:$C200=00\n")
+    expect_exit(0 "region=2 tv=1 fm=2 " --frames 2 --expect ${OUT} --region ntsc-j --fm on)
+    expect_exit(0 "region=2 tv=1 fm=1 " --frames 2 --expect ${OUT} --region ntsc-j --fm off)
+    expect_exit(0 "region=2 tv=1 fm=2 " --frames 2 --expect ${OUT} --region ntsc-j)
+    expect_exit(0 "region=1 tv=1 fm=1 " --frames 2 --expect ${OUT} --region ntsc-u)
+    expect_exit(0 "region=1 tv=2 fm=1 " --frames 2 --expect ${OUT} --region pal)
+    expect_exit(0 "region=1 tv=1 fm=2 " --frames 2 --expect ${OUT} --region ntsc-u --fm on)
+    expect_exit(0 "fm=1 " --frames 2 --expect ${OUT} --machine gg --fm off)
+    foreach(bad IN ITEMS sideways ON 1)
+      expect_exit(2 "usage" --frames 1 --fm ${bad})
+    endforeach()
+    # An empty word survives only a literal argument, not an expanded list.
+    execute_process(COMMAND ${EMULATOR} ${RUN} --frames 1 --fm "" RESULT_VARIABLE rc OUTPUT_QUIET ERROR_QUIET)
+    if(NOT rc STREQUAL "2")
+      message(FATAL_ERROR "--fm with an empty word: expected exit 2, got ${rc}")
+    endif()
+    expect_exit(2 "usage" --frames 1 --fm)
+    expect_exit(2 "usage" --frames 1 --fm on --fm off)
+    expect_exit(2 "usage" --probe ${SEEDS}/di-halt.sms --fm on)
+    expect_exit(77 "unsupported" --frames 1 --fm on --machine gg)
+    # No flag and auto are one run, whatever the region, so no existing hash moves.
+    foreach(region IN ITEMS ntsc-u ntsc-j pal)
+      foreach(mode IN ITEMS none auto)
+        set(fm_args "")
+        if(mode STREQUAL "auto")
+          set(fm_args --fm auto)
+        endif()
+        execute_process(COMMAND ${EMULATOR} ${RUN} --frames 3 --region ${region} ${fm_args} --hash
+          RESULT_VARIABLE rc OUTPUT_VARIABLE out_${mode})
+        if(NOT rc STREQUAL "0")
+          message(FATAL_ERROR "--region ${region} ${fm_args} --hash: exit ${rc}")
+        endif()
+      endforeach()
+      if(NOT out_none STREQUAL out_auto)
+        message(FATAL_ERROR "--fm auto moved the hash on ${region}:\n${out_none}${out_auto}")
+      endif()
+    endforeach()
   elseif(CASE STREQUAL "device_refused")
     expect_exit(77 "unsupported.*--region" --frames 1 --port1 paddle)
     expect_exit(77 "unsupported.*--region" --frames 1 --port2 paddle --region ntsc-u)
@@ -1803,6 +1843,15 @@ cogmaster_add_test(NAME runner.usage.save_interval
   COMMAND ${runner_check} -DCASE=save_interval_usage -DOUT=${PROJECT_BINARY_DIR}/tests/save-interval-usage
     -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS portable runner TIMEOUT 30)
+
+# Fault prevented: a runner that cannot name the FM state a ledger row used, so a row judged with the unit
+# off could pass for the unit on; a misspelt or repeated --fm taken as a word; a request the console never
+# had run instead of refused.
+# Timeout: 20 s floor; 0.09 s slowest local run, no hosted run yet, so provisional.
+cogmaster_add_test(NAME runner.usage.fm
+  COMMAND ${runner_check} -DCASE=fm_usage -DOUT=${PROJECT_BINARY_DIR}/tests/fm-usage.expect
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 20)
 
 # Fault prevented: a hash that depends on the frame count for a card that
 # does not move, or a hash line that names the wrong frame.

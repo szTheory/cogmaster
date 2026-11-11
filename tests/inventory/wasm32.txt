@@ -492,6 +492,7 @@ runner.save.sweep	portable,runner
 runner.stop	portable,runner
 runner.trace.fault	portable,runner
 runner.trace.none	portable,runner
+runner.usage.fm	portable,runner
 runner.usage.frame_range	portable,runner
 runner.usage.no_args	portable,runner
 runner.usage.png_syntax	portable,runner

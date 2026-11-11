@@ -21,6 +21,7 @@ static const char synopsis[] =
     "  --boot NAME          fast (default) or bios; bios starts from the BIOS in --bios FILE\n"
     "  --bios FILE          the 8192-byte Master System BIOS to start from; needs --boot bios\n"
     "  --region NAME        auto (default), ntsc-u, ntsc-j or pal\n"
+    "  --fm NAME            auto (default), on or off; auto is on for a Japanese Master System\n"
     "  --frames N           run N frames (N >= 1)\n"
     "  --bench N            run N frames and report the time per frame\n"
     "  --hash               print the SHA-256 of the last frame's crop\n"
@@ -215,7 +216,7 @@ static int check_combination(const cogmaster__run_options *o)
         }
         if (o->frames != 0u || o->hash || o->hash_audio || o->png_count != 0u || o->trace ||
             o->mailbox || o->eyes || o->input || o->save_dir || o->expect ||
-            o->save_interval != 0u || o->boot_given || o->bios != NULL) {
+            o->save_interval != 0u || o->boot_given || o->bios != NULL || o->fm_given) {
             return usage("--probe runs nothing, so it takes no run option");
         }
         return COGMASTER__EXIT_OK;
@@ -337,6 +338,14 @@ int cogmaster__parse_options(int argc, char **argv, cogmaster__run_options *o)
             if (!parse_region(value, &o->region, &o->tv)) {
                 return usage("--region needs auto, ntsc-u, ntsc-j or pal");
             }
+            i++;
+        } else if (strcmp(arg, "--fm") == 0) {
+            if (o->fm_given || (!is(value, "auto") && !is(value, "on") && !is(value, "off")))
+                return usage("--fm needs auto, on or off, once");
+            o->fm_given = 1;
+            o->fm = is(value, "on")    ? COGMASTER_FM_ON
+                    : is(value, "off") ? COGMASTER_FM_OFF
+                                       : COGMASTER_FM_AUTO;
             i++;
         } else if (strcmp(arg, "--trace") == 0) {
             if (!is(value, "first-fault")) {

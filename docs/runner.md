@@ -68,6 +68,7 @@ cogmaster-run --help | --version
 | `FILE`, `--rom FILE` | The cartridge image to run: a Master System or Game Gear ROM from 1,024 bytes to 1 MiB, optionally after a 512-byte copier header; a body above 1 MiB is refused. Give one file. Without one, the test card shows. |
 | `--machine NAME` | `sms` selects SMS2, `sms1` selects SMS1, `gg` selects Game Gear. `auto` uses the public probe's hash metadata/header facts, then the `.gg` filename fallback. With no file, `auto` selects SMS2. |
 | `--region NAME` | Region and TV standard together: `ntsc-u` is export NTSC, `ntsc-j` Japanese NTSC and `pal` export PAL. `auto` uses probe metadata/header region when present, otherwise export NTSC. |
+| `--fm NAME` | `auto` (the default), `on` or `off`, given once, spelt exactly. `auto` turns the FM sound unit on for a Japanese Master System and off elsewhere. `on` with `--machine gg` exits 77, and a run option is a usage error with `--probe`. |
 | `--video-mode NAME` | `auto`, `sms` or `gg`; video selection is independent of the machine profile. |
 | `--boot NAME` | `fast` (the default) starts the cartridge as the BIOS would have left the console, with no BIOS. `bios` starts from the Master System BIOS named by `--bios`, runs it, and lets it start the cartridge. Give it once. It needs a cartridge file and is a usage error with `--probe` or `--expect`. A BIOS run starts with the BIOS's own time, so frame N of a BIOS run is not frame N of a fast run, and an `--input` script written for fast boot misaligns. Most real BIOS images check the cartridge's header, so a cartridge that runs under `fast` can lock up under `bios`. |
 | `--bios FILE` | The BIOS dump to start from: exactly 8,192 bytes, from a Master System. Give it once, only with `--boot bios` (with `--boot fast` or alone it is a usage error, so adding a path never changes a hash). The runner reads at most 8,193 bytes of it. It prints one line on standard error: `BIOS recognised: NAME` when the file's SHA-1 and size are a known dump, else `BIOS not recognised (sha1 DIGEST); running it as given`. A dump of the right size that is not recognised still runs, so a patched dump works. Recognition names the file; it selects no machine, region or FM sound. The path and the bytes are never printed. |
@@ -385,7 +386,7 @@ fail establishes gameplay, completion or sound; sound has no predicate yet.
 
 Each observation prints its frame, normalized kind/address and observed hash alongside
 display/distinct/fault facts. Expected values stay in the accepted file. The execution
-line reports resolved machine/region/TV/video/board, both devices by name (`port1=sports`), cap, behaviour revision
+line reports resolved machine/region/TV/FM (`fm=1` off, `fm=2` on)/video/board, both devices by name (`port1=sports`), cap, behaviour revision
 and SHA-256 of input bytes (the empty digest without a script). The first fault remains
 a diagnostic and does not stop the capped run. `--trace`, `--mailbox`, `--bench` and
 `--probe` conflict with `--expect`. A signal before an expected frame is infrastructure

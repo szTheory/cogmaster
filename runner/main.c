@@ -362,6 +362,7 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     }
     media.region = opt->region;
     media.tv = opt->tv;
+    media.fm = opt->fm;
     media.video_mode = opt->video_mode;
     media.bios = bios;
     media.bios_size = bios != NULL ? (size_t)COGMASTER_BIOS_SIZE : 0u;
@@ -440,12 +441,13 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
         char hex[65];
         cogmaster__sha256_final(&hash, digest);
         cogmaster__sha256_hex(digest, hex);
-        printf("execution machine=%lu region=%lu tv=%lu video=%lu mapper=%lu port1=%s port2=%s "
-               "script_sha256=%s cap=%lu behaviour=%lu\n",
-               (unsigned long)info.machine, (unsigned long)info.region, (unsigned long)info.tv,
-               (unsigned long)info.video_mode, (unsigned long)cart.board,
-               cogmaster__device_name(port1), cogmaster__device_name(port2), hex,
-               (unsigned long)opt->frames, (unsigned long)versions.behaviour);
+        printf(
+            "execution machine=%lu region=%lu tv=%lu fm=%lu video=%lu mapper=%lu port1=%s port2=%s "
+            "script_sha256=%s cap=%lu behaviour=%lu\n",
+            (unsigned long)info.machine, (unsigned long)info.region, (unsigned long)info.tv,
+            (unsigned long)info.fm, (unsigned long)info.video_mode, (unsigned long)cart.board,
+            cogmaster__device_name(port1), cogmaster__device_name(port2), hex,
+            (unsigned long)opt->frames, (unsigned long)versions.behaviour);
     }
     cogmaster_fault fault;
     memset(&fault, 0, sizeof fault);
