@@ -320,7 +320,7 @@ static void sweep(cogmaster *src, cogmaster *target, int fm_only)
         "bus_vdp_at",   "vdp_reg",         "vdp_status",   "vdp_latch", "vdp_code",  "vdp_addr",
         "vdp_buffer",   "vdp_pause",       "vdp_cram",     "vdp_vram",  "machine",   "region",
         "tv",           "io_mem_ctrl",     "io_ctrl",      "io_gg",     "bus_op_pc", "bus_op",
-        "fm_unit",      "synth_phase"};
+        "fm_unit",      "synth_phase",     "boot",         "bios_crc32"};
     for (size_t i = 0; i < sizeof named / sizeof named[0]; i++) {
         (void)field(n, named[i]);
     }
@@ -843,14 +843,19 @@ static void test_rejects_header(void)
     const struct cogmaster__state_field *reserved = field(n, "reserved");
     const struct cogmaster__state_field *ticks = field(n, "ticks");
     const struct cogmaster__state_field *fm_unit = field(n, "fm_unit");
-    if (size == 0u || magic == NULL || total == NULL || header == NULL || crc == NULL ||
-        reserved == NULL || ticks == NULL || fm_unit == NULL) {
+    const struct cogmaster__state_field *boot = field(n, "boot");
+    const struct cogmaster__state_field *bios_crc = field(n, "bios_crc32");
+    if (size == 0u || boot == NULL || bios_crc == NULL || magic == NULL || total == NULL ||
+        header == NULL || crc == NULL || reserved == NULL || ticks == NULL || fm_unit == NULL) {
         return;
     }
     CHECK_EQ_U64(magic->offset, 0);
     CHECK_EQ_U64(fm_unit->offset, 52);
     CHECK_EQ_U64(fm_unit->width, 1);
-    CHECK_EQ_U64(reserved->offset, 53);
+    CHECK_EQ_U64(boot->offset, 53);
+    CHECK_EQ_U64(bios_crc->offset, 54);
+    CHECK_EQ_U64(bios_crc->width, 4);
+    CHECK_EQ_U64(reserved->offset, 58);
 
     for (uint32_t i = 0; i < 8u; i++) {
         memcpy(bad, good, size);
@@ -877,10 +882,19 @@ static void test_rejects_header(void)
     memcpy(bad, good, size);
     bad[size - 1u] ^= 1u;
     expect_refused("body byte", target, size, target_size);
-    for (uint32_t i = 0; i < 11u; i++) {
+    for (uint32_t i = 0; i < 6u; i++) {
         memcpy(bad, good, size);
         bad[reserved->offset + i] = 1u;
         expect_refused("reserved byte", target, size, target_size);
+    }
+    /* The boot mode and the BIOS CRC-32 bind a state to its firmware: a flipped byte is refused. */
+    memcpy(bad, good, size);
+    bad[boot->offset] ^= 1u;
+    expect_refused("boot byte", target, size, target_size);
+    for (uint32_t i = 0; i < 4u; i++) {
+        memcpy(bad, good, size);
+        bad[bios_crc->offset + i] ^= 1u;
+        expect_refused("bios crc byte", target, size, target_size);
     }
     /* The FM unit is fixed to the instance: a flipped byte is refused. */
     memcpy(bad, good, size);

@@ -287,14 +287,6 @@ static void flag_leg(uint32_t machine, int with_bios_attached)
     cogmaster_destroy(m);
 }
 
-static void test_slow_flag(void)
-{
-    for (uint32_t mach = 0; mach < MACHINES; mach++) {
-        flag_leg(machine_id[mach], 0);
-        flag_leg(machine_id[mach], 1);
-    }
-}
-
 /* ---- load: the validation order, ownership, power-on state and reset ---- */
 
 static uint8_t bios_img[COGMASTER__BIOS_SIZE];
@@ -591,6 +583,237 @@ static void test_load(void)
     test_load_power_on();
 }
 
+/* ---- the state: binding to the boot mode, the BIOS window detector, the flag after a load ---- */
+
+static uint8_t state_c[STATE_BUF];
+static uint8_t state_d[STATE_BUF];
+
+/* An image whose program copies COPY_LEN bytes of its own body (from address 0x100) into work
+   RAM at 0xC100 and then waits: the control for the window detector. */
+#define COPY_LEN 64u
+static void bios_copier(uint8_t *img, uint32_t seed)
+{
+    static const uint8_t program[] = {
+        0xF3u, /* di */
+        0x21u, 0x00u,
+        0x01u, /* ld hl, 0x0100 */
+        0x11u, 0x00u,
+        0xC1u, /* ld de, 0xC100 */
+        0x01u, (uint8_t)COPY_LEN,
+        0x00u,        /* ld bc, COPY_LEN */
+        0xEDu, 0xB0u, /* ldir */
+        0x18u, 0xFEu, /* jr $ */
+    };
+    bios_fill(img, seed);
+    memcpy(img, program, sizeof program);
+}
+
+static cogmaster *boot_with(uint32_t machine, const uint8_t *img)
+{
+    cogmaster *m = blank();
+    cogmaster_media media =
+        media_of(cart64, sizeof cart64, machine, img, img != NULL ? COGMASTER__BIOS_SIZE : 0u);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    return m;
+}
+
+#define WINDOW 32u
+#define TABLE_BITS 14u
+
+static uint32_t get4(const uint8_t *p)
+{
+    return (uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24;
+}
+
+/* The number of 32-byte windows of the image, at every offset, that occur anywhere in the state.
+   The windows are indexed by their first four bytes in an open-addressed table, so the scan costs
+   one lookup per state byte whatever the image. */
+static uint32_t windows_in(const uint8_t *img, const uint8_t *st, size_t n)
+{
+    static uint16_t table[1u << TABLE_BITS];
+    memset(table, 0, sizeof table);
+    for (uint32_t off = 0; off + WINDOW <= COGMASTER__BIOS_SIZE; off++) {
+        uint32_t h = (get4(img + off) * 2654435761u) >> (32u - TABLE_BITS);
+        while (table[h] != 0u) {
+            h = (h + 1u) & ((1u << TABLE_BITS) - 1u);
+        }
+        table[h] = (uint16_t)(off + 1u);
+    }
+    uint32_t found = 0;
+    for (size_t i = 0; i + WINDOW <= n; i++) {
+        uint32_t h = (get4(st + i) * 2654435761u) >> (32u - TABLE_BITS);
+        while (table[h] != 0u) {
+            if (memcmp(img + (table[h] - 1u), st + i, WINDOW) == 0) {
+                found++;
+            }
+            h = (h + 1u) & ((1u << TABLE_BITS) - 1u);
+        }
+    }
+    return found;
+}
+
+/* A state that must be refused with ERR_ARGUMENT and change nothing. */
+static void state_refused(cogmaster *target, const uint8_t *buf, size_t n, const char *what)
+{
+    size_t before = save_to(target, state_c);
+    cogmaster_status got = cogmaster__state_load(target, buf, n);
+    if (got != COGMASTER_STATUS_ERR_ARGUMENT) {
+        fprintf(stderr, "state %s: status %d, want ERR_ARGUMENT\n", what, (int)got);
+        check_failures++;
+    }
+    CHECK_EQ_U64(save_to(target, state_d), before);
+    CHECK(memcmp(state_c, state_d, before) == 0);
+}
+
+/* A state binds to the firmware it ran under: fast boot, or one BIOS by its CRC-32. */
+static void state_binding_leg(uint32_t machine)
+{
+    static uint8_t img_a[COGMASTER__BIOS_SIZE];
+    static uint8_t img_b[COGMASTER__BIOS_SIZE];
+    bios_fill(img_a, 21u);
+    bios_fill(img_b, 22u);
+    cogmaster *fast = boot_with(machine, NULL);
+    cogmaster *fast2 = boot_with(machine, NULL);
+    cogmaster *a = boot_with(machine, img_a);
+    cogmaster *a2 = boot_with(machine, img_a);
+    cogmaster *b = boot_with(machine, img_b);
+    run_frames(a, 2u);
+    run_frames(fast, 2u);
+    size_t nf = save_to(fast, state_a);
+    size_t na = save_to(a, state_b);
+    CHECK_EQ_U64(nf, na);
+    /* Header: the boot byte at 53, the BIOS CRC-32 at 54 to 57, six reserved zero bytes after. */
+    CHECK_EQ_U64(state_a[53], 0);
+    CHECK_EQ_U64(get4(state_a + 54), 0);
+    CHECK_EQ_U64(state_b[53], 1);
+    CHECK(a->bios.crc32 != 0u && a->bios.crc32 != b->bios.crc32);
+    CHECK_EQ_U64(get4(state_b + 54), a->bios.crc32);
+    for (uint32_t i = 58; i < 64u; i++) {
+        CHECK_EQ_U64(state_a[i], 0);
+        CHECK_EQ_U64(state_b[i], 0);
+    }
+    CHECK_EQ_U64(cogmaster__state_load(fast2, state_a, nf), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster__state_load(a2, state_b, na), COGMASTER_STATUS_OK);
+    state_refused(a2, state_a, nf, "fast boot state into a BIOS instance");
+    state_refused(fast2, state_b, na, "BIOS state into a fast boot instance");
+    state_refused(b, state_b, na, "state of one BIOS into another");
+    cogmaster_destroy(fast);
+    cogmaster_destroy(fast2);
+    cogmaster_destroy(a);
+    cogmaster_destroy(a2);
+    cogmaster_destroy(b);
+}
+
+/* Fault prevented: a state from one boot mode or BIOS loaded into another (a machine that
+   continues under the wrong firmware), and the false belief that a state never holds bytes
+   derived from the BIOS. The claim "no BIOS byte in a state" is FALSE for a real run: a real BIOS
+   copies itself into work RAM and its logo reaches VRAM, which is why a real run's states, saves,
+   frames and logs never leave the machine (a policy, not a test). What is tested: a self-authored
+   image that never copies itself to work RAM leaves no 32-byte window of itself in the state after
+   three frames, and a control image that copies 64 of its own bytes MUST show the window, so the
+   detector is proven before its silence means anything. */
+static void test_state(void)
+{
+    static uint8_t clean[COGMASTER__BIOS_SIZE];
+    static uint8_t copier[COGMASTER__BIOS_SIZE];
+    bios_fill(clean, 11u);
+    bios_copier(copier, 12u);
+    bios_fill(bios_img, 0x9E3779B9u);
+    cart_fill();
+    for (uint32_t mach = 0; mach < MACHINES; mach++) {
+        cogmaster *m = boot_with(machine_id[mach], clean);
+        run_frames(m, 3u);
+        size_t n = save_to(m, state_a);
+        uint32_t seen = windows_in(clean, state_a, n);
+        if (seen != 0u) {
+            fprintf(stderr, "state: %u windows of the clean image occur in the state\n", seen);
+            check_failures++;
+        }
+        cogmaster_destroy(m);
+        m = boot_with(machine_id[mach], copier);
+        run_frames(m, 3u);
+        CHECK(memcmp(m->ram + 0x100, copier + 0x100, COPY_LEN) == 0);
+        n = save_to(m, state_a);
+        seen = windows_in(copier, state_a, n);
+        if (seen < COPY_LEN - WINDOW + 1u) {
+            fprintf(stderr,
+                    "state: the detector found %u windows of the copying image, wanted %u\n", seen,
+                    COPY_LEN - WINDOW + 1u);
+            check_failures++;
+        }
+        cogmaster_destroy(m);
+        state_binding_leg(machine_id[mach]);
+    }
+}
+
+/* The flag after each way into a state: a load, both resets and a state load. */
+static void flag_after(cogmaster *m, const char *what)
+{
+    if (!flag_matches(m)) {
+        fprintf(stderr, "flag stale after %s\n", what);
+        check_failures++;
+    }
+}
+
+static void flag_load_legs(uint32_t machine, int with_bios_attached)
+{
+    cogmaster *m = boot_with(machine, with_bios_attached ? bios_img : NULL);
+    flag_after(m, "a load");
+    /* A load over a loaded instance, with and without the BIOS, and a power-on reset after $3E
+     * moved. */
+    cogmaster__io_out(m, 0x3Eu, 0xFBu);
+    cogmaster_media media =
+        media_of(cart64, sizeof cart64, machine, with_bios_attached ? NULL : bios_img,
+                 with_bios_attached ? 0u : COGMASTER__BIOS_SIZE);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    flag_after(m, "a load that flips the BIOS");
+    for (uint32_t kind = 0; kind < 2u; kind++) {
+        cogmaster__io_out(m, 0x3Eu, 0xFBu);
+        flag_after(m, "a $3E write");
+        CHECK_EQ_U64(cogmaster_reset(m, kind == 0u ? COGMASTER_RESET_SOFT : COGMASTER_RESET_POWER),
+                     COGMASTER_STATUS_OK);
+        flag_after(m, kind == 0u ? "a soft reset" : "a power reset");
+        CHECK_EQ_U64(m->io.mem_ctrl, m->bios.size != 0u ? 0xE0u : 0xABu);
+    }
+    cogmaster_destroy(m);
+}
+
+/* A state saved with one $3E loaded into an instance holding another: the flag follows the loaded
+   register, whether the saved value turns the cartridge off (b6), the BIOS on (b3 clear) or
+   neither, and in both directions. */
+static void flag_state_leg(uint32_t machine, int with_bios_attached)
+{
+    static const uint8_t values[] = {0xABu, 0xEBu, 0xA0u, 0xB0u, 0xE0u, 0xA3u};
+    const uint8_t *img = with_bios_attached ? bios_img : NULL;
+    for (size_t i = 0; i < sizeof values; i++) {
+        cogmaster *src = boot_with(machine, img);
+        cogmaster *dst = boot_with(machine, img);
+        cogmaster__io_out(src, 0x3Eu, values[i]);
+        size_t n = save_to(src, state_a);
+        cogmaster__io_out(dst, 0x3Eu, values[i] == 0xABu ? 0xE0u : 0xABu);
+        flag_after(dst, "a $3E write before a state load");
+        CHECK_EQ_U64(cogmaster__state_load(dst, state_a, n), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(dst->io.mem_ctrl, values[i]);
+        flag_after(dst, "a state load");
+        cogmaster_destroy(src);
+        cogmaster_destroy(dst);
+    }
+}
+
+static void test_slow_flag(void)
+{
+    bios_fill(bios_img, 0x9E3779B9u);
+    cart_fill();
+    for (uint32_t mach = 0; mach < MACHINES; mach++) {
+        flag_leg(machine_id[mach], 0);
+        flag_leg(machine_id[mach], 1);
+        flag_load_legs(machine_id[mach], 0);
+        flag_load_legs(machine_id[mach], 1);
+        flag_state_leg(machine_id[mach], 0);
+        flag_state_leg(machine_id[mach], 1);
+    }
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
@@ -598,6 +821,7 @@ static const struct {
     {"arbitration", test_arbitration},
     {"slow_flag", test_slow_flag},
     {"load", test_load},
+    {"state", test_state},
 };
 
 int main(int argc, char **argv)

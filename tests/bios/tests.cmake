@@ -28,3 +28,10 @@ cogmaster_add_test(NAME bios.slow_flag COMMAND cogmaster-test-bios slow_flag
 # Timeout: 20 s floor; no hosted run yet, so provisional.
 cogmaster_add_test(NAME bios.load COMMAND cogmaster-test-bios load
   LABELS bios portable TIMEOUT 20)
+
+# Fault prevented: a state from one boot mode or BIOS loaded into another, and
+# the false belief that a state never holds bytes derived from the BIOS (the
+# detector is proven by a control image that copies itself to work RAM).
+# Timeout: 20 s floor; no hosted run yet, so provisional.
+cogmaster_add_test(NAME bios.state COMMAND cogmaster-test-bios state
+  LABELS bios portable TIMEOUT 20)
