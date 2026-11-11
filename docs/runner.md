@@ -319,7 +319,12 @@ cannot be detected. Windows uses Unicode paths; POSIX keeps path bytes unchanged
 Recurring save tests force create, short-write, flush, sync, close and replacement failures for both
 first creation and overwrite. They check the old bytes, dirty retry, exclusive same-directory temporary
 cleanup and preservation of unrelated temporaries. Signal and abrupt-interruption runners are test-only
-builds; the installed runner has no fault injection. Periodic saves and SIGUSR1 remain deferred.
+builds; the installed runner has no fault injection.
+
+`--save-interval N` runs the same flush after the outputs of every frame whose number is a multiple of N,
+so a long run loses at most N frames of progress. It counts frames, never time, and `--frames` runs get
+no special case: an N above the frame count writes only at exit. A periodic flush that fails ends the run
+at once with exit 1, with no later frame and no hash line. SIGUSR1 and SIGBREAK flushes remain deferred.
 
 ## Accepted expectations
 

@@ -323,6 +323,24 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(temps)
       message(FATAL_ERROR "an interval run leaked a temporary: ${temps}")
     endif()
+  elseif(CASE STREQUAL "save_interval_fault")
+    # RUN fails every write of the save, so a flush that happens is a failure that shows.
+    foreach(name every over)
+      file(REMOVE_RECURSE "${OUT}/${name}")
+      file(MAKE_DIRECTORY "${OUT}/${name}")
+    endforeach()
+    expect_exit(1 "save: cannot" --save-interval 1 --frames 10 --hash --save-dir "${OUT}/every" "${BATTERY}")
+    execute_process(COMMAND ${EMULATOR} ${RUN} --save-interval 1 --frames 10 --hash
+      --save-dir "${OUT}/every" "${BATTERY}" OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(out MATCHES "frame 10 sha256")
+      message(FATAL_ERROR "a periodic flush failure was deferred past frame 10:\n${out}")
+    endif()
+    # Standard output is flushed after the exit flush's message, so the two are checked apart.
+    execute_process(COMMAND ${EMULATOR} ${RUN} --save-interval 20 --frames 10 --hash
+      --save-dir "${OUT}/over" "${BATTERY}" RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "1" OR NOT out MATCHES "frame 10 sha256 [0-9a-f]+\n" OR NOT err MATCHES "save: cannot")
+      message(FATAL_ERROR "interval over the run: exit ${rc}, want 1 with the frame 10 line then the exit flush failing\n${out}${err}")
+    endif()
   elseif(CASE STREQUAL "video_override")
     expect_exit(0 "^$" --frames 1 --machine sms1)
     expect_exit(0 "^$" --frames 1 --machine sms --video-mode sms)
@@ -1037,6 +1055,13 @@ if(COGMASTER_FIXTURES)
         LABELS runner portable TIMEOUT 10)
     endif()
   endforeach()
+  # Fault prevented: a periodic save failure deferred to the end of the run, or a flush on every frame
+  # whatever the interval.
+  cogmaster_add_test(NAME runner.save.interval_fault
+    COMMAND ${runner_check} -DCASE=save_interval_fault -DRUN=$<TARGET_FILE:cogmaster-test-save-normal_write>
+      -DOUT=${PROJECT_BINARY_DIR}/tests/save-interval-fault
+      -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS runner portable TIMEOUT 30)
   # Fault prevented: successful normal exit loses the numeric guest continuation.
   cogmaster_add_test(NAME runner.save.continuation.normal
     COMMAND ${runner_check} -DCONTINUE=$<TARGET_FILE:cogmaster-run>
