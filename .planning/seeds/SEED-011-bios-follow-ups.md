@@ -71,3 +71,29 @@ runs over every archive.
 
 Trigger: an archive can reach a release without passing the `ci` release scan. Kept out by: the archives are built and
 scanned in `ci`; a second scan after the download repeats the same check on the same bytes.
+
+## Phase 10 review leftovers
+
+Found by the phase review and kept out of the fix round. Each is a scenario, not a requirement.
+
+- Hex dump layouts: a firmware pasted as `xxd` or `hexdump -C` output (offset and ASCII columns on every 16-byte line)
+  breaks the 32-byte window, so the scan reports nothing. The layouts are listed as not covered in `docs/testing.md`.
+- Byte-run rule: a 512-byte array in a file with CRLF line endings, or with a trailing `//` comment on each line, does
+  not trip the retyped-bytes rule in `scripts/hygiene.sh`.
+- Hook temp names: `scripts/hygiene.sh` names staged and history blobs by mapping `/` and `:` to `_`, so `a/b.rom` and
+  `a_b.rom` share a temp file and the first is overwritten unscanned; a hit names the temp path, not the repository path.
+- File names holding a newline: the window scan reads the file list line by line, so a tracked file whose name contains
+  a newline is split into two non-files and skipped.
+- Core: a BIOS-attached silent empty-slot read is keyed on a BIOS being attached, not enabled, so a game's first-fault
+  record differs between a BIOS boot and a fast boot.
+- Core: a state binds to a BIOS by CRC-32 alone, so a crafted 8 KiB image with the same CRC loads against another.
+- Core: a tag size between the old and new config struct size selects fast boot with no signal.
+- Core: the BIOS size exists only as a literal in the public header comment, so hosts hard-code 8192 in three places.
+- Core: `bios.size` is only ever 0 or 8192 and reads as a presence flag, so it could be renamed `attached`.
+- Core: an automatic machine on a Japanese cartridge takes the SMS 2 AND arbitration, where the first-generation board
+  lets the cartridge win.
+- Core: every writer of `$3E` still pairs a write with `bus_decode` by convention; a single setter was not added because
+  a state load replaces the whole register block and cannot go through one.
+- Host: the libretro module links the BIOS digest table and SHA-1 it never calls, because `host/bios.c` is one unit.
+- Host: the exit table's refusal text is split across two literals, and `COGMASTER_BIOS_SIZE` in the host duplicates the
+  core's accepted size with no cross-check.
