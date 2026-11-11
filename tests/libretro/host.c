@@ -587,6 +587,7 @@ static int frame_test(const char *path, const char *frames, const char *digest)
 #include "controls.h"
 #include "battery.h"
 #include "audio.h"
+#include "gun.h"
 
 static void *span_alloc(void *user, size_t n)
 {
@@ -719,7 +720,9 @@ int main(int argc, char **argv)
         if (!module_open(argv[1]))
             return 1;
         resolve_all();
-        int rc = missing != NULL ? 1 : adapter_test(argv[3], argv[4]);
+        int rc = missing != NULL      ? 1
+                 : gun_named(argv[3]) ? gun_test(argv[3])
+                                      : adapter_test(argv[3], argv[4]);
         module_close();
         return rc;
     }

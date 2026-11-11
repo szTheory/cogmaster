@@ -165,11 +165,14 @@ if(TARGET cogmaster_libretro)
       LABELS libretro portable TIMEOUT 10)
     set_tests_properties(libretro.host.korean_control PROPERTIES DEPENDS libretro.host.korean)
     # Fault prevented: a Sports Pad or Paddle title that gets the wrong device, an unbounded motion sum or motion that never reaches
-    # the guest, or a non-3-D title held on a picture that never arrives.
+    # the guest, or a non-3-D title held on a picture that never arrives; a Light Phaser pointer
+    # mapped without the crop, a crosshair drawn into a hashed or persistent buffer, or a Pause that
+    # a gun on port 0 loses.
     foreach(adapter_case IN ITEMS devices.options devices.sources devices.clamp devices.motion
-        stereo.alternate stereo.one_eye)
+        stereo.alternate stereo.one_eye gun.aim gun.cursor gun.crosshair)
       string(REGEX REPLACE "^[a-z]+\\." "" adapter_name "${adapter_case}")
-      # Timeout: 60 s; 2 x 15.76 s, slowest of 1 run, run 42978311844 (be32 lane).
+      # Timeout: 60 s; 2 x 15.76 s, slowest of 1 run, run 42978311844 (be32 lane); the three gun
+      # cases: 60 s floor; provisional.
       cogmaster_add_test(NAME libretro.host.${adapter_case}
         COMMAND cogmaster-test-libretro-host $<TARGET_FILE:cogmaster_libretro> adapter ${adapter_name}
           ${PROJECT_BINARY_DIR}/fixtures

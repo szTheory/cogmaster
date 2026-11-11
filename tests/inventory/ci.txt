@@ -265,6 +265,9 @@ libretro.host.devices.options	libretro,portable
 libretro.host.devices.sources	libretro,portable
 libretro.host.fm_option	libretro,portable
 libretro.host.gg	libretro,portable
+libretro.host.gun.aim	libretro,portable
+libretro.host.gun.crosshair	libretro,portable
+libretro.host.gun.cursor	libretro,portable
 libretro.host.korean	libretro,portable
 libretro.host.korean_control	libretro,portable
 libretro.host.replay	libretro,portable
