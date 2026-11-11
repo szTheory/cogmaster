@@ -119,6 +119,10 @@ It passes only for exactly `COUNT` files, all present and byte-identical, and ot
 differs. The fixed count means a lane that stops uploading fails the job instead of silently dropping out. The
 eight files are the six `build` legs, `be32` and `wasm32`.
 
+The V counter and Pause fixtures paint nothing, so a `mailbox` row carries the SHA-256 of their printed records on each
+TV and the same bytes are judged against `tests/diag/expected.csv`. A device row may end in `|<region>`; the Pause images
+use `pal`.
+
 The file also carries the sound rows; what they hold and how to regenerate their pins is in [audio.md](audio.md#the-frozen-sound-hashes).
 
 `ctest --preset ci -R <regex>` reruns part of the suite after a build; `ctest --test-dir build/ci -L <label>`

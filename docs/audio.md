@@ -183,7 +183,8 @@ A real RetroArch session records this sound: the hosted job checks that a `psg_s
 
 The file also carries the sound rows: 300 frames of `cogmaster-run --hash-audio` over `psg_sweep.sms` (Master System
 on NTSC, PAL and Japan, and the Game Gear in Master System mode), `psg_sweep.gg` (native) and `fm_sweep.sms` (Master
-System, Japan and NTSC). Each `audio-transitions` and
+System, Japan and NTSC, and PAL with `--fm on`, the export console with the unit forced on, so a PAL FM stream cannot
+differ between lanes unseen). Each `audio-transitions` and
 `audio-pcm` line is tagged `<file> <profile> <region> baseline` after its keyword. `tests/audio/transitions.txt` and
 `tests/audio/pcm.txt` freeze those lines; `runner.hashes_file` requires the rows to equal them and names the first
 line that differs, and `runner.hash_audio` requires its own `psg_sweep.sms` lines to be among them. The Japan row of

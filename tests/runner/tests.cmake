@@ -91,9 +91,24 @@ if(CMAKE_SCRIPT_MODE_FILE)
         message(FATAL_ERROR "playing matrix missing ${row}")
       endif()
     endforeach()
-    # The playable fixture has all four sound rows, each with its two hashes.
+    # The V and Pause fixtures print and judge their records on both TVs, and the Pause images also run
+    # as device rows on PAL (one frame per line of the script).
+    foreach(row IN ITEMS "mailbox vdp_vtable_192.sms ntsc ntsc-u" "mailbox vdp_vtable_224.sms pal pal"
+        "mailbox pause_nmi_192.sms ntsc ntsc-u" "mailbox pause_nmi_240.sms pal pal")
+      if(NOT hashes MATCHES "(^|\n)${row} sha256 [0-9a-f]+\n")
+        message(FATAL_ERROR "mailbox matrix missing ${row}")
+      endif()
+    endforeach()
+    foreach(height IN ITEMS 192 224 240)
+      if(NOT hashes MATCHES "playing pause_nmi_${height}.sms sms pal device frame 40 sha256 [0-9a-f]+")
+        message(FATAL_ERROR "device matrix missing pause_nmi_${height}.sms on pal")
+      endif()
+    endforeach()
+    # The playable fixture has all four sound rows, each with its two hashes, and the FM sweep has the
+    # export console on PAL with the unit forced on.
     foreach(row IN ITEMS "boot_to_play.sms sms ntsc-u baseline 60" "boot_to_play.sms sms ntsc-u input 14"
-        "boot_to_play.gg native ntsc-u baseline 60" "boot_to_play.gg native ntsc-u input 14")
+        "boot_to_play.gg native ntsc-u baseline 60" "boot_to_play.gg native ntsc-u input 14"
+        "fm_sweep.sms sms pal fm-on 300")
       foreach(kind IN ITEMS transitions pcm)
         if(NOT hashes MATCHES "audio-${kind} ${row} ")
           message(FATAL_ERROR "sound matrix missing audio-${kind} ${row}")
