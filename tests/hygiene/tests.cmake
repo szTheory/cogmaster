@@ -59,6 +59,25 @@ foreach(case manifest unlisted)
   endif()
 endforeach()
 
+# Fault prevented: a tree scan that misses a game image by content because the
+# read-once scan dropped an offset or read the wrong copy, and a pre-commit scan
+# that rereads every file six times. An untracked data.txt holds the Sega header
+# marker at byte 32,752 only (no ROM-like name, no manifest row).
+# Timeout: 20 s floor; 0.06 s slowest local run, no hosted run yet, so provisional.
+set(tree ${CMAKE_BINARY_DIR}/hygiene/header_offset)
+file(REMOVE_RECURSE ${tree})
+file(MAKE_DIRECTORY ${tree}/scripts)
+file(COPY ${CMAKE_SOURCE_DIR}/scripts/hygiene.sh DESTINATION ${tree}/scripts)
+execute_process(COMMAND ${GIT_EXECUTABLE} init -q ${tree} COMMAND_ERROR_IS_FATAL ANY)
+execute_process(COMMAND ${COGMASTER_SH} -c [=[dd if=/dev/zero of="$1" bs=32768 count=1 2>/dev/null && printf 'TMR SEGA' | dd of="$1" bs=1 seek=32752 conv=notrunc 2>/dev/null]=]
+  sh ${tree}/data.txt COMMAND_ERROR_IS_FATAL ANY)
+set(command ${COGMASTER_SH} -c "cd \"$1\" && sh scripts/hygiene.sh --tree" sh ${tree})
+string(REPLACE ";" "$<SEMICOLON>" command "${command}")
+cogmaster_add_test(NAME hygiene.tree.header_offset
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${command}" -DCODE=1 "-DREGEX=hygiene: game image by content"
+    -P ${hygiene_scripts}/expect_fail.cmake
+  LABELS hygiene TIMEOUT 20)
+
 # Fault prevented: firmware retyped into source as a byte array. 300 consecutive two-digit literals fail, 255 pass,
 # and 255 split by one prose line pass, so only a long unbroken run trips the tripwire.
 foreach(case over under split)
