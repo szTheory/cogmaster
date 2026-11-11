@@ -53,6 +53,10 @@ int cogmaster__audio_open(cogmaster__audio *a, int pal);
    count. */
 int cogmaster__audio_frame(cogmaster__audio *a, cogmaster *m, uint64_t frame);
 
+/* Writes the SHA-256 of the transitions so far as 64 lowercase hex digits and a NUL. It finalises a
+   copy of the running hash, so the run keeps accumulating and may ask again at a later frame. */
+void cogmaster__audio_transitions_hex(const cogmaster__audio *a, char hex[65]);
+
 /* Prints the two result lines for the frames that ran. */
 void cogmaster__audio_print(cogmaster__audio *a, uint32_t frames);
 

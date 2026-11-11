@@ -193,12 +193,19 @@ int cogmaster__audio_frame(cogmaster__audio *a, cogmaster *m, uint64_t frame)
     return status != COGMASTER__EXIT_OK ? status : hash_pcm(a, m, frame);
 }
 
+void cogmaster__audio_transitions_hex(const cogmaster__audio *a, char hex[65])
+{
+    cogmaster__sha256 copy = a->transitions_hash;
+    uint8_t digest[32];
+    cogmaster__sha256_final(&copy, digest);
+    cogmaster__sha256_hex(digest, hex);
+}
+
 void cogmaster__audio_print(cogmaster__audio *a, uint32_t frames)
 {
     uint8_t digest[32];
     char hex[65];
-    cogmaster__sha256_final(&a->transitions_hash, digest);
-    cogmaster__sha256_hex(digest, hex);
+    cogmaster__audio_transitions_hex(a, hex);
     printf("audio-transitions %lu count %llu sha256 %s\n", (unsigned long)frames,
            (unsigned long long)a->transitions, hex);
     cogmaster__sha256_final(&a->pcm_hash, digest);

@@ -338,7 +338,11 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     cfg.size = (uint32_t)sizeof cfg;
     cfg.allocator.alloc = run_alloc;
     cfg.allocator.free = run_free;
-    if (opt->hash_audio) {
+    /* One reader drains the sound each frame: --hash-audio prints it and an audio expectation
+     * judges it. */
+    int want_audio =
+        opt->hash_audio || (opt->expect != NULL && cogmaster__expect_has_audio(&expectations));
+    if (want_audio) {
         cfg.trace_records = COGMASTER_RUN_TRACE_RECORDS;
     }
     cogmaster *m = NULL;
@@ -384,7 +388,7 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
         }
     }
     cogmaster__audio audio = {0};
-    if (status == COGMASTER__EXIT_OK && opt->hash_audio) {
+    if (status == COGMASTER__EXIT_OK && want_audio) {
         cogmaster_info info = {0};
         info.size = sizeof info;
         status = cogmaster_get_info(m, &info) == COGMASTER_STATUS_OK
@@ -401,9 +405,16 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     if (status == COGMASTER__EXIT_OK && opt->input != NULL) {
         input = cogmaster__path_open(opt->input, "rb");
         int bad_port = 0;
-        status = input != NULL
-                     ? cogmaster__input_validate(input, opt->frames, port1, port2, &bad_port)
-                     : COGMASTER__EXIT_FAILURE;
+        int reset_seen = 0;
+        status = input != NULL ? cogmaster__input_validate(input, opt->frames, port1, port2,
+                                                           &bad_port, &reset_seen)
+                               : COGMASTER__EXIT_FAILURE;
+        if (status == COGMASTER__EXIT_OK && reset_seen && opt->expect != NULL &&
+            cogmaster__expect_has_audio(&expectations)) {
+            fprintf(stderr, "cogmaster-run: an audio expectation cannot follow a reset in the "
+                            "--input script\n");
+            status = COGMASTER__EXIT_USAGE;
+        }
         if (bad_port != 0) {
             uint32_t bad_device = bad_port == 1 ? port1 : port2;
             fprintf(stderr, "cogmaster-run: input file error: port %d is %s, which takes %s\n",
@@ -502,12 +513,18 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
                     (unsigned long)st);
             status = COGMASTER__EXIT_FAILURE;
         }
-        if (status == COGMASTER__EXIT_OK && opt->hash_audio) {
+        if (status == COGMASTER__EXIT_OK && want_audio) {
             status = cogmaster__audio_frame(&audio, m, n);
         }
-        if (status == COGMASTER__EXIT_OK && opt->expect != NULL)
+        if (status == COGMASTER__EXIT_OK && opt->expect != NULL) {
+            char audio_hex[65];
+            int audio_case = cogmaster__expect_audio_at(&expectations, (uint32_t)n);
+            if (audio_case)
+                cogmaster__audio_transitions_hex(&audio, audio_hex);
             status = cogmaster__expect_frame(&expectations, m, (uint32_t)n, result.display_enabled,
-                                             pixels);
+                                             pixels, audio_case ? audio_hex : NULL,
+                                             audio_case ? audio.transitions : 0u);
+        }
         for (uint32_t k = 0; k < opt->png_count && status == COGMASTER__EXIT_OK; k++) {
             if (opt->pngs[k].frame == n) {
                 status = write_png(m, opt->pngs[k].path, pixels);

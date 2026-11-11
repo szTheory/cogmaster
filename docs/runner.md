@@ -370,6 +370,7 @@ frame@14=e14d77ce564f0b1498f703134e82e6c1fc718a27c94e49b5a35b95a981857ae7
 ram@14:$C200=02
 mailbox@20
 boots@20
+audio@300=<64 lowercase hex digits>
 ```
 
 The frame value is an accepted full lowercase SHA-256 of the completed native crop,
@@ -378,11 +379,19 @@ effects. Mailbox checks magic, protocol version, done status, bounded nonempty d
 records with valid/not-timed-out flags, and CRC; it does not validate record values.
 Use independent RAM/frame expectations or the diagnostic judge for numeric claims.
 
+`audio@F=H` judges the sound's changes of level. H is the SHA-256 of the merged transition stream of frames 1 to F,
+the digest of the `audio-transitions` line of `--frames F --hash-audio`; F is from 1 to N, and one run can hold
+several. The hash holds no machine, region or FM byte, so one judged under another profile fails. PCM is not a
+kind: the mix is provisional. The line reads `predicate kind=4 frame=F address=0000 pass
+observed_audio=<hash> transitions=<count>`. A mismatch exits 3, a malformed record 2, and a lost log record, a
+source going back in time or a frame of the wrong length 1. An `--input` script that holds `reset=1` with an audio
+record exits 2 before any frame runs, because a reset restarts time.
+
 `boots@F` is strict smoke: a display-enabled latch was observed after a run call, at
 least two distinct native crop hashes occurred by F, and no first fault was recorded.
 Distinct counting saturates at two. An interrupt-driven HALT loop is healthy and is
 never rejected for HALT. A static display may fail this heuristic. Neither pass nor
-fail establishes gameplay, completion or sound; sound has no predicate yet.
+fail establishes gameplay, completion or sound; an audio record only locks our own output and proves nothing about how it sounds.
 
 Each observation prints its frame, normalized kind/address and observed hash alongside
 display/distinct/fault facts. Expected values stay in the accepted file. The execution

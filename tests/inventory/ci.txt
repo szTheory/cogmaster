@@ -464,6 +464,7 @@ runner.device.refused	portable,runner
 runner.device.usage	portable,runner
 runner.exit.failure	portable,runner
 runner.exit.table	runner
+runner.expect.audio	fm,portable,runner
 runner.expect.predicates	portable,runner
 runner.eyes.line	portable,runner
 runner.eyes.probe	portable,runner

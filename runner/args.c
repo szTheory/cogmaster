@@ -26,7 +26,7 @@ static const char synopsis[] =
     "  --bench N            run N frames and report the time per frame\n"
     "  --hash               print the SHA-256 of the last frame's crop\n"
     "  --hash-audio         print the SHA-256 of the sound's level changes and of its samples\n"
-    "  --expect FILE        judge bounded accepted frame/RAM/mailbox/boot predicates\n"
+    "  --expect FILE        judge bounded accepted frame/RAM/mailbox/boot/audio predicates\n"
     "  --input FILE         absolute pad and console record per frame\n"
     "  --save-dir DIR       read and persist battery data in an existing directory\n"
     "  --save-interval N    also write the save after every N frames (0 is off; needs --save-dir)\n"
