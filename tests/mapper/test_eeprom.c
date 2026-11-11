@@ -1,9 +1,14 @@
 /* The 93C46 as a device with no board: framed commands clocked bit by bit through
    the one-byte window the cartridge gives a game (b0 data in, b1 clock, b2 chip
-   select), with the expected image worked out by hand from the data sheet. */
+   select), with the expected image worked out by hand from the data sheet; and
+   the Sega EEPROM board that wires it to the cartridge window, driven through
+   the bus. */
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
+#include "cogmaster.h"
 #include "internal.h"
+#include "state.h"
 #include "../check.h"
 
 #define WORDS 64u
@@ -442,6 +447,296 @@ static void case_differential(void)
     }
 }
 
+/* The board: a 16 KiB-paged image of the given size on board 10, with the
+   persistence fields a database row would carry, installed in a running instance
+   and driven only through the bus. */
+#define PAGE 16384u
+#define WIN 0x8000u
+#define OPEN 0x08u
+
+struct rig {
+    cogmaster *m;
+    uint8_t *img;
+};
+
+static void *test_alloc(void *user, size_t size)
+{
+    (void)user;
+    return malloc(size);
+}
+static void test_free(void *user, void *ptr, size_t size)
+{
+    (void)user;
+    (void)size;
+    free(ptr);
+}
+static uint8_t rom_byte(uint32_t i)
+{
+    return (uint8_t)((i * 2654435761u) >> 24);
+}
+
+static void rig_open(struct rig *r, uint32_t kib)
+{
+    static uint8_t boot[32u * 1024u];
+    memset(boot, 0xFF, sizeof boot);
+    cogmaster_config cfg;
+    memset(&cfg, 0, sizeof cfg);
+    cfg.size = (uint32_t)sizeof cfg;
+    cfg.allocator.alloc = test_alloc;
+    cfg.allocator.free = test_free;
+    cogmaster_media media;
+    memset(&media, 0, sizeof media);
+    media.size = (uint32_t)sizeof media;
+    media.image = boot;
+    media.image_size = sizeof boot;
+    media.machine = COGMASTER_MACHINE_GG;
+    r->m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &r->m), COGMASTER_STATUS_OK);
+    if (r->m == NULL || cogmaster_load(r->m, &media) != COGMASTER_STATUS_OK)
+        exit(1);
+    uint32_t size = kib * 1024u;
+    r->img = (uint8_t *)malloc(size);
+    if (r->img == NULL)
+        exit(1);
+    for (uint32_t i = 0; i < size; i++)
+        r->img[i] = rom_byte(i);
+    cogmaster_cart_info info;
+    memset(&info, 0, sizeof info);
+    info.size = (uint32_t)sizeof info;
+    info.image_size = size;
+    info.board = COGMASTER__BOARD_SEGA_EEPROM;
+    info.persistence = COGMASTER_PERSISTENCE_BATTERY;
+    info.persistence_geometry = COGMASTER_GEOMETRY_SUPPORTED;
+    info.persistent_size = 128u;
+    struct cogmaster__cart cart;
+    CHECK_EQ_U64(cogmaster__cart_copy(r->m, r->img, size, &info, &cart), COGMASTER_STATUS_OK);
+    cogmaster__cart_install(r->m, &cart);
+    CHECK_EQ_U64(cogmaster_reset(r->m, COGMASTER_RESET_POWER), COGMASTER_STATUS_OK);
+}
+
+static void rig_close(struct rig *r)
+{
+    cogmaster_destroy(r->m);
+    free(r->img);
+}
+
+static void wr(const struct rig *r, uint16_t addr, uint8_t v)
+{
+    cogmaster__bus_write(r->m, addr, v);
+}
+static uint8_t rd(const struct rig *r, uint16_t addr)
+{
+    return cogmaster__bus_read(r->m, addr);
+}
+static void bput(const struct rig *r, uint8_t v)
+{
+    wr(r, WIN, v);
+}
+static void bpulse(const struct rig *r, unsigned di)
+{
+    bput(r, (uint8_t)(OPEN | 4u | di));
+    bput(r, (uint8_t)(OPEN | 4u | 2u | di));
+    bput(r, (uint8_t)(OPEN | 4u | di));
+}
+static void bbits(const struct rig *r, uint32_t v, unsigned n)
+{
+    while (n-- > 0u)
+        bpulse(r, (v >> n) & 1u);
+}
+static void bsend(const struct rig *r, uint32_t op, uint32_t arg)
+{
+    bbits(r, 1u, 1u);
+    bbits(r, op, 2u);
+    bbits(r, arg, 6u);
+}
+static void bews(const struct rig *r, uint32_t sub)
+{
+    bput(r, OPEN | 4u);
+    bsend(r, 0u, sub);
+    bput(r, OPEN);
+}
+static void bwrite(const struct rig *r, uint32_t w, uint16_t v)
+{
+    bput(r, OPEN | 4u);
+    bsend(r, 1u, w);
+    bbits(r, v, 16u);
+    bput(r, OPEN);
+}
+static uint16_t bread(const struct rig *r, uint32_t w)
+{
+    uint16_t v = 0;
+    bput(r, OPEN | 4u);
+    bsend(r, 2u, w);
+    CHECK_EQ_U64(rd(r, WIN) & 1u, 0u);
+    for (unsigned b = 0; b < 16u; b++) {
+        bpulse(r, 0u);
+        v = (uint16_t)(((uint32_t)v << 1) | (uint32_t)(rd(r, WIN) & 1u));
+    }
+    bput(r, OPEN);
+    return v;
+}
+static int fault_present(const struct rig *r)
+{
+    cogmaster_fault f;
+    memset(&f, 0, sizeof f);
+    f.size = (uint32_t)sizeof f;
+    CHECK_EQ_U64(cogmaster_get_fault(r->m, &f), COGMASTER_STATUS_OK);
+    return (int)f.present;
+}
+
+/* $FFFC bit 3 opens a window at exactly $8000; every other address stays ROM
+   and the first 1 KiB stays fixed. */
+static void board_window(void)
+{
+    struct rig r;
+    rig_open(&r, 64u);
+    CHECK_EQ_HEX(rd(&r, WIN), r.img[2u * PAGE]); /* closed: ROM */
+    wr(&r, 0xFFFCu, OPEN);
+    CHECK_EQ_HEX(rd(&r, WIN), 0x03); /* nothing written: bit 1 and Data Out */
+    bput(&r, 0xA8u);
+    CHECK_EQ_HEX(rd(&r, WIN), 0xABu); /* last written AND FC, OR 02, OR Data Out */
+    CHECK_EQ_HEX(rd(&r, WIN + 1u), r.img[2u * PAGE + 1u]);
+    CHECK_EQ_HEX(rd(&r, WIN - 1u), r.img[PAGE + (PAGE - 1u)]);
+    CHECK_EQ_HEX(rd(&r, 0xBFFFu), r.img[3u * PAGE - 1u]);
+    wr(&r, 0xFFFCu, 0x00u);
+    CHECK_EQ_HEX(rd(&r, WIN), r.img[2u * PAGE]);
+    /* The first 1 KiB is page 0 whatever slot 0 shows; the rest of slot 0 pages. */
+    wr(&r, 0xFFFDu, 3u);
+    CHECK_EQ_HEX(rd(&r, 0x0000u), r.img[0]);
+    CHECK_EQ_HEX(rd(&r, 0x03FFu), r.img[0x3FFu]);
+    CHECK_EQ_HEX(rd(&r, 0x0400u), r.img[3u * PAGE + 0x400u]);
+    CHECK_EQ_U64(fault_present(&r), 0u);
+    rig_close(&r);
+}
+
+/* The window write drives data in, clock and chip select from bits 0, 1 and 2:
+   a WRITE after EWEN stores the word little-endian and moves the generation
+   once, a repeat of the same data does not move it. */
+static void board_pins(void)
+{
+    struct rig r;
+    rig_open(&r, 64u);
+    wr(&r, 0xFFFCu, OPEN);
+    bews(&r, 0x30u);
+    bwrite(&r, 0u, 0x1234u);
+    CHECK_EQ_HEX(r.m->cart.ram[0], 0x34);
+    CHECK_EQ_HEX(r.m->cart.ram[1], 0x12);
+    CHECK_EQ_HEX(r.m->cart.ram[2], 0xFF);
+    CHECK_EQ_U64(r.m->cart.generation, 1u);
+    bwrite(&r, 0u, 0x1234u);
+    CHECK_EQ_U64(r.m->cart.generation, 1u);
+    CHECK_EQ_HEX(bread(&r, 0u), 0x1234u);
+    bwrite(&r, 63u, 0xBEEFu);
+    CHECK_EQ_U64(r.m->cart.generation, 2u);
+    CHECK_EQ_HEX(r.m->cart.ram[126], 0xEF);
+    CHECK_EQ_HEX(r.m->cart.ram[127], 0xBE);
+    /* Clock edges mid-command move nothing. */
+    bput(&r, OPEN | 4u);
+    bsend(&r, 1u, 5u);
+    bbits(&r, 0x5555u, 16u);
+    CHECK_EQ_U64(r.m->cart.generation, 2u);
+    bput(&r, OPEN);
+    CHECK_EQ_U64(r.m->cart.generation, 3u);
+    CHECK_EQ_U64(fault_present(&r), 0u);
+    rig_close(&r);
+}
+
+/* A $FFFC write with bit 7 set drops chip select, clears the shift state and
+   locks writes again. */
+static void board_reset_bit(void)
+{
+    struct rig r;
+    rig_open(&r, 64u);
+    wr(&r, 0xFFFCu, OPEN);
+    bews(&r, 0x30u);
+    bwrite(&r, 2u, 0x0102u);
+    CHECK_EQ_U64(r.m->cart.generation, 1u);
+    bput(&r, OPEN | 4u);
+    bsend(&r, 1u, 3u);
+    bbits(&r, 0xFFFFu, 5u);
+    CHECK(r.m->eeprom.phase != 0u);
+    wr(&r, 0xFFFCu, 0x80u | OPEN);
+    CHECK_EQ_U64(r.m->eeprom.phase, 0u);
+    CHECK_EQ_U64(r.m->eeprom.count, 0u);
+    CHECK_EQ_U64(r.m->eeprom.flags & 4u, 0u); /* chip select is low */
+    CHECK_EQ_HEX(r.m->mapper.ctrl, 0x88);
+    bwrite(&r, 3u, 0x00FFu); /* locked again: no EWEN since the reset */
+    CHECK_EQ_HEX(r.m->cart.ram[6], 0xFF);
+    CHECK_EQ_HEX(r.m->cart.ram[7], 0xFF);
+    CHECK_EQ_U64(r.m->cart.generation, 1u);
+    bews(&r, 0x30u);
+    bwrite(&r, 3u, 0x00FFu);
+    CHECK_EQ_HEX(r.m->cart.ram[6], 0xFF);
+    CHECK_EQ_HEX(r.m->cart.ram[7], 0x00);
+    CHECK_EQ_U64(r.m->cart.generation, 2u);
+    CHECK_EQ_HEX(bread(&r, 2u), 0x0102u); /* the image survived the reset */
+    rig_close(&r);
+}
+
+/* $FFFD-$FFFF page 16 KiB banks modulo the page count, mapper_range only past
+   an image that is not a power of two; documented writes record no fault and a
+   write to ROM does. */
+static void board_banks(void)
+{
+    struct rig r;
+    rig_open(&r, 64u);
+    wr(&r, 0xFFFDu, 1u);
+    wr(&r, 0xFFFEu, 6u); /* 6 mod 4 on a power-of-two image: wraps, no fault */
+    wr(&r, 0xFFFFu, 3u);
+    CHECK_EQ_HEX(rd(&r, 0x0400u), r.img[PAGE + 0x400u]);
+    CHECK_EQ_HEX(rd(&r, 0x4000u), r.img[2u * PAGE]);
+    CHECK_EQ_HEX(rd(&r, 0x8001u), r.img[3u * PAGE + 1u]);
+    wr(&r, 0xFFFCu, OPEN);
+    bput(&r, 0x00u);
+    CHECK_EQ_U64(fault_present(&r), 0u);
+    rig_close(&r);
+
+    rig_open(&r, 48u);
+    wr(&r, 0xFFFFu, 5u);
+    CHECK_EQ_HEX(rd(&r, 0x8001u), r.img[2u * PAGE + 1u]);
+    CHECK_EQ_U64(fault_present(&r), 1u);
+    rig_close(&r);
+
+    rig_open(&r, 64u);
+    wr(&r, 0x1000u, 0u);
+    CHECK_EQ_U64(fault_present(&r), 1u);
+    rig_close(&r);
+
+    rig_open(&r, 64u);
+    bput(&r, 0x00u); /* the window is closed: a write to ROM */
+    CHECK_EQ_U64(fault_present(&r), 1u);
+    rig_close(&r);
+}
+
+/* The image is cartridge RAM, all ones at start, exported through the battery
+   API at its 128 bytes; an import of a known word is what the guest reads. */
+static void board_span(void)
+{
+    struct rig r;
+    cogmaster_battery b;
+    uint8_t save[128];
+    rig_open(&r, 64u);
+    memset(&b, 0, sizeof b);
+    b.size = (uint32_t)sizeof b;
+    CHECK_EQ_U64(cogmaster_get_battery(r.m, &b), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(b.length, 128u);
+    CHECK_EQ_U64(b.knowledge, COGMASTER_BATTERY_KNOWN);
+    CHECK(b.data == r.m->cart.ram);
+    CHECK_EQ_U64(b.generation, 0u);
+    for (unsigned i = 0; i < 128u; i++)
+        CHECK_EQ_HEX(((const uint8_t *)b.data)[i], 0xFF);
+
+    memset(save, 0xFF, sizeof save);
+    save[0] = 0x34;
+    save[1] = 0x12;
+    CHECK_EQ_U64(cogmaster_import_battery(r.m, save, sizeof save), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(r.m->cart.generation, 0u);
+    wr(&r, 0xFFFCu, OPEN);
+    CHECK_EQ_HEX(bread(&r, 0u), 0x1234u);
+    CHECK_EQ_HEX(bread(&r, 1u), 0xFFFFu);
+    rig_close(&r);
+}
+
 int main(int argc, char **argv)
 {
     if (argc != 2)
@@ -456,6 +751,16 @@ int main(int argc, char **argv)
         case_changes();
     else if (strcmp(argv[1], "differential") == 0)
         case_differential();
+    else if (strcmp(argv[1], "board.window") == 0)
+        board_window();
+    else if (strcmp(argv[1], "board.pins") == 0)
+        board_pins();
+    else if (strcmp(argv[1], "board.reset_bit") == 0)
+        board_reset_bit();
+    else if (strcmp(argv[1], "board.banks") == 0)
+        board_banks();
+    else if (strcmp(argv[1], "board.span") == 0)
+        board_span();
     else
         return 2;
     CHECK_DONE();

@@ -10,7 +10,8 @@
    read serves every board. A bank number that runs past the image wraps onto
    it; past a power-of-two image the high bits are simply not wired, and past
    any other image there is no ROM to wrap onto, so it is a mapper_range
-   fault, the rule mapper.c applies to its own banks. */
+   fault, the rule mapper.c applies to its own banks. The Sega EEPROM board is
+   the exception: it pages 16 KiB banks as the Sega board does. */
 #include "internal.h"
 
 #define EXT_SLOTS 6u
@@ -43,6 +44,19 @@ static void ext_pak_slot(cogmaster *m, uint16_t addr, uint32_t s, uint32_t val)
     m->mapper.bank8[2u * s + 1u] = ext_bank(m, 2u * val + 1u);
 }
 
+/* The 16 KiB page v reduced onto the image, as the Sega board does; records
+   mapper_range past the end of an image whose page count is not a power of two. */
+static uint8_t ext_page(cogmaster *m, uint16_t addr, uint32_t v)
+{
+    ext_check(m, addr, 2u * v + 1u);
+    return (uint8_t)(m->cart.pages != 0u ? v % m->cart.pages : 0u);
+}
+
+/* The window of the Sega EEPROM board: $8000 while $FFFC bit 3 is set. */
+#define EEPROM_WINDOW 0x8000u
+#define EEPROM_OPEN 0x08u
+#define EEPROM_RESET 0x80u
+
 uint8_t cogmaster__mapext_read(const cogmaster *m, uint16_t addr)
 {
     switch (m->cart.board) {
@@ -54,6 +68,18 @@ uint8_t cogmaster__mapext_read(const cogmaster *m, uint16_t addr)
     case COGMASTER__BOARD_4PAK:
         return m->cart.rom[((uint32_t)m->mapper.bank8[addr >> EXT_BANK_BITS] << EXT_BANK_BITS) |
                            (addr & EXT_BANK_MASK)];
+    case COGMASTER__BOARD_SEGA_EEPROM:
+        /* The window shows the chip's last written bits with bit 1 set and
+           Data Out in bit 0; the first 1 KiB is always the first 1 KiB of the
+           image (MAME rom.cpp, sega8_eeprom_device::read_cart, pin
+           1d7a454ed79e). Everything else is 16 KiB paging. */
+        if (addr == EEPROM_WINDOW && (m->mapper.ctrl & EEPROM_OPEN) != 0u) {
+            return cogmaster__eeprom_read(&m->eeprom);
+        }
+        if (addr < 0x0400u) {
+            return m->cart.rom[addr];
+        }
+        return m->cart.rom[((uint32_t)m->mapper.bank[addr >> 14] << 14) | (addr & 0x3FFFu)];
     default:
         return 0xFFu;
     }
@@ -134,6 +160,31 @@ void cogmaster__mapext_write(cogmaster *m, uint16_t addr, uint8_t v)
             cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_CART, COGMASTER__FAULT_ROM_WRITE);
         }
         break;
+    case COGMASTER__BOARD_SEGA_EEPROM:
+        /* $FFFC bit 3 opens the window and bit 7 resets the chip, dropping
+           chip select; $FFFD-$FFFF page 16 KiB banks, value modulo the page
+           count (MAME rom.cpp, sega8_eeprom_device::write_mapper, pin
+           1d7a454ed79e). A write to the open window drives data in, clock and
+           chip select from bits 0, 1 and 2 (write_cart). The cartridge RAM
+           holds the chip's image: a completed command that changed a byte
+           moves the battery generation once. Any other write below $C000 is a
+           write to ROM. */
+        if (addr == 0xFFFCu) {
+            p->ctrl = (uint8_t)(v & (EEPROM_OPEN | EEPROM_RESET));
+            if ((v & EEPROM_RESET) != 0u) {
+                cogmaster__eeprom_reset(&m->eeprom);
+            }
+        } else if (addr >= 0xFFFDu) {
+            p->bank[addr - 0xFFFDu] = ext_page(m, addr, v);
+        } else if (addr == EEPROM_WINDOW && (p->ctrl & EEPROM_OPEN) != 0u) {
+            if (cogmaster__eeprom_write(&m->eeprom, m->cart.ram, v) != 0u &&
+                cogmaster__battery_length(m) != 0u) {
+                m->cart.generation++;
+            }
+        } else if (addr < 0xC000u) {
+            cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_CART, COGMASTER__FAULT_ROM_WRITE);
+        }
+        break;
     default:
         /* The no-bank Korean board has no register (MAME rom.cpp,
            sega8_korean_nb_device, same pin). Writes to ROM change nothing.
@@ -182,6 +233,15 @@ void cogmaster__mapext_reset(cogmaster *m)
         for (uint32_t i = 0; i < EXT_SLOTS; i++) {
             p->bank8[i] = ext_bank(m, i & 1u);
         }
+        break;
+    case COGMASTER__BOARD_SEGA_EEPROM:
+        /* Banks 0, 1 and 2 as the Sega board powers up, and a chip with writes
+           disabled and no command under way (MAME rom.cpp,
+           sega8_eeprom_device::device_reset and late_bank_setup). */
+        for (uint32_t i = 0; i < 3u; i++) {
+            p->bank[i] = (uint8_t)(m->cart.pages != 0u ? i % m->cart.pages : 0u);
+        }
+        cogmaster__eeprom_reset(&m->eeprom);
         break;
     default:
         break;

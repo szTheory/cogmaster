@@ -153,7 +153,8 @@ enum {
     COGMASTER__BOARD_HICOM = COGMASTER_BOARD_HICOM,
     COGMASTER__BOARD_ZEMINA = COGMASTER_BOARD_ZEMINA,
     COGMASTER__BOARD_NEMESIS = COGMASTER_BOARD_NEMESIS,
-    COGMASTER__BOARD_4PAK = COGMASTER_BOARD_4PAK
+    COGMASTER__BOARD_4PAK = COGMASTER_BOARD_4PAK,
+    COGMASTER__BOARD_SEGA_EEPROM = COGMASTER_BOARD_SEGA_EEPROM
 };
 
 /* The mapper's registers. The board is the cartridge's; these are what the
@@ -307,6 +308,8 @@ struct cogmaster {
     struct cogmaster__vdp vdp;
     struct cogmaster__cart cart;
     struct cogmaster__mapper mapper;
+    /* The 93C46 on the Sega EEPROM board; zero and unused on every other board. */
+    struct cogmaster__eeprom eeprom;
     struct cogmaster__io io;
     uint32_t render_line;
     uint32_t render_x; /* next unrendered dot of render_line */
