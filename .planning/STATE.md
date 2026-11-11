@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 7
 current_phase_name: Saves survive a restart
 status: planning
-stopped_at: Completed 07-07-PLAN.md
-last_updated: "2026-11-11T01:54:05.509Z"
+stopped_at: Completed 07-08-PLAN.md
+last_updated: "2026-11-11T02:01:36.142Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 6 complete, transitioned to Phase 7
-state_head: 044b292c8de03adebf2a6f4420d966cdd6250ccb
+state_head: ef5b4599e4f56e8c1d116665c145c64538a42913
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 35
-  completed_plans: 32
+  completed_plans: 33
   percent: 25
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 7 — Saves survive a restart
-Plan: 7 of 10 complete (07-01, 07-02, 07-03, 07-04, 07-05, 07-06, 07-07)
+Plan: 8 of 10 complete (07-01, 07-02, 07-03, 07-04, 07-05, 07-06, 07-07, 07-08)
 Status: Executing
-Last activity: 2026-11-11 — Executed 07-07, EEPROM import rule, libretro span guard with libretro_saves on, and the one-time srm measurement
+Last activity: 2026-11-11 — Executed 07-08, runner --save-interval with a fail-at-once periodic flush, and the EEPROM length refusal message
 
 Progress: [███░░░░░░░] 25% of v2.0
 
@@ -157,6 +157,7 @@ Progress: [███░░░░░░░] 25% of v2.0
 | Phase 07 P05 | 12 min | 2 tasks | 10 files |
 | Phase 7 P06 | 25min | 2 tasks | 9 files |
 | Phase 07 P07 | 40 min | 3 tasks | 8 files |
+| Phase 07 P08 | 25 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -201,6 +202,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 07]: 07-05: the owned EEPROM fixture row is region 1 (export, Game Gear header code 6); cartdb --fixture accepts exactly the battery and EEPROM row shapes
 - [Phase 7]: 07-06: the EEPROM fuzz entry opens the chip window itself and bounds the command phase at 7 clocks; a generated eeprom-clocks seed drives the replay
 - [Phase 07]: EEPROM import takes none or the whole 128-byte span; battery import unchanged; the libretro .info declares saves behind libretro.span.* host guards
+- [Phase 07]: 07-08: --save-interval 0 is accepted without --save-dir (off); a periodic flush failure ends the run at once and the exit flush is unchanged; the EEPROM refusal tells oversize from a wrong length by comparing the read length with the span
 
 ### Pending Todos
 
@@ -286,6 +288,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 7 plan 07-05 (gsd-execute-phase 07); owned eeprom.gg fixture driving the 93C46, second fixture facts row with ROW support and a stricter generator, table regenerated with one new row; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 7 plan 07-06 (gsd-execute-phase 07); EEPROM fuzz entry with a generated clock-stream seed, fuzz.regress.eeprom on every portable lane, runner.save.continuation.eeprom across two processes; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 7 plan 07-07 (gsd-execute-phase 07); EEPROM import rule and length matrix, libretro span guard and libretro_saves flip, two-core srm measurement recorded; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 7 plan 07-08 (gsd-execute-phase 07); --save-interval with usage, byte-equality and fail-at-once tests, EEPROM wrong-length refusal naming 128, five negative controls; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -307,8 +310,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T01:54:05.371Z
-Stopped at: Completed 07-07-PLAN.md
+Last session: 2026-11-11T02:01:35.975Z
+Stopped at: Completed 07-08-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
