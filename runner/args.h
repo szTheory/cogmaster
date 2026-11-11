@@ -29,6 +29,7 @@ typedef struct cogmaster__run_options {
     int probe;                    /* --probe: print the file's report, run nothing */
     int trace;                    /* --trace first-fault */
     int mailbox;                  /* --mailbox: stop at the mailbox's done status and print it */
+    int eyes;                     /* --eyes: count the 3-D glasses eyes and print one line */
     cogmaster__png_request *pngs; /* room for one per argument */
     uint32_t png_count;
     int printed; /* --help or --version ran; nothing else to do */

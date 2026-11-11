@@ -31,6 +31,7 @@ static const char synopsis[] =
     "  --port2 NAME         second controller: auto (default), pad, none, paddle or sports\n"
     "  --png N:FILE         write frame N's crop to FILE as a PNG (1 <= N <= --frames)\n"
     "  --trace first-fault  stop at the first fault and print it, or 'fault none'\n"
+    "  --eyes               after the last frame, print how often each 3-D glasses eye showed\n"
     "  --mailbox            stop when the RAM mailbox reports done; print its records\n"
     "  --probe              print the file's header fields and digests; run nothing\n"
     "  --help               print this text and the exit statuses\n"
@@ -210,7 +211,8 @@ static int check_combination(const cogmaster__run_options *o)
             return usage("--probe needs a file");
         }
         if (o->frames != 0u || o->hash || o->hash_audio || o->png_count != 0u || o->trace ||
-            o->mailbox || o->input || o->save_dir || o->expect || o->save_interval != 0u) {
+            o->mailbox || o->eyes || o->input || o->save_dir || o->expect ||
+            o->save_interval != 0u) {
             return usage("--probe runs nothing, so it takes no run option");
         }
         return COGMASTER__EXIT_OK;
@@ -324,6 +326,8 @@ int cogmaster__parse_options(int argc, char **argv, cogmaster__run_options *o)
             i++;
         } else if (strcmp(arg, "--mailbox") == 0) {
             o->mailbox = 1;
+        } else if (strcmp(arg, "--eyes") == 0) {
+            o->eyes = 1;
         } else if (strcmp(arg, "--probe") == 0) {
             o->probe = 1;
         } else if (strcmp(arg, "--rom") == 0) {

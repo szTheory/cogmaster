@@ -32,6 +32,10 @@
  * --trace first-fault reads the core's first-fault record after each frame,
  * stops at the first fault and prints it as one line, or "fault none".
  *
+ * --eyes counts the 3-D glasses eye the core reports for each frame and,
+ * after the last frame, prints one line of key=value counts (docs/runner.md).
+ * It changes no hashed output.
+ *
  * --mailbox peeks the RAM mailbox after each frame, stops at the first
  * frame whose status reads $00, and prints the mailbox (mailbox.h).
  * docs/runner.md describes all of this for users.
@@ -387,9 +391,15 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     FILE *input = NULL;
     if (status == COGMASTER__EXIT_OK && opt->input != NULL) {
         input = cogmaster__path_open(opt->input, "rb");
-        status =
-            input != NULL ? cogmaster__input_validate(input, opt->frames) : COGMASTER__EXIT_FAILURE;
-        if (status != COGMASTER__EXIT_OK) {
+        int bad_port = 0;
+        status = input != NULL
+                     ? cogmaster__input_validate(input, opt->frames, port1, port2, &bad_port)
+                     : COGMASTER__EXIT_FAILURE;
+        if (bad_port != 0) {
+            fprintf(stderr,
+                    "cogmaster-run: input file error: motion for port %d, whose %s takes none\n",
+                    bad_port, cogmaster__device_name(bad_port == 1 ? port1 : port2));
+        } else if (status != COGMASTER__EXIT_OK) {
             fprintf(stderr, "cogmaster-run: input file error (status %d)\n", status);
         }
     }
@@ -433,6 +443,9 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
        cogmaster_run_frame is timed, not hashing or writing files. */
     uint32_t ran = 0;
     uint32_t lag_frames = 0;
+    uint32_t eye_count[3] = {0u, 0u, 0u}; /* indexed by COGMASTER_GLASSES_* */
+    uint32_t eye_flips = 0;
+    uint32_t eye_last = COGMASTER_GLASSES_NONE;
     int mailbox_running = 0;
     for (uint64_t n = 1; n <= opt->frames && status == COGMASTER__EXIT_OK; n++) {
         cogmaster_input in = {0};
@@ -458,8 +471,15 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
         }
 #endif
         st = cogmaster_run_frame(m, &result);
-        if (st == COGMASTER_STATUS_OK)
+        if (st == COGMASTER_STATUS_OK) {
             lag_frames += result.lagged;
+            uint32_t eye = result.glasses <= COGMASTER_GLASSES_LEFT ? result.glasses : 0u;
+            eye_count[eye]++;
+            if (eye != COGMASTER_GLASSES_NONE) {
+                eye_flips += eye_last != COGMASTER_GLASSES_NONE && eye_last != eye;
+                eye_last = eye;
+            }
+        }
         if (opt->bench) {
             samples[ran] = cogmaster__bench_us(cogmaster__clock_ns() - start_ns);
         }
@@ -544,6 +564,15 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     }
     if (status == COGMASTER__EXIT_OK && opt->expect != NULL)
         status = cogmaster__expect_finish(&expectations);
+    if (status == COGMASTER__EXIT_OK && opt->eyes) {
+        printf("eyes frames=%lu none=%lu left=%lu right=%lu flips=%lu last=%s\n",
+               (unsigned long)ran, (unsigned long)eye_count[COGMASTER_GLASSES_NONE],
+               (unsigned long)eye_count[COGMASTER_GLASSES_LEFT],
+               (unsigned long)eye_count[COGMASTER_GLASSES_RIGHT], (unsigned long)eye_flips,
+               eye_last == COGMASTER_GLASSES_LEFT    ? "left"
+               : eye_last == COGMASTER_GLASSES_RIGHT ? "right"
+                                                     : "none");
+    }
     if (input != NULL && fclose(input) != 0) {
         status = COGMASTER__EXIT_FAILURE;
     }
