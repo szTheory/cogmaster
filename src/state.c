@@ -305,18 +305,28 @@ static void ram_io(struct cogmaster__sio *io, cogmaster *m)
    command complete), the bit count within the phase, the flags b0 to b4. Chip
    select low (flag b2) means idle with count 0, and the bits taken never pass the
    phase's width: 7 after the start bit in a command (the 8th completes it), 15 in
-   data in and in a read (the 16th wraps the count), none in the other phases. */
+   data in and in a read (the 16th wraps the count), none in the other phases. Data
+   Out low (b0) only in a read, which holds a READ opcode; data in holds WRITE or
+   WRAL; a program waits (b4) only after a complete WRITE, ERASE, WRAL or ERAL with
+   writes enabled (b1). */
 static void eeprom_io(struct cogmaster__sio *io, struct cogmaster__eeprom *e)
 {
     cogmaster__sio_u8(io, "eeprom_last", &e->last, 0u, UINT8_MAX);
     uint8_t phase = cogmaster__sio_u8(io, "eeprom_phase", &e->phase, 0u, 4u);
     uint8_t count = cogmaster__sio_u8(io, "eeprom_count", &e->count, 0u, 15u);
-    cogmaster__sio_u8(io, "eeprom_cmd", &e->cmd, 0u, UINT8_MAX);
+    uint8_t cmd = cogmaster__sio_u8(io, "eeprom_cmd", &e->cmd, 0u, UINT8_MAX);
     cogmaster__sio_u16(io, "eeprom_data", &e->data, 0u, UINT16_MAX);
     uint8_t flags = cogmaster__sio_u8(io, "eeprom_flags", &e->flags, 0u, 0x1Fu);
+    uint8_t op = (uint8_t)(cmd >> 6), ext = (uint8_t)(cmd >> 4);
     cogmaster__sio_check(io, phase == 1u || phase == 2u || phase == 3u || count == 0u);
     cogmaster__sio_check(io, phase != 1u || count <= 7u);
     cogmaster__sio_check(io, (flags & 4u) != 0u || (phase == 0u && count == 0u));
+    cogmaster__sio_check(io, (flags & 1u) == 0u || phase == 3u);
+    cogmaster__sio_check(io, phase != 3u || op == 2u);
+    cogmaster__sio_check(io, phase != 2u || op == 1u || ext == 1u);
+    cogmaster__sio_check(io, (flags & 0x10u) == 0u ||
+                                 (phase == 4u && (flags & 2u) != 0u && op != 2u && ext != 0u &&
+                                  ext != 3u));
 }
 
 /* The board is the image's, so only its own value loads. Each bank is below

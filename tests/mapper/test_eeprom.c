@@ -918,6 +918,29 @@ static void state_bounds(void)
     refuse(&r, "eeprom_count", 16u);
     refuse(&r, "eeprom_phase", 7u);
     refuse(&r, "eeprom_flags", 0x20u);
+    /* The fields hold together: Data Out low and a waiting program only where
+       the chip can have them, and a command that is not the phase's. */
+    refuse(&r, "eeprom_flags", 0x07u);
+    refuse(&r, "eeprom_flags", 0x16u);
+    refuse(&r, "eeprom_cmd", 0x85u);
+    rig_close(&r);
+    rig_open(&r, 64u);
+    wr(&r, 0xFFFCu, OPEN);
+    bput(&r, OPEN | 4u);
+    bsend(&r, 2u, 5u); /* a read of word 5 */
+    refuse(&r, "eeprom_cmd", 0x45u);
+    rig_close(&r);
+    rig_open(&r, 64u);
+    wr(&r, 0xFFFCu, OPEN);
+    bput(&r, OPEN | 4u);
+    bsend(&r, 0u, 0u); /* EWDS: complete, writes disabled */
+    refuse(&r, "eeprom_flags", 0x14u);
+    rig_close(&r);
+    rig_open(&r, 64u);
+    wr(&r, 0xFFFCu, OPEN);
+    bput(&r, OPEN | 4u);
+    bsend(&r, 0u, 0x30u); /* EWEN: complete, writes enabled, nothing to program */
+    refuse(&r, "eeprom_flags", 0x16u);
     rig_close(&r);
     rig_open(&r, 64u);
     wr(&r, 0xFFFCu, OPEN);
