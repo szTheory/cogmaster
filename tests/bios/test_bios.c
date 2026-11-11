@@ -1,6 +1,7 @@
-/* The boot ROM arbitration on the bus and the derived flag that guards it, through the public API
-   with the register and the image set through src/internal.h: cogmaster-test-bios <case>. The
-   image is self-authored: 8 KiB of one byte, attached by hand. */
+/* The boot ROM on the bus and in the load path, through the public API with the registers and the
+   image also read through src/internal.h: cogmaster-test-bios <case>. Every image here is
+   self-authored: 8 KiB of one byte attached by hand, or a pseudo-random body behind a short Z80
+   program. */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,6 +9,7 @@
 
 #include "cogmaster.h"
 #include "internal.h"
+#include "state.h"
 #include "../check.h"
 
 #define ROM_BYTE 0x0Fu
@@ -18,6 +20,10 @@
 #define MACHINES 2u
 #define KINDS 4u
 #define IMAGE_SIZE 16384u
+#define STATE_BUF 393216u
+#define BIG_SIZE 262144u
+/* One byte more than the largest image the probe takes (a 1 MiB body and a copier header). */
+#define HUGE_SIZE 1049089u
 
 static const uint16_t probe_addr[PROBES] = {0x0000u, 0x1FFFu, 0x2000u, 0xC000u};
 static const uint32_t machine_id[MACHINES] = {COGMASTER_MACHINE_SMS1, COGMASTER_MACHINE_SMS2};
@@ -289,12 +295,309 @@ static void test_slow_flag(void)
     }
 }
 
+/* ---- load: the validation order, ownership, power-on state and reset ---- */
+
+static uint8_t bios_img[COGMASTER__BIOS_SIZE];
+static uint8_t cart64[65536];
+static uint8_t state_a[STATE_BUF];
+static uint8_t state_b[STATE_BUF];
+
+static uint32_t xorshift(uint32_t *s)
+{
+    *s ^= *s << 13;
+    *s ^= *s >> 17;
+    *s ^= *s << 5;
+    return *s;
+}
+
+/* A self-authored 8 KiB image: di, then a jump to itself, then a pseudo-random body seeded by seed
+   (no byte of any real firmware is involved). */
+static void bios_fill(uint8_t *img, uint32_t seed)
+{
+    uint32_t s = seed;
+    for (uint32_t i = 0; i < COGMASTER__BIOS_SIZE; i++) {
+        img[i] = (uint8_t)(xorshift(&s) >> 11);
+    }
+    img[0] = 0xF3u;
+    img[1] = 0x18u;
+    img[2] = 0xFEu;
+}
+
+/* A 64 KiB cartridge of NOPs with load-to-register-store sites, so the probe picks the Sega mapper
+   and the power-on banks are 0, 1, 2. */
+static void cart_fill(void)
+{
+    memset(cart64, 0, sizeof cart64);
+    for (uint32_t i = 0; i < 16u; i++) {
+        cart64[0x100u + 3u * i] = 0x32u;
+        cart64[0x101u + 3u * i] = 0xFFu;
+        cart64[0x102u + 3u * i] = 0xFFu;
+    }
+}
+
+static cogmaster *blank(void)
+{
+    cogmaster_config cfg;
+    memset(&cfg, 0, sizeof cfg);
+    cfg.size = (uint32_t)sizeof cfg;
+    cfg.allocator.alloc = test_alloc;
+    cfg.allocator.free = test_free;
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    if (m == NULL) {
+        exit(1);
+    }
+    return m;
+}
+
+static cogmaster_media media_of(const void *image, size_t image_size, uint32_t machine,
+                                const void *bios, size_t bios_size)
+{
+    cogmaster_media media;
+    memset(&media, 0, sizeof media);
+    media.size = (uint32_t)sizeof media;
+    media.image = image;
+    media.image_size = image_size;
+    media.machine = machine;
+    media.bios = bios;
+    media.bios_size = bios_size;
+    return media;
+}
+
+static size_t save_to(const cogmaster *m, uint8_t *buf)
+{
+    size_t n = cogmaster__state_size(m);
+    CHECK(n <= STATE_BUF);
+    CHECK_EQ_U64(cogmaster__state_save(m, buf, STATE_BUF), COGMASTER_STATUS_OK);
+    return n;
+}
+
+static void run_frames(cogmaster *m, uint32_t n)
+{
+    for (uint32_t i = 0; i < n; i++) {
+        CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+    }
+}
+
+/* A load that must be refused with want and must change nothing: the state bytes, the BIOS copy
+   and the derived flag are the same before and after. */
+static void refused(cogmaster *m, const cogmaster_media *media, cogmaster_status want,
+                    const char *what)
+{
+    static struct cogmaster__bios before;
+    size_t n = save_to(m, state_a);
+    before = m->bios;
+    uint8_t flag = m->mem_slow;
+    cogmaster_status got = cogmaster_load(m, media);
+    if (got != want) {
+        fprintf(stderr, "load %s: status %d, want %d\n", what, (int)got, (int)want);
+        check_failures++;
+    }
+    CHECK_EQ_U64(save_to(m, state_b), n);
+    CHECK(memcmp(state_a, state_b, n) == 0);
+    CHECK(memcmp(&before, &m->bios, sizeof before) == 0);
+    CHECK_EQ_U64(m->mem_slow, flag);
+}
+
+/* Whether the flag equals its restatement in words (see flag_matches below). */
+static int flag_matches(const cogmaster *m);
+
+static void test_load_refusals(void)
+{
+    static uint8_t big[BIG_SIZE];
+    bios_fill(big, 7u);
+    cogmaster *m = blank();
+    /* First a BIOS loaded for real, so a refusal has a BIOS to leave alone. */
+    cogmaster_media good =
+        media_of(cart64, sizeof cart64, COGMASTER_MACHINE_SMS2, bios_img, COGMASTER__BIOS_SIZE);
+    CHECK_EQ_U64(cogmaster_load(m, &good), COGMASTER_STATUS_OK);
+    run_frames(m, 2u);
+    static const size_t bad_sizes[] = {1u, 1023u, 1024u, 8191u, 8193u, 16384u, 131072u, BIG_SIZE};
+    for (size_t i = 0; i < sizeof bad_sizes / sizeof bad_sizes[0]; i++) {
+        cogmaster_media media =
+            media_of(cart64, sizeof cart64, COGMASTER_MACHINE_SMS2, big, bad_sizes[i]);
+        refused(m, &media, COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE, "size");
+    }
+    /* The pair rule comes first: a size of 0 with a pointer, a size with NULL. */
+    cogmaster_media media = media_of(cart64, sizeof cart64, COGMASTER_MACHINE_SMS2, big, 0u);
+    refused(m, &media, COGMASTER_STATUS_ERR_ARGUMENT, "pointer without size");
+    media = media_of(cart64, sizeof cart64, COGMASTER_MACHINE_SMS2, NULL, COGMASTER__BIOS_SIZE);
+    refused(m, &media, COGMASTER_STATUS_ERR_ARGUMENT, "size without pointer");
+    /* The test card runs no CPU: a BIOS on it is no content, a wrong size still reports itself. */
+    media = media_of(NULL, 0u, COGMASTER_MACHINE_SMS2, bios_img, COGMASTER__BIOS_SIZE);
+    refused(m, &media, COGMASTER_STATUS_ERR_NO_CONTENT, "test card");
+    media = media_of(NULL, 0u, COGMASTER_MACHINE_SMS2, big, 8191u);
+    refused(m, &media, COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE, "test card, wrong size");
+    /* A Game Gear is refused after the cartridge probe resolved it. */
+    media = media_of(cart64, sizeof cart64, COGMASTER_MACHINE_GG, bios_img, COGMASTER__BIOS_SIZE);
+    refused(m, &media, COGMASTER_STATUS_ERR_PROFILE_REJECTED, "game gear");
+    media = media_of(cart64, sizeof cart64, COGMASTER_MACHINE_GG, big, 8191u);
+    refused(m, &media, COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE, "game gear, wrong size");
+    /* An unprobeable cartridge keeps its own status under a valid BIOS, and a bad BIOS pair or size
+       is reported before the probe runs. */
+    static uint8_t huge[HUGE_SIZE];
+    static const size_t bad_carts[] = {1u, 1000u, HUGE_SIZE};
+    for (size_t i = 0; i < sizeof bad_carts / sizeof bad_carts[0]; i++) {
+        cogmaster_media plain = media_of(huge, bad_carts[i], COGMASTER_MACHINE_SMS2, NULL, 0u);
+        cogmaster *probe = blank();
+        cogmaster_status own = cogmaster_load(probe, &plain);
+        cogmaster_destroy(probe);
+        CHECK(own != COGMASTER_STATUS_OK);
+        media =
+            media_of(huge, bad_carts[i], COGMASTER_MACHINE_SMS2, bios_img, COGMASTER__BIOS_SIZE);
+        refused(m, &media, own, "unprobeable cartridge");
+        media = media_of(huge, bad_carts[i], COGMASTER_MACHINE_SMS2, NULL, COGMASTER__BIOS_SIZE);
+        refused(m, &media, COGMASTER_STATUS_ERR_ARGUMENT, "bad pair, unprobeable cartridge");
+    }
+    media = media_of(NULL, 5u, COGMASTER_MACHINE_SMS2, bios_img, COGMASTER__BIOS_SIZE);
+    refused(m, &media, COGMASTER_STATUS_ERR_ARGUMENT, "cartridge size without pointer");
+    CHECK(flag_matches(m));
+    cogmaster_destroy(m);
+    /* The same refusals on an instance that never had a BIOS leave none. */
+    m = blank();
+    media = media_of(cart64, sizeof cart64, COGMASTER_MACHINE_SMS2, big, 8191u);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE);
+    CHECK_EQ_U64(m->bios.size, 0);
+    CHECK_EQ_U64(m->loaded, 0);
+    cogmaster_destroy(m);
+}
+
+/* A load without a BIOS clears the last one; the instance owns its copy; the size tag decides
+   whether the two fields are read at all. */
+static void test_load_ownership(void)
+{
+    cogmaster *m = blank();
+    uint8_t *copy = (uint8_t *)malloc(COGMASTER__BIOS_SIZE);
+    if (copy == NULL) {
+        exit(1);
+    }
+    memcpy(copy, bios_img, COGMASTER__BIOS_SIZE);
+    cogmaster_media media =
+        media_of(cart64, sizeof cart64, COGMASTER_MACHINE_SMS1, copy, COGMASTER__BIOS_SIZE);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(m->bios.size, COGMASTER__BIOS_SIZE);
+    CHECK_EQ_U64(m->bios.crc32, cogmaster__crc32(0u, bios_img, COGMASTER__BIOS_SIZE));
+    /* The caller's buffer goes at once: the sanitiser sees any later read of it. */
+    free(copy);
+    run_frames(m, 3u);
+    CHECK(memcmp(m->bios.rom, bios_img, COGMASTER__BIOS_SIZE) == 0);
+    /* No BIOS in the next load: fast boot, the BIOS gone. */
+    media = media_of(cart64, sizeof cart64, COGMASTER_MACHINE_SMS1, NULL, 0u);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    static const uint8_t zero[COGMASTER__BIOS_SIZE];
+    CHECK_EQ_U64(m->bios.size, 0);
+    CHECK_EQ_U64(m->bios.crc32, 0);
+    CHECK(memcmp(m->bios.rom, zero, sizeof zero) == 0);
+    CHECK(flag_matches(m));
+    CHECK_EQ_U64(m->z80.sp, 0xDFF0);
+    CHECK_EQ_U64(m->ram[0], 0xAB);
+    /* A size tag that does not reach the end of bios_size reads both fields as absent, even with
+       a good pair over the old tail padding; the whole struct reads them. */
+    const uint32_t tag_old = sizeof(void *) == 8u ? 56u : 32u;
+    const uint32_t tag_full = (uint32_t)sizeof(cogmaster_media);
+    const uint32_t tag_ptr = (uint32_t)offsetof(cogmaster_media, bios_size);
+    const uint32_t tags[] = {tag_old, tag_ptr, tag_full - 1u, tag_full};
+    for (size_t i = 0; i < sizeof tags / sizeof tags[0]; i++) {
+        media =
+            media_of(cart64, sizeof cart64, COGMASTER_MACHINE_SMS2, bios_img, COGMASTER__BIOS_SIZE);
+        media.size = tags[i];
+        CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(m->bios.size, tags[i] == tag_full ? COGMASTER__BIOS_SIZE : 0u);
+        CHECK(flag_matches(m));
+    }
+    /* A pair that would be refused is not even looked at below the tag. */
+    media = media_of(cart64, sizeof cart64, COGMASTER_MACHINE_SMS2, NULL, COGMASTER__BIOS_SIZE);
+    media.size = tag_old;
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(m->bios.size, 0);
+    cogmaster_destroy(m);
+}
+
+/* The state a BIOS starts from, and what each reset keeps. */
+static void power_on_leg(uint32_t machine)
+{
+    cogmaster *m = blank();
+    cogmaster_media media =
+        media_of(cart64, sizeof cart64, machine, bios_img, COGMASTER__BIOS_SIZE);
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    for (int pass = 0; pass < 3; pass++) {
+        if (pass > 0) {
+            /* pass 1 a soft reset, pass 2 a power reset, each after the machine moved on */
+            m->vdp.vram[5] = 0x33u;
+            m->vdp.cram[1] = 0x07u;
+            m->ram[100] = 0x77u;
+            run_frames(m, 2u);
+            m->io.mem_ctrl = 0xABu;
+            cogmaster__bus_decode(m);
+            CHECK_EQ_U64(
+                cogmaster_reset(m, pass == 1 ? COGMASTER_RESET_SOFT : COGMASTER_RESET_POWER),
+                COGMASTER_STATUS_OK);
+            CHECK_EQ_U64(m->ram[100], pass == 1 ? 0x77u : 0u);
+            CHECK_EQ_U64(m->vdp.vram[5], pass == 1 ? 0x33u : 0u);
+            CHECK_EQ_U64(m->vdp.cram[1], pass == 1 ? 0x07u : 0u);
+        }
+        const struct cogmaster__z80 *z = &m->z80;
+        CHECK_EQ_U64(z->pc, 0);
+        CHECK_EQ_U64(z->reg[COGMASTER__Z80_A], 0xFF);
+        CHECK_EQ_U64(z->reg[COGMASTER__Z80_F], 0xFF);
+        CHECK_EQ_U64(z->sp, 0xFFFF);
+        CHECK_EQ_U64(z->im, 0);
+        CHECK_EQ_U64(z->iff1, 0);
+        CHECK_EQ_U64(z->iff2, 0);
+        CHECK_EQ_U64(z->halted, 0);
+        for (uint32_t r = 0; r < COGMASTER__Z80_REGS; r++) {
+            if (r != COGMASTER__Z80_A && r != COGMASTER__Z80_F) {
+                CHECK_EQ_U64(z->reg[r], 0);
+            }
+        }
+        CHECK_EQ_U64(m->io.mem_ctrl, 0xE0);
+        CHECK_EQ_U64(m->mapper.ctrl, 0);
+        CHECK_EQ_U64(m->mapper.bank[0], 0);
+        CHECK_EQ_U64(m->mapper.bank[1], 1);
+        CHECK_EQ_U64(m->mapper.bank[2], 2);
+        CHECK_EQ_U64(m->mem_slow, 1);
+        CHECK(flag_matches(m));
+        /* The hand-off byte is the BIOS's to write. */
+        CHECK(m->ram[0] != 0xABu);
+        if (pass != 1) {
+            for (uint32_t i = 0; i < COGMASTER__RAM_SIZE; i++) {
+                if (m->ram[i] != 0u) {
+                    CHECK_EQ_U64(m->ram[i], 0);
+                    break;
+                }
+            }
+        }
+        /* The instruction at address 0 is the BIOS's, not the cartridge's. */
+        CHECK_EQ_U64(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0u), 0xF3u);
+    }
+    cogmaster_destroy(m);
+}
+
+static void test_load_power_on(void)
+{
+    power_on_leg(COGMASTER_MACHINE_SMS1);
+    power_on_leg(COGMASTER_MACHINE_SMS2);
+}
+
+/* Fault prevented: a BIOS load that accepts a hostile size or pointer pair, holds a pointer into
+   caller memory, or changes the instance before it can still refuse; and a BIOS boot that leaks
+   the fast-boot constants into the power-on state. */
+static void test_load(void)
+{
+    bios_fill(bios_img, 0x9E3779B9u);
+    cart_fill();
+    test_load_refusals();
+    test_load_ownership();
+    test_load_power_on();
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
 } cases[] = {
     {"arbitration", test_arbitration},
     {"slow_flag", test_slow_flag},
+    {"load", test_load},
 };
 
 int main(int argc, char **argv)

@@ -80,6 +80,22 @@ static uint32_t tagged_field(const void *s, uint32_t first, size_t off)
     return v;
 }
 
+/* The BIOS pair of an input struct: both fields or neither. A size tag that does not cover the end
+   of bios_size (a caller built against an older header, or one that stops after the pointer) reads
+   both as absent, even over the tail padding of the older struct. */
+static void tagged_bios(const cogmaster_media *media, const void **ptr, size_t *len)
+{
+    const uint8_t *raw = (const uint8_t *)media;
+    const size_t at_ptr = offsetof(cogmaster_media, bios);
+    const size_t at_len = offsetof(cogmaster_media, bios_size);
+    *ptr = NULL;
+    *len = 0u;
+    if ((size_t)size_tag(media) >= at_len + sizeof *len) {
+        memcpy(ptr, raw + at_ptr, sizeof *ptr);
+        memcpy(len, raw + at_len, sizeof *len);
+    }
+}
+
 cogmaster_status cogmaster_create(const cogmaster_config *cfg, cogmaster **out)
 {
     if (cfg == NULL || out == NULL) {
@@ -138,8 +154,23 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     if (st != COGMASTER_STATUS_OK) {
         return st;
     }
+    /* A BIOS is both fields or neither, and exactly 8 KiB, so a hostile size is one compare with no
+       allocation. The test card runs no CPU, so it has nothing to boot a BIOS on. */
+    const void *bios;
+    size_t bios_size;
+    tagged_bios(media, &bios, &bios_size);
+    if ((bios == NULL) != (bios_size == 0u)) {
+        return COGMASTER_STATUS_ERR_ARGUMENT;
+    }
+    int has_bios = bios != NULL;
+    if (has_bios && bios_size != COGMASTER__BIOS_SIZE) {
+        return COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE;
+    }
     /* No image (NULL, 0) is the built-in test card. */
     int has_image = media->image != NULL || media->image_size != 0u;
+    if (has_bios && !has_image) {
+        return COGMASTER_STATUS_ERR_NO_CONTENT;
+    }
     cogmaster_cart_info probe;
     memset(&probe, 0, sizeof probe);
     if (has_image) {
@@ -163,6 +194,10 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
         machine = COGMASTER_MACHINE_SMS1;
         break;
     default:
+        return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
+    }
+    /* The one BIOS supported is the Master System's; no Game Gear BIOS is booted. */
+    if (has_bios && machine == COGMASTER_MACHINE_GG) {
         return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
     }
     /* AUTO is an export console on an NTSC set. */
@@ -229,6 +264,14 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
         }
     }
     cogmaster__cart_install(m, &cart);
+    /* The instance owns its copy, so the caller may free the buffer at once. A load without a BIOS
+       clears the last one; the copy has the constant length, never the caller's size. */
+    memset(&m->bios, 0, sizeof m->bios);
+    if (has_bios) {
+        memcpy(m->bios.rom, bios, COGMASTER__BIOS_SIZE);
+        m->bios.size = COGMASTER__BIOS_SIZE;
+        m->bios.crc32 = cogmaster__crc32(0u, m->bios.rom, COGMASTER__BIOS_SIZE);
+    }
     m->machine = machine;
     m->video_mode = video;
     m->region = region;
@@ -246,7 +289,11 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     memset(&m->fault, 0, sizeof m->fault);
     memset(m->field, 0, sizeof m->field);
     cogmaster__bus_origin(m);
-    cogmaster__boot_handoff(m, 1);
+    if (m->bios.size != 0u) {
+        cogmaster__boot_power_on(m, 1);
+    } else {
+        cogmaster__boot_handoff(m, 1);
+    }
     cogmaster__vdp_reset(m, 1);
     cogmaster__synth_reset(m, 1);
     return COGMASTER_STATUS_OK;
@@ -302,11 +349,10 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out)
 }
 
 /* Both kinds return the beam to the frame origin with frame and ticks 0,
-   apply the fast-boot hand-off again and clear the first fault (ARCHITECTURE
-   section 9); POWER also clears work RAM, VRAM and CRAM and zeroes the
-   counters, which a power cycle resets (section 8). The synthesiser resets
-   last: POWER restarts the audio cadence, SOFT keeps its phase and any
-   samples the host has not taken. */
+   apply the fast-boot hand-off again (or power on at address 0 when a BIOS is attached) and clear
+   the first fault (ARCHITECTURE section 9); POWER also clears work RAM, VRAM and CRAM and zeroes
+   the counters, which a power cycle resets (section 8). The synthesiser resets last: POWER restarts
+   the audio cadence, SOFT keeps its phase and any samples the host has not taken. */
 cogmaster_status cogmaster_reset(cogmaster *m, uint32_t kind)
 {
     if (m == NULL || (kind != COGMASTER_RESET_SOFT && kind != COGMASTER_RESET_POWER)) {
@@ -316,7 +362,11 @@ cogmaster_status cogmaster_reset(cogmaster *m, uint32_t kind)
         return COGMASTER_STATUS_ERR_NO_CONTENT;
     }
     cogmaster__bus_origin(m);
-    cogmaster__boot_handoff(m, kind == COGMASTER_RESET_POWER);
+    if (m->bios.size != 0u) {
+        cogmaster__boot_power_on(m, kind == COGMASTER_RESET_POWER);
+    } else {
+        cogmaster__boot_handoff(m, kind == COGMASTER_RESET_POWER);
+    }
     cogmaster__vdp_reset(m, kind == COGMASTER_RESET_POWER);
     m->fault_present = 0u;
     memset(&m->fault, 0, sizeof m->fault);

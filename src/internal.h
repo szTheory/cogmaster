@@ -813,6 +813,8 @@ int cogmaster__device_ok(const cogmaster *m, uint32_t device);
 /* The fast-boot hand-off: the CPU and RAM as the BIOS leaves them. power
    also clears work RAM first. */
 void cogmaster__boot_handoff(cogmaster *m, int power);
+/* The state a BIOS starts from: reset Z80 at address 0, BIOS visible, nothing handed off. */
+void cogmaster__boot_power_on(cogmaster *m, int power);
 
 /* The synthesiser. reset runs last in load and in both resets, after the bus,
    hand-off, I/O and VDP resets: power zeroes everything, a soft reset keeps

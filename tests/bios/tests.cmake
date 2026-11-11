@@ -1,5 +1,5 @@
-# The boot ROM arbitration on the bus: the image and $3E are set through
-# src/internal.h; nothing loads a boot ROM yet.
+# The boot ROM on the bus and in the load path: the image and $3E are also set
+# through src/internal.h.
 add_executable(cogmaster-test-bios ${CMAKE_CURRENT_LIST_DIR}/test_bios.c)
 target_include_directories(cogmaster-test-bios PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(cogmaster-test-bios PRIVATE cogmaster::cogmaster)
@@ -19,4 +19,12 @@ cogmaster_add_test(NAME bios.arbitration COMMAND cogmaster-test-bios arbitration
 # which would send a read down the wrong path without a sign.
 # Timeout: 20 s floor; no hosted run yet, so provisional.
 cogmaster_add_test(NAME bios.slow_flag COMMAND cogmaster-test-bios slow_flag
+  LABELS bios portable TIMEOUT 20)
+
+# Fault prevented: a BIOS load that accepts a hostile size or pointer pair,
+# holds a pointer into caller memory, or changes the instance before it can
+# still refuse; and a BIOS boot that leaks the fast-boot constants into the
+# power-on state.
+# Timeout: 20 s floor; no hosted run yet, so provisional.
+cogmaster_add_test(NAME bios.load COMMAND cogmaster-test-bios load
   LABELS bios portable TIMEOUT 20)

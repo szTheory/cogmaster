@@ -41,6 +41,7 @@ battery.generation	mapper,portable
 battery.import	mapper,portable
 battery.spans	mapper,portable
 bios.arbitration	bios,portable
+bios.load	bios,portable
 bios.slow_flag	bios,portable
 bus.frame_origin	bus,portable
 bus.halt_bound.di	bus,portable
