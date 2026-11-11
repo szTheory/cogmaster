@@ -17,6 +17,13 @@ if(CMAKE_SCRIPT_MODE_FILE)
     endif()
   endfunction()
 
+  # file(WRITE) turns each LF into CRLF on Windows, and these files carry exact bytes: file(CONFIGURE) with
+  # a newline style writes the same bytes on every platform. STYLE is UNIX or CRLF; CONTENT has LF endings and
+  # always ends in a newline in the file.
+  function(write_bytes path style content)
+    file(CONFIGURE OUTPUT "${path}" CONTENT "${content}" NEWLINE_STYLE ${style} @ONLY)
+  endfunction()
+
   # Runs one case of the bench and stop unit tests.
   function(unit case)
     execute_process(COMMAND ${EMULATOR} ${UNIT} ${case} RESULT_VARIABLE rc
@@ -542,16 +549,17 @@ if(CMAKE_SCRIPT_MODE_FILE)
       "${base} x1=+00000 y1=+00000 x2=+00000 y2=-99999\n"
       "${base}  x1=+00000 y1=+00000 x2=+00000 y2=+0000\n")
     foreach(body IN LISTS bad)
-      file(WRITE "${OUT}" "${body}")
+      write_bytes("${OUT}" UNIX "${body}")
       expect_exit(2 "^cogmaster-run: input file error[^\n]*\n$" --frames 1 --port1 sports
         --port2 sports --input ${OUT} --hash)
     endforeach()
     # A refusal on the last record still stops before frame 1.
-    file(WRITE "${OUT}" "${good}\n${base} x1=+32768 y1=+00000 x2=+00000 y2=+00000\n")
+    write_bytes("${OUT}" UNIX "${good}\n${base} x1=+32768 y1=+00000 x2=+00000 y2=+00000\n")
     expect_exit(2 "^cogmaster-run: input file error[^\n]*\n$" --frames 2 --port1 sports
       --input ${OUT} --hash)
     # The edges of the range, a CRLF ending and a missing final newline are accepted.
-    file(WRITE "${OUT}" "${base} x1=+32767 y1=-32767 x2=-32767 y2=+32767\r\n${good}")
+    write_bytes("${OUT}" CRLF "${base} x1=+32767 y1=-32767 x2=-32767 y2=+32767\n")
+    file(APPEND "${OUT}" "${good}")
     expect_exit(0 "frame 2 sha256" --frames 2 --port1 sports --port2 sports --input ${OUT} --hash)
   elseif(CASE STREQUAL "axes_device")
     # Motion on a port whose resolved device takes none is exit 2 before frame 1, naming both.
@@ -559,7 +567,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     set(refused "^cogmaster-run: input file error: port ([12]) is ([a-z]+), which takes no motion\n$")
     foreach(axes IN ITEMS "x1=+00001 y1=+00000 x2=+00000 y2=+00000"
         "x1=+00000 y1=-00001 x2=+00000 y2=+00000")
-      file(WRITE "${OUT}" "${base}\n${base} ${axes}\n")
+      write_bytes("${OUT}" UNIX "${base}\n${base} ${axes}\n")
       expect_exit(2 "port 1 is pad, which takes no motion" --frames 2 --input ${OUT} --hash)
       expect_exit(2 "port 1 is none, which takes no motion" --frames 2 --port1 none --input ${OUT}
         --hash)
@@ -567,19 +575,19 @@ if(CMAKE_SCRIPT_MODE_FILE)
     endforeach()
     foreach(axes IN ITEMS "x1=+00000 y1=+00000 x2=+00001 y2=+00000"
         "x1=+00000 y1=+00000 x2=+00000 y2=-00001")
-      file(WRITE "${OUT}" "${base} ${axes}\n")
+      write_bytes("${OUT}" UNIX "${base} ${axes}\n")
       expect_exit(2 "port 2 is pad, which takes no motion" --frames 1 --port1 sports --input ${OUT}
         --hash)
       expect_exit(2 "port 2 is none, which takes no motion" --frames 1 --port1 sports
         --port2 none --input ${OUT} --hash)
     endforeach()
     # A Sports Pad takes both axes; a Paddle takes x and accepts y, which the core ignores.
-    file(WRITE "${OUT}" "${base} x1=+00005 y1=-00003 x2=-00007 y2=+00009\n")
+    write_bytes("${OUT}" UNIX "${base} x1=+00005 y1=-00003 x2=-00007 y2=+00009\n")
     expect_exit(0 "frame 1 sha256" --frames 1 --port1 sports --port2 sports --input ${OUT} --hash)
     expect_exit(0 "frame 1 sha256" --frames 1 --region ntsc-j --port1 paddle --port2 paddle
       --input ${OUT} --hash)
     # An all-zero 75-byte line is accepted for any device.
-    file(WRITE "${OUT}" "${base} x1=+00000 y1=+00000 x2=+00000 y2=+00000\n")
+    write_bytes("${OUT}" UNIX "${base} x1=+00000 y1=+00000 x2=+00000 y2=+00000\n")
     expect_exit(0 "frame 1 sha256" --frames 1 --port1 none --port2 pad --input ${OUT} --hash)
   elseif(CASE STREQUAL "axes_equivalent")
     # The 35-byte line means all four axes are 0; a script that differs in one digit is told apart
@@ -587,11 +595,11 @@ if(CMAKE_SCRIPT_MODE_FILE)
     set(base "p1=10 p2=00 pause=0 reset=0 start=0")
     string(REPEAT "${base}\n" 3 short)
     string(REPEAT "${base} x1=+00000 y1=+00000 x2=+00000 y2=+00000\n" 3 long)
-    file(WRITE "${OUT}.short" "${short}")
-    file(WRITE "${OUT}.long" "${long}")
-    file(WRITE "${OUT}.a" "${base} x1=+00004 y1=+00000 x2=+00000 y2=+00000\n${base}\n${base}\n")
-    file(WRITE "${OUT}.b" "${base} x1=+00005 y1=+00000 x2=+00000 y2=+00000\n${base}\n${base}\n")
-    file(WRITE "${OUT}.expect" "ram@2:$C200=00\n")
+    write_bytes("${OUT}.short" UNIX "${short}")
+    write_bytes("${OUT}.long" UNIX "${long}")
+    write_bytes("${OUT}.a" UNIX "${base} x1=+00004 y1=+00000 x2=+00000 y2=+00000\n${base}\n${base}\n")
+    write_bytes("${OUT}.b" UNIX "${base} x1=+00005 y1=+00000 x2=+00000 y2=+00000\n${base}\n${base}\n")
+    write_bytes("${OUT}.expect" UNIX "ram@2:$C200=00\n")
     set(digest "script_sha256=([0-9a-f]+) ")
     foreach(device IN ITEMS pad sports)
       foreach(form IN ITEMS short long)
@@ -647,7 +655,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
       message(FATAL_ERROR "--eyes changed the other output:\n${with}\n${without}")
     endif()
     # The report follows the lag line of a scripted run and an early stop counts frames run.
-    file(WRITE "${OUT}" "p1=00 p2=00 pause=0 reset=0 start=0\n")
+    write_bytes("${OUT}" UNIX "p1=00 p2=00 pause=0 reset=0 start=0\n")
     expect_exit(0 "lag_frames=[0-9]+\neyes frames=1 none=1 left=0 right=0 flips=0 last=none\n$"
       --frames 1 --input ${OUT} --eyes)
   elseif(CASE STREQUAL "eyes_probe")
@@ -656,7 +664,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     expect_exit(2 "usage" --eyes)
   elseif(CASE STREQUAL "device_names")
     # The execution line names each device and keeps the prefix older checks match.
-    file(WRITE "${OUT}" "ram@2:$C200=00\n")
+    write_bytes("${OUT}" UNIX "ram@2:$C200=00\n")
     set(line "execution machine=[0-9]+ region=[0-9]+ tv=[0-9]+ video=[0-9]+ mapper=[0-9]+ port1=")
     expect_exit(0 "${line}pad port2=pad " --frames 2 --expect ${OUT})
     expect_exit(0 "${line}sports port2=none " --frames 2 --expect ${OUT}
@@ -675,7 +683,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
   elseif(CASE STREQUAL "device_auto")
     # A pad-only image resolves auto to a pad, whether the option is absent or spelled out,
     # and its probe reports pad defaults after unsupported_reason.
-    file(WRITE "${OUT}" "ram@2:$C200=00\n")
+    write_bytes("${OUT}" UNIX "ram@2:$C200=00\n")
     set(line "mapper=[0-9]+ port1=pad port2=pad ")
     expect_exit(0 "${line}" ${SEEDS}/di-halt.sms --frames 2 --expect ${OUT})
     expect_exit(0 "${line}" ${SEEDS}/di-halt.sms --frames 2 --expect ${OUT}
