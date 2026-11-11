@@ -22,6 +22,7 @@ motion versus an all-zero script (they must differ while the dump reads the devi
 (flip counts); the count of non-3-D titles whose glasses register moves. Outcomes can change at most one default
 (`cogmaster_3d_view`), the delta sign and one doc sentence; never a hash. Batch it with the phase 11 and phase 12
 library runs.
+The PAL and Japanese FM run is SEED-013, and the batched request is one command, `sh scripts/library.sh run`.
 
 ## The Light Phaser local judge (hand-off, not a requirement)
 

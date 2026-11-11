@@ -70,7 +70,7 @@ Requirements for this milestone. Each maps to one roadmap phase. Scope decisions
 - [x] **REG-01**: The ledger splits `tv` from `region` with a migration and a format note
 - [ ] **REG-02**: PAL fixtures (V-counter tables, Pause at line 311, exact samples per frame) give equal hashes on all eight lanes
 - [x] **REG-03**: An `audio@F=H` predicate over the transition stream, with a negative control, and `fm` in the row identity
-- [ ] **REG-04**: PAL and Japanese FM rows are judged for the owner's carts through the local library path and merged by `compat-update.sh`
+- [x] **REG-04**: The library judge adds PAL and Japanese FM rows for catalog-identified carts through `compat-update.sh`, proven in CI by a synthetic library run through `library.sh run`
 
 ### Whole-list ledger
 
@@ -152,7 +152,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REG-01 | Phase 11 | Complete |
 | REG-02 | Phase 11 | Pending |
 | REG-03 | Phase 11 | Complete |
-| REG-04 | Phase 11 | Pending |
+| REG-04 | Phase 11 | Complete |
 | LEDG-01 | Phase 12 | Pending |
 | LEDG-02 | Phase 12 | Pending |
 | LEDG-03 | Phase 12 | Pending |

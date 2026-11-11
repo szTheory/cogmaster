@@ -17,8 +17,11 @@ Stdout is a candidate ledger; review it before replacing `tests/compat/ledger.cs
 `docs/compatibility.md`. Only already seeded cases with a CC0 public identity and the exact accepted
 predicate, configuration and expectation can change. Titles come from `tests/compat/catalog.tsv`; filenames and
 local evidence are discarded. The update permits only the fixed predicate status, valid date and current
-core commit. Unknown IDs, new predicates or golden values, changed profiles, and fixture updates are
-discarded; extra columns and invalid dates reject. Owned fixtures stay managed by the reproducible CI
+core commit. Unknown IDs, other new predicates or golden values, other profiles, and fixture updates are
+discarded; extra columns and invalid dates reject. The library judge adds only boots@600 under the default
+configuration, in profiles it derives from the catalog and probe (export NTSC and PAL, Japan NTSC with FM, a
+Game Gear's region); `sh scripts/library.sh run` merges only if the ratchet passes and the page fits its cap.
+Owned fixtures stay managed by the reproducible CI
 fixture path. No screenshot, RAM/save dump, trace, path or newly observed hash is exported. A missing
 accepted expectation remains `unknown`, even if the image ran successfully. Metadata membership never
 guarantees support; `.info` stays experimental. The existing protected-base ratchet still judges a PR.

@@ -39,7 +39,7 @@ pull request and one automated release.
 - [x] **Phase 8: Sports Pad, Paddle and 3-D glasses** - Pin-level ports and a grown input struct make the pad-device and 3-D titles play, with replays matching (completed 2026-11-11)
 - [x] **Phase 9: Light Phaser** - Light Phaser titles hit where the player aims, sensed from the emitted pixel at the beam (completed 2026-11-11)
 - [x] **Phase 10: BIOS boot** - A user boots from their own BIOS dump in the runner or RetroArch; fast boot stays the default (completed 2026-11-11)
-- [ ] **Phase 11: PAL and Japanese FM** - PAL timing proven on every lane and the owner's PAL and FM carts judged under the right profile
+- [ ] **Phase 11: PAL and Japanese FM** - PAL timing proven on every lane and the library judge able to add PAL and Japanese FM rows for catalog-identified carts
 - [ ] **Phase 12: The whole list in the ledger** - Every SMS and Game Gear entry at the pin has an honest row, and `is_experimental` leaves the core
 
 ## Phase Details
@@ -203,14 +203,14 @@ Plans:
 - [x] 10-11-PLAN.md — requirement and roadmap amendments, seeds, floors, last timeouts, local judgments, final hosted runs and ship list (BIOS-01, BIOS-02, BIOS-03, BIOS-04, BIOS-05)
 
 ### Phase 11: PAL and Japanese FM
-**Goal**: PAL timing is proven identical on every lane, FM rows are judged by their sound, and the owner's PAL and Japanese FM cartridges are judged under the right profile and merged into the ledger.
+**Goal**: PAL timing is proven identical on every lane, FM is judged by its sound on owned fixtures, and the library judge can add PAL and Japanese FM rows for catalog-identified carts under the right profile.
 **Depends on**: Phase 8 (the ledger key with the device); runs after Phase 10
 **Requirements**: REG-01, REG-02, REG-03, REG-04
 **Success Criteria** (what must be TRUE):
   1. A ledger migration splits `tv` from `region` with a format note, and every existing row keeps its status through it (REG-01).
   2. PAL fixtures for the V-counter tables, Pause at line 311 and exact samples per frame give equal hashes on all eight lanes (REG-02).
   3. The `audio@F=H` predicate passes on a matching transition-stream hash and fails on its negative control, and `fm` is part of the row identity (REG-03).
-  4. A local library run judges the owner's PAL and Japanese FM carts, `compat-update.sh` merges the rows and the ratchet passes, recorded as a command and exit status (REG-04).
+  4. The library judge adds PAL and Japanese FM rows for catalog-identified carts through `compat-update.sh`, proven in CI by a synthetic library run through `library.sh run`, and the ratchet passes (REG-04).
 **Plans**: 7/9 plans executed
 - [x] 11-01-PLAN.md
 - [x] 11-02-PLAN.md
@@ -231,7 +231,7 @@ Plans:
   2. Every `unsupported` row names its reason and the runner exits 77 for it, every MAME `supported="no"` entry is `skipped` with a reason, and a row without a reason fails the check (LEDG-02).
   3. The ratchet lets an `unsupported` row become `pass` once its board or device exists, and its negative control fails (LEDG-03).
   4. `docs/compatibility.md` holds aggregates plus evaluated rows and stays inside its byte budget (LEDG-04).
-  5. The exit command over the owner's judged rows passes, the libretro `.info` no longer carries `is_experimental`, and the count of unowned `unknown` rows is printed (LEDG-05).
+  5. The exit command over the owner's judged rows passes, the libretro `.info` no longer carries `is_experimental`, and the count of unowned `unknown` rows is printed, including the PAL and Japanese FM rows of the run recorded in the seed (LEDG-05).
 **Plans**: TBD
 
 ## Progress
