@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 10
 current_phase_name: BIOS boot
 status: planning
-stopped_at: Completed 10-08-PLAN.md
-last_updated: "2026-11-11T17:45:52.148Z"
+stopped_at: Completed 10-09-PLAN.md
+last_updated: "2026-11-11T17:55:42.413Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 9 complete, transitioned to Phase 10
-state_head: f4cb5366a73382c57fb3ffa77ba0efc806603b63
+state_head: 836fcd9b5b051befc7054b0af6774822a0c79e69
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 75
-  completed_plans: 72
+  completed_plans: 73
   percent: 63
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 10 — BIOS boot
-Plan: 8 of 11 complete (10-08: the BIOS helper with a table-injected unit test, a bounded 8193-byte read and a label-only recogniser; no runner or adapter file changed yet)
+Plan: 9 of 11 complete (10-09: cogmaster-run --boot fast|bios and --bios FILE with exit 2 for misuse, 77 for an absent or unsupported BIOS, 1 for other read errors, no path echo, a SHA-1 label line, runner.bios.* tests and one cross-lane device row; the libretro adapter has not changed yet)
 Status: Executing Phase 10
-Last activity: 2026-11-11 — Completed 10-08-PLAN.md
+Last activity: 2026-11-11 — Completed 10-09-PLAN.md
 
 Progress: [██████░░░░] 63% of v2.0
 
@@ -200,6 +200,7 @@ Progress: [██████░░░░] 63% of v2.0
 | Phase 10 P06 | 15min | 2 tasks | 10 files |
 | Phase 10 P07 | 120min | 2 tasks | 8 files |
 | Phase 10 P08 | 45 min | 2 tasks | 9 files |
+| Phase 10 P09 | 60 min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -295,6 +296,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 10]: 10-06: fuzz_bios is a third harness entry whose input is the BIOS image against a fixed owned cartridge; no existing seed, harness or replay was edited, and bios.hostile bounds seven owned hostile images to one instruction of overshoot
 - [Phase 10]: 10-07: the equivalence check steps the BIOS instance inside frames and closes each with cogmaster_run_frame (a raw step past the deadline leaves renderer state that state load refuses), the probe cartridge is 64 KiB so the paging literals 0, 0, 1, 2 are meaningful, and 88 compared and 69 excluded names are pinned with a reason for each exclusion
 - [Phase 10]: 10-08: the BIOS helper takes its recognition table as an argument so host.bios injects its own rows and exercises the real bytes-to-digest-to-name path, the read is one fread of 8193 bytes with sentinel-checked bounds, and cogmaster-host is not linked to the core in CMake (consumers already link it; a second link gave duplicate-library warnings)
+- [Phase 10]: 10-09: the runner reads the BIOS after the cartridge and decides the Game Gear refusal first, an absent BIOS path is exit 77 while any other read error is 1, every BIOS text is fixed and never prints the path, and the cross-lane device row runs two frames because from the third a BIOS run of the probe hashes like a fast one
 
 ### Pending Todos
 
@@ -410,6 +412,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 10 plan 10-06 (gsd-execute-phase 10); bios.hostile (seven owned hostile images on SMS1 and SMS2 within 68 ticks of overshoot, the eight-size sweep with the instance unchanged), tests/fuzz/fuzz_bios.c as a third harness entry with fuzz.regress.bios and fuzz.libfuzzer.bios, six bios-* seeds added with no existing seed or harness touched, testing-guide rows for the two scans and the fuzzing guide at six targets, no dispatch (timeouts settle at the next one), counted check code 833 of 847; 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-07 (gsd-execute-phase 10); tests/roms/src/bios_shape.asm builds the 8 KiB BIOS-shaped image, a 64 KiB probe cartridge and two bad variants from one owned source, four digest pins, bios.equivalence comparing the fast-boot hand-off with the state the image reaches over 88 compared and 69 excluded names (every name classified, reasons, pinned counts, typed independence literals, 23 mutation controls), the two bad images failing naming ram and z80_sp, no dispatch (timeouts settle after plan 10), counted check code 833 of 847; 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-08 (gsd-execute-phase 10); host/bios.c and host/bios.h (built-in 13-row table, pure lookup, identify by SHA-1 and size, one read bounded at 8193 bytes, prints nothing), host.bios with the abc vector and an owned file hashed by CMake against injected tables and three negative controls, the provenance sentence and the environment example comment, no dispatch (timeout settles after plan 10), counted check code 833 of 847; 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 10 plan 10-09 (gsd-execute-phase 10); cogmaster-run --boot and --bios with a strict grammar (exit 2), 77 for an absent BIOS, a wrong size or a Game Gear cartridge and 1 for other read errors, fixed texts that never print the path, one SHA-1 label line, the exit table changed in --help, exit_status.h and docs/runner.md together, runner.bios.grammar, refusals, no_path_echo and boot with four negative controls, one two-frame cross-lane device row, no dispatch (timeouts settle after plan 10), counted check code 833 of 847; 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-03 (gsd-execute-phase 10); cogmaster_media gains reserved3, bios and bios_size (72 / 40 bytes), versions API 14, behaviour 16, state 16, layout asserts only in src, size pins loosened to >= with every offset pin exact, tests/api/v14.c and abi.api_v14 on ci, wasm32 and nofp, order evidence for BIOS-01 recorded (scans precede the first code commit: exit 0 forward, 1 reversed), counted check code 833 of 847, no dispatch (runner DNS not re-observed; main still shows the failed dispatch); 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-04 (gsd-execute-phase 10); struct cogmaster__bios and the derived mem_slow flag, one shared decoder for the cold read path and peek, per-machine BIOS and cartridge arbitration (SMS1 cartridge wins, SMS2 ANDs, empty enabled slot without a fault when a BIOS is attached), bios.arbitration with 64 one-entry flips and three wrong-table controls, bios.slow_flag, three one-shot controls, SMS-SYSTEM section 3 and 9 amended and the fault row of embedding.md (+95 bytes), counted check code 833 of 847, no dispatch, no hot-path measurement yet (plan 05); 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 
@@ -433,8 +436,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T17:45:51.952Z
-Stopped at: Completed 10-08-PLAN.md
+Last session: 2026-11-11T17:55:42.145Z
+Stopped at: Completed 10-09-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
