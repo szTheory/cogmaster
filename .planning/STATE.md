@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 10
 current_phase_name: BIOS boot
 status: planning
-stopped_at: Completed 10-06-PLAN.md
-last_updated: "2026-11-11T17:17:15.466Z"
+stopped_at: Completed 10-07-PLAN.md
+last_updated: "2026-11-11T17:39:19.920Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 9 complete, transitioned to Phase 10
-state_head: 0e0402c1e67b39898e093d86aa6b0825174d4711
+state_head: a132db25fffe6599b5c4b183dedb9cbd29be0ae5
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 75
-  completed_plans: 70
+  completed_plans: 71
   percent: 63
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 10 — BIOS boot
-Plan: 6 of 11 complete (10-06: hostile BIOS images bounded, the BIOS fuzz entry and its seeds, the scan rows in the testing guide)
+Plan: 7 of 11 complete (10-07: the owned BIOS-shaped image and its pins, the classification-complete hand-off equivalence with controls and two failing bad images)
 Status: Executing Phase 10
-Last activity: 2026-11-11 — Completed 10-06-PLAN.md
+Last activity: 2026-11-11 — Completed 10-07-PLAN.md
 
 Progress: [██████░░░░] 63% of v2.0
 
@@ -198,6 +198,7 @@ Progress: [██████░░░░] 63% of v2.0
 | Phase 10 P04 | 40min | 2 tasks | 10 files |
 | Phase 10 P05 | 65min | 3 tasks | 10 files |
 | Phase 10 P06 | 15min | 2 tasks | 10 files |
+| Phase 10 P07 | 120min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -291,6 +292,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 10]: 10-05: a BIOS in the media is the request to boot from it; load and both reset kinds call cogmaster__boot_power_on when bios.size is set, the state binds boot mode and BIOS CRC-32 at header offsets 53 and 54, and state_load recomputes mem_slow after APPLY
 - [Phase 10]: 10-05: hosted dispatch D2 (run 43062734904) is green on every lane after the runner DNS recovered, perf delta_bp -11 against a fresh main run 43063808940, and the four bios test timeouts stay at the 20 s floor (slowest 0.57 s)
 - [Phase 10]: 10-06: fuzz_bios is a third harness entry whose input is the BIOS image against a fixed owned cartridge; no existing seed, harness or replay was edited, and bios.hostile bounds seven owned hostile images to one instruction of overshoot
+- [Phase 10]: 10-07: the equivalence check steps the BIOS instance inside frames and closes each with cogmaster_run_frame (a raw step past the deadline leaves renderer state that state load refuses), the probe cartridge is 64 KiB so the paging literals 0, 0, 1, 2 are meaningful, and 88 compared and 69 excluded names are pinned with a reason for each exclusion
 
 ### Pending Todos
 
@@ -404,6 +406,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 10 plan 10-02 (gsd-execute-phase 10); scripts/firmware-window.sh (rolling 32-byte window, one line per hit, 0 compared when no dump), local.firmware_window_scan in the library preset, ten hygiene-lane controls, hygiene.sh byte_run and the staged and history hook branches each controlled, counted check code 833 of 847, hosted dispatch 1 (runs 43047222253, 43049044281, 43051607563 on 947ac8e: every leg that could start green and release.firmware_scan Passed on all six build legs; perf, be32 and wasm32 failed at their apt-get step on runner DNS, main run 43053345486 fails perf the same way), timeouts of plans 01 and 02 settled, hygiene job timeout 2 to 3 minutes; 3 tasks, 3 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-05 (gsd-execute-phase 10); cogmaster_load reads media.bios by size tag and validates in the stated order, cogmaster__boot_power_on for load and both resets, state header boot byte and BIOS CRC-32, mem_slow recomputed after state load, bios.load and bios.state with a proven window detector, embedding guide text, hosted dispatch D2 (run 43062734904 green on every lane after two DNS-failed attempts and one MSVC fix; fresh main run 43063808940; perf delta_bp -11), bios timeouts settled at the 20 s floor, counted check code 833 of 847; 3 tasks, 6 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-06 (gsd-execute-phase 10); bios.hostile (seven owned hostile images on SMS1 and SMS2 within 68 ticks of overshoot, the eight-size sweep with the instance unchanged), tests/fuzz/fuzz_bios.c as a third harness entry with fuzz.regress.bios and fuzz.libfuzzer.bios, six bios-* seeds added with no existing seed or harness touched, testing-guide rows for the two scans and the fuzzing guide at six targets, no dispatch (timeouts settle at the next one), counted check code 833 of 847; 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 10 plan 10-07 (gsd-execute-phase 10); tests/roms/src/bios_shape.asm builds the 8 KiB BIOS-shaped image, a 64 KiB probe cartridge and two bad variants from one owned source, four digest pins, bios.equivalence comparing the fast-boot hand-off with the state the image reaches over 88 compared and 69 excluded names (every name classified, reasons, pinned counts, typed independence literals, 23 mutation controls), the two bad images failing naming ram and z80_sp, no dispatch (timeouts settle after plan 10), counted check code 833 of 847; 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-03 (gsd-execute-phase 10); cogmaster_media gains reserved3, bios and bios_size (72 / 40 bytes), versions API 14, behaviour 16, state 16, layout asserts only in src, size pins loosened to >= with every offset pin exact, tests/api/v14.c and abi.api_v14 on ci, wasm32 and nofp, order evidence for BIOS-01 recorded (scans precede the first code commit: exit 0 forward, 1 reversed), counted check code 833 of 847, no dispatch (runner DNS not re-observed; main still shows the failed dispatch); 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-04 (gsd-execute-phase 10); struct cogmaster__bios and the derived mem_slow flag, one shared decoder for the cold read path and peek, per-machine BIOS and cartridge arbitration (SMS1 cartridge wins, SMS2 ANDs, empty enabled slot without a fault when a BIOS is attached), bios.arbitration with 64 one-entry flips and three wrong-table controls, bios.slow_flag, three one-shot controls, SMS-SYSTEM section 3 and 9 amended and the fault row of embedding.md (+95 bytes), counted check code 833 of 847, no dispatch, no hot-path measurement yet (plan 05); 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 
@@ -427,8 +430,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T17:17:15.125Z
-Stopped at: Completed 10-06-PLAN.md
+Last session: 2026-11-11T17:39:19.593Z
+Stopped at: Completed 10-07-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
