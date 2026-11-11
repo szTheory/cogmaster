@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 8
 current_phase_name: Sports Pad, Paddle and 3-D glasses
 status: planning
-stopped_at: Completed 08-16-PLAN.md
-last_updated: "2026-11-11T07:09:59.470Z"
+stopped_at: Completed 08-17-PLAN.md
+last_updated: "2026-11-11T07:28:55.662Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 7 complete, transitioned to Phase 8
-state_head: 81f27adffa9fe7a19749461c5b7c2803b2764e55
+state_head: fadcc8bcda461467d6a7ad2e70599983fede2f91
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 52
-  completed_plans: 51
+  completed_plans: 52
   percent: 38
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 8 — Sports Pad, Paddle and 3-D glasses
-Plan: 16 of 17 complete (08-01 port layer, 08-02 header delta, 08-03 set_input copy rule, 08-04 glasses core and hosted dispatch 1, 08-05 Sports Pad, Paddle and saved device state, 08-06 state bounds proof and pad fuzz target, 08-07 default controller per dump and the region rule, 08-08 runner device grammar, exit 77 refusal and probe default keys, 08-09 runner delta lines and --eyes, 08-10 Sports Pad fixture and replay, 08-11 Paddle fixture and replay, 08-12 glasses fixture and hosted dispatch 2, 08-13 table rows for the two device fixtures, 08-14 anaglyph composition in the host library, 08-15 libretro device options, motion sources and 3-D view, 08-16 ledger key device token); next 08-17
+Plan: 17 of 17 complete (08-01 to 08-16 as before, 08-17 controller guide, wording amendments, floors, timeouts and the final hosted runs); phase ready for code review and verification
 Status: Executing
-Last activity: 2026-11-11 — Completed 08-16 (the ledger key device token is pad|none|paddle|sports in the normalizer, the library and fixture lanes and the doc; compat.device_key and compat.device_rejected plus changed-key and adjacent-key ratchet cases, two negative controls fail them; counted check lines unchanged at 723). Runtime Claude Code, model Sonnet 5.5
+Last activity: 2026-11-11 — Completed 08-17 (docs/controllers.md, PAD-04 and PAD-05 wording amended, floors 548 and 511, controller test timeouts settled; hosted ci run 42978923715 and nightly run 42978927408 green on fadcc8b, perf delta_bp 0; the local library judge was not run, carried to ship). Runtime Claude Code, model Sonnet 5.5
 
 Progress: [████░░░░░░] 38% of v2.0
 
@@ -177,6 +177,7 @@ Progress: [████░░░░░░] 38% of v2.0
 | Phase 08 P14 | 15 min | 2 tasks | 7 files |
 | Phase 08 P15 | 70 min | 3 tasks | 6 files |
 | Phase 08 P16 | 14min | 2 tasks | 8 files |
+| Phase 8 P17 | 95min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -248,6 +249,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 08]: 08-15: a device the profile cannot take is found by one set_input probe per port at load, so the one log line comes at load and each port is judged alone
 - [Phase 08]: 08-15: glasses.sms draws nothing, so the stereo cases use two guests the test builds and a model of the rule built from the library's own eyes and pictures
 - [Phase 08]: 08-16: the ledger key device token is pad|none|paddle|sports in the normalizer, library lane, fixture lane and doc; changed-key ratchet cases are paired with adjacent-key cases because a rejecting grammar also answers exit 2
+- [Phase 8]: Phase 8 closes with the controller guide in docs/controllers.md as the one behaviour prose; the local library judge is carried to ship because the agent had no library location, and the cogmaster_3d_view default stays left
 
 ### Pending Todos
 
@@ -365,8 +367,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T07:09:59.341Z
-Stopped at: Completed 08-16-PLAN.md
+Last session: 2026-11-11T07:28:55.559Z
+Stopped at: Completed 08-17-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
