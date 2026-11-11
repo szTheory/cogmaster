@@ -59,17 +59,20 @@ static struct retro_core_option_v2_definition lr_definitions[] = {
                 {"pad", "Control Pad"},
                 {"paddle", "Paddle"},
                 {"sports", "Sports Pad"},
+                {"lphaser", "Light Phaser"},
                 {"none", "Nothing"},
                 {NULL, NULL}},
      .default_value = "auto"},
     {.key = "cogmaster_port2",
      .desc = "Port 2 device (reload content)",
-     .info = "As port 1. A Sports Pad or Paddle moves with the mouse, the left stick and the "
-             "D-pad. Takes effect on content load.",
+     .info =
+         "As port 1. A Sports Pad, Paddle or Light Phaser moves with the mouse, the left stick and "
+         "the D-pad. Takes effect on content load.",
      .values = {{"auto", "Automatic"},
                 {"pad", "Control Pad"},
                 {"paddle", "Paddle"},
                 {"sports", "Sports Pad"},
+                {"lphaser", "Light Phaser"},
                 {"none", "Nothing"},
                 {NULL, NULL}},
      .default_value = "auto"},
@@ -85,10 +88,25 @@ static struct retro_core_option_v2_definition lr_definitions[] = {
                 {"off", "Off"},
                 {NULL, NULL}},
      .default_value = "left"},
+    {.key = "cogmaster_crosshair",
+     .desc = "Light Phaser crosshair",
+     .info = "Presentation only. Marks the aim of a Light Phaser on the picture; the game and "
+             "every recording never see it.",
+     .values = {{"on", "On"}, {"off", "Off"}, {NULL, NULL}},
+     .default_value = "on"},
+    {.key = "cogmaster_crosshair_colour",
+     .desc = "Crosshair colour",
+     .info = "Presentation only. The colour of the Light Phaser crosshair.",
+     .values = {{"white", "White"},
+                {"red", "Red"},
+                {"green", "Green"},
+                {"yellow", "Yellow"},
+                {NULL, NULL}},
+     .default_value = "white"},
     {0}};
 /* The options every table below must hold; the v2, v1 and v0 tables are separate, and the
    host exercises only v2, so a later option cannot miss one without failing the build. */
-#define LR_OPTION_COUNT 9u
+#define LR_OPTION_COUNT 11u
 _Static_assert(sizeof lr_definitions / sizeof lr_definitions[0] == LR_OPTION_COUNT + 1u,
                "v2 option table");
 static struct retro_core_options_v2 lr_options = {NULL, lr_definitions};
@@ -101,9 +119,11 @@ static struct retro_variable lr_variables[] = {
     {"cogmaster_gg_view", "Game Gear view; native|full"},
     {"cogmaster_region", "Region and timing (reload content); auto|ntsc-u|ntsc-j|pal"},
     {"cogmaster_fm", "FM sound unit (reload content); auto|off|on"},
-    {"cogmaster_port1", "Port 1 device (reload content); auto|pad|paddle|sports|none"},
-    {"cogmaster_port2", "Port 2 device (reload content); auto|pad|paddle|sports|none"},
+    {"cogmaster_port1", "Port 1 device (reload content); auto|pad|paddle|sports|lphaser|none"},
+    {"cogmaster_port2", "Port 2 device (reload content); auto|pad|paddle|sports|lphaser|none"},
     {"cogmaster_3d_view", "3-D glasses view; left|right|alternate|anaglyph|off"},
+    {"cogmaster_crosshair", "Light Phaser crosshair; on|off"},
+    {"cogmaster_crosshair_colour", "Crosshair colour; white|red|green|yellow"},
     {NULL, NULL}};
 _Static_assert(sizeof lr_variables / sizeof lr_variables[0] == LR_OPTION_COUNT + 1u,
                "v0 option table");

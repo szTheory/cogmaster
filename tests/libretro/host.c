@@ -186,7 +186,7 @@ static int content_gg;
 static unsigned descriptors_calls, controllers_calls;
 static unsigned options_calls;
 static const char *option_machine, *option_mode, *option_region, *option_aspect, *option_view,
-    *option_fm, *option_port1, *option_port2, *option_3d;
+    *option_fm, *option_port1, *option_port2, *option_3d, *option_crosshair, *option_colour;
 static unsigned log_lines;
 static bool option_update, running;
 static unsigned geometry_calls;
@@ -229,6 +229,10 @@ static bool RETRO_CALLCONV env(unsigned cmd, void *data)
             v->value = option_port2;
         if (strcmp(v->key, "cogmaster_3d_view") == 0)
             v->value = option_3d;
+        if (strcmp(v->key, "cogmaster_crosshair") == 0)
+            v->value = option_crosshair;
+        if (strcmp(v->key, "cogmaster_crosshair_colour") == 0)
+            v->value = option_colour;
         return v->value != NULL;
     }
     if (cmd == RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE) {
@@ -255,10 +259,12 @@ static bool RETRO_CALLCONV env(unsigned cmd, void *data)
     if (cmd == RETRO_ENVIRONMENT_SET_CONTROLLER_INFO) {
         const struct retro_controller_info *ports = data;
         controllers_calls++;
-        CHECK_EQ_U64(ports[0].num_types, 2u);
-        CHECK_EQ_U64(ports[1].num_types, 2u);
+        CHECK_EQ_U64(ports[0].num_types, 3u);
+        CHECK_EQ_U64(ports[1].num_types, 3u);
         CHECK_EQ_U64(ports[0].types[0].id, RETRO_DEVICE_JOYPAD);
         CHECK_EQ_U64(ports[0].types[1].id, RETRO_DEVICE_NONE);
+        CHECK_EQ_U64(ports[0].types[2].id, RETRO_DEVICE_LIGHTGUN);
+        CHECK_EQ_U64(ports[1].types[2].id, RETRO_DEVICE_LIGHTGUN);
         CHECK_EQ_U64(ports[2].num_types, 0u);
         return true;
     }
@@ -268,10 +274,10 @@ static bool RETRO_CALLCONV env(unsigned cmd, void *data)
         descriptors_calls++;
         while (n < 32u && desc[n].description != NULL) {
             CHECK(desc[n].port < 2u);
-            CHECK_EQ_U64(desc[n].device, RETRO_DEVICE_JOYPAD);
+            CHECK(desc[n].device == RETRO_DEVICE_JOYPAD || desc[n].device == RETRO_DEVICE_LIGHTGUN);
             n++;
         }
-        CHECK_EQ_U64(n, 14u);
+        CHECK_EQ_U64(n, 18u);
         return true;
     }
     if (cmd == RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME) {

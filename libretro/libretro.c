@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "aim.h"
 #include "cogmaster.h"
 #include "eyes.h"
 #include "libretro.h"
@@ -71,10 +72,39 @@ static int eye_view;
 static unsigned stereo, last_eye;
 static uint16_t *eye_mem, *eye_pic[2], *eye_mix;
 
+/* The Light Phaser: the picture's rectangle at the last completed frame (the aim is mapped through
+   it, one frame late after a mode change), a cursor per port for a frontend that gives a pad, the
+   aim sent last (0 0 for none) and the crosshair's options. Presentation only: nothing here is
+   hashed or saved. */
+static struct cogmaster__aim_rect aim_rect;
+static uint32_t phaser_cursor[2][2], phaser_aim[2][2];
+static int crosshair;
+static uint16_t crosshair_colour;
+
 #include "options.h"
+
+static void lr_cursors(void)
+{
+    for (unsigned port = 0u; port < 2u; port++) {
+        phaser_cursor[port][0] = phaser_cursor[port][1] = COGMASTER_AIM_CURSOR_UNSET;
+        phaser_aim[port][0] = phaser_aim[port][1] = 0u;
+    }
+}
 
 static void lr_presentation(void)
 {
+    /* The native RGB444 layout 0000BBBBGGGGRRRR, which LR_CONVERT reads. */
+    static const uint16_t colours[4] = {
+        0x0FFF, /* white */
+        0x000F, /* red */
+        0x00F0, /* green */
+        0x00FF, /* yellow */
+    };
+    crosshair = !lr_option("cogmaster_crosshair", "off");
+    crosshair_colour = lr_option("cogmaster_crosshair_colour", "red")      ? colours[1]
+                       : lr_option("cogmaster_crosshair_colour", "green")  ? colours[2]
+                       : lr_option("cogmaster_crosshair_colour", "yellow") ? colours[3]
+                                                                           : colours[0];
     full_field = lr_option("cogmaster_gg_view", "full");
     square_pixels = lr_option("cogmaster_gg_aspect", "square");
     eye_view = lr_option("cogmaster_3d_view", "right")       ? LR_VIEW_RIGHT
@@ -109,8 +139,10 @@ static struct retro_game_geometry lr_geometry(uint32_t w, uint32_t h)
 }
 
 static const struct retro_controller_description lr_devices[] = {
-    {"Control Pad", RETRO_DEVICE_JOYPAD}, {"None", RETRO_DEVICE_NONE}};
-static struct retro_controller_info lr_ports[] = {{lr_devices, 2u}, {lr_devices, 2u}, {NULL, 0u}};
+    {"Control Pad", RETRO_DEVICE_JOYPAD},
+    {"None", RETRO_DEVICE_NONE},
+    {"Light Phaser", RETRO_DEVICE_LIGHTGUN}};
+static struct retro_controller_info lr_ports[] = {{lr_devices, 3u}, {lr_devices, 3u}, {NULL, 0u}};
 static struct retro_input_descriptor lr_inputs[] = {
     {0u, RETRO_DEVICE_JOYPAD, 0u, RETRO_DEVICE_ID_JOYPAD_UP, "Up"},
     {0u, RETRO_DEVICE_JOYPAD, 0u, RETRO_DEVICE_ID_JOYPAD_DOWN, "Down"},
@@ -126,6 +158,10 @@ static struct retro_input_descriptor lr_inputs[] = {
     {1u, RETRO_DEVICE_JOYPAD, 0u, RETRO_DEVICE_ID_JOYPAD_RIGHT, "Right"},
     {1u, RETRO_DEVICE_JOYPAD, 0u, RETRO_DEVICE_ID_JOYPAD_B, "Button 1"},
     {1u, RETRO_DEVICE_JOYPAD, 0u, RETRO_DEVICE_ID_JOYPAD_A, "Button 2"},
+    {0u, RETRO_DEVICE_LIGHTGUN, 0u, RETRO_DEVICE_ID_LIGHTGUN_TRIGGER, "Trigger"},
+    {1u, RETRO_DEVICE_LIGHTGUN, 0u, RETRO_DEVICE_ID_LIGHTGUN_TRIGGER, "Trigger"},
+    {0u, RETRO_DEVICE_LIGHTGUN, 0u, RETRO_DEVICE_ID_LIGHTGUN_START, "Pause / Start"},
+    {0u, RETRO_DEVICE_LIGHTGUN, 0u, RETRO_DEVICE_ID_LIGHTGUN_SELECT, "Console Reset"},
     {0u, 0u, 0u, 0u, NULL}};
 
 /* The allocator the adapter hands the core: the C library's malloc and free. */
@@ -152,6 +188,8 @@ static void lr_unload(void)
     free(eye_mem);
     eye_mem = eye_mix = eye_pic[0] = eye_pic[1] = NULL;
     stereo = last_eye = 0u;
+    lr_cursors();
+    memset(&aim_rect, 0, sizeof aim_rect);
     port_device[0] = port_device[1] = COGMASTER_DEVICE_PAD;
     status_logged = 0;
     loaded = 0;
@@ -272,7 +310,9 @@ void retro_get_system_av_info(struct retro_system_av_info *av)
 void retro_set_controller_port_device(unsigned port, unsigned device)
 {
     if (port < 2u) {
-        controllers[port] = device == RETRO_DEVICE_JOYPAD ? device : RETRO_DEVICE_NONE;
+        controllers[port] = device == RETRO_DEVICE_JOYPAD || device == RETRO_DEVICE_LIGHTGUN
+                                ? device
+                                : RETRO_DEVICE_NONE;
     }
 }
 
@@ -285,12 +325,26 @@ static uint32_t lr_button(unsigned port, unsigned id)
                : 0u;
 }
 
+/* Pause and Reset: the Pause and Select buttons of a control pad, or Start and Select of a
+   frontend's light gun on port 0, which then has no pad to give them. */
+static uint32_t lr_console(unsigned pad_id, unsigned gun_id)
+{
+    if (controllers[0] != RETRO_DEVICE_LIGHTGUN) {
+        return lr_button(0u, pad_id);
+    }
+    return input_poll_cb != NULL && input_state_cb != NULL &&
+                   input_state_cb(0u, RETRO_DEVICE_LIGHTGUN, 0u, gun_id) != 0
+               ? 1u
+               : 0u;
+}
+
 /* How far a stick moves a Sports Pad or Paddle: k counts per frame at full deflection. These
    numbers are judged locally, as is the dead zone. RetroArch's
    delivery of a mouse to a port that is not set to a mouse is unmeasured, so the stick and the
    D-pad are the sure way to move the device. */
 #define LR_STICK_SPORTS 6
 #define LR_STICK_PADDLE 4
+#define LR_STICK_PHASER 4
 #define LR_STICK_DEAD 6554 /* 20 percent of the full 32768 */
 #define LR_DPAD_COUNTS 2
 #define LR_AXIS_MAX 32767
@@ -319,6 +373,34 @@ static int32_t lr_axis(unsigned port, unsigned axis, int32_t k, uint32_t pad)
     return sum > LR_AXIS_MAX ? LR_AXIS_MAX : (sum < -LR_AXIS_MAX ? -LR_AXIS_MAX : sum);
 }
 
+/* The aim and trigger of the Light Phaser on a port, sent as the 1-based field aim (0 0 for none).
+   A frontend light gun gives the pointer, mapped through the picture's rectangle; a control pad
+   gives a cursor that moves like a Sports Pad and is always on the picture. Returns the trigger
+   as p bit 4. */
+static uint32_t lr_phaser(unsigned port, uint32_t pad)
+{
+    uint32_t *at = phaser_aim[port];
+    if (controllers[port] == RETRO_DEVICE_LIGHTGUN) {
+        int32_t sx =
+            input_state_cb(port, RETRO_DEVICE_LIGHTGUN, 0u, RETRO_DEVICE_ID_LIGHTGUN_SCREEN_X);
+        int32_t sy =
+            input_state_cb(port, RETRO_DEVICE_LIGHTGUN, 0u, RETRO_DEVICE_ID_LIGHTGUN_SCREEN_Y);
+        int off = input_state_cb(port, RETRO_DEVICE_LIGHTGUN, 0u,
+                                 RETRO_DEVICE_ID_LIGHTGUN_IS_OFFSCREEN) != 0;
+        cogmaster__aim_from_screen(&aim_rect, sx, sy, off, &at[0], &at[1]);
+        return input_state_cb(port, RETRO_DEVICE_LIGHTGUN, 0u, RETRO_DEVICE_ID_LIGHTGUN_TRIGGER) !=
+                       0
+                   ? 1u << 4
+                   : 0u;
+    }
+    cogmaster__aim_step(&aim_rect, &phaser_cursor[port][0], &phaser_cursor[port][1],
+                        lr_axis(port, 0u, LR_STICK_PHASER, pad),
+                        lr_axis(port, 1u, LR_STICK_PHASER, pad));
+    at[0] = phaser_cursor[port][0];
+    at[1] = phaser_cursor[port][1];
+    return ((pad >> 4 | pad >> 5 | lr_mouse_button(port, RETRO_DEVICE_ID_MOUSE_LEFT)) & 1u) << 4;
+}
+
 static void lr_input(void)
 {
     static const unsigned buttons[6] = {RETRO_DEVICE_ID_JOYPAD_UP,   RETRO_DEVICE_ID_JOYPAD_DOWN,
@@ -329,6 +411,7 @@ static void lr_input(void)
     int32_t axis[2][2] = {{0, 0}, {0, 0}};
     int connected = input_poll_cb != NULL && input_state_cb != NULL;
     in.size = sizeof in;
+    memset(phaser_aim, 0, sizeof phaser_aim);
     for (unsigned port = 0u; port < 2u; port++) {
         uint32_t device = connected && controllers[port] != RETRO_DEVICE_NONE
                               ? port_device[port]
@@ -344,7 +427,13 @@ static void lr_input(void)
         for (unsigned bit = 0u; bit < 6u; bit++) {
             pad[port] |= lr_button(port, buttons[bit]) << bit;
         }
-        if (device == COGMASTER_DEVICE_SPORTS_PAD || device == COGMASTER_DEVICE_PADDLE) {
+        if (device == COGMASTER_DEVICE_LIGHT_PHASER) {
+            pad[port] = lr_phaser(port, pad[port]);
+            axis[port][0] = (int32_t)phaser_aim[port][0];
+            axis[port][1] = (int32_t)phaser_aim[port][1];
+        } else if (controllers[port] == RETRO_DEVICE_JOYPAD &&
+                   (device == COGMASTER_DEVICE_SPORTS_PAD || device == COGMASTER_DEVICE_PADDLE)) {
+            /* A frontend light gun on a port whose option is not the phaser is ignored. */
             int32_t k = device == COGMASTER_DEVICE_SPORTS_PAD ? LR_STICK_SPORTS : LR_STICK_PADDLE;
             axis[port][0] = lr_axis(port, 0u, k, pad[port]);
             axis[port][1] = lr_axis(port, 1u, k, pad[port]);
@@ -361,10 +450,10 @@ static void lr_input(void)
     in.x2 = axis[1][0];
     in.y2 = axis[1][1];
     if (info.machine == COGMASTER_MACHINE_GG) {
-        in.start = lr_button(0u, RETRO_DEVICE_ID_JOYPAD_START);
+        in.start = lr_console(RETRO_DEVICE_ID_JOYPAD_START, RETRO_DEVICE_ID_LIGHTGUN_START);
     } else {
-        in.pause = lr_button(0u, RETRO_DEVICE_ID_JOYPAD_START);
-        in.reset = lr_button(0u, RETRO_DEVICE_ID_JOYPAD_SELECT);
+        in.pause = lr_console(RETRO_DEVICE_ID_JOYPAD_START, RETRO_DEVICE_ID_LIGHTGUN_START);
+        in.reset = lr_console(RETRO_DEVICE_ID_JOYPAD_SELECT, RETRO_DEVICE_ID_LIGHTGUN_SELECT);
     }
     if (cogmaster_set_input(inst, &in) != COGMASTER_STATUS_OK && !status_logged) {
         status_logged = 1;
@@ -377,10 +466,10 @@ static void lr_input(void)
    an option, so a choice this machine cannot take is a pad, with one line in the log. */
 static uint32_t lr_choose(unsigned port, const char *key, uint32_t table)
 {
-    static const char *const names[4] = {"pad", "none", "paddle", "sports"};
+    static const char *const names[5] = {"pad", "none", "paddle", "sports", "lphaser"};
     cogmaster_input probe = {0};
     uint32_t choice = table;
-    for (uint32_t device = 0u; device < 4u; device++) {
+    for (uint32_t device = 0u; device < 5u; device++) {
         if (lr_option(key, names[device])) {
             choice = device;
         }
@@ -403,6 +492,7 @@ static uint32_t lr_choose(unsigned port, const char *key, uint32_t table)
 void retro_reset(void)
 {
     stereo = last_eye = 0u;
+    lr_cursors();
     if (loaded) {
         (void)cogmaster_reset(inst, info.machine == COGMASTER_MACHINE_GG ? COGMASTER_RESET_POWER
                                                                          : COGMASTER_RESET_SOFT);
@@ -529,12 +619,28 @@ void retro_run(void)
             (void)env_cb(RETRO_ENVIRONMENT_SET_GEOMETRY, &geometry);
         }
     }
+    aim_rect.x = io.x;
+    aim_rect.y = io.y;
+    aim_rect.w = io.w;
+    aim_rect.h = io.h;
     shown = lr_view(result.glasses, (size_t)info.max_w * info.max_h);
     for (y = 0; y < io.h; y++) {
         const uint16_t *src = shown + (size_t)y * info.max_w;
         lr_pixel *dst = pixels + (size_t)y * io.w;
         for (x = 0; x < io.w; x++) {
             dst[x] = LR_CONVERT(src[x]);
+        }
+    }
+    /* The crosshair of each Light Phaser that has an aim, drawn into the output buffer only and
+       after the conversion above has rewritten every dot of it, so a moved aim leaves no residue.
+       The native frame and the eye pictures are never touched, so the library's frame and every
+       hash are the same with it on or off. It marks the aim, not the dot the sensor sees lit. */
+    for (unsigned port = 0u; crosshair && port < 2u; port++) {
+        struct cogmaster__aim_pt pts[COGMASTER_AIM_CROSS_MAX];
+        uint32_t n = cogmaster__aim_cross(&aim_rect, phaser_aim[port][0], phaser_aim[port][1], pts);
+        for (uint32_t i = 0u; i < n; i++) {
+            pixels[(size_t)(pts[i].y - aim_rect.y) * aim_rect.w + (pts[i].x - aim_rect.x)] =
+                LR_CONVERT(crosshair_colour);
         }
     }
     if (video_cb != NULL) {
@@ -661,6 +767,8 @@ bool retro_load_game(const struct retro_game_info *game)
     }
     port_device[0] = lr_choose(0u, "cogmaster_port1", info.default_port1);
     port_device[1] = lr_choose(1u, "cogmaster_port2", info.default_port2);
+    aim_rect.w = info.crop_w;
+    aim_rect.h = info.crop_h;
     loaded = 1;
     lr_presentation();
     geometry = lr_geometry(
