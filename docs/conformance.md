@@ -403,6 +403,16 @@ press, hold, release and repeated press; the shared visible counter, CRAM colour
 the independently checked picture. Setup frames 1–3 and mailbox-sealing frame 12 are lagged; every other
 frame executes a decoded controller read. The runner reports their sum with `--input`.
 
+## The V counter table fixture
+
+`vdp_vtable` (192, 224 and 240 lines, built only) reads `$7E` once per
+228-cycle line over a frame; the TV verdict gives 313 or 262 lines. Records:
+count, sum, sum of squares (both modulo 65,536), cyclic descents, maximum,
+minimum, and a drift check that fails if the loop is not one line long. The
+rows come from the documented jump intervals and `fixtures.vdp_vtable.closed_form`
+recomputes them. The first model runs the 192 rows. NTSC 240 rolls and is not
+judged. Controls: `judge.*` and `control.wrong_profile` (PAL image, NTSC run).
+
 ## Frontend play evidence
 
 The owned `boot_to_play.gg` is assembled from a thin GG-header wrapper

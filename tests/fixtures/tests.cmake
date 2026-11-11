@@ -5,6 +5,99 @@
 #
 # Run as a script (cmake -DCASE=<case> ... -P tests.cmake), this file is one
 # fixture check; include()d by tests/tests.cmake, it builds and registers them.
+if(CMAKE_SCRIPT_MODE_FILE AND CASE STREQUAL "vtable_closed_form")
+  # The V counter values one per line over a frame, from the jump intervals of the V counter table
+  # (decimal forms of the hex intervals): PAL 192 $00-$F2 and $BA-$FF; PAL 224 $00-$FF, $00-$02 and
+  # $CA-$FF; PAL 240 $00-$FF, $00-$0A and $D2-$FF; NTSC 192 $00-$DA and $D5-$FF; NTSC 224 $00-$EA
+  # and $E5-$FF. Every constant is recomputed here and compared with the csv row.
+  set(vt_192_pal "0-242;186-255")
+  set(vt_224_pal "0-255;0-2;202-255")
+  set(vt_240_pal "0-255;0-10;210-255")
+  set(vt_192_ntsc "0-218;213-255")
+  set(vt_224_ntsc "0-234;229-255")
+  file(STRINGS "${CSV}" vt_rows)
+  set(vt_checked 0)
+  foreach(spec IN ITEMS 192:pal 224:pal 240:pal 192:ntsc 224:ntsc)
+    string(REPLACE ":" ";" spec "${spec}")
+    list(GET spec 0 height)
+    list(GET spec 1 tv)
+    set(samples "")
+    foreach(interval IN LISTS vt_${height}_${tv})
+      string(REPLACE "-" ";" ends "${interval}")
+      list(GET ends 0 low)
+      list(GET ends 1 high)
+      foreach(value RANGE ${low} ${high})
+        list(APPEND samples ${value})
+      endforeach()
+    endforeach()
+    list(LENGTH samples count)
+    set(sum 0)
+    set(squares 0)
+    set(descents 0)
+    set(max 0)
+    set(min 255)
+    math(EXPR last "${count} - 1")
+    foreach(index RANGE 0 ${last})
+      math(EXPR next "(${index} + 1) % ${count}")
+      list(GET samples ${index} value)
+      list(GET samples ${next} after)
+      math(EXPR sum "(${sum} + ${value}) % 65536")
+      math(EXPR squares "(${squares} + ${value} * ${value}) % 65536")
+      if(value GREATER after)
+        math(EXPR descents "${descents} + 1")
+      endif()
+      if(value GREATER max)
+        set(max ${value})
+      endif()
+      if(value LESS min)
+        set(min ${value})
+      endif()
+    endforeach()
+    set(want_01 ${count})
+    set(want_02 ${sum})
+    set(want_03 ${squares})
+    set(want_04 ${descents})
+    set(want_05 ${max})
+    set(want_06 ${min})
+    set(want_07 1)
+    # The first model has no 224 or 240 height and runs 192 lines, so its rows hold the 192 values.
+    set(pairs vdp_vtable_${height}:${tv})
+    if(height STREQUAL "192")
+      list(APPEND pairs vdp_vtable_224:${tv}-sms1)
+    endif()
+    foreach(pair IN LISTS pairs)
+      string(REPLACE ":" ";" pair "${pair}")
+      list(GET pair 0 rom)
+      list(GET pair 1 profile)
+      foreach(id IN ITEMS 01 02 03 04 05 06 07)
+        set(found "")
+        foreach(row IN LISTS vt_rows)
+          string(REPLACE "," ";" f "${row}")
+          list(GET f 0 row_rom)
+          list(GET f 1 row_test)
+          list(GET f 2 row_profile)
+          list(GET f 3 row_hex)
+          if(row_rom STREQUAL rom AND row_test MATCHES "^${id}:" AND
+              (row_profile STREQUAL profile OR row_profile STREQUAL "*"))
+            set(found ${row_hex})
+            break()
+          endif()
+        endforeach()
+        if(found STREQUAL "")
+          message(FATAL_ERROR "vtable closed form: ${rom} ${profile} ${id} has no csv row")
+        endif()
+        math(EXPR csv_value "0x${found}")
+        if(NOT csv_value EQUAL want_${id})
+          math(EXPR computed "${want_${id}}" OUTPUT_FORMAT HEXADECIMAL)
+          message(FATAL_ERROR "vtable closed form: ${rom} ${profile} ${id} csv 0x${found} computed ${computed}")
+        endif()
+        math(EXPR vt_checked "${vt_checked} + 1")
+      endforeach()
+    endforeach()
+  endforeach()
+  message(STATUS "vtable closed form: ${vt_checked} csv rows equal the recomputed values")
+  return()
+endif()
 if(CMAKE_SCRIPT_MODE_FILE)
   # The image's SHA-256 equals its line in tests/built/expected.txt.
   file(STRINGS "${EXPECTED}" want REGEX "^${NAME} ")
@@ -804,6 +897,40 @@ foreach(tv IN ITEMS ntsc pal)
   endforeach()
 endforeach()
 
+# Fault prevented: V counter records that are measured but never judged, an expectation table with a
+# transcription error that passes because the same error is in the fixture, and a PAL image that
+# passes on an NTSC run. The first model has no 224 or 240 height, so its two runs use the 224 image
+# and the rows of 192 lines.
+# Timeout: 20 s floor; 0.2 s slowest local run, no hosted run yet, so provisional.
+foreach(tv IN ITEMS ntsc pal)
+  set(region ntsc-u)
+  set(heights 192 224)
+  if(tv STREQUAL "pal")
+    set(region pal)
+    set(heights 192 224 240)
+  endif()
+  foreach(height IN LISTS heights)
+    cogmaster_add_test(NAME fixtures.vdp_vtable.mailbox.${tv}.${height}
+      COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=vdp_vtable_${height}
+        -DREGION=${region} -DPROFILE=${tv}
+        -DIMAGE=${COGMASTER_FIXTURES_DIR}/vdp_vtable_${height}.sms -DFRAMES=30
+        -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+        -DOUT=${fixtures_out}/vdp_vtable.${tv}.${height}.txt -P ${CMAKE_CURRENT_LIST_FILE}
+      LABELS fixtures portable TIMEOUT 20)
+  endforeach()
+  cogmaster_add_test(NAME fixtures.vdp_vtable.sms1.${tv}
+    COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=vdp_vtable_224 -DMACHINE=sms1
+      -DREGION=${region} -DPROFILE=${tv}-sms1
+      -DIMAGE=${COGMASTER_FIXTURES_DIR}/vdp_vtable_224.sms -DFRAMES=30
+      -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+      -DOUT=${fixtures_out}/vdp_vtable.sms1.${tv}.txt -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures portable TIMEOUT 20)
+endforeach()
+cogmaster_add_test(NAME fixtures.vdp_vtable.closed_form
+  COMMAND ${CMAKE_COMMAND} -DCASE=vtable_closed_form -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 20)
+
 # The ports fixture once per profile: the I/O chip and the VDP answer by
 # machine, region and TV standard. The Game Gear runs ports_gg, the same
 # source under a Game Gear header, judged against the ports rows.
@@ -1530,14 +1657,19 @@ string(REGEX REPLACE "(\nmapper_sega,03:[^,]*,[^,]*,)5AF3," "\\15AF4," fixtures_
 string(REGEX REPLACE "\nmapper_sega,02:[^\n]*" "" fixtures_missing "${fixtures_csv}")
 string(REGEX REPLACE "(\nvdp_lines_192,01:[^,]*,[^,]*,)0006," "\\10005," fixtures_wrong "${fixtures_wrong}")
 string(REGEX REPLACE "\nvdp_lines_192,02:[^\n]*" "" fixtures_missing "${fixtures_missing}")
+string(REGEX REPLACE "(\nvdp_vtable_192,02:[^,]*,ntsc,)848D," "\\1848E," fixtures_wrong "${fixtures_wrong}")
+string(REGEX REPLACE "\nvdp_vtable_192,02:[^\n]*" "" fixtures_missing "${fixtures_missing}")
 file(WRITE ${fixtures_out}/wrong_value.csv "${fixtures_wrong}")
 file(WRITE ${fixtures_out}/missing_row.csv "${fixtures_missing}")
 string(REPLACE ";" "\;" fixtures_inner_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
-foreach(rom IN ITEMS mapper_sega vdp_lines_192)
+foreach(rom IN ITEMS mapper_sega vdp_lines_192 vdp_vtable_192)
   set(prefix fixtures.judge)
   set(profile sms-export)
   if(rom STREQUAL "vdp_lines_192")
     set(prefix fixtures.vdp_lines.judge)
+    set(profile ntsc)
+  elseif(rom STREQUAL "vdp_vtable_192")
+    set(prefix fixtures.vdp_vtable.judge)
     set(profile ntsc)
   endif()
   foreach(control IN ITEMS wrong_value missing_row hang)
@@ -1565,6 +1697,21 @@ foreach(rom IN ITEMS mapper_sega vdp_lines_192)
       LABELS fixtures portable TIMEOUT 10)
   endforeach()
 endforeach()
+
+# Fault prevented: a PAL image that passes on an NTSC run. The 192-line image runs at --region ntsc-u
+# and is judged against the PAL rows: the line count reads 262 against 313 and the sum 33,933 against
+# 44,838, so the judge must fail.
+set(cmd ${CMAKE_COMMAND} -DCASE=mailbox -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+  -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${fixtures_inner_emulator}"
+  -DJUDGE=${PROJECT_SOURCE_DIR}/tests/cmake/mailbox.cmake -DPROFILE=pal -DREGION=ntsc-u
+  -DNAME=vdp_vtable_192 -DIMAGE=${COGMASTER_FIXTURES_DIR}/vdp_vtable_192.sms -DFRAMES=30
+  -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+  -DOUT=${fixtures_out}/vdp_vtable_192.wrong_profile.txt -P ${CMAKE_CURRENT_LIST_FILE})
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+cogmaster_add_test(NAME fixtures.vdp_vtable.control.wrong_profile
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=outside its row"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+  LABELS fixtures portable TIMEOUT 10)
 
 # Fault prevented: an assembler pin that accepts a tarball other than the
 # pinned one. A local tarball checked against the wla-dx row's digest must
