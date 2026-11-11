@@ -636,7 +636,7 @@ static void opll_io(struct cogmaster__sio *io, cogmaster *m, struct state_time t
 #define STATE_AXIS_MAX 32767
 #define STATE_ACC_MAX 1023
 static void ports_io(struct cogmaster__sio *io, cogmaster *m, struct state_time time,
-                     const uint32_t device[2][2])
+                     uint32_t device[2][2])
 {
     cogmaster_input *pi = &m->pending_input;
     cogmaster_input *ai = &m->input;
