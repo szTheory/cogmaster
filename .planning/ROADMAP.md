@@ -103,7 +103,7 @@ Plans:
 **Requirements**: SAVE-01, SAVE-02, SAVE-03, SAVE-04, SAVE-05, SAVE-06
 **Success Criteria** (what must be TRUE):
   1. EEPROM tests show the write-disabled power-up and the EWEN, EWDS, WRITE, ERASE, WRAL and ERAL commands behaving as the datasheet says, the 128-byte image riding the battery span, and the generation counter moving only on a completed change; a mid-command state round-trips byte for byte, and the bit-banger runs in the fuzz target (SAVE-01, SAVE-02).
-  2. The `.srm` sizes and EEPROM word order of released libretro cores are measured once, recorded as a command and exit status in the phase summary, and an import test accepts exactly the measured layouts and refuses others (SAVE-03).
+  2. The `.srm` sizes and EEPROM word order of released libretro cores are measured once, recorded as a command and exit status in the phase summary; import refuses lengths over the span, EEPROM import accepts only 0 or 128 bytes, and the layouts of other cores are claimed only where measured (SAVE-03).
   3. The libretro core reports saves enabled, and a guard test shows the exported span equals the battery span (SAVE-04).
   4. `cogmaster-run --save-interval N` writes the save after every N completed frames; a kill test between flushes leaves the last complete save readable, stale temporary files are swept on the next run, and the directory is synced after the rename on POSIX (SAVE-05).
   5. A hosted RetroArch run writes a battery save and an EEPROM save, restarts and reads both back, and the budget test keeps `tests/retroarch` at or under 300 lines (SAVE-06).

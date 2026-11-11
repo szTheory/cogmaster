@@ -35,7 +35,7 @@ Requirements for this milestone. Each maps to one roadmap phase. Scope decisions
 
 - [x] **SAVE-01**: A Game Gear 93C46 game keeps its progress: the 128-byte image rides the battery span, the write-disabled power-up and EWEN, EWDS, WRITE, ERASE, WRAL and ERAL commands behave as the datasheet says, and the generation counter moves only on a completed change
 - [x] **SAVE-02**: A mid-command EEPROM state round-trips through the save state, and the EEPROM bit-banger is a fuzz target
-- [ ] **SAVE-03**: The `.srm` sizes and EEPROM word order used by released libretro cores are measured once with the command and exit status recorded, and import accepts only the measured layouts
+- [ ] **SAVE-03**: The `.srm` sizes and EEPROM word order used by released libretro cores are measured once with the command and exit status recorded; import refuses lengths over the span, EEPROM import accepts only 0 or 128 bytes, and the layouts of other cores are claimed only where measured
 - [x] **SAVE-04**: The libretro core reports saves enabled, with a guard test that the exported span equals the battery span
 - [x] **SAVE-05**: The runner flushes saves every N completed frames with `--save-interval`, sweeps stale temporary files, and syncs the directory after the rename on POSIX
 - [ ] **SAVE-06**: A hosted RetroArch run writes a battery save and an EEPROM save, restarts, and reads them back, inside the 300-line budget
