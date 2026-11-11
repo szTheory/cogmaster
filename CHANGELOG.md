@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/szTheory/cogmaster/compare/v0.6.0...v0.7.0) (2026-11-11)
+
+
+### Features
+
+* keep Game Gear EEPROM and battery saves across restarts ([#23](https://github.com/szTheory/cogmaster/issues/23)) ([d29fd54](https://github.com/szTheory/cogmaster/commit/d29fd5485149cf33d568e407e8acd725fe6d185b))
+
 ## [0.6.0](https://github.com/szTheory/cogmaster/compare/v0.5.0...v0.6.0) (2026-11-10)
 
 
