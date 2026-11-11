@@ -120,7 +120,8 @@ are no controller subclasses. A port holding a Sports Pad or a Paddle sums its s
 axis to 32767 before the call:
 
 - the mouse delta, which RetroArch gives already relative;
-- the left stick, `(axis * K) / 32768` outside a 20 percent dead zone, K 6 for a Sports Pad and 4 for a Paddle;
+- the left stick, `(axis * K) / 32768` outside a 20 percent dead zone, K 6 for a Sports Pad and 4 for a Paddle (the
+  integer division makes the first Paddle count start at 25 percent);
 - the D-pad, 2 counts a frame.
 
 Buttons 1 and 2 come from RetroPad B and A or the mouse's left and right button. The stick and the D-pad are the
