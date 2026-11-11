@@ -39,7 +39,7 @@
    the fixed frame origin in bus.c stays where it is. */
 #define VDP_INT_TICK 607u
 #define VDP_LINE_INT_TICK 608u
-#define VDP_LATCH_TICK 600u
+#define VDP_LATCH_TICK COGMASTER__VDP_WRAP_TICK
 
 /* Status flags: bit 7 frame interrupt pending, 6 sprite overflow, 5 sprite
    collision. Bits 4-0 are undriven and read as 1s (SMS-VDP section 2.6,
@@ -200,6 +200,10 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t)
             m->render_line = 0u;
             m->render_x = 0u;
             m->vdp.sprite_line = m->vdp.height;
+            /* After the height update, so the sensor arms for the height this picture has. */
+            if (cogmaster__gun_attached(m)) {
+                cogmaster__gun_wrap(m);
+            }
         }
         uint32_t next = line + 1u == cogmaster__frame_lines(m) ? 0u : line + 1u;
         if (next < m->vdp.height) {
@@ -371,6 +375,9 @@ uint8_t cogmaster__vdp_read(cogmaster *m, uint32_t port)
     case COGMASTER__VDP_VCOUNT:
         return vdp_vcount(m);
     case COGMASTER__VDP_HCOUNT:
+        if (cogmaster__gun_attached(m)) {
+            cogmaster__gun_sync(m);
+        }
         return m->vdp.hheld ? m->vdp.hcounter : vdp_hcount(m);
     case COGMASTER__VDP_DATA:
         return vdp_data_read(m);

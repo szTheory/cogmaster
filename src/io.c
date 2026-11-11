@@ -234,7 +234,24 @@ static uint8_t port_dc(const cogmaster *m)
 /* Effective TH pins, shared by readback and the rising-edge H latch.
    Unconnected pad inputs pull high; Japanese output TH reads low; native
    GG has no TH pins (SMS-SYSTEM section 4, PeripheralPorts). A device that drives TH low
-   on an input pin passes its bit in low_mask (b6 port 1, b7 port 2); no device does yet. */
+   on an input pin passes its bit in low_mask (b6 port 1, b7 port 2): the Light Phaser's sensor
+   does, through sensor_low, and an output TH ignores it. */
+/* The TH bits a Light Phaser holds low: b0 of a port's g_sense is the sensor seeing light now, b1 a
+   light pulse seen since the last $DD read or the end of the picture. The edge of the H latch
+   follows the level alone (bits 1), the $DD readback follows level or pulse (bits 3). A port
+   without a gun has a zero block, so the mask is 0 and TH is the pad's. */
+static uint8_t sensor_low(const cogmaster *m, uint8_t bits)
+{
+    uint8_t low = 0u;
+    if (m->input.port1 == COGMASTER_DEVICE_LIGHT_PHASER && (m->ports[0].g_sense & bits) != 0u) {
+        low |= 0x40u;
+    }
+    if (m->input.port2 == COGMASTER_DEVICE_LIGHT_PHASER && (m->ports[1].g_sense & bits) != 0u) {
+        low |= 0x80u;
+    }
+    return low;
+}
+
 static uint8_t th_pins(const cogmaster *m, uint8_t ctrl, uint8_t low_mask)
 {
     uint8_t pins = 0xC0u;
@@ -283,7 +300,8 @@ static void th_edge(cogmaster *m, uint8_t old_pins, uint8_t new_pins, uint32_t t
    TH is told of each change of its port's wire, so its edges alternate. */
 void cogmaster__io_th_changed(cogmaster *m, uint8_t old_ctrl, uint8_t new_ctrl, uint64_t tick)
 {
-    th_edge(m, th_pins(m, old_ctrl, 0u), th_pins(m, new_ctrl, 0u), m->bus.t);
+    uint8_t lit = sensor_low(m, 1u);
+    th_edge(m, th_pins(m, old_ctrl, lit), th_pins(m, new_ctrl, lit), m->bus.t);
     for (uint32_t port = 0u; port < 2u; port++) {
         uint32_t wire = th_wire(new_ctrl, port);
         if (th_wire(old_ctrl, port) != wire) {
@@ -292,9 +310,32 @@ void cogmaster__io_th_changed(cogmaster *m, uint8_t old_ctrl, uint8_t new_ctrl, 
     }
 }
 
+/* The sensor of a port changed state at an in-line tick (SMS-CARTRIDGES-AND-PERIPHERALS section 3,
+   Light Phaser). TH falls when it sees light and rises when it stops, and the H counter is
+   latched by the rise like any other: the pins before and after go through the same function
+   and the same edge rule as a $3F write. A fall on an input TH also sets the pulse bit. The
+   console's own wire did not change, so no device is told (ports_th is not called). */
+void cogmaster__io_sensor_edge(cogmaster *m, uint32_t port, uint32_t lit, uint32_t tick)
+{
+    struct cogmaster__port *p = &m->ports[port];
+    uint8_t before = th_pins(m, m->io.io_ctrl, sensor_low(m, 1u));
+    p->g_sense = (uint8_t)(lit != 0u ? (p->g_sense | 1u) : (p->g_sense & ~1u));
+    uint8_t after = th_pins(m, m->io.io_ctrl, sensor_low(m, 1u));
+    if (((uint8_t)(before & ~after) & (0x40u << port)) != 0u) {
+        p->g_sense |= 2u;
+    }
+    th_edge(m, before, after, tick);
+    m->gun_stats.edges++;
+}
+
+/* A write to $3F first brings the sensor up to its tick, so the edges before it saw the old
+   direction bits, and an edge and the write at one tick go sensor first. */
 static void io_control(cogmaster *m, uint8_t ctrl)
 {
     uint8_t old = m->io.io_ctrl;
+    if (cogmaster__gun_attached(m)) {
+        cogmaster__gun_sync(m);
+    }
     m->io.io_ctrl = ctrl;
     cogmaster__io_th_changed(m, old, ctrl, m->ticks);
 }
@@ -314,7 +355,7 @@ static uint8_t port_dd(const cogmaster *m)
                          : 0u;
     uint8_t b = cogmaster__ports_pins(m, 1u, m->ticks);
     uint8_t v = tr_pin(m, (uint8_t)(~(reset << 4) & ((b >> 2) | 0xF0u)), 8u, 4u, 0x40u);
-    return (uint8_t)((v & 0x3Fu) | th_pins(m, m->io.io_ctrl, 0u));
+    return (uint8_t)((v & 0x3Fu) | th_pins(m, m->io.io_ctrl, sensor_low(m, 3u)));
 }
 
 /* The YM2413 unit's ports: $F0 latches a register, $F1 writes it, $F2 is the audio control
@@ -377,7 +418,24 @@ static uint8_t chip_in(cogmaster *m, uint32_t p)
     if (p < FM_PORT_ADDRESS || p > FM_PORT_CTRL) {
         m->input_read = 1u;
     }
-    return (p & 1u) != 0u ? port_dd(m) : port_dc(m);
+    if ((p & 1u) == 0u) {
+        return port_dc(m);
+    }
+    if (!cogmaster__gun_attached(m)) {
+        return port_dd(m);
+    }
+    /* A $DD read brings the sensor up to the beam and then takes the pulse bit of each port whose
+       TH is an input: the console's own latch of the TH line, like hheld, so it lives here and
+       port_dd stays a pure function of the instance. */
+    cogmaster__gun_sync(m);
+    uint8_t v = port_dd(m);
+    if ((m->io.io_ctrl & 2u) != 0u) {
+        m->ports[0].g_sense &= (uint8_t)~2u;
+    }
+    if ((m->io.io_ctrl & 8u) != 0u) {
+        m->ports[1].g_sense &= (uint8_t)~2u;
+    }
+    return v;
 }
 
 uint8_t cogmaster__io_in(cogmaster *m, uint16_t port)

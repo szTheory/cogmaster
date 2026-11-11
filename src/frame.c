@@ -60,6 +60,9 @@ cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out)
     if (m->cart.rom != NULL) {
         /* Beam events and stamped writes advance the production renderer. */
         overshoot = cogmaster__bus_run_frame(m);
+        if (cogmaster__gun_attached(m)) {
+            cogmaster__gun_sync(m);
+        }
         cogmaster__synth_frame_end(m);
     } else {
         for (uint32_t y = 0; y < COGMASTER__FIELD_H; y++) {

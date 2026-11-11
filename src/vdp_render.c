@@ -62,6 +62,14 @@ static int vdp_supported(const cogmaster *m)
     return mode >= 8u && mode != 9u && mode != 13u;
 }
 
+/* The one condition under which render_until records a fault. The Light Phaser's sensor asks it
+   before rendering ahead so that it never records the first fault, which is saved state, at a
+   position the program would not have. */
+int cogmaster__vdp_render_blocked(const cogmaster *m)
+{
+    return m->vdp.display != 0u && !vdp_supported(m);
+}
+
 /* Palette index plus priority; zero retains its colour without priority. */
 uint32_t cogmaster__vdp_background(const cogmaster *m, uint32_t x, uint32_t y)
 {
