@@ -200,6 +200,35 @@ static void must_fail(const struct arb_want *want, const struct arb_got *got, co
     }
 }
 
+/* With a BIOS attached and work RAM off (b4 set), a read at $C000 or $FFFF is undriven and is a
+   fault whatever b7, b6, b5 and b3 say: the silent empty-slot answer belongs to the slot area only.
+   The value is the retained byte (SMS1, $00 here) or the pull-up (SMS2, $FF). */
+static void test_ram_off(void)
+{
+    static const uint16_t high[2] = {0xC000u, 0xFFFFu};
+    for (uint32_t mach = 0; mach < MACHINES; mach++) {
+        cogmaster *m = make(machine_id[mach], 1);
+        for (uint32_t i = 0; i < COMBOS; i++) {
+            m->io.mem_ctrl = (uint8_t)(0x10u | ((i >> 3) << 7) | (((i >> 2) & 1u) << 6) |
+                                       (((i >> 1) & 1u) << 5) | ((i & 1u) << 3));
+            cogmaster__bus_decode(m);
+            for (uint32_t p = 0; p < 2u; p++) {
+                m->fault_present = 0u;
+                m->counters.open_bus_reads = 0u;
+                m->bus.data = 0u;
+                uint32_t peeked = cogmaster_peek(m, COGMASTER_SPACE_BUS, high[p]);
+                m->bus.data = 0u;
+                uint8_t read = cogmaster__bus_read(m, high[p]);
+                CHECK_EQ_U64(read, mach == 1u ? 0xFFu : 0x00u);
+                CHECK_EQ_U64(peeked, read);
+                CHECK_EQ_U64(m->fault_present, 1u);
+                CHECK_EQ_U64(m->counters.open_bus_reads, 1u);
+            }
+        }
+        cogmaster_destroy(m);
+    }
+}
+
 static void test_arbitration(void)
 {
     struct arb_got got;
@@ -247,6 +276,7 @@ static void test_arbitration(void)
         check_failures++;
     }
     must_fail(&with_bios, &got, "BIOS table against no BIOS");
+    test_ram_off();
 }
 
 /* Whether the flag matches what $3E and the BIOS size say, restated in words: the flag is set when

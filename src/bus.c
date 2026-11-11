@@ -132,9 +132,11 @@ void cogmaster__bus_decode(cogmaster *m)
 }
 
 /* Whether a read at addr is answered, and by what. This is the one decoder of the slow path and of
-   peek; it reads $3E and the BIOS size directly and never the derived flag, so a register set from
-   outside bus_decode still decodes truthfully. Work RAM answers $C000 and up unless b4 turns it
-   off. Below that the cartridge answers unless b6 turns it off, and the BIOS answers $0000-$1FFF
+   peek; it reads $3E and the BIOS size directly and never the derived flag, so peek and this cold
+   path decode truthfully even if the flag is stale. The dispatch in mem_read does test the flag, so
+   every writer of $3E or the BIOS size (reset, power-on, the port write, a state load) must call
+   bus_decode after it. Work RAM answers $C000 and up unless b4 turns it off. Below that the
+   cartridge answers unless b6 turns it off, and the BIOS answers $0000-$1FFF
    when one is attached and b3 enables it. When both answer, the SMS lets the cartridge win with no
    corrupted data and the SMS 2 ANDs the two outputs (smstech section 4 hardware tests, quoted in
    SMS-SYSTEM section 3); the BIOS answers nowhere else, so a BIOS-only read at $2000-$BFFF is

@@ -393,8 +393,9 @@ struct cogmaster {
     /* The 93C46 on the Sega EEPROM board; zero and unused on every other board. */
     struct cogmaster__eeprom eeprom;
     struct cogmaster__io io;
-    /* Derived from io.mem_ctrl and bios.size by cogmaster__bus_decode; only mem_read reads it. It
-       is 1 when a read may be undriven or answered by the BIOS, so the hot path tests one byte. */
+    /* Derived from io.mem_ctrl and bios.size by cogmaster__bus_decode, which every writer of those
+       two must call; only mem_read reads it. It is 1 when a read may be undriven or answered by the
+       BIOS, so the hot path tests one byte. */
     uint8_t mem_slow;
     struct cogmaster__port ports[2]; /* the two controller ports' device blocks */
     uint32_t render_line;
