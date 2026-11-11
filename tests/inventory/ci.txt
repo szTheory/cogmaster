@@ -285,6 +285,9 @@ policy.quality.missing_key	policy
 policy.quality.new_reason	policy
 policy.quality.reused_reason	policy
 policy.quality.tightened	policy
+ports.latch	portable,ports
+ports.latch_control	portable,ports
+ports.pins	portable,ports
 psg.frame_flush	portable,psg
 psg.gg.port06_sms_mode	portable,psg
 psg.gg.routing	portable,psg
