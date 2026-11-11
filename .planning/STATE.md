@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 8
 current_phase_name: Sports Pad, Paddle and 3-D glasses
 status: planning
-stopped_at: Completed 08-06-PLAN.md
-last_updated: "2026-11-11T05:39:39.509Z"
+stopped_at: Completed 08-07-PLAN.md
+last_updated: "2026-11-11T05:44:13.409Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 7 complete, transitioned to Phase 8
-state_head: bd438ed5dd4ce3d5cb9529ff3ba543b8e4d92bb4
+state_head: d2af3fcf73f9475e7c5c0837bc0ec336d92ad18f
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 52
-  completed_plans: 41
+  completed_plans: 42
   percent: 38
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 8 — Sports Pad, Paddle and 3-D glasses
-Plan: 6 of 17 complete (08-01 port layer, 08-02 header delta, 08-03 set_input copy rule, 08-04 glasses core and hosted dispatch 1, 08-05 Sports Pad, Paddle and saved device state, 08-06 state bounds proof and pad fuzz target); next 08-07
+Plan: 7 of 17 complete (08-01 port layer, 08-02 header delta, 08-03 set_input copy rule, 08-04 glasses core and hosted dispatch 1, 08-05 Sports Pad, Paddle and saved device state, 08-06 state bounds proof and pad fuzz target, 08-07 default controller per dump and the region rule); next 08-08
 Status: Executing
-Last activity: 2026-11-11 — Completed 08-06 (five ports.state cases against an independent checker, fifth fuzz target fuzz_pad.c with a state leg, two negative controls plus a state-leg control)
+Last activity: 2026-11-11 — Completed 08-07 (default_port1/2 from the table in cart_info and resolved in info, paddle region rule, four cart.device cases over every row with two negative controls)
 
 Progress: [████░░░░░░] 38% of v2.0
 
@@ -167,6 +167,7 @@ Progress: [████░░░░░░] 38% of v2.0
 | Phase 08 P04 | 55 min | 3 tasks | 9 files |
 | Phase 08 P05 | 85 min | 3 tasks | 10 files |
 | Phase 08 P06 | 45min | 2 tasks | 9 files |
+| Phase 8 P07 | 25min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -223,6 +224,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 08]: 08-05: SPORTS_IDLE_TICKS and PADDLE_HALF_TICKS live only in src/internal.h; the state cross-checks read the value each sio call returns and no new field name begins input_; pending motion survives a soft reset and a load zeroes it
 - [Phase 08]: The state test requires the loader and an independent checker to agree in both directions on every patched state, so an unreachable rule is caught as well as a loose bound
 - [Phase 08]: The pad fuzz target names the saved fields to change in ten bytes after the profile byte and moves ticks only inside the frame window with a bus sync, so its state leg always has input and every instance it saves is one a run could have saved
+- [Phase 8]: Plan 08-07: the table's controller intent is held in two instance bytes outside the saved fields and resolved against the availability rule in get_info; a paddle row with no region reads as Japan in cart_fact_to_info, 1 of 1658 rows moved
 
 ### Pending Todos
 
@@ -316,6 +318,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 8 plan 08-04 (gsd-execute-phase 08); glasses eye recorded and reported by the window cut rule, state bytes and cross-checks, six ports.glasses cases with two local negative controls, hosted dispatch 1 runs 42963275959 (branch) and 42963279510 (main) green, delta_bp 0; 3 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 8 plan 08-05 (gsd-execute-phase 08); Sports Pad and Paddle models on the TH wire, set_input availability and motion sums, pending axes and port blocks saved with bounds and cross-checks (record count 170887 of 240000), eleven ports.devices cases with three local negative controls, no push; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 8 plan 08-06 (gsd-execute-phase 08); byte-mutation, just-outside, sweep, mid-sequence and availability state cases against an independent checker (2952 loads), fuzz_pad.c as the fifth fuzz target with seeds, regress and libFuzzer registrations, three local negative controls, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 8 plan 08-07 (gsd-execute-phase 08); table controller intent in cart_info and the profile-resolved default in info, paddle region rule (1 of 1658 rows moved), four cart.device cases with two local negative controls, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -337,8 +340,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T05:39:39.404Z
-Stopped at: Completed 08-06-PLAN.md
+Last session: 2026-11-11T05:44:13.290Z
+Stopped at: Completed 08-07-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
