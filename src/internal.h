@@ -361,6 +361,9 @@ struct cogmaster {
     uint32_t render_x; /* next unrendered dot of render_line */
     cogmaster_input pending_input, input;
     uint8_t input_read;
+    /* The controllers the matched table row names, per port, as COGMASTER_DEVICE_* values. They
+       are derived at load and are not saved; zero (a pad) when no row matched. */
+    uint8_t table_device[2];
     struct cogmaster__synth synth;
     struct cogmaster__psg psg;
     /* The YM2413, reset at every load and reset and run only with fm_unit; fm_next is the tick

@@ -271,9 +271,26 @@ static cogmaster_status guess_board(const uint8_t *b, size_t body, cogmaster_car
     return COGMASTER_STATUS_OK;
 }
 
+/* The table's controller codes: 2 is a paddle and 3 a sports pad, which are the device numbers
+   of the same names. Codes 1 (light phaser) and 4 (graphic board) read as a plain pad until a
+   later release models them. */
+#define CART_CTRL_PADDLE 2u
+#define CART_CTRL_SPORTS_PAD 3u
+
+static uint32_t ctrl_device(uint8_t code)
+{
+    if (code == CART_CTRL_PADDLE)
+        return COGMASTER_DEVICE_PADDLE;
+    if (code == CART_CTRL_SPORTS_PAD)
+        return COGMASTER_DEVICE_SPORTS_PAD;
+    return COGMASTER_DEVICE_PAD;
+}
+
 /* Copies one database row into the probe result. A row of board 0 is unsupported by
    design and names its slot and reason. Titles live in tests/compat/catalog.tsv, not
-   in the table. A persistence value above BATTERY is not public yet and reads as unknown. */
+   in the table. A persistence value above BATTERY is not public yet and reads as unknown.
+   A Japanese paddle cartridge is only ever used on a Japanese console (SMS Power, Paddle Control),
+   so a paddle row with no region of its own reads as Japan; a row that names a region keeps it. */
 cogmaster_status cogmaster__cart_fact_to_info(const struct cogmaster__cart_fact *fact,
                                               cogmaster_cart_info *out)
 {
@@ -283,8 +300,13 @@ cogmaster_status cogmaster__cart_fact_to_info(const struct cogmaster__cart_fact 
     out->board = fact->board;
     out->board_source = COGMASTER_BOARD_SOURCE_DB;
     out->machine_guess = fact->machine;
+    uint32_t paddle = fact->ctrl1 == CART_CTRL_PADDLE || fact->ctrl2 == CART_CTRL_PADDLE;
     if (fact->region != 0u)
         out->region_guess = fact->region;
+    else if (paddle)
+        out->region_guess = COGMASTER_REGION_JAPAN;
+    out->default_port1 = ctrl_device(fact->ctrl1);
+    out->default_port2 = ctrl_device(fact->ctrl2);
     out->video_mode = fact->video;
     out->persistence = fact->persistence > COGMASTER_PERSISTENCE_BATTERY
                            ? (uint32_t)COGMASTER_PERSISTENCE_UNKNOWN
