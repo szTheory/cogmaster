@@ -17,13 +17,41 @@
 #define FIRST_SIZE_INPUT 32u
 _Static_assert(FIRST_SIZE_INPUT == offsetof(cogmaster_input, x1), "first input size");
 
-/* The axis words are validated and, until the devices that read them exist,
-   dropped. */
+/* The axis words are motion since the last call, in the host's units; the sum of a port's calls
+   between two frames is kept, within the same range. */
 #define AXIS_MAX 32767
 
 static int axis_ok(int32_t v)
 {
     return v >= -AXIS_MAX && v <= AXIS_MAX;
+}
+
+/* pending + d, both inside the range, so the sum fits an int32_t and needs no saturating call. */
+static int32_t axis_add(int32_t pending, int32_t d)
+{
+    int32_t sum = pending + d;
+    return sum < -AXIS_MAX ? -AXIS_MAX : (sum > AXIS_MAX ? AXIS_MAX : sum);
+}
+
+/* Adds one port's motion to the pending record. A different device than the pending one restarts
+   the port's axes; an axis the device does not take is dropped. */
+static void add_motion(cogmaster_input *pend, const cogmaster_input *in, uint32_t port)
+{
+    uint32_t device = port == 0u ? in->port1 : in->port2;
+    uint32_t before = port == 0u ? pend->port1 : pend->port2;
+    int32_t *px = port == 0u ? &pend->x1 : &pend->x2;
+    int32_t *py = port == 0u ? &pend->y1 : &pend->y2;
+    int32_t x = port == 0u ? in->x1 : in->x2;
+    int32_t y = port == 0u ? in->y1 : in->y2;
+    if (device != before) {
+        *px = *py = 0;
+    }
+    if (device == COGMASTER_DEVICE_SPORTS_PAD) {
+        *px = axis_add(*px, x);
+        *py = axis_add(*py, y);
+    } else if (device == COGMASTER_DEVICE_PADDLE) {
+        *px = axis_add(*px, x);
+    }
 }
 
 cogmaster_status cogmaster_set_input(cogmaster *m, const cogmaster_input *in)
@@ -51,13 +79,24 @@ cogmaster_status cogmaster_set_input(cogmaster *m, const cogmaster_input *in)
         dst[i] = src[i];
     }
     if (local.p1 > 63u || local.p2 > 63u || local.pause > 1u || local.reset > 1u ||
-        local.start > 1u || local.port1 > COGMASTER_DEVICE_NONE ||
-        local.port2 > COGMASTER_DEVICE_NONE || !axis_ok(local.x1) || !axis_ok(local.y1) ||
+        local.start > 1u || local.port1 > COGMASTER__DEVICE_LAST ||
+        local.port2 > COGMASTER__DEVICE_LAST || !axis_ok(local.x1) || !axis_ok(local.y1) ||
         !axis_ok(local.x2) || !axis_ok(local.y2)) {
         return COGMASTER_STATUS_ERR_ARGUMENT;
     }
+    /* A device this profile cannot take is refused whole: nothing below has run. */
+    if (!cogmaster__device_ok(m, local.port1) || !cogmaster__device_ok(m, local.port2)) {
+        return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
+    }
+    /* Devices and buttons are the latest call's; motion adds up until a frame takes it. */
+    cogmaster_input next = m->pending_input;
+    add_motion(&next, &local, 0u);
+    add_motion(&next, &local, 1u);
     local.size = 0u;
-    local.x1 = local.y1 = local.x2 = local.y2 = 0;
+    local.x1 = next.x1;
+    local.y1 = next.y1;
+    local.x2 = next.x2;
+    local.y2 = next.y2;
     m->pending_input = local;
     return COGMASTER_STATUS_OK;
 }
@@ -122,6 +161,9 @@ void cogmaster__io_reset(cogmaster *m)
     }
     io->glasses = COGMASTER_GLASSES_NONE;
     io->glasses_frame = COGMASTER_GLASSES_NONE;
+    /* The device blocks start clean, the stored edge included: the tick count restarts at 0, so
+       an edge from before would be in its future. The pending motion is not touched. */
+    memset(m->ports, 0, sizeof m->ports);
 }
 
 /* A write at $FFF8-$FFFF that reached work RAM's mirror. At $FFFC and up a cartridge on the bus
@@ -194,16 +236,31 @@ static uint8_t th_pins(const cogmaster *m, uint8_t ctrl)
     return pins;
 }
 
+/* The level on a port's TH wire: pulled high when the pin is an input, else the level the
+   console drives. Unlike th_pins it has no region echo, so a device sees the same wire on every
+   region (port 0: direction $3F b1, level b5; port 1: direction b3, level b7). */
+static uint32_t th_wire(uint8_t ctrl, uint32_t port)
+{
+    uint8_t dir = port == 0u ? 2u : 8u;
+    uint8_t level = port == 0u ? 0x20u : 0x80u;
+    return (ctrl & dir) != 0u || (ctrl & level) != 0u ? 1u : 0u;
+}
+
 /* Every $3F write comes here with the level before and after it, and the
-   tick it lands on (the tick is for the devices that watch TH). Low-to-high
-   on either effective TH captures, including release to the input pull-up
-   (SMS-SYSTEM section 4). */
+   tick it lands on. Low-to-high on either effective TH captures, including
+   release to the input pull-up (SMS-SYSTEM section 4). A device that watches
+   TH is told of each change of its port's wire, so its edges alternate. */
 void cogmaster__io_th_changed(cogmaster *m, uint8_t old_ctrl, uint8_t new_ctrl, uint64_t tick)
 {
-    (void)tick;
     uint8_t old = th_pins(m, old_ctrl);
     if (((uint8_t)~old & th_pins(m, new_ctrl) & 0xC0u) != 0u) {
         cogmaster__vdp_latch_h(m);
+    }
+    for (uint32_t port = 0u; port < 2u; port++) {
+        uint32_t wire = th_wire(new_ctrl, port);
+        if (th_wire(old_ctrl, port) != wire) {
+            cogmaster__ports_th(m, port, wire, tick);
+        }
     }
 }
 

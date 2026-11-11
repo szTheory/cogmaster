@@ -217,6 +217,38 @@ struct cogmaster__io {
    this window's picture, a later one to the next. */
 #define COGMASTER__GLASSES_CUT_TICKS(frame_lines) (((frame_lines) - 96u) * 684u - 607u)
 
+/* The highest device a port can hold; one constant for set_input and the saved-state bound. */
+#define COGMASTER__DEVICE_LAST COGMASTER_DEVICE_SPORTS_PAD
+
+/* A Sports Pad abandons a read sequence when TH has been high for 512 Z80 cycles, which is 1,536
+   ticks (MAME sms_ctrl/sports.cpp, BSD-3, timeout of the console clock over 3 over 512; the
+   unmodelled alternative is the 60 microsecond TH-low resync of ares ms/controller/sports-pad). */
+#define SPORTS_IDLE_TICKS 1536u
+
+/* The Paddle's own clock, read as the frequency of the TR line it drives: SMS Power and ares give
+   18 kHz (ares ms/controller/paddle), so a half period is a little over 298 ticks, and MAME
+   sms_ctrl/paddle.cpp uses the console clock over 3 over 100, which is 300. The value 299 is within
+   half a percent of both and is not a multiple of 3, so no polling loop of whole Z80 cycles shorter
+   than 299 cycles locks exactly to it. */
+#define PADDLE_HALF_TICKS 299u
+
+/* One port's device block, zero for no device and for a device just attached. A Sports Pad uses
+   edge (tick of the last TH wire rise), acc (the motion not yet delivered, per axis), val (the
+   negated byte latched for the sequence, per axis) and step (0 idle, 1 to 4 the nibble on offer);
+   a Paddle uses pos, its position XOR $80 so that zero is the centre. */
+struct cogmaster__port {
+    uint64_t edge;
+    int16_t acc[2];
+    int8_t val[2];
+    uint8_t step;
+    uint8_t pos;
+};
+_Static_assert(sizeof(struct cogmaster__port) == 16u, "port block size");
+_Static_assert(sizeof(uint64_t) + 2u * sizeof(int16_t) + 2u * sizeof(int8_t) +
+                       2u * sizeof(uint8_t) ==
+                   sizeof(struct cogmaster__port),
+               "port block has no padding");
+
 /* The Master System's work RAM, mirrored over $C000-$FFFF. */
 #define COGMASTER__RAM_SIZE 8192u
 
@@ -324,6 +356,7 @@ struct cogmaster {
     /* The 93C46 on the Sega EEPROM board; zero and unused on every other board. */
     struct cogmaster__eeprom eeprom;
     struct cogmaster__io io;
+    struct cogmaster__port ports[2]; /* the two controller ports' device blocks */
     uint32_t render_line;
     uint32_t render_x; /* next unrendered dot of render_line */
     cogmaster_input pending_input, input;
@@ -689,6 +722,15 @@ void cogmaster__io_th_changed(cogmaster *m, uint8_t old_ctrl, uint8_t new_ctrl, 
 /* The six pins a port's device drives (b0-b3 D0-D3, b4 TL, b5 TR), 0 = low.
    Port is 0 or 1. Pure. */
 uint8_t cogmaster__ports_pins(const cogmaster *m, uint32_t port, uint64_t tick);
+/* TH of a port changed to the wire level (0 or 1) at tick: a Sports Pad steps its read sequence;
+   every other device ignores it. Called only on a change, so a port's edges alternate. */
+void cogmaster__ports_th(cogmaster *m, uint32_t port, uint32_t wire, uint64_t tick);
+/* Start of a frame, before the pending input becomes the input: a port whose device changed starts
+   clean, the pending motion joins the devices' own accumulators, and the axes of both input
+   records return to 0. */
+void cogmaster__ports_frame(cogmaster *m);
+/* Whether the instance's profile can take the device on a port. */
+int cogmaster__device_ok(const cogmaster *m, uint32_t device);
 
 /* The fast-boot hand-off: the CPU and RAM as the BIOS leaves them. power
    also clears work RAM first. */

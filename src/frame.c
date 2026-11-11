@@ -53,6 +53,7 @@ cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out)
         m->input.port1 != COGMASTER_DEVICE_NONE) {
         m->vdp.pause = 1u;
     }
+    cogmaster__ports_frame(m);
     m->input = m->pending_input;
     m->input_read = 0u;
     m->io.glasses_frame = m->io.glasses;
