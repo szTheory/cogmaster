@@ -403,9 +403,11 @@ string(REPLACE ";" "$<SEMICOLON>" compat_device_rejected "${compat_device_reject
 cogmaster_add_test(NAME compat.device_rejected
   COMMAND ${CMAKE_COMMAND} "-DCMD=${compat_device_rejected}" -DCODE=1 "-DREGEX=device tokens refused: 10[^0-9]"
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake LABELS ${compat_labels} TIMEOUT 30)
+# Timeout: 90 s; the adopt cases made Windows ARM64 run past 30 s in run 43115877197 (killed at 30.02 s and 30.01 s, so
+# its real time is unknown), so provisional until a hosted run with the wider limit shows it.
 cogmaster_add_test(NAME compat.public_update
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat-update
-    -P ${CMAKE_CURRENT_LIST_DIR}/update.cmake LABELS ${compat_labels} TIMEOUT 30)
+    -P ${CMAKE_CURRENT_LIST_DIR}/update.cmake LABELS ${compat_labels} TIMEOUT 90)
 cogmaster_add_test(NAME policy.compat_doc_fresh
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=fresh -DOUT=${PROJECT_BINARY_DIR}/tests/compat-doc
     -P ${CMAKE_CURRENT_LIST_FILE} LABELS ${compat_labels} policy TIMEOUT 30)
