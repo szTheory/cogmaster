@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/szTheory/cogmaster/compare/v0.7.0...v0.8.0) (2026-11-11)
+
+
+### Features
+
+* play Sports Pad, Paddle and 3-D glasses titles ([#25](https://github.com/szTheory/cogmaster/issues/25)) ([a08cf69](https://github.com/szTheory/cogmaster/commit/a08cf69a8b26bd49708dfdde3fe30bb7423d188e))
+
 ## [0.7.0](https://github.com/szTheory/cogmaster/compare/v0.6.0...v0.7.0) (2026-11-11)
 
 
