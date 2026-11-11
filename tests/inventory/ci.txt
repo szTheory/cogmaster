@@ -350,6 +350,7 @@ runner.save.imports	portable,runner
 runner.save.interval	portable,runner
 runner.save.interval_fault	portable,runner
 runner.save.native_error	portable,runner
+runner.save.next_index	portable,runner
 runner.save.process.close	portable,runner
 runner.save.process.create	portable,runner
 runner.save.process.flush	portable,runner
@@ -362,6 +363,7 @@ runner.save.process.sync	portable,runner
 runner.save.process.term	portable,runner
 runner.save.process.write	portable,runner
 runner.save.replacement	portable,runner
+runner.save.sweep	portable,runner
 runner.stop	portable,runner
 runner.trace.fault	portable,runner
 runner.trace.none	portable,runner

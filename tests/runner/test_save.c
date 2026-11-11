@@ -68,6 +68,18 @@ static void check_file(const char *path, const uint8_t *expected, size_t n)
     CHECK(memcmp(bytes, expected, n) == 0);
     CHECK_EQ_U64(fclose(f), 0);
 }
+static void remove_file(const char *path)
+{
+#ifdef _WIN32
+    wchar_t *wide = cogmaster__path_wide(path);
+    CHECK(wide != NULL);
+    if (wide != NULL)
+        (void)DeleteFileW(wide);
+    free(wide);
+#else
+    (void)remove(path);
+#endif
+}
 static cogmaster_battery battery(cogmaster *m)
 {
     cogmaster_battery b = {0};
@@ -147,15 +159,7 @@ static void failures(cogmaster *m, const char *dir, const char *path)
                                          "sync", "close",  "replace"};
     for (int stage = COGMASTER_SAVE_CREATE; stage <= COGMASTER_SAVE_REPLACE; stage++) {
         for (int existing = 0; existing <= 1; existing++) {
-#ifdef _WIN32
-            wchar_t *wide = cogmaster__path_wide(path);
-            CHECK(wide != NULL);
-            if (wide != NULL)
-                (void)DeleteFileW(wide);
-            free(wide);
-#else
-            (void)remove(path);
-#endif
+            remove_file(path);
             memset(raw, 0x19, sizeof raw);
             if (existing)
                 write_file(path, 3u);
@@ -188,6 +192,26 @@ static void failures(cogmaster *m, const char *dir, const char *path)
             cogmaster__save_dispose(&s);
         }
     }
+}
+/* A temporary that appears after load is never overwritten: the flush takes the next index. */
+static void next_index(cogmaster *m, const char *dir, const char *path)
+{
+    char temporary[1024];
+    CHECK(strlen(path) + 8u < sizeof temporary);
+    (void)snprintf(temporary, sizeof temporary, "%s.tmp-0", path);
+    cogmaster__save s = {0};
+    CHECK_EQ_U64(cogmaster__save_load(&s, m, dir, "round.trip.sms"), 0);
+    memset(raw, 0x6b, sizeof raw);
+    write_file(temporary, 5u);
+    cogmaster__bus_write(m, 0xfffcu, 8u);
+    cogmaster__bus_write(m, 0x8000u, 0x42u);
+    CHECK_EQ_U64(cogmaster__save_flush(&s, m), 0);
+    cogmaster_battery b = battery(m);
+    CHECK_EQ_U64(s.acknowledged, b.generation);
+    check_file(path, b.data, b.length);
+    check_file(temporary, raw, 5u);
+    remove_file(temporary);
+    cogmaster__save_dispose(&s);
 }
 static void clean_signal(cogmaster *m, const char *dir, const char *path, int sig)
 {
@@ -247,6 +271,8 @@ int main(int argc, char **argv)
         excluded(m, argv[3]);
     else if (strcmp(argv[1], "failures") == 0)
         failures(m, argv[3], argv[4]);
+    else if (strcmp(argv[1], "next_index") == 0)
+        next_index(m, argv[3], argv[4]);
     else if (strcmp(argv[1], "clean_sigint") == 0)
         clean_signal(m, argv[3], argv[4], SIGINT);
     else if (strcmp(argv[1], "clean_sigterm") == 0)

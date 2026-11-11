@@ -118,18 +118,50 @@ if(CMAKE_SCRIPT_MODE_FILE)
     file(MAKE_DIRECTORY "${OUT}")
     file(REMOVE "${OUT}/round.trip.srm")
     file(WRITE "${OUT}/unrelated.tmp" "unrelated")
-    file(WRITE "${OUT}/round.trip.srm.tmp-0" "existing")
+    file(WRITE "${OUT}/other.srm.tmp-0" "other")
+    file(WRITE "${OUT}/round.trip.srm.tmp-0" "stale")
     execute_process(COMMAND ${EMULATOR} ${UNIT} ${SAVE_CASE} "${BATTERY}" "${OUT}"
       "${OUT}/round.trip.srm" RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE out)
     if(NOT rc STREQUAL "0")
       message(FATAL_ERROR "save ${SAVE_CASE}: exit ${rc}\n${out}")
     endif()
+    # A load removes this save's stale temporary, but only where the cartridge has a save at all.
     file(GLOB temps "${OUT}/*.tmp-*")
-    list(REMOVE_ITEM temps "${OUT}/round.trip.srm.tmp-0")
+    list(REMOVE_ITEM temps "${OUT}/other.srm.tmp-0")
+    if(SAVE_CASE STREQUAL "excluded")
+      list(REMOVE_ITEM temps "${OUT}/round.trip.srm.tmp-0")
+    endif()
     file(READ "${OUT}/unrelated.tmp" unrelated)
-    file(READ "${OUT}/round.trip.srm.tmp-0" collision)
-    if(temps OR NOT unrelated STREQUAL "unrelated" OR NOT collision STREQUAL "existing")
-      message(FATAL_ERROR "save temporary cleanup affected unrelated data or leaked its temporary")
+    file(READ "${OUT}/other.srm.tmp-0" other)
+    if(temps OR NOT unrelated STREQUAL "unrelated" OR NOT other STREQUAL "other")
+      message(FATAL_ERROR "save temporary cleanup affected unrelated data or leaked its temporary: ${temps}")
+    endif()
+  elseif(CASE STREQUAL "save_sweep")
+    # Temporaries 0 to 1023 of this save go at load; index 1024, a name that is no number, and
+    # another save's temporary stay.
+    file(MAKE_DIRECTORY "${OUT}")
+    file(REMOVE "${OUT}/battery.srm")
+    foreach(name IN ITEMS battery.srm.tmp-0 battery.srm.tmp-1023 battery.srm.tmp-1024
+        battery.srm.tmp-unrelated other.srm.tmp-0)
+      file(WRITE "${OUT}/${name}" "${name}")
+    endforeach()
+    expect_exit(0 "^$" --frames 1 --save-dir "${OUT}" "${BATTERY}")
+    foreach(name IN ITEMS battery.srm.tmp-0 battery.srm.tmp-1023)
+      if(EXISTS "${OUT}/${name}")
+        message(FATAL_ERROR "the load left the stale ${name}")
+      endif()
+    endforeach()
+    foreach(name IN ITEMS battery.srm.tmp-1024 battery.srm.tmp-unrelated other.srm.tmp-0)
+      if(NOT EXISTS "${OUT}/${name}")
+        message(FATAL_ERROR "the sweep removed ${name}")
+      endif()
+      file(READ "${OUT}/${name}" data)
+      if(NOT data STREQUAL name)
+        message(FATAL_ERROR "the sweep or the flush changed ${name}")
+      endif()
+    endforeach()
+    if(NOT EXISTS "${OUT}/battery.srm")
+      message(FATAL_ERROR "the run after the sweep wrote no save")
     endif()
   elseif(CASE STREQUAL "save_process")
     file(MAKE_DIRECTORY "${OUT}")
@@ -929,7 +961,7 @@ if(COGMASTER_FIXTURES)
   target_compile_definitions(cogmaster-test-save PRIVATE _POSIX_C_SOURCE=200809L COGMASTER_SAVE_TEST)
   set_target_properties(cogmaster-test-save PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
   cogmaster_warnings(cogmaster-test-save)
-  foreach(case imports replacement excluded failures clean_sigint clean_sigterm native_error)
+  foreach(case imports replacement excluded failures next_index clean_sigint clean_sigterm native_error)
     # Fault prevented: raw import, clean flush or classified refusals corrupting host data.
     cogmaster_add_test(NAME runner.save.${case}
       COMMAND ${runner_check} -DCASE=save_unit -DSAVE_CASE=${case}
@@ -938,6 +970,13 @@ if(COGMASTER_FIXTURES)
         -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
       LABELS runner portable TIMEOUT 10)
   endforeach()
+  # Fault prevented: a stale temporary of this save left behind forever, or another file deleted by the
+  # sweep.
+  cogmaster_add_test(NAME runner.save.sweep
+    COMMAND ${runner_check} -DCASE=save_sweep
+      -DOUT=${PROJECT_BINARY_DIR}/tests/save-sweep
+      -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS runner portable TIMEOUT 10)
   # Fault prevented: --save-dir silently dropping a guest battery write.
   cogmaster_add_test(NAME runner.save.import
     COMMAND ${runner_check} -DCASE=save_import
