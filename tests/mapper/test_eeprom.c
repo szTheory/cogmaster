@@ -737,6 +737,197 @@ static void board_span(void)
     rig_close(&r);
 }
 
+/* A state saved at any point of a command resumes it exactly. */
+static uint8_t *save_of(const struct rig *r, size_t *n)
+{
+    *n = cogmaster__state_size(r->m);
+    uint8_t *buf = (uint8_t *)malloc(*n);
+    if (*n == 0u || buf == NULL)
+        exit(1);
+    CHECK_EQ_U64(cogmaster__state_save(r->m, buf, *n), COGMASTER_STATUS_OK);
+    return buf;
+}
+
+/* The same image in every rig, with a known word pattern in the chip. */
+static void rig_pattern(struct rig *r, uint32_t kib)
+{
+    uint8_t save[128];
+    rig_open(r, kib);
+    for (unsigned i = 0; i < sizeof save; i++)
+        save[i] = (uint8_t)(i * 7u + 3u);
+    CHECK_EQ_U64(cogmaster_import_battery(r->m, save, sizeof save), COGMASTER_STATUS_OK);
+    wr(r, 0xFFFCu, OPEN);
+}
+
+/* Clock number i of a WRITE of word 5 (25 clocks: start, opcode 01, six
+   address bits, sixteen data bits of 0xA55A) or of a READ of word 5 (nine
+   command clocks, then clocks that only shift data out). */
+static unsigned seq_bit(int is_read, unsigned i)
+{
+    const uint32_t cmd = (1u << 8) | ((is_read ? 2u : 1u) << 6) | 5u;
+    if (i < 9u)
+        return (cmd >> (8u - i)) & 1u;
+    return is_read ? 0u : (0xA55Au >> (24u - i)) & 1u;
+}
+
+/* Clocks from..to-1; the Data Out level after each goes to out[]. */
+static void drive(const struct rig *r, int is_read, unsigned from, unsigned to, uint8_t *out)
+{
+    for (unsigned i = from; i < to; i++) {
+        bpulse(r, seq_bit(is_read, i));
+        out[i] = (uint8_t)(rd(r, WIN) & 1u);
+    }
+}
+
+static void state_mid_command(void)
+{
+    for (int is_read = 0; is_read < 2; is_read++) {
+        unsigned total = is_read ? 26u : 25u;
+        struct rig ref;
+        uint8_t ref_out[32], a_out[32], b_out[32];
+        memset(ref_out, 0, sizeof ref_out);
+        rig_pattern(&ref, 64u);
+        bews(&ref, 0x30u);
+        bput(&ref, OPEN | 4u);
+        drive(&ref, is_read, 0u, total, ref_out);
+        bput(&ref, OPEN);
+        for (unsigned k = 0; k <= total; k++) {
+            struct rig a, b;
+            size_t n, nb;
+            rig_pattern(&a, 64u);
+            rig_pattern(&b, 64u);
+            bews(&a, 0x30u);
+            bput(&a, OPEN | 4u);
+            memset(a_out, 0, sizeof a_out);
+            memset(b_out, 0, sizeof b_out);
+            drive(&a, is_read, 0u, k, a_out);
+            uint8_t *buf = save_of(&a, &n);
+            CHECK_EQ_U64(cogmaster__state_load(b.m, buf, n), COGMASTER_STATUS_OK);
+            drive(&a, is_read, k, total, a_out);
+            drive(&b, is_read, k, total, b_out);
+            bput(&a, OPEN);
+            bput(&b, OPEN);
+            uint8_t *fa = save_of(&a, &n);
+            uint8_t *fb = save_of(&b, &nb);
+            CHECK_EQ_U64(n, nb);
+            CHECK(memcmp(fa, fb, n) == 0);
+            CHECK(memcmp(&a.m->eeprom, &b.m->eeprom, sizeof a.m->eeprom) == 0);
+            CHECK(memcmp(a_out + k, b_out + k, total - k) == 0);
+            CHECK(memcmp(b_out + k, ref_out + k, total - k) == 0);
+            CHECK_EQ_U64(a.m->cart.generation, b.m->cart.generation);
+            CHECK_EQ_U64(b.m->cart.generation, ref.m->cart.generation);
+            CHECK(memcmp(b.m->cart.ram, ref.m->cart.ram, 128u) == 0);
+            free(fa);
+            free(fb);
+            free(buf);
+            rig_close(&a);
+            rig_close(&b);
+        }
+        CHECK_EQ_U64(ref.m->cart.generation, is_read ? 0u : 1u);
+        CHECK_EQ_HEX(ref.m->cart.ram[10], is_read ? (uint8_t)(10u * 7u + 3u) : 0x5A);
+        rig_close(&ref);
+    }
+}
+
+/* A state saved with the window open loads into a fresh instance that reads the
+   window and the banks as the first did. */
+static void state_window_open(void)
+{
+    struct rig a, b;
+    size_t n;
+    rig_open(&a, 64u);
+    rig_open(&b, 64u);
+    wr(&a, 0xFFFCu, 0x88u);
+    wr(&a, 0xFFFDu, 1u);
+    wr(&a, 0xFFFEu, 3u);
+    wr(&a, 0xFFFFu, 2u);
+    bput(&a, 0xA8u);
+    uint8_t *buf = save_of(&a, &n);
+    CHECK_EQ_U64(cogmaster__state_load(b.m, buf, n), COGMASTER_STATUS_OK);
+    CHECK_EQ_HEX(b.m->mapper.ctrl, 0x88);
+    CHECK_EQ_HEX(rd(&b, WIN), 0xABu);
+    CHECK_EQ_HEX(rd(&b, 0x0400u), a.img[PAGE + 0x400u]);
+    CHECK_EQ_HEX(rd(&b, 0x4001u), a.img[3u * PAGE + 1u]);
+    CHECK_EQ_HEX(rd(&b, 0x8001u), a.img[2u * PAGE + 1u]);
+    free(buf);
+    rig_close(&a);
+    rig_close(&b);
+}
+
+/* The saved bytes of the named field, replaced by v (width 1), sealed again. */
+static int field_offset(const struct rig *r, const char *name, uint32_t *off)
+{
+    size_t fields = cogmaster__state_record(r->m, NULL, 0u);
+    struct cogmaster__state_field *rec =
+        (struct cogmaster__state_field *)malloc(fields * sizeof *rec);
+    if (rec == NULL)
+        exit(1);
+    CHECK_EQ_U64(cogmaster__state_record(r->m, rec, fields), fields);
+    int found = 0;
+    for (size_t i = 0; i < fields && !found; i++) {
+        if (strcmp(rec[i].name, name) == 0) {
+            *off = rec[i].offset;
+            found = 1;
+        }
+    }
+    free(rec);
+    return found;
+}
+
+/* One hostile byte: the state is refused and the instance is unchanged. */
+static void refuse(struct rig *r, const char *name, uint8_t v)
+{
+    size_t n, n2;
+    uint32_t off = 0;
+    uint8_t *good = save_of(r, &n);
+    uint8_t *bad = (uint8_t *)malloc(n);
+    if (bad == NULL || !field_offset(r, name, &off))
+        exit(1);
+    memcpy(bad, good, n);
+    bad[off] = v;
+    cogmaster__state_seal(bad, n);
+    CHECK_EQ_U64(cogmaster__state_load(r->m, bad, n), COGMASTER_STATUS_ERR_ARGUMENT);
+    uint8_t *after = save_of(r, &n2);
+    CHECK_EQ_U64(n, n2);
+    CHECK(memcmp(good, after, n) == 0);
+    free(good);
+    free(bad);
+    free(after);
+}
+
+static void state_bounds(void)
+{
+    struct rig r;
+    rig_open(&r, 64u);
+    wr(&r, 0xFFFCu, OPEN);
+    bews(&r, 0x30u);
+    /* Chip select low and idle: a phase, a count or reserved flag bits that
+       chip select low cannot leave are refused. */
+    refuse(&r, "eeprom_phase", 1u);
+    refuse(&r, "eeprom_count", 3u);
+    refuse(&r, "eeprom_flags", 0x20u);
+    refuse(&r, "eeprom_phase", 5u);
+    /* The control byte keeps bits 3 and 7 only. */
+    refuse(&r, "mapper_ctrl", 0x04u);
+    refuse(&r, "mapper_ctrl", 0x10u);
+    refuse(&r, "mapper_ctrl", 0x89u);
+    /* Chip select high: a count past the width of the phase, or past any phase, is refused. */
+    bput(&r, OPEN | 4u);
+    bsend(&r, 1u, 5u);
+    bbits(&r, 0u, 3u); /* data in, 3 of 16 */
+    refuse(&r, "eeprom_count", 16u);
+    refuse(&r, "eeprom_phase", 7u);
+    refuse(&r, "eeprom_flags", 0x20u);
+    rig_close(&r);
+    rig_open(&r, 64u);
+    wr(&r, 0xFFFCu, OPEN);
+    bput(&r, OPEN | 4u);
+    bbits(&r, 1u, 1u);
+    bbits(&r, 0u, 4u); /* command phase, 4 of 8 */
+    refuse(&r, "eeprom_count", 8u);
+    rig_close(&r);
+}
+
 int main(int argc, char **argv)
 {
     if (argc != 2)
@@ -761,6 +952,12 @@ int main(int argc, char **argv)
         board_banks();
     else if (strcmp(argv[1], "board.span") == 0)
         board_span();
+    else if (strcmp(argv[1], "state.window_open") == 0)
+        state_window_open();
+    else if (strcmp(argv[1], "state.mid_command") == 0)
+        state_mid_command();
+    else if (strcmp(argv[1], "state.bounds") == 0)
+        state_bounds();
     else
         return 2;
     CHECK_DONE();

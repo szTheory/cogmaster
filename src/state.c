@@ -7,8 +7,9 @@
              frame, ticks, the FM unit, 11 reserved zero bytes
      body    the counters, the first-fault record, the Z80, the beam and the
              frame deadline, the VDP with its 16 KiB of VRAM, the 8 KiB of
-             work RAM, then the board, the mapper registers and the
-             cartridge RAM (none, 8 KiB or 32 KiB, fixed by the image),
+             work RAM, then the board, the mapper registers, on the Sega
+             EEPROM board the chip's command state, and the cartridge RAM
+             (none, 128 bytes, 8 KiB or 32 KiB, fixed by the image),
              then the I/O ports, the synthesiser (cadence phase, ring
              slots, integrator, DC estimate, levels) and the PSG (step
              origin, periods, counters, flip-flops, attenuations, noise
@@ -56,6 +57,7 @@ _Static_assert(sizeof(struct cogmaster__z80) == 38u, "z80 changed: update z80_io
 _Static_assert(sizeof(struct cogmaster__bus) == 40u, "bus changed: update bus_io");
 _Static_assert(sizeof(struct cogmaster__vdp) == 16510u, "vdp changed: update vdp_io");
 _Static_assert(sizeof(struct cogmaster__mapper) == 12u, "mapper changed: update mapper_io");
+_Static_assert(sizeof(struct cogmaster__eeprom) == 8u, "eeprom changed: update eeprom_io");
 _Static_assert(sizeof(struct cogmaster__io) == 9u, "io changed: update io_io");
 /* The saved synth fields are the ring, integrator, DC estimate, head, levels,
    gained levels and the cadence phase. The trace counters, the stats and the
@@ -299,8 +301,27 @@ static void ram_io(struct cogmaster__sio *io, cogmaster *m)
     }
 }
 
+/* The 93C46 of the Sega EEPROM board: phase 0 to 4 (idle, command, data in, read,
+   command complete), the bit count within the phase, the flags b0 to b4. Chip
+   select low (flag b2) means idle with count 0, and the bits taken never pass the
+   phase's width: 7 after the start bit in a command (the 8th completes it), 15 in
+   data in and in a read (the 16th wraps the count), none in the other phases. */
+static void eeprom_io(struct cogmaster__sio *io, struct cogmaster__eeprom *e)
+{
+    cogmaster__sio_u8(io, "eeprom_last", &e->last, 0u, UINT8_MAX);
+    uint8_t phase = cogmaster__sio_u8(io, "eeprom_phase", &e->phase, 0u, 4u);
+    uint8_t count = cogmaster__sio_u8(io, "eeprom_count", &e->count, 0u, 15u);
+    cogmaster__sio_u8(io, "eeprom_cmd", &e->cmd, 0u, UINT8_MAX);
+    cogmaster__sio_u16(io, "eeprom_data", &e->data, 0u, UINT16_MAX);
+    uint8_t flags = cogmaster__sio_u8(io, "eeprom_flags", &e->flags, 0u, 0x1Fu);
+    cogmaster__sio_check(io, phase == 1u || phase == 2u || phase == 3u || count == 0u);
+    cogmaster__sio_check(io, phase != 1u || count <= 7u);
+    cogmaster__sio_check(io, (flags & 4u) != 0u || (phase == 0u && count == 0u));
+}
+
 /* The board is the image's, so only its own value loads. Each bank is below
-   the page count, and the Codemasters board keeps only its RAM bit. */
+   the page count, and the Codemasters board keeps only its RAM bit; the Sega
+   EEPROM board keeps the window bit and the reset bit. */
 static void mapper_io(struct cogmaster__sio *io, cogmaster *m)
 {
     struct cogmaster__mapper *p = &m->mapper;
@@ -310,13 +331,14 @@ static void mapper_io(struct cogmaster__sio *io, cogmaster *m)
                        cogmaster__battery_length(m) != 0u ? UINT64_MAX : 0u);
     uint8_t ctrl_max = board == COGMASTER__BOARD_SEGA          ? UINT8_MAX
                        : board == COGMASTER__BOARD_CODEMASTERS ? 0x80u
+                       : board == COGMASTER__BOARD_SEGA_EEPROM ? 0x88u
                                                                : 0u;
     uint8_t ctrl = cogmaster__sio_u8(io, "mapper_ctrl", &p->ctrl, 0u, ctrl_max);
     uint8_t bank_max = (uint8_t)(m->cart.pages != 0u ? m->cart.pages - 1u : 0u);
     for (uint32_t i = 0; i < 3u; i++) {
         cogmaster__sio_u8(io, "mapper_bank", &p->bank[i], 0u, bank_max);
     }
-    if (board >= COGMASTER__BOARD_KOREAN) {
+    if (board >= COGMASTER__BOARD_KOREAN && board <= COGMASTER__BOARD_4PAK) {
         uint8_t bank8_max = (uint8_t)(m->cart.pages != 0u ? 2u * m->cart.pages - 1u : 0u);
         for (uint32_t i = 0; i < 6u; i++) {
             cogmaster__sio_u8(io, "mapper_bank8", &p->bank8[i], 0u, bank8_max);
@@ -325,10 +347,14 @@ static void mapper_io(struct cogmaster__sio *io, cogmaster *m)
             cogmaster__sio_u8(io, "mapper_raw", &p->raw[i], 0u, UINT8_MAX);
         }
     }
+    if (board == COGMASTER__BOARD_SEGA_EEPROM) {
+        eeprom_io(io, &m->eeprom);
+    }
     for (uint32_t i = 0; i < m->cart.ram_size; i++) {
         cogmaster__sio_u8(io, "cart_ram", &m->cart.ram[i], 0u, UINT8_MAX);
     }
     cogmaster__sio_check(io, board != COGMASTER__BOARD_CODEMASTERS || (ctrl & 0x7Fu) == 0u);
+    cogmaster__sio_check(io, board != COGMASTER__BOARD_SEGA_EEPROM || (ctrl & 0x77u) == 0u);
 }
 
 /* The Game Gear in native mode decodes no $3E, so its enables stay as the
