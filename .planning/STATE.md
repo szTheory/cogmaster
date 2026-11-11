@@ -2,14 +2,14 @@
 gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: The whole library
-current_phase: 10
-current_phase_name: BIOS boot
+current_phase: 11
+current_phase_name: PAL and Japanese FM
 status: planning
-stopped_at: Completed 10-11-PLAN.md
-last_updated: "2026-11-11T18:29:18.140Z"
+stopped_at: Phase 10 complete, ready to plan Phase 11
+last_updated: "2026-11-11T19:14:50.371Z"
 last_activity: 2026-11-11
-last_activity_desc: Phase 9 complete, transitioned to Phase 10
-state_head: fb406766b5d3a92d80219f31f324e78bed1fe9f4
+last_activity_desc: Phase 10 complete, transitioned to Phase 11
+state_head: bd09bb49d34cf25fcd2293770babf77ea81cdf80
 progress:
   total_phases: 8
   completed_phases: 6
@@ -29,17 +29,17 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 
 ## Current Position
 
-Phase: 10 — BIOS boot
-Plan: 11 of 11 complete (10-11: the BIOS wording amended to what was built and BIOS-01 to BIOS-05 complete, floors 626 and 584, SEED-011 and the SEED-010 BIOS local judge, every timeout of the phase settled at the 20 s floor, hosted dispatch run 43076225840 and nightly run 43076276567 green, perf delta -11 basis points; ready for review, verify and ship)
-Status: Phase 10 executed, awaiting review and verification
-Last activity: 2026-11-11 — Completed 10-11-PLAN.md
+Phase: 11 — PAL and Japanese FM
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-11 — Phase 10 complete, transitioned to Phase 11
 
 Progress: [████████░░] 75% of v2.0
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 126
+- Total plans completed: 137
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -56,6 +56,7 @@ Progress: [████████░░] 75% of v2.0
 | 7 | 10 | - | - |
 | 8 | 17 | - | - |
 | 9 | 12 | - | - |
+| 10 | 11 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -421,6 +422,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 10 plan 10-11 (gsd-execute-phase 10); BIOS-01, BIOS-02 and BIOS-04 wording amended in REQUIREMENTS and ROADMAP, BIOS-01 to BIOS-05 complete, floors 626 and 584, SEED-011 and the SEED-010 BIOS local judge written; every timeout of the phase settled at the 20 s floor from run 43074158512, hosted dispatch D4 run 43076225840 green on every lane, fresh main run 43076272120, nightly run 43076276567 with libFuzzer on the BIOS harness green, perf delta -11 basis points, no ci.yml edit, local RetroArch observation done, real-BIOS runs left to the owner (SEED-010); 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-03 (gsd-execute-phase 10); cogmaster_media gains reserved3, bios and bios_size (72 / 40 bytes), versions API 14, behaviour 16, state 16, layout asserts only in src, size pins loosened to >= with every offset pin exact, tests/api/v14.c and abi.api_v14 on ci, wasm32 and nofp, order evidence for BIOS-01 recorded (scans precede the first code commit: exit 0 forward, 1 reversed), counted check code 833 of 847, no dispatch (runner DNS not re-observed; main still shows the failed dispatch); 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-04 (gsd-execute-phase 10); struct cogmaster__bios and the derived mem_slow flag, one shared decoder for the cold read path and peek, per-machine BIOS and cartridge arbitration (SMS1 cartridge wins, SMS2 ANDs, empty enabled slot without a fault when a BIOS is attached), bios.arbitration with 64 one-entry flips and three wrong-table controls, bios.slow_flag, three one-shot controls, SMS-SYSTEM section 3 and 9 amended and the fault row of embedding.md (+95 bytes), counted check code 833 of 847, no dispatch, no hot-path measurement yet (plan 05); 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Code review and verify phase 10 (autonomous run); core review 0 critical 2 warning, host review 2 critical (window scan false negatives) 7 warning, fix round 1 fixed 11, hygiene job and seven window controls settled from run 43082065462, verification passed 5 of 5, counted check code 845 of 940 | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -443,7 +445,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-11-11T18:29:17.526Z
-Stopped at: Completed 10-11-PLAN.md
+Stopped at: Phase 10 complete, ready to plan Phase 11
 Resume file: None
 
 ## Operator Next Steps
