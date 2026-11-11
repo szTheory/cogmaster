@@ -53,6 +53,30 @@ return NULL/0. The adapter performs no filesystem I/O.
 memory export and in-process continuation do not prove the deferred hosted save-file
 round trip or interoperability with another emulator.
 
+## 93C46 EEPROM
+
+A Game Gear cartridge on the Sega EEPROM board (`COGMASTER_BOARD_SEGA_EEPROM`, named `sega_eeprom`) carries a
+93C46 serial EEPROM of 64 words of 16 bits. The 128 bytes are the cartridge RAM, so a host saves them through
+the battery calls above with a span of 128. Each word is two bytes, little-endian (the low byte first), and a
+fresh chip is all FF.
+
+The board pages 16 KiB banks through `$FFFD`-`$FFFF` as the Sega board does, and the first 1 KiB stays fixed.
+In `$FFFC`, bit 3 opens a window at exactly `$8000` and bit 7 resets the chip: chip select falls, a command in
+progress is dropped and writes are locked again. Through the open window a write drives data in from bit 0, the
+clock from bit 1 and chip select from bit 2, applied in that order, and a read returns the bits last written
+with the low two cleared, bit 1 set and Data Out in bit 0. A byte is taken on a rising clock edge with chip
+select high. The chip powers up write-disabled: WRITE, ERASE, WRAL and ERAL do nothing until EWEN, and again
+after EWDS; READ always works and continues from word 63 to word 0 while the clock runs. Ready is immediate:
+Data Out is high at all times except while a READ shifts data, so a game that polls for ready sees it on its
+first look. There is no busy time.
+
+The generation counter moves once per completed command that changed a byte, when chip select falls, never
+per clock edge and never per WRAL byte, and not for a command that wrote the value already stored. This is a
+rule of its own next to the same-value rule for battery RAM above. Importing a save does not move it.
+
+The wiring and the chip model follow the Microchip 93C46 data sheet and the MAME `sega8_eeprom` board. They are
+not verified on real hardware.
+
 ## Testing saves
 
 `runner.save.continuation.normal`, `.term` and `.int` verify fresh-process numeric
