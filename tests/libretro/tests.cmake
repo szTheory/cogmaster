@@ -164,6 +164,17 @@ if(TARGET cogmaster_libretro)
         -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
       LABELS libretro portable TIMEOUT 10)
     set_tests_properties(libretro.host.korean_control PROPERTIES DEPENDS libretro.host.korean)
+    # Fault prevented: a Sports Pad or Paddle title that gets the wrong device, an unbounded motion sum or motion that never reaches
+    # the guest, or a non-3-D title held on a picture that never arrives.
+    foreach(adapter_case IN ITEMS devices.options devices.sources devices.clamp devices.motion
+        stereo.alternate stereo.one_eye)
+      string(REGEX REPLACE "^[a-z]+\\." "" adapter_name "${adapter_case}")
+      # Timeout: 60 s floor; provisional until a hosted run measures it.
+      cogmaster_add_test(NAME libretro.host.${adapter_case}
+        COMMAND cogmaster-test-libretro-host $<TARGET_FILE:cogmaster_libretro> adapter ${adapter_name}
+          ${PROJECT_BINARY_DIR}/fixtures
+        LABELS libretro portable TIMEOUT 60)
+    endforeach()
     # Fault prevented: the FM option attaching, detaching or refusing the unit differently from the
     # library's setting, or failing the load of Game Gear content.
     cogmaster_add_test(NAME libretro.host.fm_option
