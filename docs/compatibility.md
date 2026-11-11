@@ -6,6 +6,8 @@ Rows: 5. Evaluated coverage: 4. Own fixtures: 2.
 
 Pass/fail describe accepted predicates only. Unknown has no accepted evaluation; unsupported names an unavailable capability; infrastructure_error describes a runner/judge failure. Metadata membership proves no support. No playable, completable or sound claim; boots is sampled display/distinct-frame/first-fault smoke and may reject static screens. HALT is not a rejection. Experimental through v2.0.
 
+Each row names its setting: machine, ntsc or pal, export or japan, and fm=on or off. TV is a setting of the run, not a fact about the cartridge. audio@F=HASH checks the stream of changes at the chips against a pinned hash, never how it sounds. Format 2: region was split into tv and region; fm joined the run configuration.
+
 - pass: 4
 - fail: 0
 - unknown: 1
@@ -17,6 +19,7 @@ Pass/fail describe accepted predicates only. Unknown has no accepted evaluation;
 - ram predicates: 1
 - mailbox predicates: 1
 - boots predicates: 2
+- audio predicates: 0
 
 | Machine/mapper/status | Rows |
 |---|---:|
