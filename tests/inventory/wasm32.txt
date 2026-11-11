@@ -247,6 +247,7 @@ fuzz.regress.pad	fuzz,portable
 fuzz.regress.run	fuzz,portable
 fuzz.regress.save	fuzz,portable
 host.aim	host,portable
+host.bios	host,portable
 host.eyes	host,portable
 host.palette	host,portable
 install.consumer	install
