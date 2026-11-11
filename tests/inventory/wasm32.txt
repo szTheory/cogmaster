@@ -155,6 +155,8 @@ fixtures.paddle.control.frozen	fixtures,portable
 fixtures.paddle.control.pad	fixtures,portable
 fixtures.paddle.mailbox.export	fixtures,portable
 fixtures.paddle.mailbox.japan	fixtures,portable
+fixtures.paddle.replay	fixtures,portable
+fixtures.paddle.replay_control	fixtures,portable
 fixtures.ports.gg	fixtures,portable
 fixtures.ports.sms-export	fixtures,portable
 fixtures.ports.sms-japan	fixtures,portable

@@ -878,6 +878,25 @@ foreach(control IN ITEMS frozen pad dropped_delta)
     LABELS fixtures portable TIMEOUT 10)
 endforeach()
 
+# Fault prevented: a Paddle position accumulated in state that a replay of the recorded deltas does not
+# reproduce. The same replay case, on the Japanese console the Paddle needs: the recorder drives the paddle image,
+# the runner replays the script it wrote to the same hash, and one count changed in the last record must not.
+# Timeout: 10 s floor; 0.1 s slowest local run, no hosted run yet, so provisional.
+set(paddle_replay -DCASE=replay -DNAME=paddle -DIMAGE=${COGMASTER_FIXTURES_DIR}/paddle.sms
+  -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt -DRECORDER=$<TARGET_FILE:cogmaster-test-ports-devices>
+  -DRUN=$<TARGET_FILE:cogmaster-run> -DDEVICE=paddle -DREGIONS=ntsc-j -DFRAMES=40)
+cogmaster_add_test(NAME fixtures.paddle.replay
+  COMMAND ${CMAKE_COMMAND} ${paddle_replay} "-DEMULATOR=${fixtures_emulator}"
+    -DSCRIPT=${fixtures_out}/paddle.replay.input -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 10)
+set(cmd ${CMAKE_COMMAND} ${paddle_replay} "-DEMULATOR=${fixtures_inner_emulator}" -DEDIT=1
+  -DSCRIPT=${fixtures_out}/paddle.replay_control.input -P ${CMAKE_CURRENT_LIST_FILE})
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+cogmaster_add_test(NAME fixtures.paddle.replay_control
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=differs[^a-zA-Z]+from[^a-zA-Z]+the[^a-zA-Z]+recording"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+  LABELS fixtures portable TIMEOUT 10)
+
 # Fault prevented: a judge that passes what it should fail. Each control
 # runs the mapper_sega fixture through the judge and must fail with exit 1
 # and its own message: a CSV copy with one value changed, a copy missing one
