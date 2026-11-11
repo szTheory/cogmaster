@@ -593,7 +593,7 @@ cogmaster_add_test(NAME fixtures.hello
 # Fault prevented: a BIOS-shaped test image, its probe cartridge or one of the two bad images
 # whose bytes drift from their pin (another assembler, a changed source, CRLF line endings), so
 # the equivalence check would judge a different program than the one pinned.
-# Timeout: 20 s floor, provisional until the first hosted run times it.
+# Timeout: 20 s floor; 2 x 0.06 s (windows-arm64), slowest of 9 runs, run 43074158512.
 foreach(name IN LISTS bios_images)
   set(extension bin)
   if(name STREQUAL "bios_probe")
@@ -610,7 +610,7 @@ endforeach()
 # sides came from the same constants. The probe cartridge and the owned BIOS-shaped image are
 # passed as the built paths; the honest limit (the mechanism and the single source of constants,
 # not what Sega's BIOS leaves behind) is stated in the test.
-# Timeout: 20 s floor; 0.20 s slowest local run, no hosted run yet, so provisional.
+# Timeout: 20 s floor; 2 x 1.42 s (be32), slowest of 9 runs, run 43074158512.
 cogmaster_add_test(NAME bios.equivalence
   COMMAND cogmaster-test-bios equivalence ${COGMASTER_FIXTURES_DIR}/bios_probe.sms
     ${COGMASTER_FIXTURES_DIR}/bios_shape.bin
@@ -619,7 +619,7 @@ cogmaster_add_test(NAME bios.equivalence
 # Fault prevented: a bad image (the top-of-RAM store left out, SP two bytes high) that passes, or
 # fails for another reason than the field the comparator names; the pattern is the comparator's own
 # fixed failure line, which a missing file or a crash does not print.
-# Timeout: 20 s floor; 0.04 s slowest local run, no hosted run yet, so provisional.
+# Timeout: 20 s floor; 2 x 0.21 s (be32), slowest of 9 runs, run 43074158512.
 foreach(spec IN ITEMS bad_ram:ram bad_sp:z80_sp)
   string(REPLACE ":" ";" spec "${spec}")
   list(GET spec 0 bad)
@@ -638,7 +638,7 @@ endforeach()
 # between two runs, a fast boot that changes when the flag is merely spelled, and a label line that prints a constant
 # or the digest of other bytes than the file's. Recognition of a known dump is proved by host.bios through the real
 # identify path with an injected table, because no real dump may exist in the tree.
-# Timeout: 20 s floor; no hosted run yet, so provisional.
+# Timeout: 20 s floor; 2 x 0.27 s (be32), slowest of 9 runs, run 43074158512.
 cogmaster_add_test(NAME runner.bios.boot
   COMMAND ${CMAKE_COMMAND} -DCASE=bios_boot -DNAME=bios_probe -DIMAGE=${COGMASTER_FIXTURES_DIR}/bios_probe.sms
     -DBIOS=${COGMASTER_FIXTURES_DIR}/bios_shape.bin -DOUT=${PROJECT_BINARY_DIR}/tests/bios-boot

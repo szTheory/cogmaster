@@ -1789,7 +1789,7 @@ endforeach()
 
 # Fault prevented: a BIOS option that silently changes a hash world, a missing-firmware request that exits like a
 # crash, and a failure text that echoes the path of a dump.
-# Timeout: 20 s floor; no hosted run yet, so provisional.
+# Timeout: 20 s floor; 2 x 0.61 s (be32), slowest of 9 runs, run 43074158512.
 foreach(bios_case IN ITEMS grammar refusals no_path_echo)
   cogmaster_add_test(NAME runner.bios.${bios_case}
     COMMAND ${runner_check} -DCASE=bios_${bios_case}

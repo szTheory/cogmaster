@@ -40,6 +40,6 @@ cogmaster_add_test(NAME bios.state COMMAND cogmaster-test-bios state
 # that puts both slots on and off at every instruction) that holds the host
 # past its frame time or corrupts the instance, and a BIOS-size input that
 # crashes the loader.
-# Timeout: 20 s floor, provisional until the first hosted run times it.
+# Timeout: 20 s floor; 2 x 0.43 s (be32), slowest of 9 runs, run 43074158512.
 cogmaster_add_test(NAME bios.hostile COMMAND cogmaster-test-bios hostile
   LABELS bios portable TIMEOUT 20)

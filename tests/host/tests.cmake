@@ -70,7 +70,7 @@ cogmaster_warnings(cogmaster-test-bios-host)
 # the wrong file or accepts the wrong size, a missing path reported as another
 # error, or a recognition path that hashes the wrong bytes while the table
 # lookup alone still passes.
-# Timeout: 20 s floor; no hosted run yet, so provisional.
+# Timeout: 20 s floor; 2 x 0.07 s (wasm32), slowest of 9 runs, run 43074158512.
 cogmaster_add_test(NAME host.bios
   COMMAND cogmaster-test-bios-host bios ${bios_dir} ${bios_dir}/owned_a.bin ${bios_owned_sha1}
     ${bios_dir}/owned_b.bin
