@@ -37,7 +37,7 @@ Requirements for this milestone. Each maps to one roadmap phase. Scope decisions
 - [x] **SAVE-02**: A mid-command EEPROM state round-trips through the save state, and the EEPROM bit-banger is a fuzz target
 - [ ] **SAVE-03**: The `.srm` sizes and EEPROM word order used by released libretro cores are measured once with the command and exit status recorded, and import accepts only the measured layouts
 - [x] **SAVE-04**: The libretro core reports saves enabled, with a guard test that the exported span equals the battery span
-- [ ] **SAVE-05**: The runner flushes saves every N completed frames with `--save-interval`, sweeps stale temporary files, and syncs the directory after the rename on POSIX
+- [x] **SAVE-05**: The runner flushes saves every N completed frames with `--save-interval`, sweeps stale temporary files, and syncs the directory after the rename on POSIX
 - [ ] **SAVE-06**: A hosted RetroArch run writes a battery save and an EEPROM save, restarts, and reads them back, inside the 300-line budget
 
 ### Pad devices and 3-D glasses
@@ -131,7 +131,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SAVE-02 | Phase 7 | Complete |
 | SAVE-03 | Phase 7 | Pending |
 | SAVE-04 | Phase 7 | Complete |
-| SAVE-05 | Phase 7 | Pending |
+| SAVE-05 | Phase 7 | Complete |
 | SAVE-06 | Phase 7 | Pending |
 | PAD-01 | Phase 8 | Pending |
 | PAD-02 | Phase 8 | Pending |
