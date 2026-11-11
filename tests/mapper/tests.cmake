@@ -53,3 +53,10 @@ foreach(case IN ITEMS spans generation excluded fixture import continuation)
   cogmaster_add_test(NAME battery.${case} COMMAND cogmaster-test-battery ${args}
     LABELS mapper portable TIMEOUT 10)
 endforeach()
+
+# The 93C46 serial EEPROM as a device with no board, clocked bit by bit.
+add_executable(cogmaster-test-eeprom ${CMAKE_CURRENT_LIST_DIR}/test_eeprom.c)
+target_include_directories(cogmaster-test-eeprom PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-eeprom PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-eeprom PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-eeprom)

@@ -50,6 +50,7 @@ add_library(cogmaster STATIC
   src/cart.c
   src/cart_scan.c
   src/battery.c
+  src/eeprom.c
   src/cartdb.c
   src/sha1.c
   src/crc32.c
