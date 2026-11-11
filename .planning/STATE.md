@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 8
 current_phase_name: Sports Pad, Paddle and 3-D glasses
 status: planning
-stopped_at: Completed 08-04-PLAN.md
-last_updated: "2026-11-11T05:09:21.143Z"
+stopped_at: Completed 08-05-PLAN.md
+last_updated: "2026-11-11T05:23:43.410Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 7 complete, transitioned to Phase 8
-state_head: b05c7b4ffd8bab67342a42367c9f466912404fef
+state_head: 7936dbfa104b547d28c031a076edfb72b7788cbd
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 52
-  completed_plans: 39
+  completed_plans: 40
   percent: 38
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 8 — Sports Pad, Paddle and 3-D glasses
-Plan: 4 of 17 complete (08-01 port layer, 08-02 header delta, 08-03 set_input copy rule, 08-04 glasses core and hosted dispatch 1); next 08-05
+Plan: 5 of 17 complete (08-01 port layer, 08-02 header delta, 08-03 set_input copy rule, 08-04 glasses core and hosted dispatch 1, 08-05 Sports Pad, Paddle and saved device state); next 08-06
 Status: Executing
-Last activity: 2026-11-11 — Completed 08-04 (3-D glasses eye and cut rule, six ports.glasses cases, hosted dispatch 1 green, delta_bp 0)
+Last activity: 2026-11-11 — Completed 08-05 (Sports Pad and Paddle models, availability, motion accumulation, saved device state, eleven ports.devices cases with three negative controls)
 
 Progress: [████░░░░░░] 38% of v2.0
 
@@ -165,6 +165,7 @@ Progress: [████░░░░░░] 38% of v2.0
 | Phase 08 P02 | 20 min | 2 tasks | 10 files |
 | Phase 08 P03 | 35min | 2 tasks | 7 files |
 | Phase 08 P04 | 55 min | 3 tasks | 9 files |
+| Phase 08 P05 | 85 min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -217,6 +218,8 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 08]: 08-02: relaxed shape pins landed before the header growth; header, asserts and v12.c in one commit; embedding paragraph 613 bytes, file 34,624
 - [Phase 08]: 08-03: set_input copies min(tag, ours) & ~3 bytes with a byte loop into a zeroed local (a variable memcpy into a known-size local emits __memcpy_chk on Apple clang and abi.undefined rejects it); axes are range-checked to +-32767 and dropped until plan 08-05
 - [Phase 08]: 08-04: the glasses cut is (frame_lines - 96) * 684 - 607 on the window tick; one rare-path helper owns every $FFF8-$FFFF store so the RAM branch keeps one compare; dispatch 1 green, H=12302997 B=12302854 delta_bp=0
+- [Phase 08]: 08-05: both MAME and ares put the Paddle's high nibble on TR high, so the nibble follows the device's own clock even when the console drives TR; the pad is driven by the TH wire, not the echoed readback, so Japan and export give the same bytes
+- [Phase 08]: 08-05: SPORTS_IDLE_TICKS and PADDLE_HALF_TICKS live only in src/internal.h; the state cross-checks read the value each sio call returns and no new field name begins input_; pending motion survives a soft reset and a load zeroes it
 
 ### Pending Todos
 
@@ -308,6 +311,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 8 plan 08-02 (gsd-execute-phase 08); shape-only pin relaxations, whole header delta to API 12, behaviour 14, state 14, layout asserts, v12.c; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 8 plan 08-03 (gsd-execute-phase 08); abi.api_v12 registered on three lanes, size-bounded set_input copy with poison, exact-malloc, tag, refusal, range and output cases, local ASan control; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 8 plan 08-04 (gsd-execute-phase 08); glasses eye recorded and reported by the window cut rule, state bytes and cross-checks, six ports.glasses cases with two local negative controls, hosted dispatch 1 runs 42963275959 (branch) and 42963279510 (main) green, delta_bp 0; 3 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 8 plan 08-05 (gsd-execute-phase 08); Sports Pad and Paddle models on the TH wire, set_input availability and motion sums, pending axes and port blocks saved with bounds and cross-checks (record count 170887 of 240000), eleven ports.devices cases with three local negative controls, no push; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -329,8 +333,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T05:09:21.015Z
-Stopped at: Completed 08-04-PLAN.md
+Last session: 2026-11-11T05:23:43.321Z
+Stopped at: Completed 08-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
