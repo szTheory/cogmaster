@@ -50,7 +50,8 @@ foreach(case IN ITEMS rule control gate profiles nolag state)
     LABELS ports portable TIMEOUT 20)
 endforeach()
 
-# The Light Phaser on the internal API: the tick-to-H function against the formula it replaced.
+# The Light Phaser on the internal API: the tick-to-H function against the formula it replaced, the
+# aim, the trigger pin and hostile aims.
 add_executable(cogmaster-test-ports-gun ${CMAKE_CURRENT_LIST_DIR}/test_gun.c)
 target_include_directories(cogmaster-test-ports-gun PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(cogmaster-test-ports-gun PRIVATE cogmaster::cogmaster)
@@ -59,11 +60,19 @@ set_target_properties(cogmaster-test-ports-gun PROPERTIES
 cogmaster_warnings(cogmaster-test-ports-gun)
 
 # Fault prevented: a refactor of the H-counter origin or of the latch site that moves a latch
-# position, so every light-gun, H-counter and pad game changes behaviour without a test noticing.
-foreach(case IN ITEMS latch_at)
-  # Timeout: 20 s floor; provisional.
+# position, so every light-gun, H-counter and pad game changes behaviour without a test noticing; a
+# hostile aim that overflows the disc arithmetic or aliases an edge pixel; an aim that is summed
+# instead of replaced; a trigger on the wrong pin or a gun that leaks the pad's reads.
+foreach(case IN ITEMS latch_at aim pins hostile_aim)
+  if(case STREQUAL "hostile_aim")
+    # Timeout: 60 s floor; provisional.
+    set(gun_timeout 60)
+  else()
+    # Timeout: 20 s floor; provisional.
+    set(gun_timeout 20)
+  endif()
   cogmaster_add_test(NAME ports.gun.${case} COMMAND cogmaster-test-ports-gun ${case}
-    LABELS ports portable TIMEOUT 20)
+    LABELS ports portable TIMEOUT ${gun_timeout})
 endforeach()
 
 # The Sports Pad and the Paddle on the internal API: the read sequence at the tick limits, the walk
