@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 8
 current_phase_name: Sports Pad, Paddle and 3-D glasses
 status: planning
-stopped_at: Completed 08-11-PLAN.md
-last_updated: "2026-11-11T06:19:43.572Z"
+stopped_at: Completed 08-12-PLAN.md
+last_updated: "2026-11-11T06:40:07.091Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 7 complete, transitioned to Phase 8
-state_head: c0ddac181a479c62e58b1ddd377d414bebf85226
+state_head: 60c97a6a21324d74b32cb6e0bf862866e9a07c2e
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 52
-  completed_plans: 46
+  completed_plans: 47
   percent: 38
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 8 — Sports Pad, Paddle and 3-D glasses
-Plan: 11 of 17 complete (08-01 port layer, 08-02 header delta, 08-03 set_input copy rule, 08-04 glasses core and hosted dispatch 1, 08-05 Sports Pad, Paddle and saved device state, 08-06 state bounds proof and pad fuzz target, 08-07 default controller per dump and the region rule, 08-08 runner device grammar, exit 77 refusal and probe default keys, 08-09 runner delta lines and --eyes, 08-10 Sports Pad fixture and replay, 08-11 Paddle fixture and replay); next 08-12
+Plan: 12 of 17 complete (08-01 port layer, 08-02 header delta, 08-03 set_input copy rule, 08-04 glasses core and hosted dispatch 1, 08-05 Sports Pad, Paddle and saved device state, 08-06 state bounds proof and pad fuzz target, 08-07 default controller per dump and the region rule, 08-08 runner device grammar, exit 77 refusal and probe default keys, 08-09 runner delta lines and --eyes, 08-10 Sports Pad fixture and replay, 08-11 Paddle fixture and replay, 08-12 glasses fixture and hosted dispatch 2); next 08-13
 Status: Executing
-Last activity: 2026-11-11 — Completed 08-11 (paddle.sms runs the region test, a TR ones sweep at ten loop lengths and the two-nibble position reader; every criterion length reads 126 to 150 ones of 256 so the constant stays 299; positions recomputed from one delta list, three failing controls, a cross-lane device hash row, and a replay on the Japan profile). Runtime Claude Code, model Sonnet 5.5
+Last activity: 2026-11-11 — Completed 08-12 (glasses.sms writes the shutter from a frame table, one held write and a RAM routine with the cartridge off; eye counts simulated from the table on export, Japan and Game Gear; hosted dispatch 2 green after a GCC qualifier error, a GCC type-limits error in the pad fuzz target and four Windows CRLF failures were fixed, perf delta 0 basis points). Runtime Claude Code, model Sonnet 5.5
 
 Progress: [████░░░░░░] 38% of v2.0
 
@@ -172,6 +172,7 @@ Progress: [████░░░░░░] 38% of v2.0
 | Phase 08 P09 | 20 min | 2 tasks | 9 files |
 | Phase 8 P10 | 70min | 3 tasks | 11 files |
 | Phase 08 P11 | 45min | 3 tasks | 9 files |
+| Phase 08 P12 | 14 min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -235,6 +236,8 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 8]: Replay recorder keeps motion within 100 counts a frame and drains audio each frame so the last frame follows the last delta and a restored copy matches in state bytes
 - [Phase 08]: PADDLE_HALF_TICKS stays 299: the eight criterion sweep lengths read 126 to 150 ones of 256; src/internal.h untouched
 - [Phase 08]: The Paddle position oracle clamps after every frame's motion (saturating sum), matching the core; the sweep's two shortest periods (29, 31) are the detect loop unrolled because a padded DJNZ loop cannot be shorter than 43 cycles
+- [Phase 08]: 08-12: the eye counts are simulated from the literal table (checked against the .DB row of glasses.asm) over 30 frames, the mailbox judged in a second run
+- [Phase 08]: 08-12: exact-byte files in script-mode runner tests go through file(CONFIGURE) with a newline style, since file(WRITE) writes CRLF on Windows
 
 ### Pending Todos
 
@@ -351,8 +354,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T06:19:43.445Z
-Stopped at: Completed 08-11-PLAN.md
+Last session: 2026-11-11T06:40:06.997Z
+Stopped at: Completed 08-12-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
