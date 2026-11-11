@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 7
 current_phase_name: Saves survive a restart
 status: planning
-stopped_at: Completed 07-04-PLAN.md
-last_updated: "2026-11-11T01:26:42.309Z"
+stopped_at: Completed 07-05-PLAN.md
+last_updated: "2026-11-11T01:32:44.034Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 6 complete, transitioned to Phase 7
-state_head: a06bf24efe3035ca24c3143985834d7af958d097
+state_head: 7ca035277a095035659bc5857fbbb84353a6c5be
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 35
-  completed_plans: 29
+  completed_plans: 30
   percent: 25
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 7 — Saves survive a restart
-Plan: 4 of 10 complete (07-01, 07-02, 07-03, 07-04)
+Plan: 5 of 10 complete (07-01, 07-02, 07-03, 07-04, 07-05)
 Status: Executing
-Last activity: 2026-11-11 — Executed 07-04, the seven EEPROM rows on board 10 and the early perf delta (delta_bp=0)
+Last activity: 2026-11-11 — Executed 07-05, the owned eeprom.gg fixture, its facts row and the eighth changed table row
 
 Progress: [███░░░░░░░] 25% of v2.0
 
@@ -154,6 +154,7 @@ Progress: [███░░░░░░░] 25% of v2.0
 | Phase 07 P02 | 12 min | 2 tasks | 9 files |
 | Phase 07 P03 | 5 min | 3 tasks | 9 files |
 | Phase 07 P04 | 45 min | 2 tasks | 7 files |
+| Phase 07 P05 | 12 min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -195,6 +196,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 07]: 07-02: COGMASTER_BOARD_SEGA_EEPROM appended at 10 with API 11, behaviour 13 and state format 13; the probe word is sega_eeprom and the catalog generator must match it
 - [Phase 07]: 07-03: board 10 keeps its banks in the ext arm over the existing bank array; the chip is visited with per-phase count bounds (command 0-7, data and read 0-15) and CS low implies idle; a generation moves only while a battery span exists
 - [Phase 07]: 07-04: the eeprom slot sets persistence 2 and 128 bytes by board constant; persistence 3 is no longer emitted
+- [Phase 07]: 07-05: the owned EEPROM fixture row is region 1 (export, Game Gear header code 6); cartdb --fixture accepts exactly the battery and EEPROM row shapes
 
 ### Pending Todos
 
@@ -277,6 +279,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-10 | Execute phase 7 plan 07-01 (gsd-execute-phase 07, retry after a rate-limit death); 93C46 device, closed-form and differential tests, two negative controls; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 7 plan 07-03 (gsd-execute-phase 07); Sega EEPROM board arm in mapper_ext.c, 128-byte erased cart RAM, bounded chip state visit, eight eeprom.* cases, saves.md section, one negative control; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 7 plan 07-04 (gsd-execute-phase 07); eeprom slot on board 10, table and catalog regenerated with 7 rows changed, early perf delta_bp=0 from two dispatch runs, one API 11 test fix; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 7 plan 07-05 (gsd-execute-phase 07); owned eeprom.gg fixture driving the 93C46, second fixture facts row with ROW support and a stricter generator, table regenerated with one new row; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -298,8 +301,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T01:26:42.079Z
-Stopped at: Completed 07-04-PLAN.md
+Last session: 2026-11-11T01:32:43.831Z
+Stopped at: Completed 07-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
