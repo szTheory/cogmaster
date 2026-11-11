@@ -102,4 +102,9 @@ unknown and unsupported geometry at the public battery-query boundary; mapper te
 keep volatile RAM separate. In-process tests load the production module and do not
 count toward the hosted RetroArch code budget. They do not establish the deferred
 hosted save-file claim. Interoperability with another emulator's save file is claimed only
-for layouts that cogmaster wrote or that were measured and tested; none is measured yet.
+for layouts that cogmaster wrote or that were measured once with released binaries
+(2026-11-11, under the pinned RetroArch with the null drivers). Released Gearsystem
+(option `EEPROM 93C46`) wrote the owned EEPROM fixture's save as 128 bytes starting `34 12`,
+the little-endian word order cogmaster uses. Released Genesis Plus GX wrote the owned
+battery fixture's save as a 3-byte file `a5 5a 01`, the first bytes cogmaster holds, not
+the 32768-byte span; what it leaves beyond them is not measured. Nothing else is claimed.
