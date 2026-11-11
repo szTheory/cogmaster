@@ -22,7 +22,7 @@ chmod 700 "$out"
 umask 077
 sh "$root/scripts/compat-common.sh" cases "$root/tests/compat/ledger.csv" > "$out/cases.cmake"
 printf 'candidate,status,evaluated,attempted\n' > "$out/results.csv"
-printf 'id,title,machine,region,mapper,predicate,status,evidence,date\n' > "$out/public-facts.csv"
+printf 'id,title,machine,region,tv,mapper,predicate,status,evidence,date\n' > "$out/public-facts.csv"
 COGMASTER_LIBRARY_DATE=$(date -u +%F)
 COGMASTER_LIBRARY_REV=$(git rev-parse HEAD)
 export COGMASTER_LIBRARY_DATE COGMASTER_LIBRARY_REV

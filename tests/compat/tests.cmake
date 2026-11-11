@@ -47,19 +47,16 @@ if(CMAKE_SCRIPT_MODE_FILE)
       if(NOT got STREQUAL want)
         message(FATAL_ERROR "fixture differs from admitted bytes: ${name}")
       endif()
-      if(NOT ${case}_config MATCHES "^cfg:video=(sms|gg);port1=(pad|none|paddle|sports|lphaser);port2=(pad|none|paddle|sports|lphaser);script=none;sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855$")
+      if(NOT "${${case}_script}" STREQUAL "none")
         message(FATAL_ERROR "fixture execution configuration is not implemented")
       endif()
-      set(video "${CMAKE_MATCH_1}")
-      set(port1 "${CMAKE_MATCH_2}")
-      set(port2 "${CMAKE_MATCH_3}")
       set(predicate "${${case}_parameter}")
       if(NOT "${${case}_expected}" STREQUAL "")
         string(APPEND predicate "=${${case}_expected}")
       endif()
       file(CONFIGURE OUTPUT "${OUT}/${i}.expect" CONTENT "${predicate}\n" NEWLINE_STYLE UNIX @ONLY)
-      execute_process(COMMAND ${EMULATOR} "${RUN}" --machine "${${case}_machine}" --region "${${case}_region}"
-        --video-mode "${video}" --port1 "${port1}" --port2 "${port2}" --frames "${${case}_cap}"
+      execute_process(COMMAND ${EMULATOR} "${RUN}" --machine "${${case}_machine}" --region "${${case}_runner_region}"
+        --fm "${${case}_fm}" --video-mode "${${case}_video}" --port1 "${${case}_port1}" --port2 "${${case}_port2}" --frames "${${case}_cap}"
         --expect "${OUT}/${i}.expect" "${FIXTURES}/${name}.sms" RESULT_VARIABLE rc OUTPUT_VARIABLE text ERROR_VARIABLE err)
       set(code 0)
       if(${case}_status STREQUAL "fail")
