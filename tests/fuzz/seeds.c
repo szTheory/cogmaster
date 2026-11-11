@@ -26,7 +26,8 @@
      janggun-board.sms (64 KiB storing to a board's $6000, which the core names and refuses)
    Programs at $0000, 32 KiB with no header unless noted:
      di-halt.sms  di-halt.gg  jr-self.sms  in-a-00.sms  ld-8000.sms
-     ed-00.sms  be-hammer.sms  fffc-writes.sms (64 KiB, Sega board) */
+     ed-00.sms  be-hammer.sms  fffc-writes.sms (64 KiB, Sega board)
+   An EEPROM clock stream for fuzz_eeprom.c: eeprom-clocks.bin */
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -228,6 +229,55 @@ static void programs(void)
     }
 }
 
+/* The stream fuzz_eeprom.c reads as (register, value) pairs: an even first byte
+   writes the chip window. EWEN, WRITE word 5, READ word 5 and a few clocks past
+   it, ERAL abandoned by chip select, then the reset bit, so a replay reaches
+   every phase of the chip. Command bits are start, opcode and six more. */
+static size_t stream_n;
+
+static void stream_put(uint8_t v)
+{
+    image[stream_n++] = 0u;
+    image[stream_n++] = v;
+}
+
+static void stream_bits(uint32_t v, unsigned n, unsigned clocks_after)
+{
+    while (n-- > 0u) {
+        uint8_t di = (uint8_t)((v >> n) & 1u);
+        stream_put((uint8_t)(4u | di));
+        stream_put((uint8_t)(4u | 2u | di));
+        stream_put((uint8_t)(4u | di));
+    }
+    while (clocks_after-- > 0u) {
+        stream_put(6u);
+        stream_put(4u);
+    }
+}
+
+static void eeprom_stream(void)
+{
+    stream_n = 0u;
+    stream_put(4u); /* EWEN: 1 00 11xxxx */
+    stream_bits(0x130u, 9u, 0u);
+    stream_put(0u);
+    stream_put(4u); /* WRITE word 5: 1 01 000101, then 16 data bits */
+    stream_bits(0x145u, 9u, 0u);
+    stream_bits(0xA55Au, 16u, 0u);
+    stream_put(0u);
+    stream_put(4u); /* READ word 5, then 20 more clocks */
+    stream_bits(0x185u, 9u, 20u);
+    stream_put(0u);
+    stream_put(4u); /* ERAL, abandoned after its start bit and two more */
+    stream_bits(0x4u, 3u, 0u);
+    stream_put(0u);
+    stream_put(4u); /* a start bit, then the reset bit mid-command */
+    stream_bits(0x1u, 1u, 0u);
+    image[stream_n++] = 1u; /* an odd first byte writes $FFFC */
+    image[stream_n++] = 0x88u;
+    write_image("eeprom-clocks.bin", stream_n);
+}
+
 /* One byte at offset 64 MiB: the file system can leave the rest as a hole. */
 static int oversize(const char *path)
 {
@@ -257,6 +307,7 @@ int main(int argc, char **argv)
     headers();
     boards();
     programs();
+    eeprom_stream();
     memset(image, 0x3c, 32769u);
     write_image("save-empty.bin", 0u);
     write_image("save-one.bin", 1u);
