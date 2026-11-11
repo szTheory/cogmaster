@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 8
 current_phase_name: Sports Pad, Paddle and 3-D glasses
 status: planning
-stopped_at: Completed 08-03-PLAN.md
-last_updated: "2026-11-11T04:56:54.821Z"
+stopped_at: Completed 08-04-PLAN.md
+last_updated: "2026-11-11T05:09:21.143Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 7 complete, transitioned to Phase 8
-state_head: 0e91ad7e59bad3a86ddd8cfe2b52dfdc0b44adb2
+state_head: b05c7b4ffd8bab67342a42367c9f466912404fef
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 52
-  completed_plans: 38
+  completed_plans: 39
   percent: 38
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 8 — Sports Pad, Paddle and 3-D glasses
-Plan: 3 of 17 complete (08-01 port layer, 08-02 header delta, 08-03 set_input copy rule); next 08-04
+Plan: 4 of 17 complete (08-01 port layer, 08-02 header delta, 08-03 set_input copy rule, 08-04 glasses core and hosted dispatch 1); next 08-05
 Status: Executing
-Last activity: 2026-11-11 — Completed 08-03 (abi.api_v12 registered, bounded set_input copy, six ports.input cases)
+Last activity: 2026-11-11 — Completed 08-04 (3-D glasses eye and cut rule, six ports.glasses cases, hosted dispatch 1 green, delta_bp 0)
 
 Progress: [████░░░░░░] 38% of v2.0
 
@@ -164,6 +164,7 @@ Progress: [████░░░░░░] 38% of v2.0
 | Phase 08 P01 | 25min | 2 tasks | 9 files |
 | Phase 08 P02 | 20 min | 2 tasks | 10 files |
 | Phase 08 P03 | 35min | 2 tasks | 7 files |
+| Phase 08 P04 | 55 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -215,6 +216,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 08]: Port layer: cogmaster__ports_pins and cogmaster__io_th_changed take every pad pin and every TH write, pinned by a 65536-pair differential; no behaviour change
 - [Phase 08]: 08-02: relaxed shape pins landed before the header growth; header, asserts and v12.c in one commit; embedding paragraph 613 bytes, file 34,624
 - [Phase 08]: 08-03: set_input copies min(tag, ours) & ~3 bytes with a byte loop into a zeroed local (a variable memcpy into a known-size local emits __memcpy_chk on Apple clang and abi.undefined rejects it); axes are range-checked to +-32767 and dropped until plan 08-05
+- [Phase 08]: 08-04: the glasses cut is (frame_lines - 96) * 684 - 607 on the window tick; one rare-path helper owns every $FFF8-$FFFF store so the RAM branch keeps one compare; dispatch 1 green, H=12302997 B=12302854 delta_bp=0
 
 ### Pending Todos
 
@@ -305,6 +307,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 7 plan 07-10 (gsd-execute-phase 07); RetroArch restart round trips for battery and EEPROM, SAVE-03 wording, floors 465 and 434, hosted runs 42944235132 (retroarch path fix) and 42945252988 green; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 8 plan 08-02 (gsd-execute-phase 08); shape-only pin relaxations, whole header delta to API 12, behaviour 14, state 14, layout asserts, v12.c; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 8 plan 08-03 (gsd-execute-phase 08); abi.api_v12 registered on three lanes, size-bounded set_input copy with poison, exact-malloc, tag, refusal, range and output cases, local ASan control; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 8 plan 08-04 (gsd-execute-phase 08); glasses eye recorded and reported by the window cut rule, state bytes and cross-checks, six ports.glasses cases with two local negative controls, hosted dispatch 1 runs 42963275959 (branch) and 42963279510 (main) green, delta_bp 0; 3 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -326,8 +329,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T04:56:54.722Z
-Stopped at: Completed 08-03-PLAN.md
+Last session: 2026-11-11T05:09:21.015Z
+Stopped at: Completed 08-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
