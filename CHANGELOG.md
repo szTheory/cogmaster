@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/szTheory/cogmaster/compare/v0.8.0...v0.9.0) (2026-11-11)
+
+
+### Features
+
+* play Light Phaser titles ([#27](https://github.com/szTheory/cogmaster/issues/27)) ([21cb45f](https://github.com/szTheory/cogmaster/commit/21cb45faac72c80008ebb2766146a9fcf8fd3d72))
+
 ## [0.8.0](https://github.com/szTheory/cogmaster/compare/v0.7.0...v0.8.0) (2026-11-11)
 
 
