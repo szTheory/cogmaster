@@ -643,7 +643,8 @@ bool retro_load_game(const struct retro_game_info *game)
     (void)env_cb(RETRO_ENVIRONMENT_SET_CONTROLLER_INFO, lr_ports);
     (void)env_cb(RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, lr_inputs);
     dots = (size_t)info.max_w * info.max_h;
-    native = (uint16_t *)malloc(dots * sizeof *native);
+    /* Zeroed: a frame fills only its crop, and the eye copy and mix read all the dots. */
+    native = (uint16_t *)calloc(dots, sizeof *native);
     pixels = (lr_pixel *)malloc(dots * sizeof *pixels);
     if (native == NULL || pixels == NULL) {
         lr_unload();
