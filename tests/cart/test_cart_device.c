@@ -14,7 +14,8 @@
 #include "../check.h"
 
 #define NOT_SET 0x5A5Au /* a region guess the rows must leave alone unless they name one */
-/* The table's controller codes; any other, including 1 and 4, reads as a pad. */
+/* The table's controller codes; any other, including 4, reads as a pad. */
+#define CODE_PHASER 1u
 #define CODE_PADDLE 2u
 #define CODE_SPORTS 3u
 
@@ -35,15 +36,18 @@ static void test_free(void *user, void *ptr, size_t size)
 
 static uint32_t intent(uint8_t code)
 {
-    return code == CODE_PADDLE   ? COGMASTER_DEVICE_PADDLE
+    return code == CODE_PHASER   ? COGMASTER_DEVICE_LIGHT_PHASER
+           : code == CODE_PADDLE ? COGMASTER_DEVICE_PADDLE
            : code == CODE_SPORTS ? COGMASTER_DEVICE_SPORTS_PAD
                                  : COGMASTER_DEVICE_PAD;
 }
 
-/* The availability rule: a Sports Pad on any console, a Paddle only on a Japanese console. */
+/* The availability rule: a Sports Pad or a Light Phaser on any console but a Game Gear, a Paddle
+   only on a Japanese console. */
 static uint32_t resolved(uint32_t want, uint32_t machine, uint32_t region)
 {
-    if (want == COGMASTER_DEVICE_SPORTS_PAD && machine != COGMASTER_MACHINE_GG)
+    if ((want == COGMASTER_DEVICE_SPORTS_PAD || want == COGMASTER_DEVICE_LIGHT_PHASER) &&
+        machine != COGMASTER_MACHINE_GG)
         return want;
     if (want == COGMASTER_DEVICE_PADDLE && machine != COGMASTER_MACHINE_GG &&
         region == COGMASTER_REGION_JAPAN)
