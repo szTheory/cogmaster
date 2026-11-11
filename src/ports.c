@@ -6,7 +6,7 @@
    so a read of $DC or $DD cannot move a device.
 
    The Sports Pad and the Paddle are written from the protocol in
-   SMS-CARTRIDGES-AND-PERIPHERALS sections 3.4 to 3.6, and checked against
+   SMS-CARTRIDGES-AND-PERIPHERALS section 3.4 and the two after it, and checked against
    MAME's sms_ctrl/sports.cpp and sms_ctrl/paddle.cpp (BSD-3, pin 1d7a454ed79e)
    and ares ms/controller/sports-pad and ms/controller/paddle (ISC, pin
    9408cb43d494); nothing is copied. */

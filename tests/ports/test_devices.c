@@ -1,10 +1,10 @@
 /* The Sports Pad and the Paddle through the internal API: cogmaster-test-ports-devices <case>.
    Writes to $3F at chosen ticks and reads of $DC and $DD are made on a loaded instance, the way a
    program's port accesses reach it, and every expected value is computed here from the scripted
-   literals and from the protocol in SMS-CARTRIDGES-AND-PERIPHERALS sections 3.4 to 3.6 (a read is a
-   high nibble at a TH fall and the low nibble at the next rise; the pad's byte is the negated host
-   motion). The reference model in the profile case is written apart from src/ports.c and shares
-   none of its code. Tick constants are named by the header, never repeated here. */
+   literals and from the protocol in SMS-CARTRIDGES-AND-PERIPHERALS section 3.4 and the two after it
+   (a read is a high nibble at a TH fall and the low nibble at the next rise; the pad's byte is the
+   negated host motion). The reference model in the profile case is written apart from src/ports.c
+   and shares none of its code. Tick constants are named by the header, never repeated here. */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
