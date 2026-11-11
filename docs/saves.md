@@ -33,6 +33,11 @@ accepted length returns `COGMASTER_STATUS_ERR_ARGUMENT`. Before load, or for kno
 media, import returns `COGMASTER_STATUS_ERR_NO_CONTENT`; unknown or unsupported persistence
 returns `COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD`. Every refusal preserves all instance state.
 
+On the 93C46 board an import takes either no bytes or exactly 128: any other length, even a
+shorter prefix, returns `COGMASTER_STATUS_ERR_SAVE_SIZE` before a source byte is read, because
+a prefix would split a two-byte word. Export is never padded, trimmed or converted, so a host
+sees the 128 bytes in the order the chip keeps them.
+
 The core accepts exact-size wrong-game data: raw bytes carry no identity. Hosts must bound
 file reads to expected length plus one and keep save namespaces separate. For a missing
 file, leave the fresh FF bytes or import NULL with length zero. Neither operation marks
@@ -94,4 +99,5 @@ next guest write increments generation once. `battery.excluded` covers known-non
 unknown and unsupported geometry at the public battery-query boundary; mapper tests
 keep volatile RAM separate. In-process tests load the production module and do not
 count toward the hosted RetroArch code budget. They do not establish the deferred
-hosted save-file or cross-emulator interoperability claims.
+hosted save-file claim. Interoperability with another emulator's save file is claimed only
+for layouts that cogmaster wrote or that were measured and tested; none is measured yet.

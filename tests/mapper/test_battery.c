@@ -200,6 +200,44 @@ static void rejected(cogmaster *m, const void *data, size_t n, cogmaster_status 
     CHECK_EQ_U64(cogmaster__state_save(m, after, sizeof after), COGMASTER_STATUS_OK);
     CHECK(memcmp(saved, after, state_n) == 0);
 }
+/* One row per board and length: a battery board takes anything up to its span and pads the
+   rest; the EEPROM board takes nothing or a whole 128 bytes. Every refusal leaves the state. */
+static void length_matrix(cogmaster *m)
+{
+    enum { OK = COGMASTER_STATUS_OK, BAD = COGMASTER_STATUS_ERR_SAVE_SIZE };
+    static const struct {
+        uint32_t board, span;
+    } boards[] = {{COGMASTER_BOARD_SEGA, 8192u},
+                  {COGMASTER_BOARD_SEGA, 16384u},
+                  {COGMASTER_BOARD_SEGA, 32768u},
+                  {COGMASTER_BOARD_SEGA_EEPROM, 128u}};
+    static const uint32_t lengths[] = {0u, 1u, 127u, 128u, 129u, 8192u, 16384u, 32768u};
+    static const uint8_t expected[4][8] = {{OK, OK, OK, OK, OK, OK, BAD, BAD},
+                                           {OK, OK, OK, OK, OK, OK, OK, BAD},
+                                           {OK, OK, OK, OK, OK, OK, OK, OK},
+                                           {OK, BAD, BAD, OK, BAD, BAD, BAD, BAD}};
+    memset(raw, 0x3c, sizeof raw);
+    for (size_t b = 0; b < 4u; b++) {
+        classified(m, boards[b].board, COGMASTER_PERSISTENCE_BATTERY, boards[b].span,
+                   COGMASTER_GEOMETRY_SUPPORTED);
+        for (size_t l = 0; l < 8u; l++) {
+            const void *source = lengths[l] == 0u ? NULL : raw;
+            if (expected[b][l] != OK) {
+                rejected(m, source, lengths[l], (cogmaster_status)expected[b][l]);
+                continue;
+            }
+            CHECK_EQ_U64(import_save(m, source, lengths[l]), COGMASTER_STATUS_OK);
+            const uint8_t *data = battery(m).data;
+            CHECK_EQ_HEX(data[0], lengths[l] == 0u ? 0xffu : 0x3cu);
+            CHECK_EQ_HEX(data[boards[b].span - 1u], lengths[l] == boards[b].span ? 0x3cu : 0xffu);
+        }
+        /* A refusal comes before any source byte is read, so a NULL source cannot change it. */
+        rejected(m, NULL, boards[b].span + 1u, COGMASTER_STATUS_ERR_SAVE_SIZE);
+    }
+    classified(m, COGMASTER_BOARD_SEGA_EEPROM, COGMASTER_PERSISTENCE_BATTERY, 128u,
+               COGMASTER_GEOMETRY_SUPPORTED);
+    rejected(m, NULL, 1u, COGMASTER_STATUS_ERR_SAVE_SIZE);
+}
 static void imports(cogmaster *m)
 {
     static const uint32_t sizes[] = {8192u, 16384u, 32768u};
@@ -235,6 +273,7 @@ static void imports(cogmaster *m)
         CHECK_EQ_U64(import_save(m, b.data + 1u, n - 1u), COGMASTER_STATUS_OK);
         CHECK_EQ_HEX(b.data[n - 1u], 0xffu);
     }
+    length_matrix(m);
     classified(m, COGMASTER_BOARD_SEGA, COGMASTER_PERSISTENCE_BATTERY, 32768u,
                COGMASTER_GEOMETRY_SUPPORTED);
     m->cart.persistent_size = 8192u;
