@@ -33,7 +33,7 @@ struct slot {
 #define SG1000 "SG-1000 board; the SG-1000 is not emulated"
 static const struct slot slots[] = {
     {"codemasters", 1u, COGMASTER_BOARD_CODEMASTERS, ""},
-    {"eeprom", 2u, 0u, "93C46 EEPROM save chip not emulated"},
+    {"eeprom", 2u, COGMASTER_BOARD_SEGA_EEPROM, ""},
     {"mgear", 3u, 0u, "Master Gear converter, not a game"},
     {"xterminator", 4u, 0u, "X-Terminator cheat device"},
     {"cardcatcher", 5u, 0u, SG1000},
@@ -66,6 +66,7 @@ static const char *const board_names[] = {
     [COGMASTER_BOARD_ZEMINA] = "zemina",
     [COGMASTER_BOARD_NEMESIS] = "nemesis",
     [COGMASTER_BOARD_4PAK] = "hes_4pak",
+    [COGMASTER_BOARD_SEGA_EEPROM] = "sega_eeprom",
 };
 #define BOARD_NAMES (sizeof board_names / sizeof board_names[0])
 
@@ -342,14 +343,18 @@ static void parse(char *s)
             const struct slot *row = find_slot(slot);
             f.slot = row->id;
             f.board = row->board;
-            if (row->id == 2u)
-                f.persistence = 3u;
+            /* The EEPROM board keeps 128 bytes, the 93C46's 64 words of 16 bits. */
+            if (row->board == COGMASTER_BOARD_SEGA_EEPROM) {
+                f.persistence = 2u;
+                f.declared = 128u;
+            }
         }
         if (f.persistence == 2u && !*slot && f.machine)
             f.board = 2u;
         if (f.persistence == 2u) {
-            f.geometry = (f.board == 2u &&
-                          (f.declared == 8192u || f.declared == 16384u || f.declared == 32768u))
+            f.geometry = ((f.board == 2u &&
+                           (f.declared == 8192u || f.declared == 16384u || f.declared == 32768u)) ||
+                          (f.board == COGMASTER_BOARD_SEGA_EEPROM && f.declared == 128u))
                              ? 1u
                              : 2u;
         }
