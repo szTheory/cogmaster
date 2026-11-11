@@ -13,7 +13,7 @@ endfunction()
 # Fault prevented: a failing control that passes on an unrelated error. Each control names its row or word.
 function(fw_expect name regex)
   string(REPLACE ";" "$<SEMICOLON>" cmd "${ARGN}")
-  # Timeout: 20 s floor; no hosted run yet, provisional.
+  # Timeout: 20 s floor; 2 x 0.29 s, slowest of 231 runs, run 43051607563.
   cogmaster_add_test(NAME ${name} COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=${regex}"
     -P ${policy_scripts}/expect_fail.cmake LABELS policy TIMEOUT 20)
 endfunction()
@@ -36,7 +36,7 @@ fw_write(${fw}/doc_flip.md "${fw_doc_flip}")
 fw_write(${fw}/table.inc "${fw_tab}")
 fw_write(${fw}/table_short.inc "${fw_tab_short}")
 set(fw_check -DCHECK=bios_table -P ${policy_scripts}/repository.cmake)
-# Timeout: 20 s floor; no hosted run yet, provisional.
+# Timeout: 20 s floor; 2 x 0.27 s, slowest of 21 runs, run 43051607563.
 cogmaster_add_test(NAME policy.bios_table
   COMMAND ${CMAKE_COMMAND} -DDOC=${PROJECT_SOURCE_DIR}/ASSET_POLICY.md -DOTHER=${PROJECT_SOURCE_DIR}/host/bios_table.inc ${fw_check}
   LABELS policy TIMEOUT 20)
@@ -49,7 +49,7 @@ fw_expect(policy.bios_table.self_test.table "bios_table: gamma\\.rom only in the
 set(fw_var COGMASTER_BIOS)
 string(APPEND fw_var _DIR)
 fw_write(${fw}/reads/tests/read.cmake "# reads ${fw_var} here\n")
-# Timeout: 20 s floor; no hosted run yet, provisional.
+# Timeout: 20 s floor; 2 x 1.39 s, slowest of 21 runs, run 43049044281.
 cogmaster_add_test(NAME policy.bios_dir_reads
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCHECK=bios_dir_reads -P ${policy_scripts}/repository.cmake
   LABELS policy TIMEOUT 20)
@@ -86,7 +86,7 @@ function(fw_scan name root member regex)
   fw_zip(${name} a.zip ${member})
   set(cmd ${CMAKE_COMMAND} -DDIR=${fw}/${name} -DROOT=${fw}/r_${root} ${ARGN} -P ${policy_scripts}/firmware_scan.cmake)
   if(regex MATCHES "^[0-9]")
-    # Timeout: 20 s floor; no hosted run yet, provisional.
+    # Timeout: 20 s floor; 2 x 0.10 s, slowest of 63 runs, run 43051607563.
     cogmaster_add_test(NAME policy.firmware_scan.${name} COMMAND ${cmd} LABELS policy TIMEOUT 20)
     set_tests_properties(policy.firmware_scan.${name} PROPERTIES PASS_REGULAR_EXPRESSION "firmware_scan: ${regex}")
   else()
@@ -113,7 +113,7 @@ fw_scan(clean ok clean.txt "1 zips, [1-9][0-9]* files, 0 hits")
 fw_scan(text ok text.txt "1 zips, [1-9][0-9]* files, 0 hits")
 fw_scan(loose ok clean.txt "1 zips, [1-9][0-9]* files, 0 hits")
 file(COPY ${fw_src}/head16384.bin DESTINATION ${fw}/loose)
-# Timeout: 20 s floor; no hosted run yet, provisional.
+# Timeout: 20 s floor; 2 x 0.79 s, slowest of 18 runs, run 43049044281.
 cogmaster_add_test(NAME release.firmware_scan
   COMMAND ${CMAKE_COMMAND} -DSTAGE_FROM=${PROJECT_BINARY_DIR} -DDIR=${PROJECT_BINARY_DIR}/release/firmware_stage
     -DROOT=${PROJECT_SOURCE_DIR} -DSUFFIX=${COGMASTER_OS}-${COGMASTER_ARCH} -DMIN_ZIPS=3 -P ${policy_scripts}/firmware_scan.cmake

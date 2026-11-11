@@ -77,7 +77,7 @@ foreach(case over under split)
   execute_process(COMMAND ${COGMASTER_SH} -c [=[awk -v n="$2" -v s="$3" 'BEGIN { for (i = 0; i < n; i++) { if (i == s) print "prose"; printf "0x%02x,%s", i % 256, (i % 16 == 15 ? "\n" : " ") } print "" }' > "$1"]=]
     sh ${tree}/data.txt ${literals} ${prose} COMMAND_ERROR_IS_FATAL ANY)
   set(command ${COGMASTER_SH} -c "cd \"$1\" && sh scripts/hygiene.sh --tree" sh ${tree})
-  # Timeout: 20 s floor; no hosted run yet, provisional.
+  # Timeout: 20 s floor; 2 x 0.10 s, slowest of 9 runs, run 43049044281.
   if(case STREQUAL "over")
     string(REPLACE ";" "$<SEMICOLON>" command "${command}")
     cogmaster_add_test(NAME hygiene.byte_run.over

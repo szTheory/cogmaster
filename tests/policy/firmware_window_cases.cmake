@@ -43,7 +43,7 @@ fwin_repo(history commit)
 # failing controls match the whole output, so any extra byte, offset, window or dump path fails them.
 function(fwin_case name mode regex)
   string(REPLACE ";" "$<SEMICOLON>" cmd "${ARGN}")
-  # Timeout: 20 s floor; no hosted run yet, provisional.
+  # Timeout: 20 s floor; 2 x 0.16 s, slowest of 30 runs, run 43049044281.
   if(mode STREQUAL FAIL)
     cogmaster_add_test(NAME policy.firmware_window.${name} LABELS hygiene policy TIMEOUT 20
       COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=${regex}" -P ${policy_scripts}/expect_fail.cmake)
