@@ -52,9 +52,12 @@ endforeach()
 
 # The Sports Pad and the Paddle on the internal API: the read sequence at the tick limits, the walk
 # and its buttons, the clamps, the sum of pending motion, device changes, resets, profiles and
-# availability, a poll hammer, a state round trip and a replay of recorded motion.
-add_executable(cogmaster-test-ports-devices ${CMAKE_CURRENT_LIST_DIR}/test_devices.c)
-target_include_directories(cogmaster-test-ports-devices PRIVATE ${PROJECT_SOURCE_DIR}/src)
+# availability, a poll hammer, a state round trip and a replay of recorded motion. Its record mode is the
+# library's side of the replay case in tests/fixtures: it runs an image with a device and writes the script.
+add_executable(cogmaster-test-ports-devices ${CMAKE_CURRENT_LIST_DIR}/test_devices.c
+  ${PROJECT_SOURCE_DIR}/runner/sha256.c)
+target_include_directories(cogmaster-test-ports-devices PRIVATE ${PROJECT_SOURCE_DIR}/src
+  ${PROJECT_SOURCE_DIR}/runner)
 target_link_libraries(cogmaster-test-ports-devices PRIVATE cogmaster::cogmaster)
 set_target_properties(cogmaster-test-ports-devices PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)

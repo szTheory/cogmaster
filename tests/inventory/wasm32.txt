@@ -160,6 +160,8 @@ fixtures.sports_pad.control.dropped_delta	fixtures,portable
 fixtures.sports_pad.control.pad	fixtures,portable
 fixtures.sports_pad.mailbox.export	fixtures,portable
 fixtures.sports_pad.mailbox.japan	fixtures,portable
+fixtures.sports_pad.replay	fixtures,portable
+fixtures.sports_pad.replay_control	fixtures,portable
 fixtures.vdp_lines.judge.hang	fixtures,portable
 fixtures.vdp_lines.judge.missing_row	fixtures,portable
 fixtures.vdp_lines.judge.wrong_value	fixtures,portable

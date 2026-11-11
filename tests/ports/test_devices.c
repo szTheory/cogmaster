@@ -12,6 +12,7 @@
 #include "cogmaster.h"
 #include "internal.h"
 #include "state.h"
+#include "sha256.h"
 #include "../check.h"
 
 #define IMAGE_SIZE 1024u
@@ -1027,8 +1028,198 @@ static void test_replay(void)
     free(cut.state);
 }
 
+/* ---- record ---- */
+
+/* cogmaster-test-ports-devices record IMAGE DEVICE REGION SCRIPT FRAMES: the library's side of a
+   replay. It runs the image on the public API with DEVICE on port 1 and REGION, sends a fixed
+   pseudo-random motion each frame, writes each call's axes as the runner's 75-byte script line, and
+   prints the hash line the runner prints for the last frame. The motion stays within 100 counts a
+   frame, which the pad delivers whole, so a change of one count in the last frame is a change in
+   the picture. Half way through, the state is saved and loaded into a second instance; both finish
+   the script and must agree in picture and in state bytes. */
+#define RECORD_IMAGE_MAX (1u << 20)
+#define RECORD_SPAN 100u
+
+static uint64_t record_next(uint64_t *seed)
+{
+    uint64_t z = (*seed += 0x9E3779B97F4A7C15ull);
+    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ull;
+    z = (z ^ (z >> 27)) * 0x94D049BB133111EBull;
+    return z ^ (z >> 31);
+}
+
+static uint32_t record_device(const char *name)
+{
+    if (strcmp(name, "sports") == 0) {
+        return COGMASTER_DEVICE_SPORTS_PAD;
+    }
+    if (strcmp(name, "paddle") == 0) {
+        return COGMASTER_DEVICE_PADDLE;
+    }
+    if (strcmp(name, "pad") != 0) {
+        exit(2);
+    }
+    return COGMASTER_DEVICE_PAD;
+}
+
+/* The region words of the runner's --region, which sets the TV standard with the region. */
+static void record_region(const char *name, cogmaster_media *md)
+{
+    md->tv = COGMASTER_TV_NTSC;
+    md->region = COGMASTER_REGION_EXPORT;
+    if (strcmp(name, "ntsc-j") == 0) {
+        md->region = COGMASTER_REGION_JAPAN;
+    } else if (strcmp(name, "pal") == 0) {
+        md->tv = COGMASTER_TV_PAL;
+    } else if (strcmp(name, "ntsc-u") != 0) {
+        exit(2);
+    }
+}
+
+static cogmaster *record_instance(const cogmaster_media *md)
+{
+    cogmaster_config cfg;
+    memset(&cfg, 0, sizeof cfg);
+    cfg.size = (uint32_t)sizeof cfg;
+    cfg.allocator.alloc = test_alloc;
+    cfg.allocator.free = test_free;
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    if (m == NULL) {
+        exit(1);
+    }
+    CHECK_EQ_U64(cogmaster_load(m, md), COGMASTER_STATUS_OK);
+    return m;
+}
+
+/* The runner's hash of the frame just run: the crop, each pixel low byte first. */
+static void record_hash(const cogmaster *m, char hex[65])
+{
+    static uint16_t pixels[COGMASTER__FIELD_W * COGMASTER__FIELD_MAX_H];
+    cogmaster_info info;
+    memset(&info, 0, sizeof info);
+    info.size = (uint32_t)sizeof info;
+    CHECK_EQ_U64(cogmaster_get_info(m, &info), COGMASTER_STATUS_OK);
+    cogmaster_frame f;
+    memset(&f, 0, sizeof f);
+    f.size = (uint32_t)sizeof f;
+    f.pixels = pixels;
+    f.pitch_bytes = info.crop_w * 2u;
+    CHECK_EQ_U64(cogmaster_get_frame(m, &f), COGMASTER_STATUS_OK);
+    cogmaster__sha256 sha;
+    cogmaster__sha256_init(&sha);
+    for (uint32_t y = 0u; y < f.h; y++) {
+        uint8_t row[2u * COGMASTER__FIELD_W];
+        for (uint32_t x = 0u; x < f.w; x++) {
+            uint16_t px = pixels[(size_t)y * info.crop_w + x];
+            row[2u * x] = (uint8_t)(px & 0xFFu);
+            row[2u * x + 1u] = (uint8_t)(px >> 8);
+        }
+        cogmaster__sha256_update(&sha, row, (size_t)f.w * 2u);
+    }
+    uint8_t digest[32];
+    cogmaster__sha256_final(&sha, digest);
+    cogmaster__sha256_hex(digest, hex);
+}
+
+static void record_step(cogmaster *m, uint32_t device, int32_t x, int32_t y)
+{
+    CHECK_EQ_U64(send(m, device, COGMASTER_DEVICE_PAD, 0u, 0u, x, y, 0, 0), COGMASTER_STATUS_OK);
+    frame(m);
+}
+
+static void test_record(char **argv)
+{
+    static uint8_t loaded[RECORD_IMAGE_MAX];
+    FILE *in = fopen(argv[2], "rb");
+    if (in == NULL) {
+        exit(1);
+    }
+    size_t size = fread(loaded, 1u, sizeof loaded, in);
+    CHECK(fclose(in) == 0);
+    uint32_t device = record_device(argv[3]);
+    uint32_t frames = (uint32_t)strtoul(argv[6], NULL, 10);
+    if (size == 0u || size == sizeof loaded || frames < 2u || frames > 10000u) {
+        exit(2);
+    }
+    cogmaster_media md;
+    memset(&md, 0, sizeof md);
+    md.size = (uint32_t)sizeof md;
+    md.image = loaded;
+    md.image_size = size;
+    record_region(argv[4], &md);
+    cogmaster_cart_info cart;
+    memset(&cart, 0, sizeof cart);
+    cart.size = (uint32_t)sizeof cart;
+    (void)cogmaster_probe(loaded, size, &cart);
+    md.machine =
+        cart.machine_guess != COGMASTER_MACHINE_AUTO ? cart.machine_guess : COGMASTER_MACHINE_SMS2;
+    FILE *out = fopen(argv[5], "wb");
+    if (out == NULL) {
+        exit(1);
+    }
+    cogmaster *m = record_instance(&md);
+    cogmaster *second = NULL;
+    uint64_t seed = 0x5EEDull;
+    for (uint32_t i = 0u; i < frames; i++) {
+        uint64_t r = record_next(&seed);
+        int32_t x =
+            device == COGMASTER_DEVICE_PAD ? 0 : (int32_t)(r % (2u * RECORD_SPAN + 1u)) - 100;
+        int32_t y = device == COGMASTER_DEVICE_PAD
+                        ? 0
+                        : (int32_t)((r >> 32) % (2u * RECORD_SPAN + 1u)) - 100;
+        fprintf(out, "p1=00 p2=00 pause=0 reset=0 start=0 x1=%+06d y1=%+06d x2=+00000 y2=+00000\n",
+                (int)x, (int)y);
+        if (i == frames / 2u) {
+            size_t state_size = cogmaster__state_size(m);
+            uint8_t *state = malloc(state_size);
+            CHECK(state != NULL);
+            if (state == NULL) {
+                exit(1);
+            }
+            CHECK_EQ_U64(cogmaster__state_save(m, state, state_size), COGMASTER_STATUS_OK);
+            second = record_instance(&md);
+            CHECK_EQ_U64(cogmaster__state_load(second, state, state_size), COGMASTER_STATUS_OK);
+            free(state);
+        }
+        record_step(m, device, x, y);
+        if (second != NULL) {
+            record_step(second, device, x, y);
+        }
+    }
+    CHECK(fclose(out) == 0);
+    if (second == NULL) {
+        exit(1);
+    }
+    char hex[65];
+    char hex_second[65];
+    record_hash(m, hex);
+    record_hash(second, hex_second);
+    CHECK(strcmp(hex, hex_second) == 0);
+    size_t state_size = cogmaster__state_size(m);
+    uint8_t *a = malloc(state_size);
+    uint8_t *b = malloc(state_size);
+    CHECK(a != NULL && b != NULL);
+    if (a == NULL || b == NULL) {
+        exit(1);
+    }
+    CHECK_EQ_U64(cogmaster__state_save(m, a, state_size), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(cogmaster__state_size(second), state_size);
+    CHECK_EQ_U64(cogmaster__state_save(second, b, state_size), COGMASTER_STATUS_OK);
+    CHECK(memcmp(a, b, state_size) == 0);
+    free(a);
+    free(b);
+    cogmaster_destroy(second);
+    cogmaster_destroy(m);
+    printf("frame %u sha256 %s\n", (unsigned)frames, hex);
+}
+
 int main(int argc, char **argv)
 {
+    if (argc == 7 && strcmp(argv[1], "record") == 0) {
+        test_record(argv);
+        CHECK_DONE();
+    }
     if (argc != 2) {
         return 2;
     }

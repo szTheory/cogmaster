@@ -114,6 +114,43 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(NOT got STREQUAL gg)
       message(FATAL_ERROR "fm on with Game Gear content: ${got}, the runner's run gives ${gg}")
     endif()
+  elseif(CASE STREQUAL "replay")
+    # The library records a run of IMAGE with DEVICE on port 1, once for each region in REGIONS (comma
+    # separated), and writes the script it sent to SCRIPT; the runner replays the script and must print the
+    # recorder's last-frame hash line. EDIT changes one count of the last record before the replay, for the
+    # negative control. The recorder also finishes the run again from a state saved half way and must agree.
+    string(REPLACE "," ";" regions "${REGIONS}")
+    foreach(region IN LISTS regions)
+      execute_process(COMMAND ${EMULATOR} ${RECORDER} record ${IMAGE} ${DEVICE} ${region} ${SCRIPT} ${FRAMES}
+        RESULT_VARIABLE rc OUTPUT_VARIABLE recorded ERROR_VARIABLE err)
+      if(NOT rc STREQUAL "0" OR NOT recorded MATCHES "^frame ${FRAMES} sha256 [0-9a-f]+\n$")
+        message(FATAL_ERROR "replay: recording ${IMAGE} on ${region}: exit ${rc}\n${recorded}${err}")
+      endif()
+      if(EDIT)
+        # The units digit moves by one count (a 9 becomes an 8), so no digit carries.
+        file(STRINGS ${SCRIPT} lines)
+        list(POP_BACK lines last)
+        string(REGEX MATCH "^(.* x1=[+-][0-9][0-9][0-9][0-9])([0-9])(.*)$" unused "${last}")
+        set(digit 8)
+        if(CMAKE_MATCH_2 LESS 9)
+          math(EXPR digit "${CMAKE_MATCH_2} + 1")
+        endif()
+        list(APPEND lines "${CMAKE_MATCH_1}${digit}${CMAKE_MATCH_3}")
+        list(JOIN lines "\n" body)
+        file(WRITE ${SCRIPT} "${body}\n")
+      endif()
+      execute_process(COMMAND ${EMULATOR} ${RUN} ${IMAGE} --port1 ${DEVICE} --region ${region}
+          --frames ${FRAMES} --input ${SCRIPT} --hash
+        RESULT_VARIABLE rc OUTPUT_VARIABLE replayed ERROR_VARIABLE err)
+      if(NOT rc STREQUAL "0" OR NOT replayed MATCHES "(^|\n)(frame ${FRAMES} sha256 [0-9a-f]+)\n")
+        message(FATAL_ERROR "replay: the runner on ${region}: exit ${rc}\n${replayed}${err}")
+      endif()
+      set(line "${CMAKE_MATCH_2}")
+      string(STRIP "${recorded}" recorded)
+      if(NOT line STREQUAL recorded)
+        message(FATAL_ERROR "replay: on ${region} the replay's '${line}' differs from the recording '${recorded}'")
+      endif()
+    endforeach()
   elseif(CASE STREQUAL "image")
     # The runner's probe finds the header checksum good.
     execute_process(COMMAND ${EMULATOR} ${RUN} --probe ${IMAGE} RESULT_VARIABLE rc
@@ -725,6 +762,25 @@ foreach(control IN ITEMS dropped_delta pad)
       -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
     LABELS fixtures portable TIMEOUT 10)
 endforeach()
+
+# Fault prevented: a recorded delta script that replays to a different frame, so a replay no longer matches the
+# run it recorded. The library records the pad's motion on every TV standard, the runner replays the written
+# script to the same hash, and the same script with one count changed in its last record must not.
+# Timeout: 10 s floor; 0.1 s slowest local run, no hosted run yet, so provisional.
+set(sports_replay -DCASE=replay -DNAME=sports_pad -DIMAGE=${COGMASTER_FIXTURES_DIR}/sports_pad.sms
+  -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt -DRECORDER=$<TARGET_FILE:cogmaster-test-ports-devices>
+  -DRUN=$<TARGET_FILE:cogmaster-run> -DDEVICE=sports -DREGIONS=ntsc-u,ntsc-j,pal -DFRAMES=40)
+cogmaster_add_test(NAME fixtures.sports_pad.replay
+  COMMAND ${CMAKE_COMMAND} ${sports_replay} "-DEMULATOR=${fixtures_emulator}"
+    -DSCRIPT=${fixtures_out}/sports_pad.replay.input -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 10)
+set(cmd ${CMAKE_COMMAND} ${sports_replay} "-DEMULATOR=${fixtures_inner_emulator}" -DEDIT=1
+  -DSCRIPT=${fixtures_out}/sports_pad.replay_control.input -P ${CMAKE_CURRENT_LIST_FILE})
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+cogmaster_add_test(NAME fixtures.sports_pad.replay_control
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=differs[^a-zA-Z]+from[^a-zA-Z]+the[^a-zA-Z]+recording"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+  LABELS fixtures portable TIMEOUT 10)
 
 # Fault prevented: a judge that passes what it should fail. Each control
 # runs the mapper_sega fixture through the judge and must fail with exit 1
