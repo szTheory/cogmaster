@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 8
 current_phase_name: Sports Pad, Paddle and 3-D glasses
 status: planning
-stopped_at: Completed 08-09-PLAN.md
-last_updated: "2026-11-11T05:53:44.384Z"
+stopped_at: Completed 08-10-PLAN.md
+last_updated: "2026-11-11T06:08:08.182Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 7 complete, transitioned to Phase 8
-state_head: cc871fdea6725c34330cc3cfca8ef11e53a812bd
+state_head: 4fa80bf41a84ab05c565e5b500666cad9414f23e
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 52
-  completed_plans: 44
+  completed_plans: 45
   percent: 38
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 8 — Sports Pad, Paddle and 3-D glasses
-Plan: 9 of 17 complete (08-01 port layer, 08-02 header delta, 08-03 set_input copy rule, 08-04 glasses core and hosted dispatch 1, 08-05 Sports Pad, Paddle and saved device state, 08-06 state bounds proof and pad fuzz target, 08-07 default controller per dump and the region rule, 08-08 runner device grammar, exit 77 refusal and probe default keys, 08-09 runner delta lines and --eyes); next 08-10
+Plan: 10 of 17 complete (08-01 port layer, 08-02 header delta, 08-03 set_input copy rule, 08-04 glasses core and hosted dispatch 1, 08-05 Sports Pad, Paddle and saved device state, 08-06 state bounds proof and pad fuzz target, 08-07 default controller per dump and the region rule, 08-08 runner device grammar, exit 77 refusal and probe default keys, 08-09 runner delta lines and --eyes, 08-10 Sports Pad fixture and replay); next 08-11
 Status: Executing
-Last activity: 2026-11-11 — Completed 08-09 (the input script takes a 75-byte line with x1 y1 x2 y2; motion for a pad or an empty port is exit 2 before frame 1 naming the port and device; --eyes prints one line of eye counts; five runner cases with a negative control)
+Last activity: 2026-11-11 — Completed 08-10 (sports_pad.sms polls the pad with 286/143 cycle waits and reports X and Y, the 511 and 512 cycle idle probe and the buttons; rows recomputed from one delta list on export and Japan, two failing controls, a cross-lane device hash row, and a recorded script that replays through the runner to the same hash)
 
 Progress: [████░░░░░░] 38% of v2.0
 
@@ -170,6 +170,7 @@ Progress: [████░░░░░░] 38% of v2.0
 | Phase 8 P07 | 25min | 2 tasks | 7 files |
 | Phase 8 P08 | 40min | 2 tasks | 9 files |
 | Phase 08 P09 | 20 min | 2 tasks | 9 files |
+| Phase 8 P10 | 70min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -229,6 +230,8 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 8]: Plan 08-07: the table's controller intent is held in two instance bytes outside the saved fields and resolved against the availability rule in get_info; a paddle row with no region reads as Japan in cart_fact_to_info, 1 of 1658 rows moved
 - [Phase 8]: Plan 08-08: auto resolves from cogmaster_info after load (already degraded by the profile), so only an explicit device choice can exit 77; the probe prints raw table intent
 - [Phase 08]: Plan 08-09: a pad or an empty port accepts only zero axes, a Paddle or Sports Pad any in-range value; the refusal line names the port and device; --eyes prints last after every other output line
+- [Phase 8]: Sports Pad idle timeout probed at 511 and 512 cycles (1,533 and 1,536 ticks): a gap is whole Z80 cycles of 3 ticks
+- [Phase 8]: Replay recorder keeps motion within 100 counts a frame and drains audio each frame so the last frame follows the last delta and a restored copy matches in state bytes
 
 ### Pending Todos
 
@@ -323,6 +326,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 8 plan 08-05 (gsd-execute-phase 08); Sports Pad and Paddle models on the TH wire, set_input availability and motion sums, pending axes and port blocks saved with bounds and cross-checks (record count 170887 of 240000), eleven ports.devices cases with three local negative controls, no push; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 8 plan 08-06 (gsd-execute-phase 08); byte-mutation, just-outside, sweep, mid-sequence and availability state cases against an independent checker (2952 loads), fuzz_pad.c as the fifth fuzz target with seeds, regress and libFuzzer registrations, three local negative controls, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 8 plan 08-07 (gsd-execute-phase 08); table controller intent in cart_info and the profile-resolved default in info, paddle region rule (1 of 1658 rows moved), four cart.device cases with two local negative controls, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 8 plan 08-10 (gsd-execute-phase 08); sports_pad.asm with cycle-counted waits and the 511/512-cycle idle probe, 30 rows on two profiles recomputed from one delta list, dropped-delta and plain-pad controls, a device hash row (14 added lines), record mode and a three-region replay case with a control; 3 tasks, 3 commits, no push | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -344,8 +348,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T05:53:44.270Z
-Stopped at: Completed 08-09-PLAN.md
+Last session: 2026-11-11T06:08:08.083Z
+Stopped at: Completed 08-10-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
