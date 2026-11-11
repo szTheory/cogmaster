@@ -18,8 +18,10 @@
 
 /* The Sports Pad reads out X then Y, a high nibble at each TH fall and the low
    nibble at the rise after it (MAME sports.cpp out_w; ares sports-pad.cpp
-   write). Step 0 is idle and presents $F; steps 1 to 4 present the high and low
-   nibble of X, then of Y. The pad answers the negated host motion (MAME
+   write). Step 0 is the pad before its first read and presents $F; steps 1 to 4
+   present the high and low nibble of X, then of Y, and step 4 keeps the last
+   nibble until the next fall, as MAME holds its output through its timeout (ares
+   likewise never returns to $F). The pad answers the negated host motion (MAME
    PORT_REVERSE on both axes, ares negates both), and buttons 1 and 2 are TL
    and TR, active low. */
 static uint8_t sports_nibble(const struct cogmaster__port *p)

@@ -239,11 +239,18 @@ static void test_sports_walk(void)
                     CHECK_EQ_U64(s.x, neg_byte(5));
                     CHECK_EQ_U64(s.y, neg_byte(-3));
                     check_keys(s.keys, held);
+                    /* A finished read leaves the low nibble of Y on the pins, not $F. */
+                    CHECK_EQ_U64(pins_of(m, port) & 0xFu, neg_byte(-3) & 0xFu);
                     /* Everything has been delivered: the next read is zero. */
                     s = read_seq(m, port, &t);
                     CHECK_EQ_U64(s.x, 0);
                     CHECK_EQ_U64(s.y, 0);
-                    /* Idle between reads, the pad presents $F with its keys. */
+                    /* Between reads the pad holds the last nibble on D0-D3 (MAME keeps its output
+                       across the timeout; neither it nor ares returns to $F), not $F, even a frame later. */
+                    CHECK_EQ_U64(m->ports[port].step, 4);
+                    CHECK_EQ_U64(pins_of(m, port) & 0xFu, neg_byte(0) & 0xFu);
+                    frame(m);
+                    CHECK_EQ_U64(pins_of(m, port) & 0xFu, neg_byte(0) & 0xFu);
                     CHECK_EQ_U64(m->ports[port].step, 4);
                     cogmaster_destroy(m);
                 }

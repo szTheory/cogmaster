@@ -60,7 +60,9 @@ smaller of the caller's size and its own, whole fields only, and zeroes the rest
 The pad answers a read in five steps, started by TH falling. The first fall latches both axes and shows the high
 nibble of X, the next rise shows the low nibble, the next fall and rise show Y the same way. D0 to D3 carry the
 nibble, TL and TR are buttons 1 and 2, active low, and the pad ignores the direction bits of `p1` and `p2` while it is
-on the port. Idle it shows `$F`.
+on the port. Before its first read after a load, a reset or a device change it shows `$F`; after that the last nibble
+stays on D0 to D3 until the next TH edge, however long TH stays put (MAME keeps its output nibble through the timeout, and
+ares keeps presenting stored nibbles; neither returns to `$F`).
 
 - Each fall hands out at most 127 counts per axis; what is left stays in the pad, which keeps at most 1023 counts
   per axis. That cap is a limit of the model, not of the hardware.
