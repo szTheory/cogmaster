@@ -249,7 +249,7 @@ static void print_fault(const cogmaster_fault *f)
 
 /* The exit status for cogmaster_load's status, after a message: a refusal
    for what the core does not support, a failure for anything else. */
-static int load_status(cogmaster_status st, const uint8_t *image, size_t image_size, int gg_bios)
+static int load_status(cogmaster_status st, const uint8_t *image, size_t image_size)
 {
     switch (st) {
     case COGMASTER_STATUS_OK:
@@ -266,11 +266,6 @@ static int load_status(cogmaster_status st, const uint8_t *image, size_t image_s
         }
         return COGMASTER__EXIT_REFUSED;
     case COGMASTER_STATUS_ERR_PROFILE_REJECTED:
-        if (gg_bios) {
-            fprintf(stderr,
-                    "cogmaster-run: unsupported: a BIOS cannot start a Game Gear cartridge\n");
-            return COGMASTER__EXIT_REFUSED;
-        }
         fprintf(stderr, "cogmaster-run: unsupported: no such console was made for this machine "
                         "and region\n");
         return COGMASTER__EXIT_REFUSED;
@@ -370,8 +365,7 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     media.video_mode = opt->video_mode;
     media.bios = bios;
     media.bios_size = bios != NULL ? (size_t)COGMASTER_BIOS_SIZE : 0u;
-    int status = load_status(cogmaster_load(m, &media), image, image_size,
-                             bios != NULL && media.machine == COGMASTER_MACHINE_GG);
+    int status = load_status(cogmaster_load(m, &media), image, image_size);
     /* auto takes the library's default for this content, already degraded to a pad when the
        machine and region cannot take it; the call is made once, so a later frame never changes it.
      */

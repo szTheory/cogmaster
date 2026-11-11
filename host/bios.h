@@ -1,7 +1,7 @@
 /* Host BIOS helper, outside the core's determinism boundary: nothing here is
    hashed or saved. The runner and the libretro adapter use it to read a
    user's dump with a byte bound and to name it for a log line. The behaviour
-   is described in docs/controllers.md. */
+   is described in docs/bios.md. */
 #ifndef COGMASTER_HOST_BIOS_H
 #define COGMASTER_HOST_BIOS_H
 
