@@ -222,13 +222,13 @@ matches the expected message; a crash or a missing file does not count as the ex
 | `policy.action_pins.self_test` | An action referenced by a tag. |
 | `policy.e2e_budget.self_test` | Two files totaling 301 lines under the RetroArch test budget. |
 | `policy.firmware_scan.*` | A zip holding a file with an injected SHA-1, a copier-headered member, a cartdb or manifest row, an empty directory and a zero-row table fail; a clean zip, a loose headered file and a misaligned `00` hex match pass. |
-| `policy.firmware_window.*`, `hygiene.byte_run.*` | A planted 32-byte window fails (also in a C array), a 31-byte one passes; 300 byte literals fail, 255 pass. |
+| `policy.firmware_window.*`, `hygiene.byte_run.*` | A planted 32-byte window fails (also in a C array, a non-ASCII file name, a libretro module and a release zip), a 31-byte one passes; an unreadable target, a zip that will not open, an unusable or empty dump directory fail; 300 byte literals fail, 255 pass. |
 | `docs.budgets.ratio_equal` | One physical check line against ten core lines, including unterminated final lines. |
 | `docs.budgets.unclassified` | A checker omitted from the responsibility inventory. |
 | `docs.budgets.helper` | An additional counted compatibility helper exceeds an otherwise passing ratio. |
 | `docs.budgets.helper_unclassified` | An unclassified compatibility parser helper beside a classified checker. |
 
-The window controls run only in the Linux `hygiene` lane; `local.firmware_window_scan` runs in the `library` preset and says it compared nothing when no dump is set. The window scan misses base64, decimal lists, XOR and compression. A nested archive in a release zip is not re-extracted (`release.archive_contents` pins each member set); a padded dump of the same BIOS passes the release scan and only the window scan catches it.
+The window controls run only in the Linux `hygiene` lane; `local.firmware_window_scan` runs in the `library` preset and says it compared nothing when no dump is set. The window scan misses base64, decimal lists, XOR, compression, `xxd` and `hexdump -C` layouts and a dump kept as a zip. A nested archive in a release zip is not re-extracted (`release.archive_contents` pins each member set); a padded dump of the same BIOS passes the release scan and only the window scan catches it.
 
 `docs.budgets.ratio_below` supplies the passing boundary: one check line against eleven core lines. Both `ci`
 and `hygiene` execute these cases and `docs.budgets`; the equality and omission cases require the intended

@@ -3,7 +3,7 @@
 # over 8 KiB, so every 32-byte window holds 32 distinct values (the step is odd), and it repeats every 256 bytes.
 set(fwin ${PROJECT_BINARY_DIR}/policy/fwin)
 file(REMOVE_RECURSE ${fwin})
-file(MAKE_DIRECTORY ${fwin}/dump ${fwin}/dump_end ${fwin}/dump_low)
+file(MAKE_DIRECTORY ${fwin}/dump ${fwin}/dump_end ${fwin}/dump_low ${fwin}/dump_none)
 # The directory variable's name is built in pieces so no file under tests holds it.
 set(fwin_var COGMASTER_BIOS)
 string(APPEND fwin_var _DIR)
@@ -44,9 +44,13 @@ fwin_repo(history commit)
 function(fwin_case name mode regex)
   string(REPLACE ";" "$<SEMICOLON>" cmd "${ARGN}")
   # Timeout: 20 s floor; 2 x 0.16 s, slowest of 30 runs, run 43049044281.
-  if(mode STREQUAL FAIL)
+  if(mode MATCHES "^FAIL")
+    set(code 1) # FAIL expects exit 1 (a window found), FAIL2 exit 2 (the scan could not finish)
+    if(mode STREQUAL FAIL2)
+      set(code 2)
+    endif()
     cogmaster_add_test(NAME policy.firmware_window.${name} LABELS hygiene policy TIMEOUT 20
-      COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=${regex}" -P ${policy_scripts}/expect_fail.cmake)
+      COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=${code} "-DREGEX=${regex}" -P ${policy_scripts}/expect_fail.cmake)
   else()
     cogmaster_add_test(NAME policy.firmware_window.${name} COMMAND ${ARGN} LABELS hygiene policy TIMEOUT 20)
     set_tests_properties(policy.firmware_window.${name} PROPERTIES PASS_REGULAR_EXPRESSION "${regex}")
@@ -71,3 +75,34 @@ fwin_case(unset PASS "no dump configured, 0 compared" ${CMAKE_COMMAND} -E env --
 set(fwin_hygiene ${CMAKE_COMMAND} -E env ${fwin_id} ${fwin_var}=${fwin}/dump ${COGMASTER_SH} -c [=[cd "$1" && shift && sh scripts/hygiene.sh "$@"]=] sh)
 fwin_case(staged FAIL "${fwin_hook}" ${fwin_hygiene} ${fwin}/staged --staged)
 fwin_case(history FAIL "${fwin_hook}" ${fwin_hygiene} ${fwin}/history --history HEAD)
+# Fault prevented: the scan's own target sources (tracked files, build modules, release zips) and its failure exits going
+# untested because the controls above name their targets. Each throwaway repository holds one fault; build/ is ignored, so
+# only the build globs can find what sits there; the scan runs with no target, as local.firmware_window_scan does.
+function(fwin_tree name plant)
+  file(COPY ${PROJECT_SOURCE_DIR}/scripts/firmware-window.sh DESTINATION ${fwin}/${name}/scripts)
+  fwin_sh("cd \"$1\" && git init -q && echo build/ > .gitignore && mkdir -p build/x/libretro build/shim && ${plant}" ${fwin}/${name} ${fwin}/dump/own.bin ${CMAKE_COMMAND})
+endfunction()
+set(fwin_slice [=[{ printf odd; tail -c +102 "$2" | head -c 64; printf x; }]=])
+set(fwin_run ${CMAKE_COMMAND} -E env ${fwin_var}=${fwin}/dump ${COGMASTER_SH} -c [=[cd "$1" && sh scripts/firmware-window.sh]=] sh)
+# A tracked file named with non-ASCII bytes, which git quotes unless asked not to.
+fwin_tree(nonascii "${fwin_slice} > \"$(printf 'caf\\303\\251.bin')\" && git add -A")
+fwin_case(nonascii FAIL "^firmware window: dump 1 \\(8192 bytes\\) matches caf[^ \n]*\\.bin\n$" ${fwin_run} ${fwin}/nonascii)
+# The libretro module sits under build/<preset>/libretro/.
+fwin_tree(module "${fwin_slice} > build/x/libretro/cogmaster_libretro.so")
+fwin_case(module FAIL "^firmware window: dump 1 \\(8192 bytes\\) matches build/x/libretro/cogmaster_libretro\\.so\n$" ${fwin_run} ${fwin}/module)
+# A release zip is opened; one that will not open fails the scan instead of passing it.
+fwin_tree(zip "${fwin_slice} > hit.bin && \"$3\" -E tar cf build/x/cogmaster-a.zip --format=zip hit.bin && rm hit.bin")
+fwin_case(zip FAIL "^firmware window: dump 1 \\(8192 bytes\\) matches build/x/cogmaster-a\\.zip/[^ \n]*hit\\.bin\n$" ${fwin_run} ${fwin}/zip)
+fwin_tree(zip_bad "printf 'not a zip' > build/x/cogmaster-bad.zip")
+fwin_case(zip_bad FAIL2 "cannot read build/x/cogmaster-bad\\.zip\n$" ${fwin_run} ${fwin}/zip_bad)
+# A target od cannot read (a wrapper stands in for the permission error, so the control holds for a privileged user too)
+# is named and fails the scan, and the target after it is still scanned.
+fwin_tree(unreadable "printf x > a_unreadable.txt && ${fwin_slice} > s.bin && printf '#!/bin/sh\\nfor a; do case $a in *unreadable*) exit 1;; esac; done\\nexec %s \"$@\"\\n' \"$(command -v od)\" > build/shim/od && chmod +x build/shim/od")
+fwin_case(unreadable FAIL "matches s\\.bin\nfirmware window: cannot read a_unreadable\\.txt\n$" ${CMAKE_COMMAND} -E env ${fwin_var}=${fwin}/dump
+  ${COGMASTER_SH} -c [=[cd "$1" && PATH="$PWD/build/shim:$PATH" sh scripts/firmware-window.sh]=] sh ${fwin}/unreadable)
+# A configured directory that cannot be used is not "no dump configured": a quoted value in .env.local, and an empty directory.
+fwin_tree(quoted "printf 'COGMASTER_BIOS_DIR=\"%s\"\\n' \"$2\" > .env.local")
+fwin_case(quoted FAIL2 "the configured directory is not usable" ${CMAKE_COMMAND} -E env --unset=${fwin_var}
+  ${COGMASTER_SH} -c [=[cd "$1" && sh scripts/firmware-window.sh]=] sh ${fwin}/quoted)
+fwin_case(dir_empty FAIL2 "no usable dump file in the directory" ${CMAKE_COMMAND} -E env ${fwin_var}=${fwin}/dump_none
+  ${COGMASTER_SH} -c [=[cd "$1" && sh scripts/firmware-window.sh]=] sh ${fwin}/unset)
