@@ -51,7 +51,8 @@ foreach(case IN ITEMS rule control gate profiles nolag state)
 endforeach()
 
 # The Light Phaser on the internal API: the tick-to-H function against the formula it replaced, the
-# aim, the trigger pin and hostile aims.
+# aim, the trigger pin and hostile aims, then the sensor against an independent oracle, its
+# neutrality and its bounds.
 add_executable(cogmaster-test-ports-gun ${CMAKE_CURRENT_LIST_DIR}/test_gun.c)
 target_include_directories(cogmaster-test-ports-gun PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(cogmaster-test-ports-gun PRIVATE cogmaster::cogmaster)
@@ -62,9 +63,13 @@ cogmaster_warnings(cogmaster-test-ports-gun)
 # Fault prevented: a refactor of the H-counter origin or of the latch site that moves a latch
 # position, so every light-gun, H-counter and pad game changes behaviour without a test noticing; a
 # hostile aim that overflows the disc arithmetic or aliases an edge pixel; an aim that is summed
-# instead of replaced; a trigger on the wrong pin or a gun that leaks the pad's reads.
-foreach(case IN ITEMS latch_at aim pins hostile_aim)
-  if(case STREQUAL "hostile_aim")
+# instead of replaced; a trigger on the wrong pin or a gun that leaks the pad's reads; a sensor that
+# is unbounded under a hostile polling schedule, that renders early and changes a picture, a hash or
+# a fault record, that latches at the read instead of the edge, or that depends on the order of two
+# guns' edges.
+foreach(case IN ITEMS latch_at aim pins hostile_aim model edge luma control order fault_neutral lag
+    seen_expiry peek)
+  if(case MATCHES "^(hostile_aim|model)$")
     # Timeout: 60 s floor; provisional.
     set(gun_timeout 60)
   else()
