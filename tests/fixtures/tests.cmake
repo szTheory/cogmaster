@@ -832,6 +832,52 @@ foreach(row IN LISTS paddle_rows)
   endif()
 endforeach()
 
+# Fault prevented: a Paddle TR clock that locks to a game's polling loop (a frozen reading of 0 or 100 percent) or a
+# position that drifts from the scripted deltas, so a Japanese paddle title cannot be played. The Japanese console
+# judges every record; the export console, given a plain pad, judges the region test alone. A frozen TR, a plain pad
+# and a script missing one delta must each fall outside a row.
+# Timeout: 10 s floor; 0.05 s slowest local run, no hosted run yet, so provisional.
+foreach(profile IN ITEMS japan export)
+  set(region ntsc-j)
+  set(device paddle)
+  set(input paddle)
+  if(profile STREQUAL "export")
+    set(region ntsc-u)
+    set(device pad)
+    set(input paddle-still)
+  endif()
+  cogmaster_add_test(NAME fixtures.paddle.mailbox.${profile}
+    COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=paddle -DMACHINE=sms -DREGION=${region}
+      -DPROFILE=sms-${profile} -DPORT1=${device} -DINPUT=${PROJECT_BINARY_DIR}/tests/${input}.input
+      -DIMAGE=${COGMASTER_FIXTURES_DIR}/paddle.sms -DFRAMES=${paddle_count}
+      -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+      -DOUT=${fixtures_out}/paddle.${profile}.txt -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures portable TIMEOUT 10)
+endforeach()
+foreach(control IN ITEMS frozen pad dropped_delta)
+  set(device paddle)
+  set(input paddle-dropped)
+  if(NOT control STREQUAL "dropped_delta")
+    set(device none)
+    set(input paddle-still)
+    if(control STREQUAL "pad")
+      set(device pad)
+    endif()
+  endif()
+  set(cmd ${CMAKE_COMMAND} -DCASE=mailbox -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+    -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${fixtures_inner_emulator}"
+    -DJUDGE=${PROJECT_SOURCE_DIR}/tests/cmake/mailbox.cmake -DPROFILE=sms-japan -DNAME=paddle
+    -DMACHINE=sms -DREGION=ntsc-j -DPORT1=${device} -DINPUT=${PROJECT_BINARY_DIR}/tests/${input}.input
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/paddle.sms -DFRAMES=${paddle_count}
+    -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/paddle.${control}.txt
+    -P ${CMAKE_CURRENT_LIST_FILE})
+  string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+  cogmaster_add_test(NAME fixtures.paddle.control.${control}
+    COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=outside its row"
+      -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+    LABELS fixtures portable TIMEOUT 10)
+endforeach()
+
 # Fault prevented: a judge that passes what it should fail. Each control
 # runs the mapper_sega fixture through the judge and must fail with exit 1
 # and its own message: a CSV copy with one value changed, a copy missing one

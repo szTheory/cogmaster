@@ -85,7 +85,8 @@ if(MODE STREQUAL "write")
       endif()
       # Fault prevented: a device frame that differs between lanes. A row is <file>|<script>|<arguments>;
       # the frames are the script's lines, since the runner takes one record per frame.
-      foreach(row IN ITEMS "sports_pad.sms|sports|--port1 sports --input ${OUT}/tests/sports.input")
+      foreach(row IN ITEMS "sports_pad.sms|sports|--port1 sports --input ${OUT}/tests/sports.input"
+          "paddle.sms|paddle|--port1 paddle --input ${OUT}/tests/paddle.input")
         if(row MATCHES "^${filename}[|]([^|]*)[|](.*)$")
           separate_arguments(device_args UNIX_COMMAND "${CMAKE_MATCH_2}")
           file(STRINGS "${OUT}/tests/${CMAKE_MATCH_1}.input" device_script)

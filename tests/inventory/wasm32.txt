@@ -150,6 +150,11 @@ fixtures.mapper_hes_4pak	fixtures,portable
 fixtures.mapper_korean	fixtures,portable
 fixtures.mapper_sega	fixtures,portable
 fixtures.mapper_zemina	fixtures,portable
+fixtures.paddle.control.dropped_delta	fixtures,portable
+fixtures.paddle.control.frozen	fixtures,portable
+fixtures.paddle.control.pad	fixtures,portable
+fixtures.paddle.mailbox.export	fixtures,portable
+fixtures.paddle.mailbox.japan	fixtures,portable
 fixtures.ports.gg	fixtures,portable
 fixtures.ports.sms-export	fixtures,portable
 fixtures.ports.sms-japan	fixtures,portable
