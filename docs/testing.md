@@ -276,7 +276,7 @@ control that must fail.
 | `host.aim` | The pointer-to-field mapping through the Master System and Game Gear rectangles: a pointer mapped without the crop offset, off by one dot or clamped onto an edge dot disagrees. |
 | `libretro.host.devices.*`, `libretro.host.stereo.*` | The adapter's option resolution, input sums, clamps and motion, and the view rule: alternating titles composed, one-eye titles untouched. |
 | `libretro.host.gun.*` | The adapter's pointer and cursor sources, Pause on a gun port, and a crosshair that is drawn into the shown picture only and stays out of the frame hash. |
-| `policy.no_title_table*` | A static check that no per-title table can enter the sensor or its hooks, with three self-tests that must trip it. |
+| `policy.no_title_table*` | A static check that no per-title table can enter the sensor or its hooks, with self-tests that must trip it (a brace or string array, `//` and `/*` inside a string) or must not (comments). |
 | `abi.api_v13` | The Light Phaser device constant and the three version numbers, with every struct size and axis offset pinned again. |
 | `compat.device_key`, `compat.device_rejected` | A ledger key names its controller on each port, the Light Phaser included; only `auto` is refused. |
 

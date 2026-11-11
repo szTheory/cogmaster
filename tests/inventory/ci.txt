@@ -331,6 +331,8 @@ policy.no_title_table	policy
 policy.no_title_table.self_test.array	policy
 policy.no_title_table.self_test.comments	policy
 policy.no_title_table.self_test.hook	policy
+policy.no_title_table.self_test.strarray	policy
+policy.no_title_table.self_test.strings	policy
 policy.notices	policy
 policy.quality	policy
 policy.quality.base_absent	policy

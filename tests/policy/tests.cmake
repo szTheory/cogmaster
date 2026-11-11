@@ -176,12 +176,14 @@ cogmaster_add_test(NAME policy.dependabot.self_test
 # header key), which a behaviour test on an owned fixture can never catch
 # because the key never matches it. The check reads code only in the five
 # files the sensor reaches. The self tests prove that it scans the hooks, that
-# it fails on an initialised array in the sensor, and that the hardware
-# comments that name cartridges and titles do not trip it.
+# it fails on an initialised array in the sensor (braces or a string), that a
+# // or /* inside a string literal does not blind it to the rest of the line or
+# file, and that the hardware comments that name cartridges and titles do not
+# trip it.
 cogmaster_add_test(NAME policy.no_title_table
   COMMAND ${CMAKE_COMMAND} -DDIR=${PROJECT_SOURCE_DIR}/src -DCHECK=no_title_table -P ${policy_scripts}/repository.cmake
   LABELS policy TIMEOUT 10)
-function(no_title_table_case name gun ports)
+function(no_title_table_case name gun ports regex)
   set(dir ${PROJECT_BINARY_DIR}/policy/no_title_table_${name})
   file(REMOVE_RECURSE ${dir})
   file(WRITE ${dir}/gun.c "${gun}")
@@ -190,26 +192,25 @@ function(no_title_table_case name gun ports)
     file(WRITE ${dir}/${file} "int ${name}_unit;\n")
   endforeach()
   set(command ${CMAKE_COMMAND} -DDIR=${dir} -DCHECK=no_title_table -P ${policy_scripts}/repository.cmake)
-  if(name STREQUAL comments)
+  if(regex STREQUAL "")
     cogmaster_add_test(NAME policy.no_title_table.self_test.${name} COMMAND ${command}
       LABELS policy TIMEOUT 10)
   else()
     string(REPLACE ";" "$<SEMICOLON>" command "${command}")
-    if(name STREQUAL array)
-      set(regex "gun.c:5")
-    else()
-      set(regex "ports.c:3")
-    endif()
     cogmaster_add_test(NAME policy.no_title_table.self_test.${name}
       COMMAND ${CMAKE_COMMAND} "-DCMD=${command}" -DCODE=1 "-DREGEX=${regex}" -P ${policy_scripts}/expect_fail.cmake
       LABELS policy TIMEOUT 10)
   endif()
 endfunction()
 set(no_title_clean "int a;\nint b;\nint c;\nint d;\nint e;\n")
-no_title_table_case(array "int a;\nint b;\nint c;\nint d;\nstatic const unsigned char offs[] = {9, 19, 15};\n" "${no_title_clean}")
-no_title_table_case(hook "${no_title_clean}" "int a;\nint b;\nint x = m->cart.rom != 0;\n")
+no_title_table_case(array "int a;\nint b;\nint c;\nint d;\nstatic const unsigned char offs[] = {9, 19, 15};\n" "${no_title_clean}" "gun.c:5")
+no_title_table_case(strarray "int a;\nint b;\nint c;\nint d;\nstatic const char offs[] = \"\\x09\\x13\";\n" "${no_title_clean}" "gun.c:5")
+no_title_table_case(hook "${no_title_clean}" "int a;\nint b;\nint x = m->cart.rom != 0;\n" "ports.c:3")
+no_title_table_case(strings "${no_title_clean}"
+  "int a;\nint b;\nconst char *u = \"a//b\\\"//\"; int x = m->cart.rom[0];\nconst char *v = \"/*\";\nint y = m->cart.rom[1];\nconst char *w = \"*/\"; /* */ int z;\n"
+  "ports.c:3.*ports.c:5")
 no_title_table_case(comments
   "/* Each cart carries a title, a sha1 and\n   a crc32 that no code reads. */\nint a; // the cart title\n"
-  "/* the cart\n   title\n*/ int b; /* sha1 */ int c; // crc32 of the cart\n")
+  "/* the cart\n   title\n*/ int b; /* sha1 */ int c; // crc32 of the cart\n" "")
 
 include(${CMAKE_CURRENT_LIST_DIR}/e2e_cases.cmake)
