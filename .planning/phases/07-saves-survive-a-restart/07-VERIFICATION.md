@@ -40,7 +40,7 @@ covered_files:
   - "tests/retroarch/run_retroarch.cmake"
   - "tests/runner/test_save.c"
   - "tests/runner/tests.cmake"
-covered_digest: "v4:sha256:01ea6b4b2a332758f0fd975868eb009254de71f68b79b5d8a7ba92a4b8193a6e"
+covered_digest: "v4:sha256:b227e9348bcbbedd804c58be4a254e4f13f62277b778aafbaca857dd20b66097"
 behavior_unverified: 0
 overrides_applied: 0
 ---
@@ -50,8 +50,8 @@ overrides_applied: 0
 **Phase Goal:** A Game Gear 93C46 game and a battery-backed game keep their progress across restarts in the runner and in RetroArch, saves survive a killed process, and `.srm` files cross between cogmaster and other released cores only in layouts that were measured.
 **Verified:** 2026-11-10
 **Status:** passed
-**Re-verification:** No, initial verification
-**Branch / HEAD:** `phase/07-saves-survive-a-restart` at 20aede7
+**Re-verification:** Yes, after a one-sentence docs/saves.md change (the hosted restart claim is no longer deferred); no gaps existed, the report had gone stale
+**Branch / HEAD:** `phase/07-saves-survive-a-restart` at fe618a4
 
 Human verification items: none. Every check below is a test, a command I ran, or a hosted run. Nothing is
 handed to the owner (AGENTS.md rule 6); no identity-bound consent or owner hardware is involved.
@@ -85,8 +85,7 @@ handed to the owner (AGENTS.md rule 6); no identity-bound consent or owner hardw
 
 | Command | Result | Exit |
 |---------|--------|------|
-| `cmake --preset ci` / `cmake --build --preset ci` | configured, `ninja: no work to do` | 0 / 0 |
-| `cmake --workflow --preset ci` (full: configure, build, all tests, release tests) | passed | 0 |
+| `cmake --workflow --preset ci` (full: configure, build, all tests, release tests) on fe618a4 | passed | 0 |
 | `cmake -DROOT=$PWD -P tests/cmake/budgets.cmake` | `repository: 723 check lines / 8279 src lines, strict one tenth` | 0 |
 | `build/ci/cogmaster-run --frames 30 --save-dir D build/ci/fixtures/eeprom.gg` twice, fresh temp dir `D` | `eeprom.srm` 128 bytes; bytes `34 12 01 00 ff ff` then `34 12 02 00 ff ff`; second differs from first | 0 / 0 |
 | same for `battery.sms` | `battery.srm` 32768 bytes; `a5 5a 01 ff` then `a5 5a 02 ff` | 0 / 0 |
@@ -95,7 +94,7 @@ handed to the owner (AGENTS.md rule 6); no identity-bound consent or owner hardw
 | `--save-interval 0` (off) / `--save-interval 4294967296` | accepted / rejected | 0 / 2 |
 | pre-create `eeprom.srm.tmp-0` and `eeprom.srm.tmp-1023`, run again | both temporaries removed, save kept | 0 |
 | EEPROM save of 127 bytes, then 129 bytes | `file length 127 does not match the 128-byte save`; `oversized file` | 4 / 4 |
-| `git ls-files '*.srm' '*.gg' '*.sms'` | empty | 0 |
+| `git ls-files '*.srm' '*.gg' '*.sms'` (re-run on fe618a4) | empty | 0 |
 | `git ls-files` for `.bin/.rom/.sav` | only `tests/vectors/z80/sst-sample.bin`, which is listed in `tests/roms/manifest.txt` | n/a |
 | `git diff --name-only origin/main...HEAD` filtered for `srm/gg/sms/rom/bin` | empty | n/a |
 | grep for `TBD`, `FIXME`, `XXX`, `TODO`, `HACK` in changed non-planning files | no match | 1 (no match) |
@@ -127,7 +126,7 @@ None blocking. No debt markers in any file changed by the phase.
 ## Advisory notes (no gap, nothing for the owner)
 
 1. **Hosted run predates the review-fix commits.** The hosted run's head is cad977a. Commits a67a3d9, c66aaba and d9625cb (the two review fixes and a format fix: `src/state.c`, `runner/save.c`, `docs/runner.md`, two tests) came after it and are not on the remote yet (branch is 5 commits ahead of origin). I ran the full `cmake --workflow --preset ci` on HEAD locally (exit 0), which includes the new cases in `eeprom.state.bounds` and `runner.save.failures`. The pull request run at ship (plan 07-10 ship list items 0 to 3) is the hosted confirmation for those commits; it is a merge-time check by design (rule 6), not a verification item.
-2. **Stale word in `docs/saves.md`.** The Testing saves section still says the in-process tests "do not establish the deferred hosted save-file claim." The hosted round trip now exists and `docs/hosted.md` describes it. The sentence is still true of the in-process tests but "deferred" is out of date; a one-word docs fix, recorded as an info item and not a requirement gap.
+2. **Stale word in `docs/saves.md` (resolved).** The Testing saves section said "the deferred hosted save-file claim"; commit fe618a4 changed it to "They do not establish the hosted save-file claim; the hosted RetroArch restart steps do." I re-read the whole file: it now agrees with the SAVE-03 import rules (0 or exactly 128 bytes for the EEPROM board, battery span rule, measured-only interop) and with the SAVE-06 hosted restart steps, with no remaining "deferred" wording (`grep -n deferred docs/saves.md` is empty).
 3. **Foreign-core measurement is a local, one-time run.** As the context decision prescribes, it has no run URL and rests on the recorded command, exit status, zip SHA-256 and date. The rolling nightly zips cannot be pinned (rule 12 cannot apply, and the stable path answers 404). I confirmed internal consistency (same first bytes as cogmaster's own export) but did not re-fetch the foreign cores; re-measurement is not required by the requirement ("measured once").
 
 ## Gaps Summary
@@ -136,5 +135,5 @@ No gaps. All five roadmap criteria and all six SAVE requirements are backed by c
 
 ---
 
-_Verified: 2026-11-10_
+_Verified: 2026-11-10 (re-verified on fe618a4)_
 _Verifier: Claude (gsd-verifier)_
