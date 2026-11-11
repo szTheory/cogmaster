@@ -245,8 +245,8 @@ static void test_sports_walk(void)
                     s = read_seq(m, port, &t);
                     CHECK_EQ_U64(s.x, 0);
                     CHECK_EQ_U64(s.y, 0);
-                    /* Between reads the pad holds the last nibble on D0-D3 (MAME keeps its output
-                       across the timeout; neither it nor ares returns to $F), not $F, even a frame later. */
+                    /* Between reads the pad holds the last nibble on D0-D3, even a frame later:
+                       MAME keeps its output through the timeout and ares never returns to $F. */
                     CHECK_EQ_U64(m->ports[port].step, 4);
                     CHECK_EQ_U64(pins_of(m, port) & 0xFu, neg_byte(0) & 0xFu);
                     frame(m);
