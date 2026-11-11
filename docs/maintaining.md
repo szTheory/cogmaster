@@ -221,7 +221,7 @@ Every slot in the lists maps through the slot table in `tools/cartdb.c` to a boa
 stated reason; that table is the one place that maps a slot to a board. A slot the table does not name fails
 the run, and `--list-slots` prints the names. Stderr prints one `cartdb: slot` line per slot with its seen and
 emitted counts. Compound or incomplete records are counted as seen and not emitted. The pinned conversion has
-1,670 candidates, 21 excluded records and 1,657 unique rows. Seen and emitted counts per slot:
+1,673 candidates (the four owned fixtures included), 21 excluded records and 1,660 unique rows. Seen and emitted counts per slot:
 4pak 1/1, cardcatcher 1/0, castle 1/1, codemasters 22/21, dahjee_typea 11/11, dahjee_typeb 5/5, eeprom 7/7,
 hicom 9/9, janggun 1/1, korean 6/6, korean_188in1 1/1, korean_nb 5/5, level3 2/2, mgear 2/1, nemesis 1/1,
 othello 2/2, seojin 1/1, terebi 1/1, xterminator 2/2, zemina 8/8.
@@ -230,7 +230,11 @@ A row is a binary SHA-1 with fixed-width facts and no title. Titles live in `tes
 (five tab-separated fields ending in the title; public records only), which `scripts/compat-update.sh` reads. Identical
 hardware facts with card/cart aliases coalesce. Conflicting board, size, persistence or video facts fail
 conversion. The table identifies content; membership makes no gameplay claim. Generator tests use authored
-XML, not commercial bytes, and the owned fixture row stays out of the catalog. Its public-identity flag is zero.
+XML, not commercial bytes, and the owned fixture rows stay out of the catalog. Their public-identity flag is zero.
+Each fixture row in `tests/cart/fixture_facts.txt` is the SHA-1, size, board, machine, region, video, persistence,
+declared size, geometry, the two controller codes and a title; the generator accepts only the four known shapes
+(battery, EEPROM, Sports Pad, Paddle). Editing `sports_pad.asm` or `paddle.asm` changes the image hash, so the
+build fails until the row is re-pinned and the table regenerated.
 `cart.fixture_hash` renames the image and tests the production loader; `cart.fixture_wrong_hash` proves a
 changed expected identity is refused.
 

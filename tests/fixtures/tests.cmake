@@ -305,6 +305,12 @@ foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_t
   elseif(name STREQUAL "eeprom")
     set(identity_check COMMAND ${owned_fixture_check} -DROW=2
       -P ${PROJECT_SOURCE_DIR}/tests/cart/fixture.cmake)
+  elseif(name STREQUAL "sports_pad")
+    set(identity_check COMMAND ${owned_fixture_check} -DROW=3
+      -P ${PROJECT_SOURCE_DIR}/tests/cart/fixture.cmake)
+  elseif(name STREQUAL "paddle")
+    set(identity_check COMMAND ${owned_fixture_check} -DROW=4
+      -P ${PROJECT_SOURCE_DIR}/tests/cart/fixture.cmake)
   endif()
   # The source directory is the assembler's working directory, so .INCLUDE
   # finds header.inc; the linker's is the build directory, so the link file

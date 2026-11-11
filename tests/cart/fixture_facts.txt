@@ -1,2 +1,4 @@
-d9f9fbc463a136cdd5349da772abd0b4347787cb 65536 2 1 1 1 2 32768 1 cogmaster battery fixture
-0170c40f75d8ed3f3bbc9547fa2d9e89192fc3f0 65536 10 2 1 2 2 128 1 cogmaster eeprom fixture
+d9f9fbc463a136cdd5349da772abd0b4347787cb 65536 2 1 1 1 2 32768 1 0 0 cogmaster battery fixture
+0170c40f75d8ed3f3bbc9547fa2d9e89192fc3f0 65536 10 2 1 2 2 128 1 0 0 cogmaster eeprom fixture
+2046da4a75083e015915f82fdcb0dd850d6dfee8 32768 1 1 0 1 0 0 0 3 3 cogmaster sports pad fixture
+021f62aa0801f742fe0a63682a222acdf149a07f 32768 1 1 0 1 0 0 0 2 0 cogmaster paddle fixture

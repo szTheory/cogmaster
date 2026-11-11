@@ -52,7 +52,11 @@ cart.device.none	cart,portable
 cart.device.region	cart,portable
 cart.fixture_hash	cart,portable
 cart.fixture_identity	cart,portable
+cart.fixture_identity.paddle	cart,portable
+cart.fixture_identity.sports	cart,portable
 cart.fixture_wrong_hash	cart,portable
+cart.fixture_wrong_hash.paddle	cart,portable
+cart.fixture_wrong_hash.sports	cart,portable
 cart.generator	cart,portable
 cart.probe.branches	cart,portable
 cart.probe.pure	cart,portable

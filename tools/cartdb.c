@@ -424,15 +424,23 @@ static void write_catalog(const char *path)
         fail("cannot write catalog");
 }
 
-/* The two owned fixtures: the Sega battery image and the Game Gear 93C46 EEPROM image,
-   both 64 KiB with supported geometry. Any other row is not an owned fixture. */
+/* The four owned fixtures, each with its own shape: the Sega battery image (64 KiB, 32 KiB of
+   cart RAM) and the Game Gear 93C46 EEPROM image (64 KiB, 128 bytes), neither naming a controller;
+   and the Sports Pad and Paddle images (32 KiB, a plain ROM board, no save, region left to the
+   header), which name the controller each defaults to. Any other row is not an owned fixture. */
 static int owned_fixture(const struct fact *f)
 {
-    if (!is_hex40(f->sha) || f->bytes != 65536u || f->persistence != 2u || f->geometry != 1u)
+    if (!is_hex40(f->sha))
         return 0;
-    if (f->board == 2u && f->declared == 32768u)
-        return 1;
-    return f->board == 10u && f->machine == COGMASTER_MACHINE_GG && f->declared == 128u;
+    if (f->bytes == 65536u && f->persistence == 2u && f->geometry == 1u && !f->ctrl1 && !f->ctrl2) {
+        if (f->board == 2u && f->declared == 32768u)
+            return 1;
+        return f->board == 10u && f->machine == COGMASTER_MACHINE_GG && f->declared == 128u;
+    }
+    if (f->bytes != 32768u || f->board != 1u || f->machine != COGMASTER_MACHINE_SMS2 || f->region ||
+        f->persistence || f->declared || f->geometry)
+        return 0;
+    return (f->ctrl1 == 3u && f->ctrl2 == 3u) || (f->ctrl1 == 2u && !f->ctrl2);
 }
 
 int main(int argc, char **argv)
@@ -469,14 +477,15 @@ int main(int argc, char **argv)
                 if (count == CAP)
                     fail("missing fixture facts");
                 struct fact f = {0};
-                int fields = fscanf(file,
-                                    "%40s %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32
-                                    " %" SCNu32 " %" SCNu32 " %" SCNu32 " %255[^\n]",
-                                    f.sha, &f.bytes, &f.board, &f.machine, &f.region, &f.video,
-                                    &f.persistence, &f.declared, &f.geometry, f.title);
+                int fields =
+                    fscanf(file,
+                           "%40s %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32
+                           " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %255[^\n]",
+                           f.sha, &f.bytes, &f.board, &f.machine, &f.region, &f.video,
+                           &f.persistence, &f.declared, &f.geometry, &f.ctrl1, &f.ctrl2, f.title);
                 if (fields == EOF && rows)
                     break;
-                if (fields != 10)
+                if (fields != 12)
                     fail(rows ? "extra fixture facts" : "invalid owned fixture facts");
                 if (!owned_fixture(&f))
                     fail("invalid owned fixture facts");

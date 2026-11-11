@@ -23,6 +23,25 @@ string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
 cogmaster_add_test(NAME cart.fixture_wrong_hash COMMAND ${CMAKE_COMMAND}
   "-DCMD=${cmd}" -DCODE=1 "-DREGEX=SHA-1.*mismatch"
   -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake LABELS cart portable TIMEOUT 10)
+# Fault prevented: an owned image edited without its table row, so the default controller or region no
+# longer applies and nothing notices. A wrong declared hash for each image must fail the same check.
+# Timeout: 10 s floor; provisional until a hosted run measures it.
+foreach(row IN ITEMS 3:sports:sports_pad 4:paddle:paddle)
+  string(REPLACE ":" ";" row "${row}")
+  list(GET row 0 index)
+  list(GET row 1 case)
+  list(GET row 2 image)
+  set(identity ${CMAKE_COMMAND} -DHASH_ONLY=1 -DROW=${index}
+    -DIMAGE=${PROJECT_BINARY_DIR}/fixtures/${image}.sms
+    -DFACT=${CMAKE_CURRENT_LIST_DIR}/fixture_facts.txt)
+  cogmaster_add_test(NAME cart.fixture_identity.${case} COMMAND ${identity}
+    -P ${CMAKE_CURRENT_LIST_DIR}/fixture.cmake LABELS cart portable TIMEOUT 10)
+  set(cmd ${identity} -DWRONG=1 -P ${CMAKE_CURRENT_LIST_DIR}/fixture.cmake)
+  string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+  cogmaster_add_test(NAME cart.fixture_wrong_hash.${case} COMMAND ${CMAKE_COMMAND}
+    "-DCMD=${cmd}" -DCODE=1 "-DREGEX=SHA-1.*mismatch"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake LABELS cart portable TIMEOUT 10)
+endforeach()
 # Fault prevented: guessed whole-image identities, conflicting facts and metadata parser drift.
 cogmaster_add_test(NAME cart.generator COMMAND ${CMAKE_COMMAND}
   -DGEN=$<TARGET_FILE:cogmaster-cartdb> -DOUT=${PROJECT_BINARY_DIR}/tests/cartdb
