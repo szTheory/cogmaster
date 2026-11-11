@@ -226,6 +226,53 @@ if(CMAKE_SCRIPT_MODE_FILE)
       set(ROM ${NAME})
     endif()
     include(${JUDGE})
+  elseif(CASE STREQUAL "eyes")
+    # The runner counts the eye the core reports for each of FRAMES frames of IMAGE and prints one line;
+    # its counts must equal the WANT_ values (the table's counts) and the image's mailbox, read from a
+    # second run, must sit inside its rows. MACHINE and REGION, when set, choose the profile.
+    set(machine "")
+    if(MACHINE)
+      set(machine --machine ${MACHINE})
+    endif()
+    if(REGION)
+      list(APPEND machine --region ${REGION})
+    endif()
+    execute_process(COMMAND ${EMULATOR} ${RUN} ${machine} ${IMAGE} --frames ${FRAMES} --eyes
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "0" OR NOT out MATCHES "(^|\n)eyes frames=${FRAMES} none=([0-9]+) left=([0-9]+) right=([0-9]+) flips=([0-9]+) last=([a-z]+)\n")
+      message(FATAL_ERROR "--eyes ${IMAGE}: exit ${rc}, no eyes line\n${out}${err}")
+    endif()
+    set(got_none ${CMAKE_MATCH_2})
+    set(got_left ${CMAKE_MATCH_3})
+    set(got_right ${CMAKE_MATCH_4})
+    set(got_flips ${CMAKE_MATCH_5})
+    set(got_last ${CMAKE_MATCH_6})
+    foreach(key IN ITEMS none left right flips last)
+      if(NOT got_${key} STREQUAL WANT_${key})
+        message(FATAL_ERROR "eyes: ${key}=${got_${key}}, expected ${WANT_${key}}\n${out}")
+      endif()
+    endforeach()
+    execute_process(COMMAND ${EMULATOR} ${RUN} ${machine} ${IMAGE} --frames 120 --mailbox
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "0")
+      message(FATAL_ERROR "--mailbox ${IMAGE}: exit ${rc}\n${err}")
+    endif()
+    file(WRITE "${OUT}" "${out}")
+    set(ROM ${NAME})
+    include(${JUDGE})
+  elseif(CASE STREQUAL "eyes_hash")
+    # The last frame's hash is the same with and without the eye report: the report changes no pixel.
+    execute_process(COMMAND ${EMULATOR} ${RUN} ${IMAGE} --frames ${FRAMES} --hash
+      RESULT_VARIABLE rc OUTPUT_VARIABLE plain ERROR_VARIABLE err)
+    execute_process(COMMAND ${EMULATOR} ${RUN} ${IMAGE} --frames ${FRAMES} --hash --eyes
+      RESULT_VARIABLE rc_eyes OUTPUT_VARIABLE with_eyes ERROR_VARIABLE err_eyes)
+    if(NOT rc STREQUAL "0" OR NOT rc_eyes STREQUAL "0" OR NOT plain MATCHES "(^|\n)frame ${FRAMES} sha256 ([0-9a-f]+)\n")
+      message(FATAL_ERROR "eyes_hash: exit ${rc} and ${rc_eyes}\n${plain}${err}${err_eyes}")
+    endif()
+    set(plain_hash ${CMAKE_MATCH_2})
+    if(NOT with_eyes MATCHES "(^|\n)frame ${FRAMES} sha256 ${plain_hash}\n" OR NOT with_eyes MATCHES "(^|\n)eyes frames=")
+      message(FATAL_ERROR "eyes_hash: the hash ${plain_hash} changes with --eyes\n${with_eyes}")
+    endif()
   else()
     message(FATAL_ERROR "unknown CASE '${CASE}'")
   endif()
@@ -895,6 +942,105 @@ string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
 cogmaster_add_test(NAME fixtures.paddle.replay_control
   COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=differs[^a-zA-Z]+from[^a-zA-Z]+the[^a-zA-Z]+recording"
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+  LABELS fixtures portable TIMEOUT 10)
+
+# The glasses fixture writes the shutter register from the table in tests/roms/src/glasses.asm: one entry a
+# frame, 0 or 1 the byte written and 255 (the $FF in the source) no write. The table is the oracle; the counts
+# the runner must print are computed from it here, so neither can drift. A write lands in its own frame, the
+# eye in force carries into a frame with no write, and a frame before the first write reports none (SMS-
+# CARTRIDGES-AND-PERIPHERALS section 3.4); flips counts the frames whose eye differs from the last one shown.
+# The run is the table's 24 frames plus the six the mailbox work takes.
+set(glasses_table 255 255 0 1 0 1 0 1 0 1 0 255 255 255 255 255 0 1 0 1 0 1 0 1)
+set(glasses_count 30)
+file(STRINGS ${fixtures_src}/glasses.asm glasses_rows REGEX "^[ \t]+[.]DB[ \t]")
+list(LENGTH glasses_rows glasses_row_count)
+if(NOT glasses_row_count EQUAL 1)
+  message(FATAL_ERROR "tests/roms/src/glasses.asm: ${glasses_row_count} .DB rows, expected the one table")
+endif()
+string(REGEX REPLACE "^[ \t]+[.]DB[ \t]+" "" glasses_row "${glasses_rows}")
+string(REGEX REPLACE "[ \t]" "" glasses_row "${glasses_row}")
+string(REPLACE "$" "0x" glasses_row "${glasses_row}")
+string(REPLACE "," ";" glasses_row "${glasses_row}")
+set(glasses_source "")
+foreach(entry IN LISTS glasses_row)
+  math(EXPR entry "${entry}")
+  list(APPEND glasses_source ${entry})
+endforeach()
+if(NOT glasses_source STREQUAL glasses_table)
+  message(FATAL_ERROR "tests/roms/src/glasses.asm: the table is ${glasses_source}, tests.cmake holds ${glasses_table}")
+endif()
+set(glasses_seen none)
+set(glasses_last none)
+set(glasses_want_none 0)
+set(glasses_want_left 0)
+set(glasses_want_right 0)
+set(glasses_want_flips 0)
+foreach(frame RANGE 1 ${glasses_count})
+  set(entry 255)
+  list(LENGTH glasses_table glasses_length)
+  if(frame LESS_EQUAL glasses_length)
+    math(EXPR index "${frame} - 1")
+    list(GET glasses_table ${index} entry)
+  endif()
+  if(NOT entry EQUAL 255)
+    set(glasses_seen right)
+    math(EXPR left "${entry} & 1")
+    if(left)
+      set(glasses_seen left)
+    endif()
+  endif()
+  math(EXPR glasses_want_${glasses_seen} "${glasses_want_${glasses_seen}} + 1")
+  if(NOT glasses_seen STREQUAL "none")
+    if(NOT glasses_last STREQUAL "none" AND NOT glasses_last STREQUAL glasses_seen)
+      math(EXPR glasses_want_flips "${glasses_want_flips} + 1")
+    endif()
+    set(glasses_last ${glasses_seen})
+  endif()
+endforeach()
+# The cross-lane frame hash of the image runs as many frames as this neutral script has lines.
+set(glasses_frames "")
+foreach(frame RANGE 1 ${glasses_count})
+  list(APPEND glasses_frames 0,0,00)
+endforeach()
+device_script(${PROJECT_BINARY_DIR}/tests/glasses.input 0 0 glasses_frames)
+set(fixtures_eyes -DCASE=eyes -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+  -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${fixtures_emulator}"
+  -DJUDGE=${PROJECT_SOURCE_DIR}/tests/cmake/mailbox.cmake -DNAME=glasses -DFRAMES=${glasses_count}
+  -DIMAGE=${COGMASTER_FIXTURES_DIR}/glasses.sms -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv)
+
+# Fault prevented: a 3-D eye reported in the wrong frame, lost when the cartridge is disabled, invented on a
+# Game Gear, or a frame hash that changes with the eye report. The export and Japanese consoles must print the
+# table's counts (the cartridge-off frames and the one-write frames included), a Game Gear none for every frame,
+# and a count off by one must fail.
+# Timeout: 10 s floor; 0.05 s slowest local run, no hosted run yet, so provisional.
+foreach(profile IN ITEMS export japan gg)
+  set(args -DMACHINE=sms -DREGION=ntsc-u -DWANT_none=${glasses_want_none} -DWANT_left=${glasses_want_left}
+    -DWANT_right=${glasses_want_right} -DWANT_flips=${glasses_want_flips} -DWANT_last=${glasses_last})
+  if(profile STREQUAL "japan")
+    set(args -DMACHINE=sms -DREGION=ntsc-j -DWANT_none=${glasses_want_none} -DWANT_left=${glasses_want_left}
+      -DWANT_right=${glasses_want_right} -DWANT_flips=${glasses_want_flips} -DWANT_last=${glasses_last})
+  elseif(profile STREQUAL "gg")
+    set(args -DMACHINE=gg -DWANT_none=${glasses_count} -DWANT_left=0 -DWANT_right=0 -DWANT_flips=0 -DWANT_last=none)
+  endif()
+  cogmaster_add_test(NAME fixtures.glasses.eyes.${profile}
+    COMMAND ${CMAKE_COMMAND} ${fixtures_eyes} ${args} -DPROFILE=${profile}
+      -DOUT=${fixtures_out}/glasses.${profile}.txt -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures portable TIMEOUT 10)
+endforeach()
+math(EXPR glasses_off "${glasses_want_left} + 1")
+set(cmd ${CMAKE_COMMAND} ${fixtures_eyes} "-DEMULATOR=${fixtures_inner_emulator}" -DMACHINE=sms -DREGION=ntsc-u
+  -DWANT_none=${glasses_want_none} -DWANT_left=${glasses_off} -DWANT_right=${glasses_want_right}
+  -DWANT_flips=${glasses_want_flips} -DWANT_last=${glasses_last} -DPROFILE=export
+  -DOUT=${fixtures_out}/glasses.control.txt -P ${CMAKE_CURRENT_LIST_FILE})
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+cogmaster_add_test(NAME fixtures.glasses.eyes.control
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=eyes: left=${glasses_want_left}, expected ${glasses_off}"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+  LABELS fixtures portable TIMEOUT 10)
+cogmaster_add_test(NAME fixtures.glasses.hash_same
+  COMMAND ${CMAKE_COMMAND} -DCASE=eyes_hash -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+    -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${fixtures_emulator}" -DNAME=glasses
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/glasses.sms -DFRAMES=${glasses_count} -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS fixtures portable TIMEOUT 10)
 
 # Fault prevented: a judge that passes what it should fail. Each control
