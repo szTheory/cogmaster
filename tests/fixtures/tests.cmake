@@ -174,6 +174,9 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(INPUT)
       list(APPEND machine --input ${INPUT})
     endif()
+    if(PORT1)
+      list(APPEND machine --port1 ${PORT1})
+    endif()
     execute_process(COMMAND ${EMULATOR} ${RUN} ${machine} ${IMAGE} --frames ${FRAMES} --mailbox
       RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
     if(NOT rc STREQUAL "0")
@@ -571,6 +574,155 @@ foreach(profile IN ITEMS sms-export sms-japan sms-pal gg)
       -DIMAGE=${COGMASTER_FIXTURES_DIR}/${name}.sms -DFRAMES=120
       -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/ports.${profile}.txt
       -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures portable TIMEOUT 10)
+endforeach()
+
+# The sports_pad fixture polls once a frame. This list is its oracle: one entry per frame with the
+# motion of port 1 (x, y) and the held pad byte. The scripts are written from it, and the values the
+# rows of tests/diag/expected.csv must hold are computed from it below, so the two cannot drift. The
+# pad sends the negated motion, at most 127 counts a read, and keeps the rest for the next read
+# (SMS-CARTRIDGES section 3.5). Frames 11 and 12 are the idle-timeout probes and 13 to 15 hold buttons.
+set(sports_frames 5,-3,00 0,0,00 127,-128,00 300,-300,00 0,0,00 0,0,00 -200,50,00 0,0,00 1,1,00 -1,-1,00
+  5,-100,00 5,-100,00 0,0,10 0,0,20 0,0,30 9,-4,00 9,-4,00 7,3,00)
+list(LENGTH sports_frames sports_count)
+
+function(sports_axis out value)
+  set(sign +)
+  if(value LESS 0)
+    set(sign -)
+    math(EXPR value "-(${value})")
+  endif()
+  string(LENGTH "${value}" digits)
+  math(EXPR pad "5 - ${digits}")
+  string(REPEAT 0 ${pad} zeros)
+  set(${out} "${sign}${zeros}${value}" PARENT_SCOPE)
+endfunction()
+
+# Writes the runner script for the list: MOTION 0 gives the same buttons with no motion, DROP the 1-based
+# frame whose x motion is left out.
+function(sports_script path motion drop)
+  set(body "")
+  set(frame 0)
+  foreach(entry IN LISTS sports_frames)
+    math(EXPR frame "${frame} + 1")
+    string(REPLACE "," ";" entry "${entry}")
+    list(GET entry 0 x)
+    list(GET entry 1 y)
+    list(GET entry 2 held)
+    if(NOT motion)
+      set(x 0)
+      set(y 0)
+    elseif(frame EQUAL drop)
+      set(x 0)
+    endif()
+    sports_axis(xs ${x})
+    sports_axis(ys ${y})
+    string(APPEND body "p1=${held} p2=00 pause=0 reset=0 start=0 x1=${xs} y1=${ys} x2=+00000 y2=+00000\n")
+  endforeach()
+  file(WRITE ${path} "${body}")
+endfunction()
+sports_script(${PROJECT_BINARY_DIR}/tests/sports.input 1 0)
+sports_script(${PROJECT_BINARY_DIR}/tests/sports-dropped.input 1 1)
+sports_script(${PROJECT_BINARY_DIR}/tests/sports-still.input 0 0)
+
+# One read of the pad: the byte of an axis is the negated motion clamped to 127, the rest stays.
+macro(sports_latch axis)
+  set(step ${sports_acc_${axis}})
+  if(step GREATER 127)
+    set(step 127)
+  elseif(step LESS -127)
+    set(step -127)
+  endif()
+  math(EXPR sports_acc_${axis} "${sports_acc_${axis}} - (${step})")
+  math(EXPR sports_byte_${axis} "(-(${step})) & 255")
+endmacro()
+
+set(sports_acc_x 0)
+set(sports_acc_y 0)
+set(sports_want "")
+set(frame 0)
+foreach(entry IN LISTS sports_frames)
+  math(EXPR frame "${frame} + 1")
+  string(REPLACE "," ";" entry "${entry}")
+  list(GET entry 0 x)
+  list(GET entry 1 y)
+  list(GET entry 2 held)
+  math(EXPR sports_acc_x "${sports_acc_x} + ${x}")
+  math(EXPR sports_acc_y "${sports_acc_y} + ${y}")
+  sports_latch(x)
+  sports_latch(y)
+  if(frame LESS 11)
+    math(EXPR value "(${sports_byte_y} << 8) | ${sports_byte_x}")
+  elseif(frame EQUAL 11)
+    # The second fall after 511 cycles goes on with Y: the high nibble of Y's byte.
+    math(EXPR value "(${sports_byte_x} >> 4) | ((${sports_byte_y} >> 4) << 8)")
+  elseif(frame EQUAL 12)
+    # After 512 cycles it starts again, with the motion that is left.
+    math(EXPR first "${sports_byte_x} >> 4")
+    sports_latch(x)
+    math(EXPR value "${first} | ((${sports_byte_x} >> 4) << 8)")
+  elseif(frame LESS 16)
+    math(EXPR value "((0x${held} >> 4) & 3) * 257")
+  else()
+    continue()
+  endif()
+  list(APPEND sports_want ${value})
+endforeach()
+set_property(DIRECTORY ${PROJECT_SOURCE_DIR} APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+  ${PROJECT_SOURCE_DIR}/tests/diag/expected.csv)
+file(STRINGS ${PROJECT_SOURCE_DIR}/tests/diag/expected.csv sports_rows REGEX "^sports_pad,")
+list(LENGTH sports_rows sports_row_count)
+if(NOT sports_row_count EQUAL 30)
+  message(FATAL_ERROR "tests/diag/expected.csv: ${sports_row_count} sports_pad rows, expected 30")
+endif()
+foreach(row IN LISTS sports_rows)
+  string(REPLACE "," ";" row "${row}")
+  list(GET row 1 test)
+  list(GET row 3 literal)
+  string(SUBSTRING "${test}" 0 2 id)
+  math(EXPR index "0x${id} - 1")
+  math(EXPR literal "0x${literal}")
+  list(GET sports_want ${index} want)
+  if(NOT literal EQUAL want)
+    message(FATAL_ERROR "tests/diag/expected.csv: sports_pad row ${test} is ${literal}, the delta list gives ${want}")
+  endif()
+endforeach()
+
+# Fault prevented: a Sports Pad read sequence that drops, doubles or flips a delta, or a profile on which the
+# sequence differs, so a game tracks the wrong way or desyncs. The same rows are judged on the export and the
+# Japanese console; a script missing one delta and a plain pad on the port must each fall outside a row.
+# Timeout: 10 s floor; 0.02 s slowest local run, no hosted run yet, so provisional.
+foreach(profile IN ITEMS export japan)
+  set(region ntsc-u)
+  if(profile STREQUAL "japan")
+    set(region ntsc-j)
+  endif()
+  cogmaster_add_test(NAME fixtures.sports_pad.mailbox.${profile}
+    COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=sports_pad -DMACHINE=sms -DREGION=${region}
+      -DPROFILE=sms-${profile} -DPORT1=sports -DINPUT=${PROJECT_BINARY_DIR}/tests/sports.input
+      -DIMAGE=${COGMASTER_FIXTURES_DIR}/sports_pad.sms -DFRAMES=${sports_count}
+      -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+      -DOUT=${fixtures_out}/sports_pad.${profile}.txt -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures portable TIMEOUT 10)
+endforeach()
+foreach(control IN ITEMS dropped_delta pad)
+  set(input sports-dropped)
+  set(device sports)
+  if(control STREQUAL "pad")
+    set(input sports-still)
+    set(device pad)
+  endif()
+  set(cmd ${CMAKE_COMMAND} -DCASE=mailbox -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+    -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${fixtures_inner_emulator}"
+    -DJUDGE=${PROJECT_SOURCE_DIR}/tests/cmake/mailbox.cmake -DPROFILE=sms-export -DNAME=sports_pad
+    -DMACHINE=sms -DREGION=ntsc-u -DPORT1=${device} -DINPUT=${PROJECT_BINARY_DIR}/tests/${input}.input
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/sports_pad.sms -DFRAMES=${sports_count}
+    -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/sports_pad.${control}.txt
+    -P ${CMAKE_CURRENT_LIST_FILE})
+  string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+  cogmaster_add_test(NAME fixtures.sports_pad.control.${control}
+    COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=outside its row"
+      -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
     LABELS fixtures portable TIMEOUT 10)
 endforeach()
 
