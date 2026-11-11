@@ -30,7 +30,7 @@ struct cogmaster__aim_pt {
    -32768 out of bounds; libretro.h) through rect to a 1-based field aim: the
    first dot of the rectangle is 1 more than rect->x. The offscreen flag, either
    coordinate out of -32767 to 32767, or an empty rectangle, gives 0 0, never
-   an edge dot. A NULL pointer does nothing. */
+   an edge dot. A NULL rect parks; a NULL output pointer does nothing. */
 void cogmaster__aim_from_screen(const struct cogmaster__aim_rect *rect, int32_t sx, int32_t sy,
                                 int offscreen, uint32_t *ax, uint32_t *ay);
 
