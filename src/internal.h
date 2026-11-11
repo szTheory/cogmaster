@@ -483,7 +483,13 @@ _Static_assert(offsetof(cogmaster_media, video_mode) == (COGMASTER__P == 8 ? 40 
                "media.video_mode");
 /* Explicit pad to the next word, so fm starts at 48 on 64-bit and 28 on 32-bit. */
 _Static_assert(offsetof(cogmaster_media, fm) == (COGMASTER__P == 8 ? 48 : 28), "media.fm");
-_Static_assert(sizeof(cogmaster_media) == (COGMASTER__P == 8 ? 56 : 32), "media size");
+#if UINTPTR_MAX > UINT32_MAX
+_Static_assert(offsetof(cogmaster_media, reserved3) == 52, "media.reserved3");
+#endif
+_Static_assert(offsetof(cogmaster_media, bios) == (COGMASTER__P == 8 ? 56 : 32), "media.bios");
+_Static_assert(offsetof(cogmaster_media, bios_size) == (COGMASTER__P == 8 ? 64 : 36),
+               "media.bios_size");
+_Static_assert(sizeof(cogmaster_media) == (COGMASTER__P == 8 ? 72 : 40), "media size");
 
 _Static_assert(offsetof(cogmaster_info, size) == 0, "info.size");
 _Static_assert(offsetof(cogmaster_info, machine) == 4, "info.machine");

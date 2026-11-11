@@ -7,17 +7,17 @@
 
 int main(void)
 {
-    CHECK_EQ_U64(COGMASTER_API_VERSION, 13u);
+    CHECK(COGMASTER_API_VERSION >= 13u);
     CHECK_EQ_U64(COGMASTER_ABI_VERSION, 1u);
-    CHECK_EQ_U64(COGMASTER_BEHAVIOUR_REVISION, 15u);
-    CHECK_EQ_U64(COGMASTER_STATE_FORMAT_VERSION, 15u);
+    CHECK(COGMASTER_BEHAVIOUR_REVISION >= 15u);
+    CHECK(COGMASTER_STATE_FORMAT_VERSION >= 15u);
 
     cogmaster_versions v = {0};
     v.size = (uint32_t)sizeof v;
     CHECK(cogmaster_get_versions(&v) == COGMASTER_STATUS_OK);
-    CHECK_EQ_U64(v.api, 13u);
-    CHECK_EQ_U64(v.behaviour, 15u);
-    CHECK_EQ_U64(v.state, 15u);
+    CHECK(v.api >= 13u);
+    CHECK(v.behaviour >= 15u);
+    CHECK(v.state >= 15u);
 
     CHECK_EQ_U64(COGMASTER_DEVICE_PAD, 0u);
     CHECK_EQ_U64(COGMASTER_DEVICE_NONE, 1u);
