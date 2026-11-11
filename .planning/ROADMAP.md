@@ -187,7 +187,7 @@ Plans:
   3. CI runs a self-authored BIOS-shaped image with no skip, and a check shows the fast-boot hand-off state equals the state that image reaches (BIOS-03).
   4. The libretro `.info` declares the firmware as optional, and an in-process host test shows the adapter reads it from the system directory when the boot option asks for it (BIOS-04).
   5. SMS-SYSTEM section 3 is checked against the code, and a test exercises each BIOS and cartridge enable combination under `$3E` with the documented result (BIOS-05).
-**Plans**: 9/11 plans executed
+**Plans**: 10/11 plans executed
 
 Plans:
 - [x] 10-01-PLAN.md — release firmware scan, the digest table checked both ways against ASSET_POLICY, the BIOS directory read check, the BSD-3 digest notice (BIOS-01)
@@ -199,7 +199,7 @@ Plans:
 - [x] 10-07-PLAN.md — the self-authored BIOS-shaped image, the classification-complete hand-off equivalence with controls (BIOS-03)
 - [x] 10-08-PLAN.md — the host BIOS helper: label-only recognition proved through the real identify path with an injected table, and the capped reader, provenance and environment text (BIOS-02)
 - [x] 10-09-PLAN.md — runner: --boot and --bios, the 77 refusals with no path echo, exit meanings, one device row (BIOS-02)
-- [ ] 10-10-PLAN.md — libretro: the boot option, three optional firmware rows, the in-process test, docs/bios.md and the README sentence, hosted dispatch D3 with the libretro timeouts (BIOS-04, BIOS-05)
+- [x] 10-10-PLAN.md — libretro: the boot option, three optional firmware rows, the in-process test, docs/bios.md and the README sentence, hosted dispatch D3 with the libretro timeouts (BIOS-04, BIOS-05)
 - [ ] 10-11-PLAN.md — requirement and roadmap amendments, seeds, floors, last timeouts, local judgments, final hosted runs and ship list (BIOS-01, BIOS-02, BIOS-03, BIOS-04, BIOS-05)
 
 ### Phase 11: PAL and Japanese FM
@@ -239,6 +239,6 @@ Plans:
 | 7. Saves survive a restart | v2.0 | 10/10 | Complete    | 2026-11-10 |
 | 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 17/17 | Complete    | 2026-11-11 |
 | 9. Light Phaser | v2.0 | 12/12 | Complete    | 2026-11-11 |
-| 10. BIOS boot | v2.0 | 9/11 | In Progress | - |
+| 10. BIOS boot | v2.0 | 10/11 | In Progress | - |
 | 11. PAL and Japanese FM | v2.0 | 0/TBD | Not started | - |
 | 12. The whole list in the ledger | v2.0 | 0/TBD | Not started | - |
