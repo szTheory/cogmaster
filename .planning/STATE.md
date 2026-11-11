@@ -5,17 +5,17 @@ milestone_name: The whole library
 current_phase: 10
 current_phase_name: BIOS boot
 status: planning
-stopped_at: Completed 10-10-PLAN.md
-last_updated: "2026-11-11T18:11:06.786Z"
+stopped_at: Completed 10-11-PLAN.md
+last_updated: "2026-11-11T18:29:18.140Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 9 complete, transitioned to Phase 10
-state_head: a89107aeedf33f8aa6c61a95a20393a8f930416e
+state_head: fb406766b5d3a92d80219f31f324e78bed1fe9f4
 progress:
   total_phases: 8
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 75
-  completed_plans: 74
-  percent: 63
+  completed_plans: 75
+  percent: 75
 ---
 
 # Project State
@@ -30,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 10 — BIOS boot
-Plan: 10 of 11 complete (10-10: the libretro cogmaster_boot option reads bios_U, bios_E or bios_J.sms from the system folder by region and TV and falls back to fast boot with one warning on every refusal, three optional firmware rows backed by libretro.host.bios, docs/bios.md and one README sentence, hosted dispatch D3 green on every lane, the two libretro timeouts settled; the closing plan settles the other timeouts)
-Status: Executing Phase 10
-Last activity: 2026-11-11 — Completed 10-10-PLAN.md
+Plan: 11 of 11 complete (10-11: the BIOS wording amended to what was built and BIOS-01 to BIOS-05 complete, floors 626 and 584, SEED-011 and the SEED-010 BIOS local judge, every timeout of the phase settled at the 20 s floor, hosted dispatch run 43076225840 and nightly run 43076276567 green, perf delta -11 basis points; ready for review, verify and ship)
+Status: Phase 10 executed, awaiting review and verification
+Last activity: 2026-11-11 — Completed 10-11-PLAN.md
 
-Progress: [██████░░░░] 63% of v2.0
+Progress: [████████░░] 75% of v2.0
 
 ## Performance Metrics
 
@@ -202,6 +202,7 @@ Progress: [██████░░░░] 63% of v2.0
 | Phase 10 P08 | 45 min | 2 tasks | 9 files |
 | Phase 10 P09 | 60 min | 2 tasks | 10 files |
 | Phase 10 P10 | 75 min | 3 tasks | 10 files |
+| Phase 10 P11 | 60min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -299,6 +300,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 10]: 10-08: the BIOS helper takes its recognition table as an argument so host.bios injects its own rows and exercises the real bytes-to-digest-to-name path, the read is one fread of 8193 bytes with sentinel-checked bounds, and cogmaster-host is not linked to the core in CMake (consumers already link it; a second link gave duplicate-library warnings)
 - [Phase 10]: 10-09: the runner reads the BIOS after the cartridge and decides the Game Gear refusal first, an absent BIOS path is exit 77 while any other read error is 1, every BIOS text is fixed and never prints the path, and the cross-lane device row runs two frames because from the third a BIOS run of the probe hashes like a fast one
 - [Phase 10]: 10-10: the libretro BIOS option does nothing without content and logs one warning naming only the file on every other refusal, a Game Gear game never asks for the system folder, the region picks Japan then PAL then the export file with no fallback, and the two libretro timeouts take the 20 s floor from D3
+- [Phase 10]: 10-11: BIOS wording amended to what was built, BIOS-01..05 complete; every phase timeout settled at the 20 s floor from run 43074158512; final dispatch run 43076225840 and nightly 43076276567 green, perf delta -11 bp; real-BIOS residue stays an owner hand-off in SEED-010
 
 ### Pending Todos
 
@@ -416,7 +418,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 10 plan 10-08 (gsd-execute-phase 10); host/bios.c and host/bios.h (built-in 13-row table, pure lookup, identify by SHA-1 and size, one read bounded at 8193 bytes, prints nothing), host.bios with the abc vector and an owned file hashed by CMake against injected tables and three negative controls, the provenance sentence and the environment example comment, no dispatch (timeout settles after plan 10), counted check code 833 of 847; 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-09 (gsd-execute-phase 10); cogmaster-run --boot and --bios with a strict grammar (exit 2), 77 for an absent BIOS, a wrong size or a Game Gear cartridge and 1 for other read errors, fixed texts that never print the path, one SHA-1 label line, the exit table changed in --help, exit_status.h and docs/runner.md together, runner.bios.grammar, refusals, no_path_echo and boot with four negative controls, one two-frame cross-lane device row, no dispatch (timeouts settle after plan 10), counted check code 833 of 847; 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-10 (gsd-execute-phase 10); libretro option cogmaster_boot (fast by default) reading one of bios_U/E/J.sms from the system folder by region and TV with one warning and a fast boot on every refusal, three optional .info firmware rows mapped to libretro.host.bios by the claims check with a self-test, libretro.host.bios (19 legs against the runner's digests) with three controls, docs/bios.md and one README sentence, hosted dispatch D3 run 43074158512 green on all lanes, libretro timeouts settled at the 20 s floor, counted check code 833 of 847; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
-| 2026-11-11 | Execute phase 10 plan 10-11 (gsd-execute-phase 10); BIOS-01, BIOS-02 and BIOS-04 wording amended in REQUIREMENTS and ROADMAP, BIOS-01 to BIOS-05 complete, floors 626 and 584, SEED-011 and the SEED-010 BIOS local judge written; timeouts, final hosted runs and ship list to follow in task 3 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 10 plan 10-11 (gsd-execute-phase 10); BIOS-01, BIOS-02 and BIOS-04 wording amended in REQUIREMENTS and ROADMAP, BIOS-01 to BIOS-05 complete, floors 626 and 584, SEED-011 and the SEED-010 BIOS local judge written; every timeout of the phase settled at the 20 s floor from run 43074158512, hosted dispatch D4 run 43076225840 green on every lane, fresh main run 43076272120, nightly run 43076276567 with libFuzzer on the BIOS harness green, perf delta -11 basis points, no ci.yml edit, local RetroArch observation done, real-BIOS runs left to the owner (SEED-010); 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-03 (gsd-execute-phase 10); cogmaster_media gains reserved3, bios and bios_size (72 / 40 bytes), versions API 14, behaviour 16, state 16, layout asserts only in src, size pins loosened to >= with every offset pin exact, tests/api/v14.c and abi.api_v14 on ci, wasm32 and nofp, order evidence for BIOS-01 recorded (scans precede the first code commit: exit 0 forward, 1 reversed), counted check code 833 of 847, no dispatch (runner DNS not re-observed; main still shows the failed dispatch); 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-04 (gsd-execute-phase 10); struct cogmaster__bios and the derived mem_slow flag, one shared decoder for the cold read path and peek, per-machine BIOS and cartridge arbitration (SMS1 cartridge wins, SMS2 ANDs, empty enabled slot without a fault when a BIOS is attached), bios.arbitration with 64 one-entry flips and three wrong-table controls, bios.slow_flag, three one-shot controls, SMS-SYSTEM section 3 and 9 amended and the fault row of embedding.md (+95 bytes), counted check code 833 of 847, no dispatch, no hot-path measurement yet (plan 05); 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 
@@ -440,8 +442,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T18:11:06.610Z
-Stopped at: Completed 10-10-PLAN.md
+Last session: 2026-11-11T18:29:17.526Z
+Stopped at: Completed 10-11-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

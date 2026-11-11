@@ -239,6 +239,6 @@ Plans:
 | 7. Saves survive a restart | v2.0 | 10/10 | Complete    | 2026-11-10 |
 | 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 17/17 | Complete    | 2026-11-11 |
 | 9. Light Phaser | v2.0 | 12/12 | Complete    | 2026-11-11 |
-| 10. BIOS boot | v2.0 | 10/11 | In Progress | - |
+| 10. BIOS boot | v2.0 | 11/11 | Complete    | 2026-11-11 |
 | 11. PAL and Japanese FM | v2.0 | 0/TBD | Not started | - |
 | 12. The whole list in the ledger | v2.0 | 0/TBD | Not started | - |
