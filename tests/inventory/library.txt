@@ -1,1 +1,2 @@
 library.local	local
+local.firmware_window_scan	local

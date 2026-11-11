@@ -9,6 +9,11 @@ if(COGMASTER_LIBRARY)
     "COGMASTER_LIBRARY_RUN=$<TARGET_FILE:cogmaster-run>" "COGMASTER_LIBRARY_EMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}"
     ${library_sh} ${PROJECT_SOURCE_DIR}/scripts/library.sh run)
   set_tests_properties(library.local PROPERTIES LABELS local)
+  # Fault prevented: a window of a dump in the owner's directory reaching the tree or a build output. Runs the script
+  # with no argument so it reads the directory itself; with none configured it passes and says 0 compared.
+  # Timeout: 300 s; a local run reads the tree and the build outputs through od and awk.
+  add_test(NAME local.firmware_window_scan COMMAND ${library_sh} ${PROJECT_SOURCE_DIR}/scripts/firmware-window.sh)
+  set_tests_properties(local.firmware_window_scan PROPERTIES LABELS local TIMEOUT 300)
   return()
 endif()
 if(COGMASTER_HYGIENE)

@@ -1,6 +1,7 @@
 # Hygiene tests, registered only by the hygiene preset (COGMASTER_HYGIENE).
 set(hygiene_scripts ${CMAKE_CURRENT_LIST_DIR}/../cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/../policy/budget_cases.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/../policy/firmware_window_cases.cmake)
 
 # Fault prevented: a personal path or address, an unlisted binary, a game
 # image or GPL text in any file git would track, ignored build output aside.
