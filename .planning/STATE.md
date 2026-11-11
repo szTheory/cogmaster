@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 8
 current_phase_name: Sports Pad, Paddle and 3-D glasses
 status: planning
-stopped_at: Completed 08-15-PLAN.md
-last_updated: "2026-11-11T07:06:04.739Z"
+stopped_at: Completed 08-16-PLAN.md
+last_updated: "2026-11-11T07:09:59.470Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 7 complete, transitioned to Phase 8
-state_head: 3b53a73cd8ce005783af8371214804ff9a592147
+state_head: 81f27adffa9fe7a19749461c5b7c2803b2764e55
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 52
-  completed_plans: 50
+  completed_plans: 51
   percent: 38
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 8 — Sports Pad, Paddle and 3-D glasses
-Plan: 15 of 17 complete (08-01 port layer, 08-02 header delta, 08-03 set_input copy rule, 08-04 glasses core and hosted dispatch 1, 08-05 Sports Pad, Paddle and saved device state, 08-06 state bounds proof and pad fuzz target, 08-07 default controller per dump and the region rule, 08-08 runner device grammar, exit 77 refusal and probe default keys, 08-09 runner delta lines and --eyes, 08-10 Sports Pad fixture and replay, 08-11 Paddle fixture and replay, 08-12 glasses fixture and hosted dispatch 2, 08-13 table rows for the two device fixtures, 08-14 anaglyph composition in the host library, 08-15 libretro device options, motion sources and 3-D view); next 08-16
+Plan: 16 of 17 complete (08-01 port layer, 08-02 header delta, 08-03 set_input copy rule, 08-04 glasses core and hosted dispatch 1, 08-05 Sports Pad, Paddle and saved device state, 08-06 state bounds proof and pad fuzz target, 08-07 default controller per dump and the region rule, 08-08 runner device grammar, exit 77 refusal and probe default keys, 08-09 runner delta lines and --eyes, 08-10 Sports Pad fixture and replay, 08-11 Paddle fixture and replay, 08-12 glasses fixture and hosted dispatch 2, 08-13 table rows for the two device fixtures, 08-14 anaglyph composition in the host library, 08-15 libretro device options, motion sources and 3-D view, 08-16 ledger key device token); next 08-17
 Status: Executing
-Last activity: 2026-11-11 — Completed 08-15 (the libretro adapter picks the device per port from cogmaster_port1/2 and the table, sums mouse, stick and D-pad motion clamped to 32767 for Sports Pad and Paddle ports, and shows 3-D titles through cogmaster_3d_view only while the eye alternates; six in-process cases compare its picture with the library's, three negative controls fail them). Runtime Claude Code, model Sonnet 5.5
+Last activity: 2026-11-11 — Completed 08-16 (the ledger key device token is pad|none|paddle|sports in the normalizer, the library and fixture lanes and the doc; compat.device_key and compat.device_rejected plus changed-key and adjacent-key ratchet cases, two negative controls fail them; counted check lines unchanged at 723). Runtime Claude Code, model Sonnet 5.5
 
 Progress: [████░░░░░░] 38% of v2.0
 
@@ -176,6 +176,7 @@ Progress: [████░░░░░░] 38% of v2.0
 | Phase 8 P13 | 45min | 2 tasks | 11 files |
 | Phase 08 P14 | 15 min | 2 tasks | 7 files |
 | Phase 08 P15 | 70 min | 3 tasks | 6 files |
+| Phase 08 P16 | 14min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -246,6 +247,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 08]: 08-14: cogmaster__eyes_anaglyph is a pure host function (red from left, green and blue from right, top bits zero) tested by a closed-form grid plus a bad-variant control; the test is its own executable with one case name
 - [Phase 08]: 08-15: a device the profile cannot take is found by one set_input probe per port at load, so the one log line comes at load and each port is judged alone
 - [Phase 08]: 08-15: glasses.sms draws nothing, so the stereo cases use two guests the test builds and a model of the rule built from the library's own eyes and pictures
+- [Phase 08]: 08-16: the ledger key device token is pad|none|paddle|sports in the normalizer, library lane, fixture lane and doc; changed-key ratchet cases are paired with adjacent-key cases because a rejecting grammar also answers exit 2
 
 ### Pending Todos
 
@@ -362,8 +364,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T07:06:04.621Z
-Stopped at: Completed 08-15-PLAN.md
+Last session: 2026-11-11T07:09:59.341Z
+Stopped at: Completed 08-16-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

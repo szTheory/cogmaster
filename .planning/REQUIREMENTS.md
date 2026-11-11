@@ -47,7 +47,7 @@ Requirements for this milestone. Each maps to one roadmap phase. Scope decisions
 - [x] **PAD-03**: A Paddle title works on Japan profiles, with deltas accumulated in state so a replay matches
 - [ ] **PAD-04**: The 3-D glasses eye state is reported at frame end, gated by the cartridge enable bit, and the host composes the eyes outside the hashed frame
 - [ ] **PAD-05**: `cogmaster_set_input` accepts a grown struct by copying the smaller of the caller's size and its own and zeroing the rest, so a version 9 caller is never read past its end
-- [ ] **PAD-06**: The hash table sets a default controller device per dump, the user option wins, profile availability is enforced, and the ledger key carries the device
+- [x] **PAD-06**: The hash table sets a default controller device per dump, the user option wins, profile availability is enforced, and the ledger key carries the device
 - [x] **PAD-07**: Device state is bounded and cross-checked in the state visitor, and each device is in the fuzz target
 
 ### Light Phaser
@@ -138,7 +138,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PAD-03 | Phase 8 | Complete |
 | PAD-04 | Phase 8 | Pending |
 | PAD-05 | Phase 8 | Pending |
-| PAD-06 | Phase 8 | Pending |
+| PAD-06 | Phase 8 | Complete |
 | PAD-07 | Phase 8 | Complete |
 | GUN-01 | Phase 9 | Pending |
 | GUN-02 | Phase 9 | Pending |
