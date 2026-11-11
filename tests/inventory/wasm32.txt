@@ -100,6 +100,11 @@ docs.budgets.ratio_equal	policy
 docs.budgets.unclassified	policy
 docs.readme_play	portable,runner
 docs.readme_play.self_test	portable,runner
+eeprom.changes	mapper,portable
+eeprom.commands	mapper,portable
+eeprom.differential	mapper,portable
+eeprom.lock	mapper,portable
+eeprom.read	mapper,portable
 embed.subdirectory	install
 fault.ed_undefined	bus,portable
 fault.mapper_range	bus,portable
