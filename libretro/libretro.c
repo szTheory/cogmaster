@@ -14,6 +14,7 @@
 #include <string.h>
 
 #include "cogmaster.h"
+#include "eyes.h"
 #include "libretro.h"
 #include "palette.h"
 
@@ -58,6 +59,17 @@ static int16_t audio_pcm[LR_AUDIO_CAPACITY * 2u];
 static unsigned controllers[2] = {RETRO_DEVICE_JOYPAD, RETRO_DEVICE_JOYPAD};
 static int full_field, square_pixels;
 static struct retro_game_geometry geometry;
+/* What each port carries (COGMASTER_DEVICE_*), chosen at load. */
+static uint32_t port_device[2];
+static int status_logged;
+/* The 3-D view: a pure host rule over the pictures; nothing here is hashed or saved. `stereo` is
+   4 for the frames after the shutter eye changed, `last_eye` the eye before, and the retained
+   pictures are one per eye plus the red-cyan mix, all in the native RGB444 layout. */
+enum { LR_VIEW_LEFT, LR_VIEW_RIGHT, LR_VIEW_ALTERNATE, LR_VIEW_ANAGLYPH, LR_VIEW_OFF };
+#define LR_STEREO_FRAMES 4u
+static int eye_view;
+static unsigned stereo, last_eye;
+static uint16_t *eye_mem, *eye_pic[2], *eye_mix;
 
 #include "options.h"
 
@@ -65,6 +77,20 @@ static void lr_presentation(void)
 {
     full_field = lr_option("cogmaster_gg_view", "full");
     square_pixels = lr_option("cogmaster_gg_aspect", "square");
+    eye_view = lr_option("cogmaster_3d_view", "right")       ? LR_VIEW_RIGHT
+               : lr_option("cogmaster_3d_view", "alternate") ? LR_VIEW_ALTERNATE
+               : lr_option("cogmaster_3d_view", "anaglyph")  ? LR_VIEW_ANAGLYPH
+               : lr_option("cogmaster_3d_view", "off")       ? LR_VIEW_OFF
+                                                             : LR_VIEW_LEFT;
+}
+
+/* One line to the frontend's log, when it offers one. */
+static void lr_log(const char *message)
+{
+    struct retro_log_callback cb = {0};
+    if (env_cb != NULL && env_cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &cb) && cb.log != NULL) {
+        cb.log(RETRO_LOG_WARN, "cogmaster: %s\n", message);
+    }
 }
 
 static struct retro_game_geometry lr_geometry(uint32_t w, uint32_t h)
@@ -123,6 +149,11 @@ static void lr_unload(void)
     native = NULL;
     free(pixels);
     pixels = NULL;
+    free(eye_mem);
+    eye_mem = eye_mix = eye_pic[0] = eye_pic[1] = NULL;
+    stereo = last_eye = 0u;
+    port_device[0] = port_device[1] = COGMASTER_DEVICE_PAD;
+    status_logged = 0;
     loaded = 0;
     memset(&info, 0, sizeof info);
     full_field = square_pixels = 0;
@@ -254,35 +285,124 @@ static uint32_t lr_button(unsigned port, unsigned id)
                : 0u;
 }
 
+/* How far a stick moves a Sports Pad or Paddle: k counts per frame at full deflection. These
+   numbers are judged locally, as is the dead zone. RetroArch's
+   delivery of a mouse to a port that is not set to a mouse is unmeasured, so the stick and the
+   D-pad are the sure way to move the device. */
+#define LR_STICK_SPORTS 6
+#define LR_STICK_PADDLE 4
+#define LR_STICK_DEAD 6554 /* 20 percent of the full 32768 */
+#define LR_DPAD_COUNTS 2
+#define LR_AXIS_MAX 32767
+
+static uint32_t lr_mouse_button(unsigned port, unsigned id)
+{
+    return input_state_cb(port, RETRO_DEVICE_MOUSE, 0u, id) != 0 ? 1u : 0u;
+}
+
+/* One axis of a motion port, 0 for x and 1 for y: the mouse delta (already relative), the left
+   stick past the dead zone and the D-pad, summed and held inside what the library accepts. pad
+   holds the D-pad bits, up, down, left, right from bit 0. Only base device ids are asked. */
+static int32_t lr_axis(unsigned port, unsigned axis, int32_t k, uint32_t pad)
+{
+    static const unsigned mouse_id[2] = {RETRO_DEVICE_ID_MOUSE_X, RETRO_DEVICE_ID_MOUSE_Y};
+    static const unsigned stick_id[2] = {RETRO_DEVICE_ID_ANALOG_X, RETRO_DEVICE_ID_ANALOG_Y};
+    int32_t mouse = input_state_cb(port, RETRO_DEVICE_MOUSE, 0u, mouse_id[axis]);
+    int32_t stick =
+        input_state_cb(port, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, stick_id[axis]);
+    uint32_t more = axis == 0u ? pad >> 3 : pad >> 1;
+    uint32_t less = axis == 0u ? pad >> 2 : pad;
+    int32_t dpad = (int32_t)(more & 1u) - (int32_t)(less & 1u);
+    int32_t sum = mouse +
+                  (stick > -LR_STICK_DEAD && stick < LR_STICK_DEAD ? 0 : stick * k / 32768) +
+                  dpad * LR_DPAD_COUNTS;
+    return sum > LR_AXIS_MAX ? LR_AXIS_MAX : (sum < -LR_AXIS_MAX ? -LR_AXIS_MAX : sum);
+}
+
 static void lr_input(void)
 {
     static const unsigned buttons[6] = {RETRO_DEVICE_ID_JOYPAD_UP,   RETRO_DEVICE_ID_JOYPAD_DOWN,
                                         RETRO_DEVICE_ID_JOYPAD_LEFT, RETRO_DEVICE_ID_JOYPAD_RIGHT,
                                         RETRO_DEVICE_ID_JOYPAD_B,    RETRO_DEVICE_ID_JOYPAD_A};
     cogmaster_input in = {0};
-    in.size = sizeof in;
+    uint32_t pad[2] = {0u, 0u};
+    int32_t axis[2][2] = {{0, 0}, {0, 0}};
     int connected = input_poll_cb != NULL && input_state_cb != NULL;
-    in.port1 = connected && controllers[0] != RETRO_DEVICE_NONE ? COGMASTER_DEVICE_PAD
-                                                                : COGMASTER_DEVICE_NONE;
-    in.port2 = connected && controllers[1] != RETRO_DEVICE_NONE ? COGMASTER_DEVICE_PAD
-                                                                : COGMASTER_DEVICE_NONE;
-    for (unsigned bit = 0u; bit < 6u; bit++) {
-        in.p1 |= lr_button(0u, buttons[bit]) << bit;
-        in.p2 |= lr_button(1u, buttons[bit]) << bit;
+    in.size = sizeof in;
+    for (unsigned port = 0u; port < 2u; port++) {
+        uint32_t device = connected && controllers[port] != RETRO_DEVICE_NONE
+                              ? port_device[port]
+                              : COGMASTER_DEVICE_NONE;
+        if (port == 0u) {
+            in.port1 = device;
+        } else {
+            in.port2 = device;
+        }
+        if (device == COGMASTER_DEVICE_NONE) {
+            continue;
+        }
+        for (unsigned bit = 0u; bit < 6u; bit++) {
+            pad[port] |= lr_button(port, buttons[bit]) << bit;
+        }
+        if (device == COGMASTER_DEVICE_SPORTS_PAD || device == COGMASTER_DEVICE_PADDLE) {
+            int32_t k = device == COGMASTER_DEVICE_SPORTS_PAD ? LR_STICK_SPORTS : LR_STICK_PADDLE;
+            axis[port][0] = lr_axis(port, 0u, k, pad[port]);
+            axis[port][1] = lr_axis(port, 1u, k, pad[port]);
+            /* Buttons 1 and 2: RetroPad B and A, or the mouse buttons. */
+            pad[port] = (pad[port] & 0x30u) |
+                        lr_mouse_button(port, RETRO_DEVICE_ID_MOUSE_LEFT) << 4 |
+                        lr_mouse_button(port, RETRO_DEVICE_ID_MOUSE_RIGHT) << 5;
+        }
     }
+    in.p1 = pad[0];
+    in.p2 = pad[1];
+    in.x1 = axis[0][0];
+    in.y1 = axis[0][1];
+    in.x2 = axis[1][0];
+    in.y2 = axis[1][1];
     if (info.machine == COGMASTER_MACHINE_GG) {
         in.start = lr_button(0u, RETRO_DEVICE_ID_JOYPAD_START);
     } else {
         in.pause = lr_button(0u, RETRO_DEVICE_ID_JOYPAD_START);
         in.reset = lr_button(0u, RETRO_DEVICE_ID_JOYPAD_SELECT);
     }
-    (void)cogmaster_set_input(inst, &in);
+    if (cogmaster_set_input(inst, &in) != COGMASTER_STATUS_OK && !status_logged) {
+        status_logged = 1;
+        lr_log("the input call was refused");
+    }
+}
+
+/* The device a port carries: the option when it names one, else the library's table default,
+   which it has already cut back to a pad where the machine cannot take it. libretro cannot refuse
+   an option, so a choice this machine cannot take is a pad, with one line in the log. */
+static uint32_t lr_choose(unsigned port, const char *key, uint32_t table)
+{
+    static const char *const names[4] = {"pad", "none", "paddle", "sports"};
+    cogmaster_input probe = {0};
+    uint32_t choice = table;
+    for (uint32_t device = 0u; device < 4u; device++) {
+        if (lr_option(key, names[device])) {
+            choice = device;
+        }
+    }
+    probe.size = sizeof probe;
+    if (port == 0u) {
+        probe.port1 = choice;
+    } else {
+        probe.port2 = choice;
+    }
+    if (cogmaster_set_input(inst, &probe) == COGMASTER_STATUS_ERR_PROFILE_REJECTED) {
+        lr_log("this console cannot take that controller; using a control pad");
+        choice = COGMASTER_DEVICE_PAD;
+    }
+    return choice;
 }
 
 /* L7680 prefers soft reset. Frontend Restart reapplies the hand-off on SMS,
    or power-cycles GG; Select is the separate physical Reset pin. */
 void retro_reset(void)
 {
+    stereo = last_eye = 0u;
     if (loaded) {
         (void)cogmaster_reset(inst, info.machine == COGMASTER_MACHINE_GG ? COGMASTER_RESET_POWER
                                                                          : COGMASTER_RESET_SOFT);
@@ -323,6 +443,41 @@ static void lr_audio(void)
     }
 }
 
+/* The shutter eye of this frame against the last eye seen: a title that alternates it, which is
+   what a 3-D title does, sets stereo for the next frames; a title that wrote it once, or never,
+   leaves stereo at 0 and its frames go out as they are. */
+static void lr_stereo(uint32_t eye)
+{
+    if (stereo > 0u) {
+        stereo--;
+    }
+    if (eye != COGMASTER_GLASSES_NONE) {
+        if (last_eye != 0u && eye != last_eye) {
+            stereo = LR_STEREO_FRAMES;
+        }
+        last_eye = eye;
+    }
+}
+
+/* The picture to convert and send: the native frame, or while the eyes alternate the held
+   picture of the chosen eye or the red-cyan mix. The pictures of both eyes are kept as the frames
+   arrive, so the held one is there when the view needs it. */
+static const uint16_t *lr_view(uint32_t eye, size_t dots)
+{
+    if (eye_mem == NULL || eye == COGMASTER_GLASSES_NONE) {
+        return native;
+    }
+    memcpy(eye_pic[eye == COGMASTER_GLASSES_LEFT ? 0 : 1], native, dots * sizeof *native);
+    if (stereo == 0u || eye_view == LR_VIEW_ALTERNATE || eye_view == LR_VIEW_OFF) {
+        return native;
+    }
+    if (eye_view == LR_VIEW_ANAGLYPH) {
+        cogmaster__eyes_anaglyph(eye_pic[0], eye_pic[1], eye_mix, dots);
+        return eye_mix;
+    }
+    return eye_pic[eye_view == LR_VIEW_LEFT ? 0 : 1];
+}
+
 /* L7694: one frame. Input is polled once and not yet read; the frame's audio
    is drained before the video work, even with no callback registered, then the
    crop is converted into the frame buffer and sent with one video call. A
@@ -330,6 +485,8 @@ static void lr_audio(void)
 void retro_run(void)
 {
     cogmaster_frame io;
+    cogmaster_run_result result;
+    const uint16_t *shown = native;
     uint32_t x, y;
     bool updated = false;
 
@@ -343,9 +500,12 @@ void retro_run(void)
     if (loaded) {
         lr_input();
     }
-    if (!loaded || cogmaster_run_frame(inst, NULL) != COGMASTER_STATUS_OK) {
+    memset(&result, 0, sizeof result);
+    result.size = (uint32_t)sizeof result;
+    if (!loaded || cogmaster_run_frame(inst, &result) != COGMASTER_STATUS_OK) {
         return;
     }
+    lr_stereo(result.glasses);
     lr_audio();
     memset(&io, 0, sizeof io);
     io.size = (uint32_t)sizeof io;
@@ -369,8 +529,9 @@ void retro_run(void)
             (void)env_cb(RETRO_ENVIRONMENT_SET_GEOMETRY, &geometry);
         }
     }
+    shown = lr_view(result.glasses, (size_t)info.max_w * info.max_h);
     for (y = 0; y < io.h; y++) {
-        const uint16_t *src = native + (size_t)y * info.max_w;
+        const uint16_t *src = shown + (size_t)y * info.max_w;
         lr_pixel *dst = pixels + (size_t)y * io.w;
         for (x = 0; x < io.w; x++) {
             dst[x] = LR_CONVERT(src[x]);
@@ -482,12 +643,24 @@ bool retro_load_game(const struct retro_game_info *game)
     (void)env_cb(RETRO_ENVIRONMENT_SET_CONTROLLER_INFO, lr_ports);
     (void)env_cb(RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, lr_inputs);
     dots = (size_t)info.max_w * info.max_h;
-    native = (uint16_t *)malloc(dots * sizeof *native);
+    /* Zeroed: a frame fills only its crop, and the eye copy and mix read all the dots. */
+    native = (uint16_t *)calloc(dots, sizeof *native);
     pixels = (lr_pixel *)malloc(dots * sizeof *pixels);
     if (native == NULL || pixels == NULL) {
         lr_unload();
         return false;
     }
+    /* A failed allocation costs the 3-D views only: every frame then goes out as it is. */
+    eye_mem = (uint16_t *)malloc(3u * dots * sizeof *eye_mem);
+    if (eye_mem == NULL) {
+        lr_log("no memory for the 3-D views; frames go out as they are");
+    } else {
+        eye_pic[0] = eye_mem;
+        eye_pic[1] = eye_mem + dots;
+        eye_mix = eye_mem + 2u * dots;
+    }
+    port_device[0] = lr_choose(0u, "cogmaster_port1", info.default_port1);
+    port_device[1] = lr_choose(1u, "cogmaster_port2", info.default_port2);
     loaded = 1;
     lr_presentation();
     geometry = lr_geometry(

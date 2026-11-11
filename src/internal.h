@@ -202,7 +202,52 @@ struct cogmaster__io {
     uint8_t gg[6];    /* Game Gear $01-$06 */
     /* $F2 as written, below 4: 0 PSG, 1 FM, 2 neither, 3 both; 0 with no FM unit */
     uint8_t audio_ctrl;
+    /* The 3-D glasses eye last written to $FFF8-$FFFB (COGMASTER_GLASSES_*, 0 for none), and the
+       eye this frame reports: the eye in force at its start unless a write in the top half overrode
+       it. */
+    uint8_t glasses;
+    uint8_t glasses_frame;
 };
+
+/* The 3-D glasses adapter snoops writes to $FFF8-$FFFB: bit 0 clear opens the right shutter, set
+   the left (SMS Power, 3-D Glasses; MAME sms_m.cpp sscope_w, BSD-3). A frame's window starts at
+   line 192 tick 607, so the top 96 active lines of the next picture end this many ticks into it,
+   given the frame's length in lines. The cut at active line 96 is the core's own choice; MAME cuts
+   at half the screen's total height, which is not claimed here. A write before the cut belongs to
+   this window's picture, a later one to the next. */
+#define COGMASTER__GLASSES_CUT_TICKS(frame_lines) (((frame_lines) - 96u) * 684u - 607u)
+
+/* The highest device a port can hold; one constant for set_input and the saved-state bound. */
+#define COGMASTER__DEVICE_LAST COGMASTER_DEVICE_SPORTS_PAD
+
+/* A Sports Pad abandons a read sequence when TH has been high for 512 Z80 cycles, which is 1,536
+   ticks (MAME sms_ctrl/sports.cpp, BSD-3, timeout of the console clock over 3 over 512; the
+   unmodelled alternative is the 60 microsecond TH-low resync of ares ms/controller/sports-pad). */
+#define SPORTS_IDLE_TICKS 1536u
+
+/* The Paddle's own clock, read as the frequency of the TR line it drives: SMS Power and ares give
+   18 kHz (ares ms/controller/paddle), so a half period is a little over 298 ticks, and MAME
+   sms_ctrl/paddle.cpp uses the console clock over 3 over 100, which is 300. The value 299 is within
+   half a percent of both and is not a multiple of 3, so no polling loop of whole Z80 cycles shorter
+   than 299 cycles locks exactly to it. */
+#define PADDLE_HALF_TICKS 299u
+
+/* One port's device block, zero for no device and for a device just attached. A Sports Pad uses
+   edge (tick of the last TH wire rise), acc (the motion not yet delivered, per axis), val (the
+   negated byte latched for the sequence, per axis) and step (0 idle, 1 to 4 the nibble on offer);
+   a Paddle uses pos, its position XOR $80 so that zero is the centre. */
+struct cogmaster__port {
+    uint64_t edge;
+    int16_t acc[2];
+    int8_t val[2];
+    uint8_t step;
+    uint8_t pos;
+};
+_Static_assert(sizeof(struct cogmaster__port) == 16u, "port block size");
+_Static_assert(sizeof(uint64_t) + 2u * sizeof(int16_t) + 2u * sizeof(int8_t) +
+                       2u * sizeof(uint8_t) ==
+                   sizeof(struct cogmaster__port),
+               "port block has no padding");
 
 /* The Master System's work RAM, mirrored over $C000-$FFFF. */
 #define COGMASTER__RAM_SIZE 8192u
@@ -311,10 +356,14 @@ struct cogmaster {
     /* The 93C46 on the Sega EEPROM board; zero and unused on every other board. */
     struct cogmaster__eeprom eeprom;
     struct cogmaster__io io;
+    struct cogmaster__port ports[2]; /* the two controller ports' device blocks */
     uint32_t render_line;
     uint32_t render_x; /* next unrendered dot of render_line */
     cogmaster_input pending_input, input;
     uint8_t input_read;
+    /* The controllers the matched table row names, per port, as COGMASTER_DEVICE_* values. They
+       are derived at load and are not saved; zero (a pad) when no row matched. */
+    uint8_t table_device[2];
     struct cogmaster__synth synth;
     struct cogmaster__psg psg;
     /* The YM2413, reset at every load and reset and run only with fm_unit; fm_next is the tick
@@ -410,7 +459,9 @@ _Static_assert(offsetof(cogmaster_info, tv) == 52, "info.tv");
 _Static_assert(offsetof(cogmaster_info, video_mode) == 56, "info.video_mode");
 _Static_assert(offsetof(cogmaster_info, audio_channels) == 60, "info.audio_channels");
 _Static_assert(offsetof(cogmaster_info, fm) == 64, "info.fm");
-_Static_assert(sizeof(cogmaster_info) == 68, "info size");
+_Static_assert(offsetof(cogmaster_info, default_port1) == 68, "info.default_port1");
+_Static_assert(offsetof(cogmaster_info, default_port2) == 72, "info.default_port2");
+_Static_assert(sizeof(cogmaster_info) == 76, "info size");
 
 _Static_assert(offsetof(cogmaster_frame, size) == 0, "frame.size");
 _Static_assert(offsetof(cogmaster_frame, pixels) == COGMASTER__P, "frame.pixels");
@@ -429,8 +480,10 @@ _Static_assert(offsetof(cogmaster_run_result, size) == 0, "run_result.size");
 _Static_assert(offsetof(cogmaster_run_result, stop) == 4, "run_result.stop");
 _Static_assert(offsetof(cogmaster_run_result, overshoot_ticks) == 8, "run_result.overshoot_ticks");
 _Static_assert(offsetof(cogmaster_run_result, lagged) == 12, "run_result.lagged");
-_Static_assert(sizeof(cogmaster_run_result) == 20, "run_result size");
-_Static_assert(sizeof(cogmaster_input) == 32, "input size");
+_Static_assert(offsetof(cogmaster_run_result, display_enabled) == 16, "run_result.display_enabled");
+_Static_assert(offsetof(cogmaster_run_result, glasses) == 20, "run_result.glasses");
+_Static_assert(sizeof(cogmaster_run_result) == 24, "run_result size");
+_Static_assert(sizeof(cogmaster_input) == 48, "input size");
 _Static_assert(offsetof(cogmaster_input, p1) == 4, "input.p1");
 _Static_assert(offsetof(cogmaster_input, p2) == 8, "input.p2");
 _Static_assert(offsetof(cogmaster_input, pause) == 12, "input.pause");
@@ -438,6 +491,10 @@ _Static_assert(offsetof(cogmaster_input, reset) == 16, "input.reset");
 _Static_assert(offsetof(cogmaster_input, start) == 20, "input.start");
 _Static_assert(offsetof(cogmaster_input, port1) == 24, "input.port1");
 _Static_assert(offsetof(cogmaster_input, port2) == 28, "input.port2");
+_Static_assert(offsetof(cogmaster_input, x1) == 32, "input.x1");
+_Static_assert(offsetof(cogmaster_input, y1) == 36, "input.y1");
+_Static_assert(offsetof(cogmaster_input, x2) == 40, "input.x2");
+_Static_assert(offsetof(cogmaster_input, y2) == 44, "input.y2");
 
 _Static_assert(offsetof(cogmaster_fault, size) == 0, "fault.size");
 _Static_assert(offsetof(cogmaster_fault, present) == 4, "fault.present");
@@ -466,6 +523,9 @@ _Static_assert(offsetof(cogmaster_cart_info, machine_guess) == 40, "cart_info.ma
 _Static_assert(offsetof(cogmaster_cart_info, region_guess) == 44, "cart_info.region_guess");
 _Static_assert(offsetof(cogmaster_cart_info, board) == 48, "cart_info.board");
 _Static_assert(offsetof(cogmaster_cart_info, identified) == 52, "cart_info extension");
+_Static_assert(offsetof(cogmaster_cart_info, default_port1) == 528, "cart_info.default_port1");
+_Static_assert(offsetof(cogmaster_cart_info, default_port2) == 532, "cart_info.default_port2");
+_Static_assert(sizeof(cogmaster_cart_info) == 536, "cart_info size");
 
 /* cogmaster_audio: the buffer pointer first, then four counters. */
 _Static_assert(offsetof(cogmaster_audio, size) == 0, "audio.size");
@@ -657,6 +717,23 @@ uint8_t cogmaster__io_in(cogmaster *m, uint16_t port);
 void cogmaster__io_out(cogmaster *m, uint16_t port, uint8_t v);
 uint8_t cogmaster__io_open_bus(cogmaster *m);
 void cogmaster__io_reset(cogmaster *m);
+/* A write at $FFF8-$FFFF that reached work RAM's mirror: the Sega mapper registers at $FFFC and up,
+   the 3-D glasses eye below them. Faults as the bus does when it reaches nothing. */
+void cogmaster__io_glasses_write(cogmaster *m, uint16_t addr, uint8_t v);
+/* Every $3F write: the latch of the H counter on a rising TH lives here. */
+void cogmaster__io_th_changed(cogmaster *m, uint8_t old_ctrl, uint8_t new_ctrl, uint64_t tick);
+/* The six pins a port's device drives (b0-b3 D0-D3, b4 TL, b5 TR), 0 = low.
+   Port is 0 or 1. Pure. */
+uint8_t cogmaster__ports_pins(const cogmaster *m, uint32_t port, uint64_t tick);
+/* TH of a port changed to the wire level (0 or 1) at tick: a Sports Pad steps its read sequence;
+   every other device ignores it. Called only on a change, so a port's edges alternate. */
+void cogmaster__ports_th(cogmaster *m, uint32_t port, uint32_t wire, uint64_t tick);
+/* Start of a frame, before the pending input becomes the input: a port whose device changed starts
+   clean, the pending motion joins the devices' own accumulators, and the axes of both input
+   records return to 0. */
+void cogmaster__ports_frame(cogmaster *m);
+/* Whether the instance's profile can take the device on a port. */
+int cogmaster__device_ok(const cogmaster *m, uint32_t device);
 
 /* The fast-boot hand-off: the CPU and RAM as the BIOS leaves them. power
    also clears work RAM first. */

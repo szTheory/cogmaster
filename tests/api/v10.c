@@ -38,7 +38,7 @@ int main(void)
     CHECK_EQ_U64(offsetof(cogmaster_cart_info, scan_runner_up), V9_CART_INFO_SIZE + 16u);
     CHECK_EQ_U64(offsetof(cogmaster_cart_info, unsupported_id), V9_CART_INFO_SIZE + 20u);
     CHECK_EQ_U64(offsetof(cogmaster_cart_info, unsupported_reason), V9_CART_INFO_SIZE + 24u);
-    CHECK_EQ_U64(sizeof(cogmaster_cart_info), V9_CART_INFO_SIZE + 6u * 4u + 128u);
+    CHECK(sizeof(cogmaster_cart_info) >= V9_CART_INFO_SIZE + 6u * 4u + 128u);
 
     static uint8_t image[IMAGE_SIZE];
     cogmaster_cart_info old;

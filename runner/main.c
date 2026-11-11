@@ -32,6 +32,10 @@
  * --trace first-fault reads the core's first-fault record after each frame,
  * stops at the first fault and prints it as one line, or "fault none".
  *
+ * --eyes counts the 3-D glasses eye the core reports for each frame and,
+ * after the last frame, prints one line of key=value counts (docs/runner.md).
+ * It changes no hashed output.
+ *
  * --mailbox peeks the RAM mailbox after each frame, stops at the first
  * frame whose status reads $00, and prints the mailbox (mailbox.h).
  * docs/runner.md describes all of this for users.
@@ -267,6 +271,43 @@ static int load_status(cogmaster_status st, const uint8_t *image, size_t image_s
     }
 }
 
+/* The one call that sets the controllers before frame 1. A device the machine and region cannot
+   take is a refusal that names the fix; the Paddle was made for the Japanese console only and the
+   Game Gear has no controller ports (the same rule as src/ports.c). */
+static cogmaster_status send_devices(cogmaster *m, uint32_t port1, uint32_t port2)
+{
+    cogmaster_input in = {0};
+    in.size = sizeof in;
+    in.port1 = port1;
+    in.port2 = port2;
+    return cogmaster_set_input(m, &in);
+}
+
+static int set_devices(cogmaster *m, uint32_t port1, uint32_t port2)
+{
+    cogmaster_status st = send_devices(m, port1, port2);
+    if (st == COGMASTER_STATUS_OK) {
+        return COGMASTER__EXIT_OK;
+    }
+    if (st != COGMASTER_STATUS_ERR_PROFILE_REJECTED) {
+        fprintf(stderr, "cogmaster-run: cogmaster_set_input failed with status %lu\n",
+                (unsigned long)st);
+        return COGMASTER__EXIT_FAILURE;
+    }
+    /* A refused call changes nothing, so asking about port 1 alone names the culprit. */
+    int first =
+        send_devices(m, port1, COGMASTER_DEVICE_PAD) == COGMASTER_STATUS_ERR_PROFILE_REJECTED;
+    uint32_t bad = first ? port1 : port2;
+    fprintf(
+        stderr, "cogmaster-run: unsupported: %s on port %d is not available here; %s\n",
+        cogmaster__device_name(bad), first ? 1 : 2,
+        bad == COGMASTER_DEVICE_PADDLE
+            ? "the Paddle needs --region ntsc-j on a Master System, and the Game Gear has no such "
+              "controller"
+            : "the Game Gear has no such controller");
+    return COGMASTER__EXIT_REFUSED;
+}
+
 /* Runs the frames. The pixel buffer and the bench samples are on the heap:
    a field is too large for a small stack such as wasm32's, and the samples
    take 4 bytes per frame. Returns the exit status. */
@@ -317,6 +358,22 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     media.tv = opt->tv;
     media.video_mode = opt->video_mode;
     int status = load_status(cogmaster_load(m, &media), image, image_size);
+    /* auto takes the library's default for this content, already degraded to a pad when the
+       machine and region cannot take it; the call is made once, so a later frame never changes it.
+     */
+    uint32_t port1 = opt->port1;
+    uint32_t port2 = opt->port2;
+    if (status == COGMASTER__EXIT_OK) {
+        cogmaster_info dev = {0};
+        dev.size = sizeof dev;
+        if (cogmaster_get_info(m, &dev) != COGMASTER_STATUS_OK) {
+            status = COGMASTER__EXIT_FAILURE;
+        } else {
+            port1 = opt->port1_given ? opt->port1 : dev.default_port1;
+            port2 = opt->port2_given ? opt->port2 : dev.default_port2;
+            status = set_devices(m, port1, port2);
+        }
+    }
     cogmaster__audio audio = {0};
     if (status == COGMASTER__EXIT_OK && opt->hash_audio) {
         cogmaster_info info = {0};
@@ -334,9 +391,15 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     FILE *input = NULL;
     if (status == COGMASTER__EXIT_OK && opt->input != NULL) {
         input = cogmaster__path_open(opt->input, "rb");
-        status =
-            input != NULL ? cogmaster__input_validate(input, opt->frames) : COGMASTER__EXIT_FAILURE;
-        if (status != COGMASTER__EXIT_OK) {
+        int bad_port = 0;
+        status = input != NULL
+                     ? cogmaster__input_validate(input, opt->frames, port1, port2, &bad_port)
+                     : COGMASTER__EXIT_FAILURE;
+        if (bad_port != 0) {
+            fprintf(stderr,
+                    "cogmaster-run: input file error: port %d is %s, which takes no motion\n",
+                    bad_port, cogmaster__device_name(bad_port == 1 ? port1 : port2));
+        } else if (status != COGMASTER__EXIT_OK) {
             fprintf(stderr, "cogmaster-run: input file error (status %d)\n", status);
         }
     }
@@ -366,12 +429,12 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
         char hex[65];
         cogmaster__sha256_final(&hash, digest);
         cogmaster__sha256_hex(digest, hex);
-        printf("execution machine=%lu region=%lu tv=%lu video=%lu mapper=%lu port1=%lu port2=%lu "
+        printf("execution machine=%lu region=%lu tv=%lu video=%lu mapper=%lu port1=%s port2=%s "
                "script_sha256=%s cap=%lu behaviour=%lu\n",
                (unsigned long)info.machine, (unsigned long)info.region, (unsigned long)info.tv,
-               (unsigned long)info.video_mode, (unsigned long)cart.board, (unsigned long)opt->port1,
-               (unsigned long)opt->port2, hex, (unsigned long)opt->frames,
-               (unsigned long)versions.behaviour);
+               (unsigned long)info.video_mode, (unsigned long)cart.board,
+               cogmaster__device_name(port1), cogmaster__device_name(port2), hex,
+               (unsigned long)opt->frames, (unsigned long)versions.behaviour);
     }
     cogmaster_fault fault;
     memset(&fault, 0, sizeof fault);
@@ -380,6 +443,9 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
        cogmaster_run_frame is timed, not hashing or writing files. */
     uint32_t ran = 0;
     uint32_t lag_frames = 0;
+    uint32_t eye_count[3] = {0u, 0u, 0u}; /* indexed by COGMASTER_GLASSES_* */
+    uint32_t eye_flips = 0;
+    uint32_t eye_last = COGMASTER_GLASSES_NONE;
     int mailbox_running = 0;
     for (uint64_t n = 1; n <= opt->frames && status == COGMASTER__EXIT_OK; n++) {
         cogmaster_input in = {0};
@@ -390,8 +456,8 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
                 break;
             }
         }
-        in.port1 = opt->port1;
-        in.port2 = opt->port2;
+        in.port1 = port1;
+        in.port2 = port2;
         if (cogmaster_set_input(m, &in) != COGMASTER_STATUS_OK) {
             status = COGMASTER__EXIT_FAILURE;
             break;
@@ -405,8 +471,15 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
         }
 #endif
         st = cogmaster_run_frame(m, &result);
-        if (st == COGMASTER_STATUS_OK)
+        if (st == COGMASTER_STATUS_OK) {
             lag_frames += result.lagged;
+            uint32_t eye = result.glasses <= COGMASTER_GLASSES_LEFT ? result.glasses : 0u;
+            eye_count[eye]++;
+            if (eye != COGMASTER_GLASSES_NONE) {
+                eye_flips += eye_last != COGMASTER_GLASSES_NONE && eye_last != eye;
+                eye_last = eye;
+            }
+        }
         if (opt->bench) {
             samples[ran] = cogmaster__bench_us(cogmaster__clock_ns() - start_ns);
         }
@@ -491,6 +564,15 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     }
     if (status == COGMASTER__EXIT_OK && opt->expect != NULL)
         status = cogmaster__expect_finish(&expectations);
+    if (status == COGMASTER__EXIT_OK && opt->eyes) {
+        printf("eyes frames=%lu none=%lu left=%lu right=%lu flips=%lu last=%s\n",
+               (unsigned long)ran, (unsigned long)eye_count[COGMASTER_GLASSES_NONE],
+               (unsigned long)eye_count[COGMASTER_GLASSES_LEFT],
+               (unsigned long)eye_count[COGMASTER_GLASSES_RIGHT], (unsigned long)eye_flips,
+               eye_last == COGMASTER_GLASSES_LEFT    ? "left"
+               : eye_last == COGMASTER_GLASSES_RIGHT ? "right"
+                                                     : "none");
+    }
     if (input != NULL && fclose(input) != 0) {
         status = COGMASTER__EXIT_FAILURE;
     }

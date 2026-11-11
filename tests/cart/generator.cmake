@@ -123,6 +123,18 @@ elseif(CMAKE_SCRIPT_MODE_FILE)
     message(FATAL_ERROR "the owned fixture entered the catalog: ${fixture_catalog}")
   endif()
 
+  # The Sports Pad and Paddle rows carry their controller codes on a plain ROM board; a row of either
+  # shape with the other's codes is not an owned fixture.
+  if(NOT got MATCHES "0x20,0x46[^\n]*\\.board = 1u[^\n]*\\.ctrl1 = 3u, \\.ctrl2 = 3u, \\.flags = 0u"
+     OR NOT got MATCHES "0x02,0x1f[^\n]*\\.board = 1u[^\n]*\\.ctrl1 = 2u, \\.ctrl2 = 0u, \\.flags = 0u")
+    message(FATAL_ERROR "device fixture rows mismatch: ${got}")
+  endif()
+  file(WRITE "${OUT}/bad-fixture.txt" "2046da4a75083e015915f82fdcb0dd850d6dfee8 32768 1 1 0 1 0 0 0 2 2 swapped\n")
+  generate("${OUT}/facts.xml" --fixture "${OUT}/bad-fixture.txt" --pin ${pin})
+  if(NOT rc STREQUAL "1" OR NOT err MATCHES "invalid owned fixture facts")
+    message(FATAL_ERROR "a fixture row of the wrong shape was accepted: ${rc} ${err}")
+  endif()
+
   # Slots: one software per table slot, every one mapped and counted.
   generate(--list-slots)
   string(REGEX REPLACE "\n$" "" listing "${got}")

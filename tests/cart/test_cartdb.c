@@ -247,13 +247,13 @@ int main(int argc, char **argv)
     CHECK_EQ_U64(per_persistence[3], 0u);
     CHECK_EQ_U64(per_ctrl1[0], 1637u);
     CHECK_EQ_U64(per_ctrl1[1], 13u);
-    CHECK_EQ_U64(per_ctrl1[2], 4u);
-    CHECK_EQ_U64(per_ctrl1[3], 3u);
+    CHECK_EQ_U64(per_ctrl1[2], 5u);
+    CHECK_EQ_U64(per_ctrl1[3], 4u);
     CHECK_EQ_U64(per_ctrl1[4], 1u);
-    CHECK_EQ_U64(per_ctrl2[0], 1653u);
+    CHECK_EQ_U64(per_ctrl2[0], 1654u);
     CHECK_EQ_U64(per_ctrl2[1], 1u);
     CHECK_EQ_U64(per_ctrl2[2], 1u);
-    CHECK_EQ_U64(per_ctrl2[3], 3u);
+    CHECK_EQ_U64(per_ctrl2[3], 4u);
     static const uint8_t magic[8] = {0x54, 0x4d, 0x52, 0x20, 0x53, 0x45, 0x47, 0x41};
     memcpy(image + 0x7ff0, magic, 8);
     image[0x7fff] = 0x6c;

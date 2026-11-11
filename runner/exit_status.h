@@ -29,7 +29,8 @@ static const cogmaster__exit_status cogmaster__exit_statuses[] = {
      "an accepted expectation did not match the observed predicate"},
     {COGMASTER__EXIT_SAVE_SIZE, "save", "the battery file is oversized, so nothing ran"},
     {COGMASTER__EXIT_REFUSED, "refused",
-     "the cartridge, its size or the machine and region is not supported, so nothing ran"},
+     "the cartridge, its size, the machine and region, or a controller is not supported, so "
+     "nothing ran"},
 };
 
 #endif /* COGMASTER_RUNNER_EXIT_STATUS_H */

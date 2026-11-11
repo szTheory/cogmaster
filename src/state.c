@@ -58,7 +58,7 @@ _Static_assert(sizeof(struct cogmaster__bus) == 40u, "bus changed: update bus_io
 _Static_assert(sizeof(struct cogmaster__vdp) == 16510u, "vdp changed: update vdp_io");
 _Static_assert(sizeof(struct cogmaster__mapper) == 12u, "mapper changed: update mapper_io");
 _Static_assert(sizeof(struct cogmaster__eeprom) == 8u, "eeprom changed: update eeprom_io");
-_Static_assert(sizeof(struct cogmaster__io) == 9u, "io changed: update io_io");
+_Static_assert(sizeof(struct cogmaster__io) == 11u, "io changed: update io_io");
 /* The saved synth fields are the ring, integrator, DC estimate, head, levels,
    gained levels and the cadence phase. The trace counters, the stats and the
    PCM the host has not taken are its queue and counters, not state, so a new
@@ -379,7 +379,15 @@ static uint8_t io_io(struct cogmaster__sio *io, cogmaster *m)
         cogmaster__sio_check(io, i != 4u || (v & 0x07u) == 0u);
     }
     /* The audio control, which only the FM unit's $F2 writes, within the bits the unit keeps. */
-    return cogmaster__sio_u8(io, "io_audio_ctrl", &p->audio_ctrl, 0u, (uint8_t)m->fm_mask);
+    uint8_t audio_ctrl =
+        cogmaster__sio_u8(io, "io_audio_ctrl", &p->audio_ctrl, 0u, (uint8_t)m->fm_mask);
+    /* The glasses eye is only ever set by a write, together with the eye the frame reports, and a
+       Game Gear never records one. */
+    uint8_t eye = cogmaster__sio_u8(io, "io_glasses", &p->glasses, 0u, 2u);
+    uint8_t eye_frame = cogmaster__sio_u8(io, "io_glasses_frame", &p->glasses_frame, 0u, 2u);
+    cogmaster__sio_check(io, eye_frame == 0u || eye != 0u);
+    cogmaster__sio_check(io, m->machine != COGMASTER_MACHINE_GG || (eye == 0u && eye_frame == 0u));
+    return audio_ctrl;
 }
 
 /* The cadence phase is a fraction of a sample, below the modulus of the
@@ -617,6 +625,57 @@ static void opll_io(struct cogmaster__sio *io, cogmaster *m, struct state_time t
     cogmaster__sio_check(io, next <= time.ticks + STATE_OPLL_SAMPLE_TICKS);
 }
 
+/* The motion waiting for the next frame, and the two ports' device blocks, which follow the input
+   records because the cross-checks read the devices there. The pending axes belong to the device
+   they were sent for and are within the call's range; a frame takes them and zeroes both records,
+   so the input record's are 0. A port's block belongs to the device in force: a pad and nothing
+   hold none; a Sports Pad holds no position; a Paddle only its position. A block's edge is a past
+   tick and is otherwise free, because after a reset the first fall leaves edge 0 with step 1 and a
+   rise at tick 0 gives step 2 with edge 0. A val of 0 is the one a step 0 holds, acc is free there:
+   it gathers at frame start. */
+#define STATE_AXIS_MAX 32767
+#define STATE_ACC_MAX 1023
+static void ports_io(struct cogmaster__sio *io, cogmaster *m, struct state_time time,
+                     uint32_t device[2][2])
+{
+    cogmaster_input *pi = &m->pending_input;
+    cogmaster_input *ai = &m->input;
+    int32_t pending[2][2];
+    pending[0][0] = cogmaster__sio_i32(io, "pending_x1", &pi->x1, -STATE_AXIS_MAX, STATE_AXIS_MAX);
+    pending[0][1] = cogmaster__sio_i32(io, "pending_y1", &pi->y1, -STATE_AXIS_MAX, STATE_AXIS_MAX);
+    pending[1][0] = cogmaster__sio_i32(io, "pending_x2", &pi->x2, -STATE_AXIS_MAX, STATE_AXIS_MAX);
+    pending[1][1] = cogmaster__sio_i32(io, "pending_y2", &pi->y2, -STATE_AXIS_MAX, STATE_AXIS_MAX);
+    cogmaster__sio_i32(io, "active_x1", &ai->x1, 0, 0);
+    cogmaster__sio_i32(io, "active_y1", &ai->y1, 0, 0);
+    cogmaster__sio_i32(io, "active_x2", &ai->x2, 0, 0);
+    cogmaster__sio_i32(io, "active_y2", &ai->y2, 0, 0);
+    for (uint32_t port = 0u; port < 2u; port++) {
+        struct cogmaster__port *b = &m->ports[port];
+        uint64_t edge = cogmaster__sio_u64(io, "port_edge", &b->edge, 0u, time.ticks);
+        int16_t acc0 =
+            cogmaster__sio_i16(io, "port_acc", &b->acc[0], -STATE_ACC_MAX, STATE_ACC_MAX);
+        int16_t acc1 =
+            cogmaster__sio_i16(io, "port_acc", &b->acc[1], -STATE_ACC_MAX, STATE_ACC_MAX);
+        int8_t val0 = cogmaster__sio_i8(io, "port_val", &b->val[0], -127, 127);
+        int8_t val1 = cogmaster__sio_i8(io, "port_val", &b->val[1], -127, 127);
+        uint8_t step = cogmaster__sio_u8(io, "port_step", &b->step, 0u, 4u);
+        uint8_t pos = cogmaster__sio_u8(io, "port_pos", &b->pos, 0u, UINT8_MAX);
+        uint32_t held = device[1][port];
+        uint32_t next = device[0][port];
+        int none = held == COGMASTER_DEVICE_PAD || held == COGMASTER_DEVICE_NONE;
+        cogmaster__sio_check(
+            io, !none || (edge | (uint64_t)(acc0 | acc1 | val0 | val1) | step | pos) == 0u);
+        cogmaster__sio_check(io, held != COGMASTER_DEVICE_SPORTS_PAD || pos == 0u);
+        cogmaster__sio_check(io, held != COGMASTER_DEVICE_PADDLE ||
+                                     (edge | (uint64_t)(acc0 | acc1 | val0 | val1) | step) == 0u);
+        cogmaster__sio_check(io, step != 0u || (val0 == 0 && val1 == 0));
+        cogmaster__sio_check(io, cogmaster__device_ok(m, held) && cogmaster__device_ok(m, next));
+        int takes_x = next == COGMASTER_DEVICE_SPORTS_PAD || next == COGMASTER_DEVICE_PADDLE;
+        cogmaster__sio_check(io, takes_x || pending[port][0] == 0);
+        cogmaster__sio_check(io, next == COGMASTER_DEVICE_SPORTS_PAD || pending[port][1] == 0);
+    }
+}
+
 /* The whole state, in the order the format fixes. */
 static void state_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
 {
@@ -636,6 +695,7 @@ static void state_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
     if (m->fm_unit) {
         opll_io(io, m, time, fm_levels, audio_ctrl);
     }
+    uint32_t device[2][2];
     cogmaster_input *inputs[2] = {&m->pending_input, &m->input};
     for (uint32_t i = 0u; i < 2u; i++) {
         cogmaster_input *p = inputs[i];
@@ -644,9 +704,10 @@ static void state_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
         cogmaster__sio_u32(io, "input_pause", &p->pause, 0u, 1u);
         cogmaster__sio_u32(io, "input_reset", &p->reset, 0u, 1u);
         cogmaster__sio_u32(io, "input_start", &p->start, 0u, 1u);
-        cogmaster__sio_u32(io, "input_port1", &p->port1, 0u, 1u);
-        cogmaster__sio_u32(io, "input_port2", &p->port2, 0u, 1u);
+        device[i][0] = cogmaster__sio_u32(io, "input_port1", &p->port1, 0u, COGMASTER__DEVICE_LAST);
+        device[i][1] = cogmaster__sio_u32(io, "input_port2", &p->port2, 0u, COGMASTER__DEVICE_LAST);
     }
+    ports_io(io, m, time, device);
     cogmaster__sio_u8(io, "input_read", &m->input_read, 0u, 1u);
     uint32_t line =
         cogmaster__sio_u32(io, "render_line", &m->render_line, 0u, COGMASTER__FIELD_MAX_H);

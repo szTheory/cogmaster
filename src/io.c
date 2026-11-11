@@ -7,26 +7,97 @@
    keeps its full decode and its pad, and decodes $3E and $3F as a full-decode
    Master System does. With the YM2413 unit attached, $F0 to $F2 are the unit's
    ports and answer ahead of the I/O chip. */
+#include <string.h>
+
 #include "internal.h"
+
+/* The input struct's first released size: every API version up to 11 had these
+   eight words and no more, and a caller built against one of them owns exactly
+   that many bytes. */
+#define FIRST_SIZE_INPUT 32u
+_Static_assert(FIRST_SIZE_INPUT == offsetof(cogmaster_input, x1), "first input size");
+
+/* The axis words are motion since the last call, in the host's units; the sum of a port's calls
+   between two frames is kept, within the same range. */
+#define AXIS_MAX 32767
+
+static int axis_ok(int32_t v)
+{
+    return v >= -AXIS_MAX && v <= AXIS_MAX;
+}
+
+/* pending + d, both inside the range, so the sum fits an int32_t and needs no saturating call. */
+static int32_t axis_add(int32_t pending, int32_t d)
+{
+    int32_t sum = pending + d;
+    return sum < -AXIS_MAX ? -AXIS_MAX : (sum > AXIS_MAX ? AXIS_MAX : sum);
+}
+
+/* Adds one port's motion to the pending record. A different device than the pending one restarts
+   the port's axes; an axis the device does not take is dropped. */
+static void add_motion(cogmaster_input *pend, const cogmaster_input *in, uint32_t port)
+{
+    uint32_t device = port == 0u ? in->port1 : in->port2;
+    uint32_t before = port == 0u ? pend->port1 : pend->port2;
+    int32_t *px = port == 0u ? &pend->x1 : &pend->x2;
+    int32_t *py = port == 0u ? &pend->y1 : &pend->y2;
+    int32_t x = port == 0u ? in->x1 : in->x2;
+    int32_t y = port == 0u ? in->y1 : in->y2;
+    if (device != before) {
+        *px = *py = 0;
+    }
+    if (device == COGMASTER_DEVICE_SPORTS_PAD) {
+        *px = axis_add(*px, x);
+        *py = axis_add(*py, y);
+    } else if (device == COGMASTER_DEVICE_PADDLE) {
+        *px = axis_add(*px, x);
+    }
+}
 
 cogmaster_status cogmaster_set_input(cogmaster *m, const cogmaster_input *in)
 {
     if (m == NULL || in == NULL) {
         return COGMASTER_STATUS_ERR_ARGUMENT;
     }
-    cogmaster_status st = cogmaster__check_size(in, 32u, (uint32_t)sizeof *in);
+    cogmaster_status st = cogmaster__check_size(in, FIRST_SIZE_INPUT, (uint32_t)sizeof *in);
     if (st != COGMASTER_STATUS_OK) {
         return st;
     }
     if (!m->loaded) {
         return COGMASTER_STATUS_ERR_NO_CONTENT;
     }
-    if (in->p1 > 63u || in->p2 > 63u || in->pause > 1u || in->reset > 1u || in->start > 1u ||
-        in->port1 > COGMASTER_DEVICE_NONE || in->port2 > COGMASTER_DEVICE_NONE) {
+    /* Read only the whole fields the caller's tag covers: a caller built
+       against a smaller struct owns no more bytes than that, and the fields
+       it does not have stay 0. The assembled copy is checked, then stored. */
+    uint32_t tag = in->size;
+    uint32_t n = (tag < (uint32_t)sizeof *in ? tag : (uint32_t)sizeof *in) & ~3u;
+    cogmaster_input local;
+    memset(&local, 0, sizeof local);
+    const uint8_t *src = (const uint8_t *)in;
+    uint8_t *dst = (uint8_t *)&local;
+    for (uint32_t i = 0u; i < n; i++) {
+        dst[i] = src[i];
+    }
+    if (local.p1 > 63u || local.p2 > 63u || local.pause > 1u || local.reset > 1u ||
+        local.start > 1u || local.port1 > COGMASTER__DEVICE_LAST ||
+        local.port2 > COGMASTER__DEVICE_LAST || !axis_ok(local.x1) || !axis_ok(local.y1) ||
+        !axis_ok(local.x2) || !axis_ok(local.y2)) {
         return COGMASTER_STATUS_ERR_ARGUMENT;
     }
-    m->pending_input = *in;
-    m->pending_input.size = 0u;
+    /* A device this profile cannot take is refused whole: nothing below has run. */
+    if (!cogmaster__device_ok(m, local.port1) || !cogmaster__device_ok(m, local.port2)) {
+        return COGMASTER_STATUS_ERR_PROFILE_REJECTED;
+    }
+    /* Devices and buttons are the latest call's; motion adds up until a frame takes it. */
+    cogmaster_input next = m->pending_input;
+    add_motion(&next, &local, 0u);
+    add_motion(&next, &local, 1u);
+    local.size = 0u;
+    local.x1 = next.x1;
+    local.y1 = next.y1;
+    local.x2 = next.x2;
+    local.y2 = next.y2;
+    m->pending_input = local;
     return COGMASTER_STATUS_OK;
 }
 
@@ -88,6 +159,42 @@ void cogmaster__io_reset(cogmaster *m)
     for (uint32_t i = 0; i < 6u; i++) {
         io->gg[i] = gg_reset[i];
     }
+    io->glasses = COGMASTER_GLASSES_NONE;
+    io->glasses_frame = COGMASTER_GLASSES_NONE;
+    /* The device blocks start clean, the stored edge included: the tick count restarts at 0, so
+       an edge from before would be in its future. The pending motion is not touched. */
+    memset(m->ports, 0, sizeof m->ports);
+}
+
+/* A write at $FFF8-$FFFF that reached work RAM's mirror. At $FFFC and up a cartridge on the bus
+   sees it as a mapper register; below, only the 3-D glasses adapter does (SMS Power, 3-D Glasses),
+   which snoops the bus whatever $3E says, so the eye is noted on every Master System profile and
+   never on a Game Gear. The register is write-only, so noting it changes nothing the guest can read
+   and no hashed byte. The window-relative tick is unsigned and never below zero: the window starts
+   at the previous deadline and the CPU is past it. A write with work RAM off reaches nothing and
+   faults as the bus does for any other address. */
+void cogmaster__io_glasses_write(cogmaster *m, uint16_t addr, uint8_t v)
+{
+    int ram_on = (m->io.mem_ctrl & 0x10u) == 0u;
+    if (addr >= 0xFFFCu) {
+        if ((m->io.mem_ctrl & 0x40u) == 0u) {
+            cogmaster__mapper_write(m, addr, v);
+        } else if (!ram_on) {
+            cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_RAM, COGMASTER__FAULT_UNMAPPED_WRITE);
+        }
+        return;
+    }
+    if (m->machine != COGMASTER_MACHINE_GG) {
+        uint8_t eye = (v & 1u) != 0u ? COGMASTER_GLASSES_LEFT : COGMASTER_GLASSES_RIGHT;
+        uint64_t window = m->ticks - (m->bus.deadline - cogmaster__frame_ticks(m));
+        m->io.glasses = eye;
+        if (window < COGMASTER__GLASSES_CUT_TICKS(cogmaster__frame_lines(m))) {
+            m->io.glasses_frame = eye;
+        }
+    }
+    if (!ram_on) {
+        cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_RAM, COGMASTER__FAULT_UNMAPPED_WRITE);
+    }
 }
 
 /* An output TR replaces the pad level, with the Japanese region echo low
@@ -106,9 +213,9 @@ static uint8_t tr_pin(const cogmaster *m, uint8_t v, uint8_t pin, uint8_t dir, u
    pressed. Independent direction bits pass through, including SOCD. */
 static uint8_t port_dc(const cogmaster *m)
 {
-    uint32_t p1 = m->input.port1 == COGMASTER_DEVICE_NONE ? 0u : m->input.p1;
-    uint32_t p2 = m->input.port2 == COGMASTER_DEVICE_NONE || is_gg(m) ? 0u : m->input.p2;
-    return tr_pin(m, (uint8_t)~(p1 | ((p2 & 3u) << 6)), 0x20u, 1u, 0x10u);
+    uint8_t a = cogmaster__ports_pins(m, 0u, m->ticks);
+    uint8_t b = cogmaster__ports_pins(m, 1u, m->ticks);
+    return tr_pin(m, (uint8_t)(a | ((b & 3u) << 6)), 0x20u, 1u, 0x10u);
 }
 
 /* Effective TH pins, shared by readback and the rising-edge H latch.
@@ -129,15 +236,39 @@ static uint8_t th_pins(const cogmaster *m, uint8_t ctrl)
     return pins;
 }
 
-static void io_control(cogmaster *m, uint8_t ctrl)
+/* The level on a port's TH wire: pulled high when the pin is an input, else the level the
+   console drives. Unlike th_pins it has no region echo, so a device sees the same wire on every
+   region (port 0: direction $3F b1, level b5; port 1: direction b3, level b7). */
+static uint32_t th_wire(uint8_t ctrl, uint32_t port)
 {
-    uint8_t old = th_pins(m, m->io.io_ctrl);
-    m->io.io_ctrl = ctrl;
-    /* Low-to-high on either effective TH captures, including release to
-       the input pull-up (SMS-SYSTEM section 4). */
-    if (((uint8_t)~old & th_pins(m, ctrl) & 0xC0u) != 0u) {
+    uint8_t dir = port == 0u ? 2u : 8u;
+    uint8_t level = port == 0u ? 0x20u : 0x80u;
+    return (ctrl & dir) != 0u || (ctrl & level) != 0u ? 1u : 0u;
+}
+
+/* Every $3F write comes here with the level before and after it, and the
+   tick it lands on. Low-to-high on either effective TH captures, including
+   release to the input pull-up (SMS-SYSTEM section 4). A device that watches
+   TH is told of each change of its port's wire, so its edges alternate. */
+void cogmaster__io_th_changed(cogmaster *m, uint8_t old_ctrl, uint8_t new_ctrl, uint64_t tick)
+{
+    uint8_t old = th_pins(m, old_ctrl);
+    if (((uint8_t)~old & th_pins(m, new_ctrl) & 0xC0u) != 0u) {
         cogmaster__vdp_latch_h(m);
     }
+    for (uint32_t port = 0u; port < 2u; port++) {
+        uint32_t wire = th_wire(new_ctrl, port);
+        if (th_wire(old_ctrl, port) != wire) {
+            cogmaster__ports_th(m, port, wire, tick);
+        }
+    }
+}
+
+static void io_control(cogmaster *m, uint8_t ctrl)
+{
+    uint8_t old = m->io.io_ctrl;
+    m->io.io_ctrl = ctrl;
+    cogmaster__io_th_changed(m, old, ctrl, m->ticks);
 }
 
 /* $DD: b3-0 port B left, right, TL, TR; b4 the reset button, 1 where there
@@ -148,13 +279,13 @@ static void io_control(cogmaster *m, uint8_t ctrl)
    the regions apart (section 5). The Game Gear has no TH lines. */
 static uint8_t port_dd(const cogmaster *m)
 {
-    uint32_t p2 = m->input.port2 == COGMASTER_DEVICE_NONE || is_gg(m) ? 0u : m->input.p2;
     /* Only export SMS1 has the physical switch (SMS-SYSTEM section 7). */
     uint32_t reset = m->machine == COGMASTER_MACHINE_SMS1 && m->region == COGMASTER_REGION_EXPORT &&
                              m->input.port1 != COGMASTER_DEVICE_NONE
                          ? m->input.reset
                          : 0u;
-    uint8_t v = tr_pin(m, (uint8_t)~((p2 >> 2) | (reset << 4)), 8u, 4u, 0x40u);
+    uint8_t b = cogmaster__ports_pins(m, 1u, m->ticks);
+    uint8_t v = tr_pin(m, (uint8_t)(~(reset << 4) & ((b >> 2) | 0xF0u)), 8u, 4u, 0x40u);
     return (uint8_t)((v & 0x3Fu) | th_pins(m, m->io.io_ctrl));
 }
 

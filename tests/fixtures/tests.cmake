@@ -114,6 +114,43 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(NOT got STREQUAL gg)
       message(FATAL_ERROR "fm on with Game Gear content: ${got}, the runner's run gives ${gg}")
     endif()
+  elseif(CASE STREQUAL "replay")
+    # The library records a run of IMAGE with DEVICE on port 1, once for each region in REGIONS (comma
+    # separated), and writes the script it sent to SCRIPT; the runner replays the script and must print the
+    # recorder's last-frame hash line. EDIT changes one count of the last record before the replay, for the
+    # negative control. The recorder also finishes the run again from a state saved half way and must agree.
+    string(REPLACE "," ";" regions "${REGIONS}")
+    foreach(region IN LISTS regions)
+      execute_process(COMMAND ${EMULATOR} ${RECORDER} record ${IMAGE} ${DEVICE} ${region} ${SCRIPT} ${FRAMES}
+        RESULT_VARIABLE rc OUTPUT_VARIABLE recorded ERROR_VARIABLE err)
+      if(NOT rc STREQUAL "0" OR NOT recorded MATCHES "^frame ${FRAMES} sha256 [0-9a-f]+\n$")
+        message(FATAL_ERROR "replay: recording ${IMAGE} on ${region}: exit ${rc}\n${recorded}${err}")
+      endif()
+      if(EDIT)
+        # The units digit moves by one count (a 9 becomes an 8), so no digit carries.
+        file(STRINGS ${SCRIPT} lines)
+        list(POP_BACK lines last)
+        string(REGEX MATCH "^(.* x1=[+-][0-9][0-9][0-9][0-9])([0-9])(.*)$" unused "${last}")
+        set(digit 8)
+        if(CMAKE_MATCH_2 LESS 9)
+          math(EXPR digit "${CMAKE_MATCH_2} + 1")
+        endif()
+        list(APPEND lines "${CMAKE_MATCH_1}${digit}${CMAKE_MATCH_3}")
+        list(JOIN lines "\n" body)
+        file(WRITE ${SCRIPT} "${body}\n")
+      endif()
+      execute_process(COMMAND ${EMULATOR} ${RUN} ${IMAGE} --port1 ${DEVICE} --region ${region}
+          --frames ${FRAMES} --input ${SCRIPT} --hash
+        RESULT_VARIABLE rc OUTPUT_VARIABLE replayed ERROR_VARIABLE err)
+      if(NOT rc STREQUAL "0" OR NOT replayed MATCHES "(^|\n)(frame ${FRAMES} sha256 [0-9a-f]+)\n")
+        message(FATAL_ERROR "replay: the runner on ${region}: exit ${rc}\n${replayed}${err}")
+      endif()
+      set(line "${CMAKE_MATCH_2}")
+      string(STRIP "${recorded}" recorded)
+      if(NOT line STREQUAL recorded)
+        message(FATAL_ERROR "replay: on ${region} the replay's '${line}' differs from the recording '${recorded}'")
+      endif()
+    endforeach()
   elseif(CASE STREQUAL "image")
     # The runner's probe finds the header checksum good.
     execute_process(COMMAND ${EMULATOR} ${RUN} --probe ${IMAGE} RESULT_VARIABLE rc
@@ -174,6 +211,9 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(INPUT)
       list(APPEND machine --input ${INPUT})
     endif()
+    if(PORT1)
+      list(APPEND machine --port1 ${PORT1})
+    endif()
     execute_process(COMMAND ${EMULATOR} ${RUN} ${machine} ${IMAGE} --frames ${FRAMES} --mailbox
       RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
     if(NOT rc STREQUAL "0")
@@ -186,6 +226,53 @@ if(CMAKE_SCRIPT_MODE_FILE)
       set(ROM ${NAME})
     endif()
     include(${JUDGE})
+  elseif(CASE STREQUAL "eyes")
+    # The runner counts the eye the core reports for each of FRAMES frames of IMAGE and prints one line;
+    # its counts must equal the WANT_ values (the table's counts) and the image's mailbox, read from a
+    # second run, must sit inside its rows. MACHINE and REGION, when set, choose the profile.
+    set(machine "")
+    if(MACHINE)
+      set(machine --machine ${MACHINE})
+    endif()
+    if(REGION)
+      list(APPEND machine --region ${REGION})
+    endif()
+    execute_process(COMMAND ${EMULATOR} ${RUN} ${machine} ${IMAGE} --frames ${FRAMES} --eyes
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "0" OR NOT out MATCHES "(^|\n)eyes frames=${FRAMES} none=([0-9]+) left=([0-9]+) right=([0-9]+) flips=([0-9]+) last=([a-z]+)\n")
+      message(FATAL_ERROR "--eyes ${IMAGE}: exit ${rc}, no eyes line\n${out}${err}")
+    endif()
+    set(got_none ${CMAKE_MATCH_2})
+    set(got_left ${CMAKE_MATCH_3})
+    set(got_right ${CMAKE_MATCH_4})
+    set(got_flips ${CMAKE_MATCH_5})
+    set(got_last ${CMAKE_MATCH_6})
+    foreach(key IN ITEMS none left right flips last)
+      if(NOT got_${key} STREQUAL WANT_${key})
+        message(FATAL_ERROR "eyes: ${key}=${got_${key}}, expected ${WANT_${key}}\n${out}")
+      endif()
+    endforeach()
+    execute_process(COMMAND ${EMULATOR} ${RUN} ${machine} ${IMAGE} --frames 120 --mailbox
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "0")
+      message(FATAL_ERROR "--mailbox ${IMAGE}: exit ${rc}\n${err}")
+    endif()
+    file(WRITE "${OUT}" "${out}")
+    set(ROM ${NAME})
+    include(${JUDGE})
+  elseif(CASE STREQUAL "eyes_hash")
+    # The last frame's hash is the same with and without the eye report: the report changes no pixel.
+    execute_process(COMMAND ${EMULATOR} ${RUN} ${IMAGE} --frames ${FRAMES} --hash
+      RESULT_VARIABLE rc OUTPUT_VARIABLE plain ERROR_VARIABLE err)
+    execute_process(COMMAND ${EMULATOR} ${RUN} ${IMAGE} --frames ${FRAMES} --hash --eyes
+      RESULT_VARIABLE rc_eyes OUTPUT_VARIABLE with_eyes ERROR_VARIABLE err_eyes)
+    if(NOT rc STREQUAL "0" OR NOT rc_eyes STREQUAL "0" OR NOT plain MATCHES "(^|\n)frame ${FRAMES} sha256 ([0-9a-f]+)\n")
+      message(FATAL_ERROR "eyes_hash: exit ${rc} and ${rc_eyes}\n${plain}${err}${err_eyes}")
+    endif()
+    set(plain_hash ${CMAKE_MATCH_2})
+    if(NOT with_eyes MATCHES "(^|\n)frame ${FRAMES} sha256 ${plain_hash}\n" OR NOT with_eyes MATCHES "(^|\n)eyes frames=")
+      message(FATAL_ERROR "eyes_hash: the hash ${plain_hash} changes with --eyes\n${with_eyes}")
+    endif()
   else()
     message(FATAL_ERROR "unknown CASE '${CASE}'")
   endif()
@@ -196,7 +283,7 @@ set(COGMASTER_FIXTURES_DIR ${PROJECT_BINARY_DIR}/fixtures)
 set(fixtures_src ${PROJECT_SOURCE_DIR}/tests/roms/src)
 set(fixtures_images "")
 foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_to_play boot_to_play_gg battery eeprom
-    psg_sweep psg_sweep_gg fm_sweep)
+    psg_sweep psg_sweep_gg fm_sweep sports_pad paddle glasses)
   set(extension sms)
   set(image_name ${name})
   if(name STREQUAL "boot_to_play_gg")
@@ -217,6 +304,12 @@ foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_t
       -P ${PROJECT_SOURCE_DIR}/tests/cart/fixture.cmake)
   elseif(name STREQUAL "eeprom")
     set(identity_check COMMAND ${owned_fixture_check} -DROW=2
+      -P ${PROJECT_SOURCE_DIR}/tests/cart/fixture.cmake)
+  elseif(name STREQUAL "sports_pad")
+    set(identity_check COMMAND ${owned_fixture_check} -DROW=3
+      -P ${PROJECT_SOURCE_DIR}/tests/cart/fixture.cmake)
+  elseif(name STREQUAL "paddle")
+    set(identity_check COMMAND ${owned_fixture_check} -DROW=4
       -P ${PROJECT_SOURCE_DIR}/tests/cart/fixture.cmake)
   endif()
   # The source directory is the assembler's working directory, so .INCLUDE
@@ -573,6 +666,424 @@ foreach(profile IN ITEMS sms-export sms-japan sms-pal gg)
       -P ${CMAKE_CURRENT_LIST_FILE}
     LABELS fixtures portable TIMEOUT 10)
 endforeach()
+
+# The sports_pad fixture polls once a frame. This list is its oracle: one entry per frame with the
+# motion of port 1 (x, y) and the held pad byte. The scripts are written from it, and the values the
+# rows of tests/diag/expected.csv must hold are computed from it below, so the two cannot drift. The
+# pad sends the negated motion, at most 127 counts a read, and keeps the rest for the next read
+# (SMS-CARTRIDGES section 3.5). Frames 11 and 12 are the idle-timeout probes and 13 to 15 hold buttons.
+set(sports_frames 5,-3,00 0,0,00 127,-128,00 300,-300,00 0,0,00 0,0,00 -200,50,00 0,0,00 1,1,00 -1,-1,00
+  5,-100,00 5,-100,00 0,0,10 0,0,20 0,0,30 9,-4,00 9,-4,00 7,3,00)
+list(LENGTH sports_frames sports_count)
+
+function(sports_axis out value)
+  set(sign +)
+  if(value LESS 0)
+    set(sign -)
+    math(EXPR value "-(${value})")
+  endif()
+  string(LENGTH "${value}" digits)
+  math(EXPR pad "5 - ${digits}")
+  string(REPEAT 0 ${pad} zeros)
+  set(${out} "${sign}${zeros}${value}" PARENT_SCOPE)
+endfunction()
+
+# Writes the runner script for the list FRAMES names: MOTION 0 gives the same buttons with no motion, DROP the
+# 1-based frame whose x motion is left out.
+function(device_script path motion drop frames)
+  set(body "")
+  set(frame 0)
+  foreach(entry IN LISTS ${frames})
+    math(EXPR frame "${frame} + 1")
+    string(REPLACE "," ";" entry "${entry}")
+    list(GET entry 0 x)
+    list(GET entry 1 y)
+    list(GET entry 2 held)
+    if(NOT motion)
+      set(x 0)
+      set(y 0)
+    elseif(frame EQUAL drop)
+      set(x 0)
+    endif()
+    sports_axis(xs ${x})
+    sports_axis(ys ${y})
+    string(APPEND body "p1=${held} p2=00 pause=0 reset=0 start=0 x1=${xs} y1=${ys} x2=+00000 y2=+00000\n")
+  endforeach()
+  file(WRITE ${path} "${body}")
+endfunction()
+device_script(${PROJECT_BINARY_DIR}/tests/sports.input 1 0 sports_frames)
+device_script(${PROJECT_BINARY_DIR}/tests/sports-dropped.input 1 1 sports_frames)
+device_script(${PROJECT_BINARY_DIR}/tests/sports-still.input 0 0 sports_frames)
+
+# One read of the pad: the byte of an axis is the negated motion clamped to 127, the rest stays.
+macro(sports_latch axis)
+  set(step ${sports_acc_${axis}})
+  if(step GREATER 127)
+    set(step 127)
+  elseif(step LESS -127)
+    set(step -127)
+  endif()
+  math(EXPR sports_acc_${axis} "${sports_acc_${axis}} - (${step})")
+  math(EXPR sports_byte_${axis} "(-(${step})) & 255")
+endmacro()
+
+set(sports_acc_x 0)
+set(sports_acc_y 0)
+set(sports_want "")
+set(frame 0)
+foreach(entry IN LISTS sports_frames)
+  math(EXPR frame "${frame} + 1")
+  string(REPLACE "," ";" entry "${entry}")
+  list(GET entry 0 x)
+  list(GET entry 1 y)
+  list(GET entry 2 held)
+  math(EXPR sports_acc_x "${sports_acc_x} + ${x}")
+  math(EXPR sports_acc_y "${sports_acc_y} + ${y}")
+  sports_latch(x)
+  sports_latch(y)
+  if(frame LESS 11)
+    math(EXPR value "(${sports_byte_y} << 8) | ${sports_byte_x}")
+  elseif(frame EQUAL 11)
+    # The second fall after 511 cycles goes on with Y: the high nibble of Y's byte.
+    math(EXPR value "(${sports_byte_x} >> 4) | ((${sports_byte_y} >> 4) << 8)")
+  elseif(frame EQUAL 12)
+    # After 512 cycles it starts again, with the motion that is left.
+    math(EXPR first "${sports_byte_x} >> 4")
+    sports_latch(x)
+    math(EXPR value "${first} | ((${sports_byte_x} >> 4) << 8)")
+  elseif(frame LESS 16)
+    math(EXPR value "((0x${held} >> 4) & 3) * 257")
+  else()
+    continue()
+  endif()
+  list(APPEND sports_want ${value})
+endforeach()
+set_property(DIRECTORY ${PROJECT_SOURCE_DIR} APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+  ${PROJECT_SOURCE_DIR}/tests/diag/expected.csv)
+file(STRINGS ${PROJECT_SOURCE_DIR}/tests/diag/expected.csv sports_rows REGEX "^sports_pad,")
+list(LENGTH sports_rows sports_row_count)
+if(NOT sports_row_count EQUAL 30)
+  message(FATAL_ERROR "tests/diag/expected.csv: ${sports_row_count} sports_pad rows, expected 30")
+endif()
+foreach(row IN LISTS sports_rows)
+  string(REPLACE "," ";" row "${row}")
+  list(GET row 1 test)
+  list(GET row 3 literal)
+  string(SUBSTRING "${test}" 0 2 id)
+  math(EXPR index "0x${id} - 1")
+  math(EXPR literal "0x${literal}")
+  list(GET sports_want ${index} want)
+  if(NOT literal EQUAL want)
+    message(FATAL_ERROR "tests/diag/expected.csv: sports_pad row ${test} is ${literal}, the delta list gives ${want}")
+  endif()
+endforeach()
+
+# Fault prevented: a Sports Pad read sequence that drops, doubles or flips a delta, or a profile on which the
+# sequence differs, so a game tracks the wrong way or desyncs. The same rows are judged on the export and the
+# Japanese console; a script missing one delta and a plain pad on the port must each fall outside a row.
+# Timeout: 10 s floor; 2 x 0.27 s, slowest of 1 run, run 42973268415.
+foreach(profile IN ITEMS export japan)
+  set(region ntsc-u)
+  if(profile STREQUAL "japan")
+    set(region ntsc-j)
+  endif()
+  cogmaster_add_test(NAME fixtures.sports_pad.mailbox.${profile}
+    COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=sports_pad -DMACHINE=sms -DREGION=${region}
+      -DPROFILE=sms-${profile} -DPORT1=sports -DINPUT=${PROJECT_BINARY_DIR}/tests/sports.input
+      -DIMAGE=${COGMASTER_FIXTURES_DIR}/sports_pad.sms -DFRAMES=${sports_count}
+      -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+      -DOUT=${fixtures_out}/sports_pad.${profile}.txt -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures portable TIMEOUT 10)
+endforeach()
+foreach(control IN ITEMS dropped_delta pad)
+  set(input sports-dropped)
+  set(device sports)
+  if(control STREQUAL "pad")
+    set(input sports-still)
+    set(device pad)
+  endif()
+  set(cmd ${CMAKE_COMMAND} -DCASE=mailbox -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+    -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${fixtures_inner_emulator}"
+    -DJUDGE=${PROJECT_SOURCE_DIR}/tests/cmake/mailbox.cmake -DPROFILE=sms-export -DNAME=sports_pad
+    -DMACHINE=sms -DREGION=ntsc-u -DPORT1=${device} -DINPUT=${PROJECT_BINARY_DIR}/tests/${input}.input
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/sports_pad.sms -DFRAMES=${sports_count}
+    -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/sports_pad.${control}.txt
+    -P ${CMAKE_CURRENT_LIST_FILE})
+  string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+  cogmaster_add_test(NAME fixtures.sports_pad.control.${control}
+    COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=outside its row"
+      -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+    LABELS fixtures portable TIMEOUT 10)
+endforeach()
+
+# Fault prevented: a table default that never reaches a host, or a Paddle dump that loads as export and plays as a pad.
+# The Sports Pad image, run with no --port1, --machine or --region, takes its controller from the table and is judged
+# against the same rows as the explicit export case.
+# Timeout: 10 s floor; 2 x 0.24 s, slowest of 1 run, run 42978311844.
+cogmaster_add_test(NAME fixtures.sports_pad.default
+  COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=sports_pad -DPROFILE=sms-export
+    -DINPUT=${PROJECT_BINARY_DIR}/tests/sports.input
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/sports_pad.sms -DFRAMES=${sports_count}
+    -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+    -DOUT=${fixtures_out}/sports_pad.default.txt -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 10)
+
+# Fault prevented: a recorded delta script that replays to a different frame, so a replay no longer matches the
+# run it recorded. The library records the pad's motion on every TV standard, the runner replays the written
+# script to the same hash, and the same script with one count changed in its last record must not.
+# Timeout: 10 s floor; 2 x 3.67 s, slowest of 1 run, run 42973268415.
+set(sports_replay -DCASE=replay -DNAME=sports_pad -DIMAGE=${COGMASTER_FIXTURES_DIR}/sports_pad.sms
+  -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt -DRECORDER=$<TARGET_FILE:cogmaster-test-ports-devices>
+  -DRUN=$<TARGET_FILE:cogmaster-run> -DDEVICE=sports -DREGIONS=ntsc-u,ntsc-j,pal -DFRAMES=40)
+cogmaster_add_test(NAME fixtures.sports_pad.replay
+  COMMAND ${CMAKE_COMMAND} ${sports_replay} "-DEMULATOR=${fixtures_emulator}"
+    -DSCRIPT=${fixtures_out}/sports_pad.replay.input -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 10)
+set(cmd ${CMAKE_COMMAND} ${sports_replay} "-DEMULATOR=${fixtures_inner_emulator}" -DEDIT=1
+  -DSCRIPT=${fixtures_out}/sports_pad.replay_control.input -P ${CMAKE_CURRENT_LIST_FILE})
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+cogmaster_add_test(NAME fixtures.sports_pad.replay_control
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=differs[^a-zA-Z]+from[^a-zA-Z]+the[^a-zA-Z]+recording"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+  LABELS fixtures portable TIMEOUT 10)
+
+# The paddle fixture reads the position once a frame for the first 14 frames and then runs its sweep, which
+# takes a few more, so the script's tail is motionless. This list is its oracle: x, y and the held pad byte of
+# port 1 a frame (a Paddle ignores y, and frames 2 and 8 send one; bit 4 of the byte is its button). The scripts
+# are written from it and the position of each frame is computed from it below: the position starts at 128 and
+# is clamped to 0 to 255 after every frame's motion, the way a pot stops at its ends (SMS-CARTRIDGES section 3.6).
+set(paddle_deltas 5,0,00 -3,9,00 100,0,00 100,0,10 -2,0,00 0,0,00 -300,0,00 4,-6,00 -9,0,00 1,0,00 120,0,10
+  0,0,00 -121,0,00 127,0,00)
+set(paddle_frames ${paddle_deltas} 0,0,00 0,0,00 0,0,00 0,0,00 0,0,00 0,0,00 0,0,00 0,0,00 0,0,00 0,0,00 0,0,00
+  0,0,00)
+list(LENGTH paddle_frames paddle_count)
+device_script(${PROJECT_BINARY_DIR}/tests/paddle.input 1 0 paddle_frames)
+device_script(${PROJECT_BINARY_DIR}/tests/paddle-dropped.input 1 1 paddle_frames)
+device_script(${PROJECT_BINARY_DIR}/tests/paddle-still.input 0 0 paddle_frames)
+
+set(paddle_at 128)
+set(paddle_want "")
+foreach(entry IN LISTS paddle_deltas)
+  string(REPLACE "," ";" entry "${entry}")
+  list(GET entry 0 x)
+  list(GET entry 2 held)
+  math(EXPR paddle_at "${paddle_at} + ${x}")
+  if(paddle_at LESS 0)
+    set(paddle_at 0)
+  elseif(paddle_at GREATER 255)
+    set(paddle_at 255)
+  endif()
+  math(EXPR value "${paddle_at} + (((0x${held} >> 4) & 1) << 8)")
+  list(APPEND paddle_want ${value})
+endforeach()
+file(STRINGS ${PROJECT_SOURCE_DIR}/tests/diag/expected.csv paddle_rows REGEX "^paddle,")
+list(LENGTH paddle_rows paddle_row_count)
+if(NOT paddle_row_count EQUAL 26)
+  message(FATAL_ERROR "tests/diag/expected.csv: ${paddle_row_count} paddle rows, expected 26")
+endif()
+foreach(row IN LISTS paddle_rows)
+  string(REPLACE "," ";" row "${row}")
+  list(GET row 1 test)
+  list(GET row 3 literal)
+  string(SUBSTRING "${test}" 0 2 id)
+  math(EXPR index "0x${id} - 0x0C")
+  if(index LESS 0)
+    continue()
+  endif()
+  math(EXPR literal "0x${literal}")
+  list(GET paddle_want ${index} want)
+  if(NOT literal EQUAL want)
+    message(FATAL_ERROR "tests/diag/expected.csv: paddle row ${test} is ${literal}, the delta list gives ${want}")
+  endif()
+endforeach()
+
+# Fault prevented: a Paddle TR clock that locks to a game's polling loop (a frozen reading of 0 or 100 percent) or a
+# position that drifts from the scripted deltas, so a Japanese paddle title cannot be played. The Japanese console
+# judges every record; the export console, given a plain pad, judges the region test alone. A frozen TR, a plain pad
+# and a script missing one delta must each fall outside a row.
+# Timeout: 10 s floor; 2 x 0.33 s, slowest of 1 run, run 42973268415.
+foreach(profile IN ITEMS japan export)
+  set(region ntsc-j)
+  set(device paddle)
+  set(input paddle)
+  if(profile STREQUAL "export")
+    set(region ntsc-u)
+    set(device pad)
+    set(input paddle-still)
+  endif()
+  cogmaster_add_test(NAME fixtures.paddle.mailbox.${profile}
+    COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=paddle -DMACHINE=sms -DREGION=${region}
+      -DPROFILE=sms-${profile} -DPORT1=${device} -DINPUT=${PROJECT_BINARY_DIR}/tests/${input}.input
+      -DIMAGE=${COGMASTER_FIXTURES_DIR}/paddle.sms -DFRAMES=${paddle_count}
+      -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+      -DOUT=${fixtures_out}/paddle.${profile}.txt -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures portable TIMEOUT 10)
+endforeach()
+foreach(control IN ITEMS frozen pad dropped_delta)
+  set(device paddle)
+  set(input paddle-dropped)
+  if(NOT control STREQUAL "dropped_delta")
+    set(device none)
+    set(input paddle-still)
+    if(control STREQUAL "pad")
+      set(device pad)
+    endif()
+  endif()
+  set(cmd ${CMAKE_COMMAND} -DCASE=mailbox -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+    -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${fixtures_inner_emulator}"
+    -DJUDGE=${PROJECT_SOURCE_DIR}/tests/cmake/mailbox.cmake -DPROFILE=sms-japan -DNAME=paddle
+    -DMACHINE=sms -DREGION=ntsc-j -DPORT1=${device} -DINPUT=${PROJECT_BINARY_DIR}/tests/${input}.input
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/paddle.sms -DFRAMES=${paddle_count}
+    -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/paddle.${control}.txt
+    -P ${CMAKE_CURRENT_LIST_FILE})
+  string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+  cogmaster_add_test(NAME fixtures.paddle.control.${control}
+    COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=outside its row"
+      -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+    LABELS fixtures portable TIMEOUT 10)
+endforeach()
+
+# The same fault for the Paddle image, whose table row also gives its region: run with no --port1 and no --region it
+# is a Japanese-console dump with a Paddle and is judged on the Japanese rows. The control names an export region, so
+# the default degrades to a pad and the detect rows must fail.
+# Timeout: 10 s floor; 2 x 0.32 s, slowest of 1 run, run 42978311844.
+cogmaster_add_test(NAME fixtures.paddle.default
+  COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=paddle -DPROFILE=sms-japan
+    -DINPUT=${PROJECT_BINARY_DIR}/tests/paddle.input
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/paddle.sms -DFRAMES=${paddle_count}
+    -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+    -DOUT=${fixtures_out}/paddle.default.txt -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 10)
+set(cmd ${CMAKE_COMMAND} -DCASE=mailbox -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+  -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${fixtures_inner_emulator}"
+  -DJUDGE=${PROJECT_SOURCE_DIR}/tests/cmake/mailbox.cmake -DPROFILE=sms-japan -DNAME=paddle
+  -DREGION=ntsc-u -DINPUT=${PROJECT_BINARY_DIR}/tests/paddle-still.input
+  -DIMAGE=${COGMASTER_FIXTURES_DIR}/paddle.sms -DFRAMES=${paddle_count}
+  -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv -DOUT=${fixtures_out}/paddle.degrade.txt
+  -P ${CMAKE_CURRENT_LIST_FILE})
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+cogmaster_add_test(NAME fixtures.paddle.control.degrade
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=outside its row"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+  LABELS fixtures portable TIMEOUT 10)
+
+# Fault prevented: a Paddle position accumulated in state that a replay of the recorded deltas does not
+# reproduce. The same replay case, on the Japanese console the Paddle needs: the recorder drives the paddle image,
+# the runner replays the script it wrote to the same hash, and one count changed in the last record must not.
+# Timeout: 10 s floor; 2 x 1.31 s, slowest of 1 run, run 42973268415.
+set(paddle_replay -DCASE=replay -DNAME=paddle -DIMAGE=${COGMASTER_FIXTURES_DIR}/paddle.sms
+  -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt -DRECORDER=$<TARGET_FILE:cogmaster-test-ports-devices>
+  -DRUN=$<TARGET_FILE:cogmaster-run> -DDEVICE=paddle -DREGIONS=ntsc-j -DFRAMES=40)
+cogmaster_add_test(NAME fixtures.paddle.replay
+  COMMAND ${CMAKE_COMMAND} ${paddle_replay} "-DEMULATOR=${fixtures_emulator}"
+    -DSCRIPT=${fixtures_out}/paddle.replay.input -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 10)
+set(cmd ${CMAKE_COMMAND} ${paddle_replay} "-DEMULATOR=${fixtures_inner_emulator}" -DEDIT=1
+  -DSCRIPT=${fixtures_out}/paddle.replay_control.input -P ${CMAKE_CURRENT_LIST_FILE})
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+cogmaster_add_test(NAME fixtures.paddle.replay_control
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=differs[^a-zA-Z]+from[^a-zA-Z]+the[^a-zA-Z]+recording"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+  LABELS fixtures portable TIMEOUT 10)
+
+# The glasses fixture writes the shutter register from the table in tests/roms/src/glasses.asm: one entry a
+# frame, 0 or 1 the byte written and 255 (the $FF in the source) no write. The table is the oracle; the counts
+# the runner must print are computed from it here, so neither can drift. A write lands in its own frame, the
+# eye in force carries into a frame with no write, and a frame before the first write reports none (SMS-
+# CARTRIDGES-AND-PERIPHERALS section 3.4); flips counts the frames whose eye differs from the last one shown.
+# The run is the table's 24 frames plus the six the mailbox work takes.
+set(glasses_table 255 255 0 1 0 1 0 1 0 1 0 255 255 255 255 255 0 1 0 1 0 1 0 1)
+set(glasses_count 30)
+file(STRINGS ${fixtures_src}/glasses.asm glasses_rows REGEX "^[ \t]+[.]DB[ \t]")
+list(LENGTH glasses_rows glasses_row_count)
+if(NOT glasses_row_count EQUAL 1)
+  message(FATAL_ERROR "tests/roms/src/glasses.asm: ${glasses_row_count} .DB rows, expected the one table")
+endif()
+string(REGEX REPLACE "^[ \t]+[.]DB[ \t]+" "" glasses_row "${glasses_rows}")
+string(REGEX REPLACE "[ \t]" "" glasses_row "${glasses_row}")
+string(REPLACE "$" "0x" glasses_row "${glasses_row}")
+string(REPLACE "," ";" glasses_row "${glasses_row}")
+set(glasses_source "")
+foreach(entry IN LISTS glasses_row)
+  math(EXPR entry "${entry}")
+  list(APPEND glasses_source ${entry})
+endforeach()
+if(NOT glasses_source STREQUAL glasses_table)
+  message(FATAL_ERROR "tests/roms/src/glasses.asm: the table is ${glasses_source}, tests.cmake holds ${glasses_table}")
+endif()
+set(glasses_seen none)
+set(glasses_last none)
+set(glasses_want_none 0)
+set(glasses_want_left 0)
+set(glasses_want_right 0)
+set(glasses_want_flips 0)
+foreach(frame RANGE 1 ${glasses_count})
+  set(entry 255)
+  list(LENGTH glasses_table glasses_length)
+  if(frame LESS_EQUAL glasses_length)
+    math(EXPR index "${frame} - 1")
+    list(GET glasses_table ${index} entry)
+  endif()
+  if(NOT entry EQUAL 255)
+    set(glasses_seen right)
+    math(EXPR left "${entry} & 1")
+    if(left)
+      set(glasses_seen left)
+    endif()
+  endif()
+  math(EXPR glasses_want_${glasses_seen} "${glasses_want_${glasses_seen}} + 1")
+  if(NOT glasses_seen STREQUAL "none")
+    if(NOT glasses_last STREQUAL "none" AND NOT glasses_last STREQUAL glasses_seen)
+      math(EXPR glasses_want_flips "${glasses_want_flips} + 1")
+    endif()
+    set(glasses_last ${glasses_seen})
+  endif()
+endforeach()
+# The cross-lane frame hash of the image runs as many frames as this neutral script has lines.
+set(glasses_frames "")
+foreach(frame RANGE 1 ${glasses_count})
+  list(APPEND glasses_frames 0,0,00)
+endforeach()
+device_script(${PROJECT_BINARY_DIR}/tests/glasses.input 0 0 glasses_frames)
+set(fixtures_eyes -DCASE=eyes -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+  -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${fixtures_emulator}"
+  -DJUDGE=${PROJECT_SOURCE_DIR}/tests/cmake/mailbox.cmake -DNAME=glasses -DFRAMES=${glasses_count}
+  -DIMAGE=${COGMASTER_FIXTURES_DIR}/glasses.sms -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv)
+
+# Fault prevented: a 3-D eye reported in the wrong frame, lost when the cartridge is disabled, invented on a
+# Game Gear, or a frame hash that changes with the eye report. The export and Japanese consoles must print the
+# table's counts (the cartridge-off frames and the one-write frames included), a Game Gear none for every frame,
+# and a count off by one must fail.
+# Timeout: 10 s floor; 2 x 0.73 s, slowest of 1 run, run 42973268415.
+foreach(profile IN ITEMS export japan gg)
+  set(args -DMACHINE=sms -DREGION=ntsc-u -DWANT_none=${glasses_want_none} -DWANT_left=${glasses_want_left}
+    -DWANT_right=${glasses_want_right} -DWANT_flips=${glasses_want_flips} -DWANT_last=${glasses_last})
+  if(profile STREQUAL "japan")
+    set(args -DMACHINE=sms -DREGION=ntsc-j -DWANT_none=${glasses_want_none} -DWANT_left=${glasses_want_left}
+      -DWANT_right=${glasses_want_right} -DWANT_flips=${glasses_want_flips} -DWANT_last=${glasses_last})
+  elseif(profile STREQUAL "gg")
+    set(args -DMACHINE=gg -DWANT_none=${glasses_count} -DWANT_left=0 -DWANT_right=0 -DWANT_flips=0 -DWANT_last=none)
+  endif()
+  cogmaster_add_test(NAME fixtures.glasses.eyes.${profile}
+    COMMAND ${CMAKE_COMMAND} ${fixtures_eyes} ${args} -DPROFILE=${profile}
+      -DOUT=${fixtures_out}/glasses.${profile}.txt -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures portable TIMEOUT 10)
+endforeach()
+math(EXPR glasses_off "${glasses_want_left} + 1")
+set(cmd ${CMAKE_COMMAND} ${fixtures_eyes} "-DEMULATOR=${fixtures_inner_emulator}" -DMACHINE=sms -DREGION=ntsc-u
+  -DWANT_none=${glasses_want_none} -DWANT_left=${glasses_off} -DWANT_right=${glasses_want_right}
+  -DWANT_flips=${glasses_want_flips} -DWANT_last=${glasses_last} -DPROFILE=export
+  -DOUT=${fixtures_out}/glasses.control.txt -P ${CMAKE_CURRENT_LIST_FILE})
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+cogmaster_add_test(NAME fixtures.glasses.eyes.control
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=eyes: left=${glasses_want_left}, expected ${glasses_off}"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+  LABELS fixtures portable TIMEOUT 10)
+cogmaster_add_test(NAME fixtures.glasses.hash_same
+  COMMAND ${CMAKE_COMMAND} -DCASE=eyes_hash -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+    -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${fixtures_emulator}" -DNAME=glasses
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/glasses.sms -DFRAMES=${glasses_count} -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 10)
 
 # Fault prevented: a judge that passes what it should fail. Each control
 # runs the mapper_sega fixture through the judge and must fail with exit 1

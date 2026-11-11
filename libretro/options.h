@@ -50,10 +50,45 @@ static struct retro_core_option_v2_definition lr_definitions[] = {
          "content load; On is Automatic for Game Gear content.",
      .values = {{"auto", "Automatic"}, {"off", "Off"}, {"on", "On"}, {NULL, NULL}},
      .default_value = "auto"},
+    {.key = "cogmaster_port1",
+     .desc = "Port 1 device (reload content)",
+     .info = "Automatic takes the controller the game was made for. Choose Control Pad to force a "
+             "plain pad. A device this console cannot take falls back to the pad. Takes effect on "
+             "content load.",
+     .values = {{"auto", "Automatic"},
+                {"pad", "Control Pad"},
+                {"paddle", "Paddle"},
+                {"sports", "Sports Pad"},
+                {"none", "Nothing"},
+                {NULL, NULL}},
+     .default_value = "auto"},
+    {.key = "cogmaster_port2",
+     .desc = "Port 2 device (reload content)",
+     .info = "As port 1. A Sports Pad or Paddle moves with the mouse, the left stick and the "
+             "D-pad. Takes effect on content load.",
+     .values = {{"auto", "Automatic"},
+                {"pad", "Control Pad"},
+                {"paddle", "Paddle"},
+                {"sports", "Sports Pad"},
+                {"none", "Nothing"},
+                {NULL, NULL}},
+     .default_value = "auto"},
+    {.key = "cogmaster_3d_view",
+     .desc = "3-D glasses view",
+     .info = "Applies only to a game that alternates the shutter every frame. Left or Right "
+             "shows one eye, Alternate and Off send every frame as it is, Anaglyph mixes both "
+             "eyes for red-cyan glasses.",
+     .values = {{"left", "Left eye"},
+                {"right", "Right eye"},
+                {"alternate", "Alternate (flicker)"},
+                {"anaglyph", "Red-cyan anaglyph"},
+                {"off", "Off"},
+                {NULL, NULL}},
+     .default_value = "left"},
     {0}};
 /* The options every table below must hold; the v2, v1 and v0 tables are separate, and the
    host exercises only v2, so a later option cannot miss one without failing the build. */
-#define LR_OPTION_COUNT 6u
+#define LR_OPTION_COUNT 9u
 _Static_assert(sizeof lr_definitions / sizeof lr_definitions[0] == LR_OPTION_COUNT + 1u,
                "v2 option table");
 static struct retro_core_options_v2 lr_options = {NULL, lr_definitions};
@@ -66,6 +101,9 @@ static struct retro_variable lr_variables[] = {
     {"cogmaster_gg_view", "Game Gear view; native|full"},
     {"cogmaster_region", "Region and timing (reload content); auto|ntsc-u|ntsc-j|pal"},
     {"cogmaster_fm", "FM sound unit (reload content); auto|off|on"},
+    {"cogmaster_port1", "Port 1 device (reload content); auto|pad|paddle|sports|none"},
+    {"cogmaster_port2", "Port 2 device (reload content); auto|pad|paddle|sports|none"},
+    {"cogmaster_3d_view", "3-D glasses view; left|right|alternate|anaglyph|off"},
     {NULL, NULL}};
 _Static_assert(sizeof lr_variables / sizeof lr_variables[0] == LR_OPTION_COUNT + 1u,
                "v0 option table");

@@ -18,6 +18,7 @@
 #include <dlfcn.h>
 #endif
 
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -185,13 +186,29 @@ static int content_gg;
 static unsigned descriptors_calls, controllers_calls;
 static unsigned options_calls;
 static const char *option_machine, *option_mode, *option_region, *option_aspect, *option_view,
-    *option_fm;
+    *option_fm, *option_port1, *option_port2, *option_3d;
+static unsigned log_lines;
 static bool option_update, running;
 static unsigned geometry_calls;
 static struct retro_game_geometry notified;
 
+static void RETRO_CALLCONV log_line(enum retro_log_level level, const char *fmt, ...)
+{
+    char text[128];
+    va_list args;
+    va_start(args, fmt);
+    (void)vsnprintf(text, sizeof text, fmt, args);
+    va_end(args);
+    CHECK(level >= RETRO_LOG_DEBUG && strncmp(text, "cogmaster: ", 11u) == 0);
+    log_lines++;
+}
+
 static bool RETRO_CALLCONV env(unsigned cmd, void *data)
 {
+    if (cmd == RETRO_ENVIRONMENT_GET_LOG_INTERFACE) {
+        ((struct retro_log_callback *)data)->log = log_line;
+        return true;
+    }
     if (cmd == RETRO_ENVIRONMENT_GET_VARIABLE) {
         struct retro_variable *v = data;
         if (strcmp(v->key, "cogmaster_machine") == 0)
@@ -206,6 +223,12 @@ static bool RETRO_CALLCONV env(unsigned cmd, void *data)
             v->value = option_view;
         if (strcmp(v->key, "cogmaster_fm") == 0)
             v->value = option_fm;
+        if (strcmp(v->key, "cogmaster_port1") == 0)
+            v->value = option_port1;
+        if (strcmp(v->key, "cogmaster_port2") == 0)
+            v->value = option_port2;
+        if (strcmp(v->key, "cogmaster_3d_view") == 0)
+            v->value = option_3d;
         return v->value != NULL;
     }
     if (cmd == RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE) {
@@ -682,6 +705,15 @@ int main(int argc, char **argv)
             return 1;
         resolve_all();
         int rc = missing != NULL ? 1 : battery_test(argv[3], argv[4]);
+        module_close();
+        return rc;
+    }
+
+    if (argc == 5 && strcmp(argv[2], "adapter") == 0) {
+        if (!module_open(argv[1]))
+            return 1;
+        resolve_all();
+        int rc = missing != NULL ? 1 : adapter_test(argv[3], argv[4]);
         module_close();
         return rc;
     }

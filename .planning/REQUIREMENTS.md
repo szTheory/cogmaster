@@ -42,13 +42,13 @@ Requirements for this milestone. Each maps to one roadmap phase. Scope decisions
 
 ### Pad devices and 3-D glasses
 
-- [ ] **PAD-01**: A pin-level port layer routes every TH change through one edge detector, and the pad-only frame hashes and existing `io` tests do not change
-- [ ] **PAD-02**: A Sports Pad title tracks relative motion through the runner and libretro with tick-integer timeouts
-- [ ] **PAD-03**: A Paddle title works on Japan profiles, with deltas accumulated in state so a replay matches
-- [ ] **PAD-04**: The 3-D glasses eye state is reported at frame end, gated by the cartridge enable bit, and the host composes the eyes outside the hashed frame
-- [ ] **PAD-05**: `cogmaster_set_input` accepts a grown struct by copying the smaller of the caller's size and its own and zeroing the rest, so a version 9 caller is never read past its end
-- [ ] **PAD-06**: The hash table sets a default controller device per dump, the user option wins, profile availability is enforced, and the ledger key carries the device
-- [ ] **PAD-07**: Device state is bounded and cross-checked in the state visitor, and each device is in the fuzz target
+- [x] **PAD-01**: A pin-level port layer routes every TH change through one edge detector, and the pad-only frame hashes and existing `io` tests do not change
+- [x] **PAD-02**: A Sports Pad title tracks relative motion through the runner and libretro with tick-integer timeouts
+- [x] **PAD-03**: A Paddle title works on Japan profiles, with deltas accumulated in state so a replay matches
+- [x] **PAD-04**: The 3-D glasses eye written to `$FFF8-$FFFB` is reported with each frame's run result on every Master System profile and is 0 on the Game Gear, and the host composes the eyes outside the hashed frame
+- [x] **PAD-05**: `cogmaster_set_input` accepts a grown struct by copying the smaller of the caller's size and its own (whole fields only) and zeroing the rest, so a caller built against the 32-byte `cogmaster_input` of API versions 1 to 11 is never read past its end
+- [x] **PAD-06**: The hash table sets a default controller device per dump, the user option wins, profile availability is enforced, and the ledger key carries the device
+- [x] **PAD-07**: Device state is bounded and cross-checked in the state visitor, and each device is in the fuzz target
 
 ### Light Phaser
 
@@ -133,13 +133,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SAVE-04 | Phase 7 | Complete |
 | SAVE-05 | Phase 7 | Complete |
 | SAVE-06 | Phase 7 | Complete |
-| PAD-01 | Phase 8 | Pending |
-| PAD-02 | Phase 8 | Pending |
-| PAD-03 | Phase 8 | Pending |
-| PAD-04 | Phase 8 | Pending |
-| PAD-05 | Phase 8 | Pending |
-| PAD-06 | Phase 8 | Pending |
-| PAD-07 | Phase 8 | Pending |
+| PAD-01 | Phase 8 | Complete |
+| PAD-02 | Phase 8 | Complete |
+| PAD-03 | Phase 8 | Complete |
+| PAD-04 | Phase 8 | Complete |
+| PAD-05 | Phase 8 | Complete |
+| PAD-06 | Phase 8 | Complete |
+| PAD-07 | Phase 8 | Complete |
 | GUN-01 | Phase 9 | Pending |
 | GUN-02 | Phase 9 | Pending |
 | GUN-03 | Phase 9 | Pending |

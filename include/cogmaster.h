@@ -11,10 +11,10 @@
 extern "C" {
 #endif
 
-#define COGMASTER_API_VERSION 11
+#define COGMASTER_API_VERSION 12
 #define COGMASTER_ABI_VERSION 1
-#define COGMASTER_BEHAVIOUR_REVISION 13
-#define COGMASTER_STATE_FORMAT_VERSION 13
+#define COGMASTER_BEHAVIOUR_REVISION 14
+#define COGMASTER_STATE_FORMAT_VERSION 14
 
 typedef uint32_t cogmaster_status;
 #define COGMASTER_STATUS_OK 0u
@@ -175,8 +175,9 @@ typedef struct cogmaster_info {
     uint32_t par_num, par_den;
     uint32_t region, tv;
     uint32_t video_mode;
-    uint32_t audio_channels; /* 1 or 2 */
-    uint32_t fm;             /* COGMASTER_FM_ON or COGMASTER_FM_OFF */
+    uint32_t audio_channels;               /* 1 or 2 */
+    uint32_t fm;                           /* COGMASTER_FM_ON or COGMASTER_FM_OFF */
+    uint32_t default_port1, default_port2; /* COGMASTER_DEVICE_*, 0 is a pad */
 } cogmaster_info;
 
 typedef struct cogmaster_frame {
@@ -195,15 +196,22 @@ typedef struct cogmaster_run_result {
     uint32_t overshoot_ticks;
     uint32_t lagged;
     uint32_t display_enabled;
+    uint32_t glasses; /* COGMASTER_GLASSES_*, 0 for no eye */
 } cogmaster_run_result;
 
 #define COGMASTER_DEVICE_PAD 0u
 #define COGMASTER_DEVICE_NONE 1u
+#define COGMASTER_DEVICE_PADDLE 2u
+#define COGMASTER_DEVICE_SPORTS_PAD 3u
+#define COGMASTER_GLASSES_NONE 0u
+#define COGMASTER_GLASSES_RIGHT 1u
+#define COGMASTER_GLASSES_LEFT 2u
 typedef struct cogmaster_input {
     uint32_t size;
     uint32_t p1, p2;
     uint32_t pause, reset, start;
     uint32_t port1, port2;
+    int32_t x1, y1, x2, y2; /* axis deltas of this call, per port */
 } cogmaster_input;
 
 typedef struct cogmaster_fault {
@@ -243,8 +251,9 @@ typedef struct cogmaster_cart_info {
     uint32_t board_source;    /* COGMASTER_BOARD_SOURCE_*, 0 when no board was guessed */
     uint32_t board_candidate; /* board the scan pointed at, 0 for none */
     uint32_t scan_sega, scan_candidate, scan_runner_up; /* store-site counts */
-    uint32_t unsupported_id;      /* slot id of an unsupported-by-design row, 0 for none */
-    char unsupported_reason[128]; /* "<slot>: <reason>", empty for none */
+    uint32_t unsupported_id;               /* slot id of an unsupported-by-design row, 0 for none */
+    char unsupported_reason[128];          /* "<slot>: <reason>", empty for none */
+    uint32_t default_port1, default_port2; /* COGMASTER_DEVICE_*, 0 is a pad */
 } cogmaster_cart_info;
 
 cogmaster_status cogmaster_get_versions(cogmaster_versions *out);

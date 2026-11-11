@@ -187,4 +187,59 @@ static inline int64_t cogmaster__sio_i64(struct cogmaster__sio *io, const char *
     return x;
 }
 
+/* The same trick at 8, 16 and 32 bits: x is stored as x with its top bit flipped, so zero is
+   the top bit set (00 00 00 80 for 32 bits) and the stored value and its bounds compare as
+   unsigned in the width. The value returned is the decoded one. */
+static inline uint64_t cogmaster__sio_bias_w(int64_t x, uint32_t width)
+{
+    uint64_t top = UINT64_C(1) << (8u * width - 1u);
+    return ((uint64_t)x ^ top) & ((top << 1) - 1u);
+}
+
+static inline int64_t cogmaster__sio_unbias_w(uint64_t u, uint32_t width)
+{
+    uint64_t top = UINT64_C(1) << (8u * width - 1u);
+    uint64_t x = u ^ top;
+    return x >= top ? (int64_t)x - (int64_t)(top << 1) : (int64_t)x;
+}
+
+static inline int64_t cogmaster__sio_signed(struct cogmaster__sio *io, const char *name, int64_t v,
+                                            uint32_t width, int64_t min, int64_t max)
+{
+    return cogmaster__sio_unbias_w(cogmaster__sio_field(io, name, cogmaster__sio_bias_w(v, width),
+                                                        width, cogmaster__sio_bias_w(min, width),
+                                                        cogmaster__sio_bias_w(max, width)),
+                                   width);
+}
+
+static inline int32_t cogmaster__sio_i32(struct cogmaster__sio *io, const char *name, int32_t *v,
+                                         int32_t min, int32_t max)
+{
+    int32_t x = (int32_t)cogmaster__sio_signed(io, name, *v, 4u, min, max);
+    if (io->mode == COGMASTER__SIO_APPLY) {
+        *v = x;
+    }
+    return x;
+}
+
+static inline int16_t cogmaster__sio_i16(struct cogmaster__sio *io, const char *name, int16_t *v,
+                                         int16_t min, int16_t max)
+{
+    int16_t x = (int16_t)cogmaster__sio_signed(io, name, *v, 2u, min, max);
+    if (io->mode == COGMASTER__SIO_APPLY) {
+        *v = x;
+    }
+    return x;
+}
+
+static inline int8_t cogmaster__sio_i8(struct cogmaster__sio *io, const char *name, int8_t *v,
+                                       int8_t min, int8_t max)
+{
+    int8_t x = (int8_t)cogmaster__sio_signed(io, name, *v, 1u, min, max);
+    if (io->mode == COGMASTER__SIO_APPLY) {
+        *v = x;
+    }
+    return x;
+}
+
 #endif /* COGMASTER_STATE_H */

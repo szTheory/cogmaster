@@ -36,7 +36,7 @@ pull request and one automated release.
 - [x] **Phase 5: Tune-up** - The v1.0 debt merged away: measured timeouts, an armed perf gate, `quality.json`, budget headroom, the README's ROM step and the weekly digest (completed 2026-11-10)
 - [x] **Phase 6: Korean cartridges play** - The remaining mapper boards load and play with no setting, detected hash-first, with no shipped hash moving (completed 2026-11-10)
 - [x] **Phase 7: Saves survive a restart** - 93C46 EEPROM and battery saves persist through the runner and RetroArch, with `.srm` interop only in measured layouts (completed 2026-11-10)
-- [ ] **Phase 8: Sports Pad, Paddle and 3-D glasses** - Pin-level ports and a grown input struct make the pad-device and 3-D titles play, with replays matching
+- [x] **Phase 8: Sports Pad, Paddle and 3-D glasses** - Pin-level ports and a grown input struct make the pad-device and 3-D titles play, with replays matching (completed 2026-11-11)
 - [ ] **Phase 9: Light Phaser** - Light Phaser titles hit where the player aims, sensed from the emitted pixel at the beam
 - [ ] **Phase 10: BIOS boot** - A user boots from their own BIOS dump in the runner or RetroArch; fast boot stays the default
 - [ ] **Phase 11: PAL and Japanese FM** - PAL timing proven on every lane and the owner's PAL and FM carts judged under the right profile
@@ -128,10 +128,29 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Every TH change goes through one edge detector in the pin-level port layer, and the pad-only frame hashes and the existing `io` tests are unchanged on all eight lanes (PAD-01).
   2. A Sports Pad fixture tracks relative motion through the runner and libretro with timeouts in integer ticks; a Paddle fixture works on a Japan profile and is refused on a profile without it, and replaying the recorded deltas gives the same frame hash (PAD-02, PAD-03).
-  3. The 3-D glasses eye state is reported at frame end only while the cartridge enable bit is set, and the frame hash is the same whether or not the host composes the eyes (PAD-04).
-  4. A caller built against the version 9 `cogmaster_input` passes its smaller struct and an ASan test shows `cogmaster_set_input` never reads past it, copying the smaller size and zeroing the rest (PAD-05).
+  3. The 3-D glasses eye is reported with each frame on every Master System profile whatever `$3E` says, is 0 on a Game Gear and when nothing wrote it, and the frame hash is the same whether or not the host composes the eyes (PAD-04).
+  4. A caller built against the 32-byte `cogmaster_input` of API versions 1 to 11 passes its smaller struct and an ASan test shows `cogmaster_set_input` never reads past it, copying the smaller size and zeroing the rest (PAD-05).
   5. A dump's default device comes from the hash table with no option, a user option overrides it, the ledger key carries the device, the state visitor refuses out-of-range device state, and each device is in the fuzz target (PAD-06, PAD-07).
-**Plans**: TBD
+**Plans**: 17/17 plans complete
+
+Plans:
+- [x] 08-01-PLAN.md — pin-level port layer with the pad arm and the one TH-change function, proven by a 256 x 256 latch and pin differential (PAD-01)
+- [x] 08-02-PLAN.md — the shape-only test edits, then the whole header delta with inert behaviour, versions 12/14/14 and the v12 pins file (PAD-05)
+- [x] 08-03-PLAN.md — abi.api_v12 registration, the bounded input copy and its proof (poison, exact malloc, tags, refusals) (PAD-05)
+- [x] 08-04-PLAN.md — glasses eye hook, cut rule, state bytes and hosted dispatch 1 with a computed perf delta (PAD-04, PAD-07)
+- [x] 08-05-PLAN.md — Sports Pad and Paddle models, availability, delta accumulation and saved device state (PAD-01, PAD-02, PAD-03, PAD-07)
+- [x] 08-06-PLAN.md — state-bound byte-mutation proof and the pad fuzz target (PAD-07)
+- [x] 08-07-PLAN.md — library table defaults, profile resolution and the region rule (PAD-06)
+- [x] 08-08-PLAN.md — runner device grammar, resolved defaults, exit 77 refusal and probe keys (PAD-06, PAD-02)
+- [x] 08-09-PLAN.md — runner 75-byte delta script line and the --eyes report (PAD-02, PAD-03, PAD-04)
+- [x] 08-10-PLAN.md — Sports Pad fixture, mailbox rows with controls and the recorded-delta replay (PAD-02, PAD-03)
+- [x] 08-11-PLAN.md — Paddle fixture, the loop-length sweep and its controls (PAD-03, PAD-02)
+- [x] 08-12-PLAN.md — glasses fixture with eye-count cases and hosted dispatch 2 (PAD-04)
+- [x] 08-13-PLAN.md — table rows for the two device fixtures and the no-option default, region trap and exit 77 cases (PAD-06, PAD-03, PAD-02)
+- [x] 08-14-PLAN.md — host anaglyph composition with its unit test (PAD-04)
+- [x] 08-15-PLAN.md — libretro device options, motion sources reaching the guest and the 3-D view (PAD-02, PAD-03, PAD-04)
+- [x] 08-16-PLAN.md — ledger key device token and the changed-device cases (PAD-06)
+- [x] 08-17-PLAN.md — controller docs, wording amendments, floors, local judge, final hosted runs and ship list (PAD-01, PAD-04, PAD-05)
 
 ### Phase 9: Light Phaser
 **Goal**: Light Phaser titles hit where the player aims, sensed from the emitted pixel at the beam position with H latched at the edge tick, without changing any run that has no gun or fires no shot.
@@ -191,7 +210,7 @@ Plans:
 | 5. Tune-up | v2.0 | 14/14 | Complete    | 2026-11-10 |
 | 6. Korean cartridges play | v2.0 | 11/11 | Complete    | 2026-11-10 |
 | 7. Saves survive a restart | v2.0 | 10/10 | Complete    | 2026-11-10 |
-| 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 0/TBD | Not started | - |
+| 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 17/17 | Complete    | 2026-11-11 |
 | 9. Light Phaser | v2.0 | 0/TBD | Not started | - |
 | 10. BIOS boot | v2.0 | 0/TBD | Not started | - |
 | 11. PAL and Japanese FM | v2.0 | 0/TBD | Not started | - |

@@ -278,6 +278,155 @@ static void eeprom_stream(void)
     write_image("eeprom-clocks.bin", stream_n);
 }
 
+/* The stream fuzz_pad.c reads: a profile byte, ten bytes that name saved fields to change, then
+   operations. The operation numbers and the selector tables are that file's: devices 0 pad, 1 none,
+   2 Paddle, 3 Sports Pad, 6 one past the last; an axis or tick count with its top bit or selector 5
+   set is a raw word that follows; tick selector 2 is one short of the Sports Pad's idle limit and 3
+   is the limit itself. The program walks a Sports Pad read on port 1 and a Paddle on port 2,
+   abandons a read just inside the limit and restarts one at it, writes the glasses mirror, resets
+   both ways and sends a hostile axis and an unknown device. */
+enum { P_SET, P_TH, P_TH2, P_CTRL, P_READ, P_EYE, P_TICKS, P_RESET, P_FRAME };
+
+static void pad_put(uint8_t v)
+{
+    image[stream_n++] = v;
+}
+
+static void pad_word(uint32_t v)
+{
+    for (uint32_t i = 0u; i < 4u; i++) {
+        pad_put((uint8_t)(v >> (8u * i)));
+    }
+}
+
+static void pad_axis(int32_t v)
+{
+    pad_put(0x80u);
+    pad_word((uint32_t)v);
+}
+
+static void pad_set(uint8_t d1, uint8_t d2, int32_t x1, int32_t y1, int32_t x2, int32_t y2)
+{
+    pad_put(P_SET);
+    pad_put(d1);
+    pad_put(d2);
+    pad_put(0u); /* p1 */
+    pad_put(0u); /* p2 */
+    pad_put(0u); /* pause, reset, start */
+    pad_axis(x1);
+    pad_axis(y1);
+    pad_axis(x2);
+    pad_axis(y2);
+}
+
+static void pad_th(uint8_t v)
+{
+    pad_put(P_TH);
+    pad_put(v);
+}
+
+static void pad_read(uint8_t which)
+{
+    pad_put(P_READ);
+    pad_put(which);
+}
+
+static void pad_wait(uint8_t sel)
+{
+    pad_put(P_TICKS);
+    pad_put(sel);
+}
+
+static void pad_wait_raw(uint32_t ticks)
+{
+    pad_put(P_TICKS);
+    pad_put(5u);
+    pad_word(ticks);
+}
+
+static void pad_eye(uint8_t where, uint8_t v)
+{
+    pad_put(P_EYE);
+    pad_put(where);
+    pad_put(v);
+}
+
+/* A fall then a rise of TH on port 1, each read, a pad's nibbles as a program takes them. */
+static void pad_nibbles(uint32_t first, uint32_t next)
+{
+    pad_wait_raw(first);
+    pad_th(0x05u);
+    pad_read(0u);
+    pad_wait_raw(first);
+    pad_th(0x25u);
+    pad_read(0u);
+    pad_wait_raw(next);
+    pad_th(0x05u);
+    pad_read(0u);
+    pad_wait_raw(next);
+    pad_th(0x25u);
+    pad_read(0u);
+}
+
+static void pad_stream(uint8_t profile, const char *name)
+{
+    stream_n = 0u;
+    pad_put(profile);
+    for (uint32_t i = 0u; i < 10u; i++) {
+        pad_put(0u); /* the saved fields to change at the end: the first, complemented */
+    }
+    pad_set(3u, 2u, 53, -45, 70, 0);
+    pad_put(P_FRAME);
+    pad_nibbles(858u, 429u);
+    pad_wait_raw(300u); /* the Paddle's clock on port 2 */
+    pad_read(1u);
+    pad_wait_raw(300u);
+    pad_read(1u);
+    pad_set(3u, 2u, 127, 127, -20, 0);
+    pad_put(P_FRAME);
+    pad_th(0x05u); /* a read abandoned one tick inside the idle limit keeps its place */
+    pad_wait_raw(858u);
+    pad_th(0x25u);
+    pad_wait(2u);
+    pad_th(0x05u);
+    pad_read(0u);
+    pad_wait(1u);
+    pad_th(0x25u);
+    pad_th(0x05u); /* one abandoned at the limit starts over */
+    pad_wait_raw(858u);
+    pad_th(0x25u);
+    pad_wait(3u);
+    pad_th(0x05u);
+    pad_read(0u);
+    pad_wait(4u);
+    pad_eye(0u, 0u);
+    pad_eye(3u, 1u);
+    pad_put(P_CTRL);
+    pad_put(0xFFu);
+    pad_eye(1u, 0u);
+    pad_set(3u, 3u, 5, -5, 6, -6);
+    pad_put(P_FRAME);
+    pad_put(P_RESET);
+    pad_put(0u);
+    pad_nibbles(858u, 429u);
+    pad_put(P_RESET);
+    pad_put(1u);
+    pad_set(0u, 6u, 0, 0, 0, 0); /* an unknown device is refused */
+    pad_set(3u, 0u, 0, 0, 0, 0);
+    pad_put(P_SET); /* an axis past the range is refused */
+    pad_put(3u);
+    pad_put(0u);
+    pad_put(0u);
+    pad_put(0u);
+    pad_put(0u);
+    pad_axis(INT32_MIN);
+    pad_put(0u);
+    pad_put(0u);
+    pad_put(0u);
+    pad_put(P_FRAME);
+    write_image(name, stream_n);
+}
+
 /* One byte at offset 64 MiB: the file system can leave the rest as a hole. */
 static int oversize(const char *path)
 {
@@ -308,6 +457,9 @@ int main(int argc, char **argv)
     boards();
     programs();
     eeprom_stream();
+    pad_stream(2u, "pad-ops.bin");
+    pad_stream(0u, "pad-ops-export.bin");
+    pad_stream(3u, "pad-ops-gg.bin");
     memset(image, 0x3c, 32769u);
     write_image("save-empty.bin", 0u);
     write_image("save-one.bin", 1u);

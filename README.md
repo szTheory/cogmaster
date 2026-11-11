@@ -64,6 +64,7 @@ bin/cogmaster-run --frames 60 --hash
 ## Documentation
 
 - [docs/runner.md](docs/runner.md): `cogmaster-run` options, output, exit statuses and the test card.
+- [docs/controllers.md](docs/controllers.md): Sports Pad, Paddle and 3-D glasses titles, and the controller options.
 - [docs/embedding.md](docs/embedding.md): using the C library from CMake, pkg-config or `add_subdirectory`.
 
 ## Legal

@@ -179,7 +179,9 @@ uint8_t cogmaster__bus_read(cogmaster *m, uint16_t addr)
    notes do not say whether a cartridge's mapper still latches $FFFC-$FFFF
    with the cartridge off, so the disabled cartridge sees no write at all,
    the mirror of the read side; a write that reaches nothing records
-   unmapped_write as the read records unmapped_read. */
+   unmapped_write as the read records unmapped_read. A write at $FFF8-$FFFF
+   goes to one rare-path helper that keeps all of that and also notes the
+   3-D glasses eye. */
 void cogmaster__bus_write(cogmaster *m, uint16_t addr, uint8_t v)
 {
     cogmaster__bus_sync(m);
@@ -190,8 +192,8 @@ void cogmaster__bus_write(cogmaster *m, uint16_t addr, uint8_t v)
         if (ram_on) {
             m->ram[addr & (COGMASTER__RAM_SIZE - 1u)] = v;
         }
-        if (addr >= 0xFFFCu && cart_on) {
-            cogmaster__mapper_write(m, addr, v);
+        if (addr >= 0xFFF8u) {
+            cogmaster__io_glasses_write(m, addr, v);
         } else if (!ram_on) {
             cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_RAM, COGMASTER__FAULT_UNMAPPED_WRITE);
         }

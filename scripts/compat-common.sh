@@ -19,7 +19,7 @@ function hex(s, n,i,d) { n=0; s=toupper(s); for(i=1;i<=length(s);i++) { d=index(
 function predicate(s, machine, p,n,a,b,t,frame,address,value,cfg) {
   cfg="cfg:video=" (machine=="gg"?"gg":"sms") ";port1=pad;port2=pad;script=none;sha256=" empty;
   if(index(s,"cfg:")==1) { n=index(s,"/"); if(!n) bad(); cfg=substr(s,1,n-1); s=substr(s,n+1) }
-  if(cfg !~ /^cfg:video=(sms|gg);port1=(pad|none);port2=(pad|none);script=[A-Za-z0-9_.-]+;sha256=[0-9a-f]+$/) bad();
+  if(cfg !~ /^cfg:video=(sms|gg);port1=(pad|none|paddle|sports);port2=(pad|none|paddle|sports);script=[A-Za-z0-9_.-]+;sha256=[0-9a-f]+$/) bad();
   split(cfg,t,"sha256="); if(length(t[2])!=64 || (cfg ~ /;script=none;/ && t[2]!=empty)) bad();
   p=index(s,"@"); kind=substr(s,1,p-1); s=substr(s,p+1); n=match(s,/[:=]/); frame=n?substr(s,1,n-1):s; value=""; address="";
   if(frame !~ /^[0-9]+$/ || length(frame)>10 || frame+0<1 || frame+0>1000000) bad(); frame=sprintf("%.0f",frame+0);

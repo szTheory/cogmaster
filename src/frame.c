@@ -53,8 +53,10 @@ cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out)
         m->input.port1 != COGMASTER_DEVICE_NONE) {
         m->vdp.pause = 1u;
     }
+    cogmaster__ports_frame(m);
     m->input = m->pending_input;
     m->input_read = 0u;
+    m->io.glasses_frame = m->io.glasses;
     if (m->cart.rom != NULL) {
         /* Beam events and stamped writes advance the production renderer. */
         overshoot = cogmaster__bus_run_frame(m);
@@ -88,6 +90,7 @@ cogmaster_status cogmaster_run_frame(cogmaster *m, cogmaster_run_result *out)
         r.overshoot_ticks = overshoot;
         r.lagged = lagged;
         r.display_enabled = m->vdp.display;
+        r.glasses = m->io.glasses_frame;
         cogmaster__write_out(out, &r, (uint32_t)sizeof r);
     }
     return COGMASTER_STATUS_OK;

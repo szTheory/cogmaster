@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: The whole library
-current_phase: 8
-current_phase_name: Sports Pad, Paddle and 3-D glasses
+current_phase: 9
+current_phase_name: Light Phaser
 status: planning
-stopped_at: Phase 7 complete, ready to plan Phase 8
-last_updated: "2026-11-11T02:44:32.001Z"
+stopped_at: Phase 8 complete, ready to plan Phase 9
+last_updated: "2026-11-11T07:47:44.313Z"
 last_activity: 2026-11-11
-last_activity_desc: Phase 7 complete, transitioned to Phase 8
-state_head: bbf2ada8a974b19cb80446ab4161d1b9115f3551
+last_activity_desc: Phase 8 complete, transitioned to Phase 9
+state_head: 9cad5281a4d4cbf35317bc9473e34a73d8adbd6e
 progress:
   total_phases: 8
-  completed_phases: 3
-  total_plans: 35
-  completed_plans: 35
-  percent: 38
+  completed_phases: 4
+  total_plans: 52
+  completed_plans: 52
+  percent: 50
 ---
 
 # Project State
@@ -29,17 +29,17 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 
 ## Current Position
 
-Phase: 8 — Sports Pad, Paddle and 3-D glasses
+Phase: 9 — Light Phaser
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-11-10 — Phase 7 complete, transitioned to Phase 8
+Last activity: 2026-11-11 — Phase 8 complete, transitioned to Phase 9
 
-Progress: [████░░░░░░] 38% of v2.0
+Progress: [█████░░░░░] 50% of v2.0
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 97
+- Total plans completed: 114
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -54,6 +54,7 @@ Progress: [████░░░░░░] 38% of v2.0
 | 5 | 14 | - | - |
 | 6 | 11 | - | - |
 | 7 | 10 | - | - |
+| 8 | 17 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -161,6 +162,23 @@ Progress: [████░░░░░░] 38% of v2.0
 | Phase 07 P08 | 25 min | 3 tasks | 8 files |
 | Phase 7 P09 | 40min | 3 tasks | 7 files |
 | Phase 7 P10 | 35 min | 3 tasks | 6 files |
+| Phase 08 P01 | 25min | 2 tasks | 9 files |
+| Phase 08 P02 | 20 min | 2 tasks | 10 files |
+| Phase 08 P03 | 35min | 2 tasks | 7 files |
+| Phase 08 P04 | 55 min | 3 tasks | 9 files |
+| Phase 08 P05 | 85 min | 3 tasks | 10 files |
+| Phase 08 P06 | 45min | 2 tasks | 9 files |
+| Phase 8 P07 | 25min | 2 tasks | 7 files |
+| Phase 8 P08 | 40min | 2 tasks | 9 files |
+| Phase 08 P09 | 20 min | 2 tasks | 9 files |
+| Phase 8 P10 | 70min | 3 tasks | 11 files |
+| Phase 08 P11 | 45min | 3 tasks | 9 files |
+| Phase 08 P12 | 14 min | 3 tasks | 13 files |
+| Phase 8 P13 | 45min | 2 tasks | 11 files |
+| Phase 08 P14 | 15 min | 2 tasks | 7 files |
+| Phase 08 P15 | 70 min | 3 tasks | 6 files |
+| Phase 08 P16 | 14min | 2 tasks | 8 files |
+| Phase 8 P17 | 95min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -209,6 +227,30 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 7]: 07-09: the same test names are registered on every lane; only the asserted behaviour differs per platform (dirsync, next_index)
 - [Phase 7]: 07-09: the kill test locates the kill with a --png file because a killed process loses unflushed stdout
 - [Phase 7]: 07-10: RetroArch writes saves to saves/cogmaster/<name>.srm; the hosted restart steps compare that file with the runner after each pass and the control asserts exit 1 with REGEX ^ because compare_files is silent
+- [Phase 08]: Port layer: cogmaster__ports_pins and cogmaster__io_th_changed take every pad pin and every TH write, pinned by a 65536-pair differential; no behaviour change
+- [Phase 08]: 08-02: relaxed shape pins landed before the header growth; header, asserts and v12.c in one commit; embedding paragraph 613 bytes, file 34,624
+- [Phase 08]: 08-03: set_input copies min(tag, ours) & ~3 bytes with a byte loop into a zeroed local (a variable memcpy into a known-size local emits __memcpy_chk on Apple clang and abi.undefined rejects it); axes are range-checked to +-32767 and dropped until plan 08-05
+- [Phase 08]: 08-04: the glasses cut is (frame_lines - 96) * 684 - 607 on the window tick; one rare-path helper owns every $FFF8-$FFFF store so the RAM branch keeps one compare; dispatch 1 green, H=12302997 B=12302854 delta_bp=0
+- [Phase 08]: 08-05: both MAME and ares put the Paddle's high nibble on TR high, so the nibble follows the device's own clock even when the console drives TR; the pad is driven by the TH wire, not the echoed readback, so Japan and export give the same bytes
+- [Phase 08]: 08-05: SPORTS_IDLE_TICKS and PADDLE_HALF_TICKS live only in src/internal.h; the state cross-checks read the value each sio call returns and no new field name begins input_; pending motion survives a soft reset and a load zeroes it
+- [Phase 08]: The state test requires the loader and an independent checker to agree in both directions on every patched state, so an unreachable rule is caught as well as a loose bound
+- [Phase 08]: The pad fuzz target names the saved fields to change in ten bytes after the profile byte and moves ticks only inside the frame window with a bus sync, so its state leg always has input and every instance it saves is one a run could have saved
+- [Phase 8]: Plan 08-07: the table's controller intent is held in two instance bytes outside the saved fields and resolved against the availability rule in get_info; a paddle row with no region reads as Japan in cart_fact_to_info, 1 of 1658 rows moved
+- [Phase 8]: Plan 08-08: auto resolves from cogmaster_info after load (already degraded by the profile), so only an explicit device choice can exit 77; the probe prints raw table intent
+- [Phase 08]: Plan 08-09: a pad or an empty port accepts only zero axes, a Paddle or Sports Pad any in-range value; the refusal line names the port and device; --eyes prints last after every other output line
+- [Phase 8]: Sports Pad idle timeout probed at 511 and 512 cycles (1,533 and 1,536 ticks): a gap is whole Z80 cycles of 3 ticks
+- [Phase 8]: Replay recorder keeps motion within 100 counts a frame and drains audio each frame so the last frame follows the last delta and a restored copy matches in state bytes
+- [Phase 08]: PADDLE_HALF_TICKS stays 299: the eight criterion sweep lengths read 126 to 150 ones of 256; src/internal.h untouched
+- [Phase 08]: The Paddle position oracle clamps after every frame's motion (saturating sum), matching the core; the sweep's two shortest periods (29, 31) are the detect loop unrolled because a padded DJNZ loop cannot be shorter than 43 cycles
+- [Phase 08]: 08-12: the eye counts are simulated from the literal table (checked against the .DB row of glasses.asm) over 30 frames, the mailbox judged in a second run
+- [Phase 08]: 08-12: exact-byte files in script-mode runner tests go through file(CONFIGURE) with a newline style, since file(WRITE) writes CRLF on Windows
+- [Phase 8]: 08-13: the two device fixtures' table rows are plain ROM, SMS, persistence 0 and region 0, so the table adds only the default controllers and the Paddle's Japan region
+- [Phase 8]: 08-13: any later edit of sports_pad.asm or paddle.asm fails the build identity check until its row in fixture_facts.txt is re-pinned and src/cartdb.inc regenerated
+- [Phase 08]: 08-14: cogmaster__eyes_anaglyph is a pure host function (red from left, green and blue from right, top bits zero) tested by a closed-form grid plus a bad-variant control; the test is its own executable with one case name
+- [Phase 08]: 08-15: a device the profile cannot take is found by one set_input probe per port at load, so the one log line comes at load and each port is judged alone
+- [Phase 08]: 08-15: glasses.sms draws nothing, so the stereo cases use two guests the test builds and a model of the rule built from the library's own eyes and pictures
+- [Phase 08]: 08-16: the ledger key device token is pad|none|paddle|sports in the normalizer, library lane, fixture lane and doc; changed-key ratchet cases are paired with adjacent-key cases because a rejecting grammar also answers exit 2
+- [Phase 8]: Phase 8 closes with the controller guide in docs/controllers.md as the one behaviour prose; the local library judge is carried to ship because the agent had no library location, and the cogmaster_3d_view default stays left
 
 ### Pending Todos
 
@@ -297,6 +339,14 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 7 plan 07-08 (gsd-execute-phase 07); --save-interval with usage, byte-equality and fail-at-once tests, EEPROM wrong-length refusal naming 128, five negative controls; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 7 plan 07-09 (gsd-execute-phase 07); load-time sweep, POSIX directory sync, kill test on every lane; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 7 plan 07-10 (gsd-execute-phase 07); RetroArch restart round trips for battery and EEPROM, SAVE-03 wording, floors 465 and 434, hosted runs 42944235132 (retroarch path fix) and 42945252988 green; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 8 plan 08-02 (gsd-execute-phase 08); shape-only pin relaxations, whole header delta to API 12, behaviour 14, state 14, layout asserts, v12.c; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 8 plan 08-03 (gsd-execute-phase 08); abi.api_v12 registered on three lanes, size-bounded set_input copy with poison, exact-malloc, tag, refusal, range and output cases, local ASan control; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 8 plan 08-04 (gsd-execute-phase 08); glasses eye recorded and reported by the window cut rule, state bytes and cross-checks, six ports.glasses cases with two local negative controls, hosted dispatch 1 runs 42963275959 (branch) and 42963279510 (main) green, delta_bp 0; 3 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 8 plan 08-05 (gsd-execute-phase 08); Sports Pad and Paddle models on the TH wire, set_input availability and motion sums, pending axes and port blocks saved with bounds and cross-checks (record count 170887 of 240000), eleven ports.devices cases with three local negative controls, no push; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 8 plan 08-06 (gsd-execute-phase 08); byte-mutation, just-outside, sweep, mid-sequence and availability state cases against an independent checker (2952 loads), fuzz_pad.c as the fifth fuzz target with seeds, regress and libFuzzer registrations, three local negative controls, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 8 plan 08-07 (gsd-execute-phase 08); table controller intent in cart_info and the profile-resolved default in info, paddle region rule (1 of 1658 rows moved), four cart.device cases with two local negative controls, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 8 plan 08-10 (gsd-execute-phase 08); sports_pad.asm with cycle-counted waits and the 511/512-cycle idle probe, 30 rows on two profiles recomputed from one delta list, dropped-delta and plain-pad controls, a device hash row (14 added lines), record mode and a three-region replay case with a control; 3 tasks, 3 commits, no push | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 8 plan 08-17 (gsd-execute-phase 08); controller guide, test family rows, README link, floors 548 and 511, PAD-04 and PAD-05 wording amended in REQUIREMENTS and ROADMAP, local judge, unchanged-proof, budgets and hosted dispatch 3 with the nightly | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -318,8 +368,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T02:25:17.981Z
-Stopped at: Phase 7 complete, ready to plan Phase 8
+Last session: 2026-11-11T07:28:55.559Z
+Stopped at: Phase 8 complete, ready to plan Phase 9
 Resume file: None
 
 ## Operator Next Steps

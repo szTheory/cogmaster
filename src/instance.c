@@ -239,6 +239,8 @@ cogmaster_status cogmaster_load(cogmaster *m, const cogmaster_media *media)
     memset(&m->pending_input, 0, sizeof m->pending_input);
     memset(&m->input, 0, sizeof m->input);
     m->input_read = 0u;
+    m->table_device[0] = (uint8_t)probe.default_port1;
+    m->table_device[1] = (uint8_t)probe.default_port2;
     memset(&m->counters, 0, sizeof m->counters);
     m->fault_present = 0u;
     memset(&m->fault, 0, sizeof m->fault);
@@ -275,6 +277,9 @@ cogmaster_status cogmaster_get_info(const cogmaster *m, cogmaster_info *out)
     info.tv = m->tv;
     info.audio_channels = m->machine == COGMASTER_MACHINE_GG ? 2u : 1u;
     info.fm = m->fm_unit ? COGMASTER_FM_ON : COGMASTER_FM_OFF;
+    /* A table default the profile cannot take reads as a pad. */
+    info.default_port1 = cogmaster__device_ok(m, m->table_device[0]) ? m->table_device[0] : 0u;
+    info.default_port2 = cogmaster__device_ok(m, m->table_device[1]) ? m->table_device[1] : 0u;
     /* NTSC: a frame is 262 lines of 684 ticks, 179,208 ticks. A tick is a
        third of a Z80 cycle and the Z80 runs at 315/88 MHz, so the tick clock
        is 315/88 MHz x 3 (about 10,738,636 Hz) and the frame rate reduces to

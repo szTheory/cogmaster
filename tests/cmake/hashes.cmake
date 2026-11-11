@@ -83,6 +83,22 @@ if(MODE STREQUAL "write")
           endforeach()
         endforeach()
       endif()
+      # Fault prevented: a device frame that differs between lanes. A row is <file>|<script>|<arguments>;
+      # the frames are the script's lines, since the runner takes one record per frame.
+      foreach(row IN ITEMS "sports_pad.sms|sports|--port1 sports --input ${OUT}/tests/sports.input"
+          "paddle.sms|paddle|--port1 paddle --input ${OUT}/tests/paddle.input"
+          "glasses.sms|glasses|")
+        if(row MATCHES "^${filename}[|]([^|]*)[|](.*)$")
+          separate_arguments(device_args UNIX_COMMAND "${CMAKE_MATCH_2}")
+          file(STRINGS "${OUT}/tests/${CMAKE_MATCH_1}.input" device_script)
+          list(LENGTH device_script count)
+          execute_process(COMMAND ${EMULATOR} "${RUN}" "${image}" --machine sms --video-mode sms --region ntsc-j --frames ${count} --hash ${device_args} OUTPUT_VARIABLE frame ERROR_VARIABLE err RESULT_VARIABLE rc)
+          if(NOT rc STREQUAL "0" OR NOT frame MATCHES "^frame ${count} sha256 [0-9a-f]+\n")
+            message(FATAL_ERROR "device ${filename}: exit ${rc}: ${frame}${err}")
+          endif()
+          string(APPEND lines "playing ${filename} sms ntsc-j device ${frame}")
+        endif()
+      endforeach()
     endforeach()
     # Fault prevented: a sound that differs between lanes. The two hash lines of
     # each sound run, tagged "<file> <profile> <region> <variant>" after the

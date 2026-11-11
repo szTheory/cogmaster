@@ -50,14 +50,15 @@ set(COGMASTER_FUZZ_REGRESS ${CMAKE_CURRENT_LIST_DIR}/regress)
 # seeds. Every other target was compiled with the fuzzer-no-link
 # instrumentation by the preset.
 # Fault prevented: a loader or short-run crash, hang or sanitizer report that
-# the fixed seeds never reach, or an EEPROM clock stream that leaves the chip
-# out of bounds.
+# the fixed seeds never reach, an EEPROM clock stream that leaves the chip
+# out of bounds, or a device operation or saved state that leaves the controller
+# ports outside theirs.
 if(COGMASTER_LIBFUZZER)
   set(regress "")
   if(IS_DIRECTORY ${COGMASTER_FUZZ_REGRESS})
     set(regress -DREGRESS=${COGMASTER_FUZZ_REGRESS})
   endif()
-  foreach(target IN ITEMS loader run save eeprom)
+  foreach(target IN ITEMS loader run save eeprom pad)
     add_executable(cogmaster-fuzz-${target} ${CMAKE_CURRENT_LIST_DIR}/fuzz_${target}.c)
     target_include_directories(cogmaster-fuzz-${target} PRIVATE ${PROJECT_SOURCE_DIR}/src)
     target_link_libraries(cogmaster-fuzz-${target} PRIVATE cogmaster::cogmaster)
@@ -82,13 +83,14 @@ endif()
 # regressions, each a tests/roms/manifest.txt row) when it exists; never the
 # oversize directory.
 # Fault prevented: an input that once crashed or hung the loader or a short
-# run coming back unnoticed, on any lane, without libFuzzer installed, or an
-# EEPROM clock stream that leaves the chip out of bounds.
+# run coming back unnoticed, on any lane, without libFuzzer installed, an
+# EEPROM clock stream that leaves the chip out of bounds, or a device operation
+# or saved state that leaves the controller ports outside theirs.
 set(COGMASTER_FUZZ_INPUTS ${COGMASTER_SEEDS_DIR})
 if(IS_DIRECTORY ${COGMASTER_FUZZ_REGRESS})
   list(APPEND COGMASTER_FUZZ_INPUTS ${COGMASTER_FUZZ_REGRESS})
 endif()
-foreach(target IN ITEMS loader run save eeprom)
+foreach(target IN ITEMS loader run save eeprom pad)
   add_executable(cogmaster-fuzz-replay-${target}
     ${CMAKE_CURRENT_LIST_DIR}/replay.c ${CMAKE_CURRENT_LIST_DIR}/fuzz_${target}.c)
   target_include_directories(cogmaster-fuzz-replay-${target} PRIVATE ${PROJECT_SOURCE_DIR}/src)
