@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 8
 current_phase_name: Sports Pad, Paddle and 3-D glasses
 status: planning
-stopped_at: Completed 08-08-PLAN.md
-last_updated: "2026-11-11T05:48:49.927Z"
+stopped_at: Completed 08-09-PLAN.md
+last_updated: "2026-11-11T05:53:44.384Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 7 complete, transitioned to Phase 8
-state_head: 70f5b59b4e42c8d47d4c7f5fba8cbf36d9e656d3
+state_head: cc871fdea6725c34330cc3cfca8ef11e53a812bd
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 52
-  completed_plans: 43
+  completed_plans: 44
   percent: 38
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 8 — Sports Pad, Paddle and 3-D glasses
-Plan: 8 of 17 complete (08-01 port layer, 08-02 header delta, 08-03 set_input copy rule, 08-04 glasses core and hosted dispatch 1, 08-05 Sports Pad, Paddle and saved device state, 08-06 state bounds proof and pad fuzz target, 08-07 default controller per dump and the region rule, 08-08 runner device grammar, exit 77 refusal and probe default keys); next 08-09
+Plan: 9 of 17 complete (08-01 port layer, 08-02 header delta, 08-03 set_input copy rule, 08-04 glasses core and hosted dispatch 1, 08-05 Sports Pad, Paddle and saved device state, 08-06 state bounds proof and pad fuzz target, 08-07 default controller per dump and the region rule, 08-08 runner device grammar, exit 77 refusal and probe default keys, 08-09 runner delta lines and --eyes); next 08-10
 Status: Executing
-Last activity: 2026-11-11 — Completed 08-08 (--port1/--port2 take auto, pad, none, paddle or sports; one set_input after load exits 77 naming the fix; device names in the execution line; port1_default and port2_default in --probe; four runner.device cases with a negative control)
+Last activity: 2026-11-11 — Completed 08-09 (the input script takes a 75-byte line with x1 y1 x2 y2; motion for a pad or an empty port is exit 2 before frame 1 naming the port and device; --eyes prints one line of eye counts; five runner cases with a negative control)
 
 Progress: [████░░░░░░] 38% of v2.0
 
@@ -169,6 +169,7 @@ Progress: [████░░░░░░] 38% of v2.0
 | Phase 08 P06 | 45min | 2 tasks | 9 files |
 | Phase 8 P07 | 25min | 2 tasks | 7 files |
 | Phase 8 P08 | 40min | 2 tasks | 9 files |
+| Phase 08 P09 | 20 min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -227,6 +228,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 08]: The pad fuzz target names the saved fields to change in ten bytes after the profile byte and moves ticks only inside the frame window with a bus sync, so its state leg always has input and every instance it saves is one a run could have saved
 - [Phase 8]: Plan 08-07: the table's controller intent is held in two instance bytes outside the saved fields and resolved against the availability rule in get_info; a paddle row with no region reads as Japan in cart_fact_to_info, 1 of 1658 rows moved
 - [Phase 8]: Plan 08-08: auto resolves from cogmaster_info after load (already degraded by the profile), so only an explicit device choice can exit 77; the probe prints raw table intent
+- [Phase 08]: Plan 08-09: a pad or an empty port accepts only zero axes, a Paddle or Sports Pad any in-range value; the refusal line names the port and device; --eyes prints last after every other output line
 
 ### Pending Todos
 
@@ -342,8 +344,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T05:48:49.809Z
-Stopped at: Completed 08-08-PLAN.md
+Last session: 2026-11-11T05:53:44.270Z
+Stopped at: Completed 08-09-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
