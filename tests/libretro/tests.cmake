@@ -1,5 +1,110 @@
 # The libretro core: its vendored header, its .info claims, and the core
 # called in-process as a frontend calls it.
+#
+# Run as a script (cmake -DCASE=bios ... -P tests.cmake), this file is the BIOS boot check; include()d by
+# tests/tests.cmake, it registers the libretro tests.
+if(CMAKE_SCRIPT_MODE_FILE)
+  # The runner's frame digest of the cartridge at frame K with the given runner options.
+  function(runner_digest var cart)
+    execute_process(COMMAND ${EMULATOR} ${RUN} ${cart} --frames ${K} --hash ${ARGN}
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "0" OR NOT out MATCHES "^frame ${K} sha256 ([0-9a-f]+)\n$")
+      message(FATAL_ERROR "cogmaster-run ${cart} ${ARGN}: exit ${rc}\n${out}${err}")
+    endif()
+    set(${var} ${CMAKE_MATCH_1} PARENT_SCOPE)
+  endfunction()
+  # One leg: the module under the host with a boot option, a region option and a system folder must
+  # deliver digest, ask for the folder calls times and log lines lines holding word.
+  function(leg cart digest boot region dir calls lines word)
+    execute_process(COMMAND ${EMULATOR} ${HOST} ${MODULE} bios ${cart} ${K} ${digest} ${boot} ${region}
+        "${dir}" ${calls} ${lines} "${word}"
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "0")
+      message(FATAL_ERROR "boot ${boot}, region ${region}, folder ${dir}: exit ${rc}\n${out}${err}")
+    endif()
+  endfunction()
+  # The three file names are the .info's, read from the built file and never typed here.
+  file(STRINGS "${INFO}" firmware REGEX "^firmware[0-9]+_path = ")
+  set(names "")
+  foreach(line IN LISTS firmware)
+    string(REGEX REPLACE "^[^\"]*\"([^\"]*)\"$" "\\1" name "${line}")
+    list(APPEND names ${name})
+  endforeach()
+  list(LENGTH names count)
+  if(NOT count EQUAL 3)
+    message(FATAL_ERROR "${INFO}: expected three firmware paths, got '${names}'")
+  endif()
+  list(GET names 0 file_U)
+  list(GET names 1 file_E)
+  list(GET names 2 file_J)
+  set(K 1)
+  # A file that is not 8192 bytes: three bytes, and one over the read cap.
+  string(REPEAT "b" 8192 over)
+  file(REMOVE_RECURSE "${OUT}")
+  foreach(folder IN ITEMS only_U only_E only_J hostile over empty)
+    file(MAKE_DIRECTORY "${OUT}/${folder}")
+  endforeach()
+  foreach(owner IN ITEMS U E J)
+    foreach(region IN ITEMS U E J)
+      if(owner STREQUAL region)
+        file(COPY_FILE "${BIOS}" "${OUT}/only_${owner}/${file_${region}}")
+      else()
+        file(CONFIGURE OUTPUT "${OUT}/only_${owner}/${file_${region}}" CONTENT "ab" NEWLINE_STYLE UNIX @ONLY)
+      endif()
+    endforeach()
+  endforeach()
+  foreach(region IN ITEMS U E J)
+    file(CONFIGURE OUTPUT "${OUT}/hostile/${file_${region}}" CONTENT "ab" NEWLINE_STYLE UNIX @ONLY)
+    file(CONFIGURE OUTPUT "${OUT}/over/${file_${region}}" CONTENT "${over}" NEWLINE_STYLE UNIX @ONLY)
+  endforeach()
+  file(SIZE "${OUT}/over/${file_U}" size)
+  file(SIZE "${OUT}/only_E/${file_J}" tiny)
+  file(SIZE "${OUT}/only_J/${file_J}" good)
+  if(NOT size EQUAL 8193 OR NOT tiny EQUAL 3 OR NOT good EQUAL 8192)
+    message(FATAL_ERROR "the test folders hold files of ${size}, ${tiny} and ${good} bytes, not 8193, 3 and 8192")
+  endif()
+  # What the runner shows: the BIOS frame and the fast frame at K for each region. The two must differ, or
+  # a leg that fell back to the fast boot would pass as a BIOS boot.
+  set(flag_U ntsc-u)
+  set(flag_E pal)
+  set(flag_J ntsc-j)
+  runner_digest(fast_auto "${CART}")
+  runner_digest(bios_auto "${CART}" --boot bios --bios "${BIOS}")
+  runner_digest(fast_gg "${GG_CART}")
+  foreach(region IN ITEMS U E J)
+    runner_digest(fast_${region} "${CART}" --region ${flag_${region}})
+    runner_digest(bios_${region} "${CART}" --region ${flag_${region}} --boot bios --bios "${BIOS}")
+    if(bios_${region} STREQUAL fast_${region})
+      message(FATAL_ERROR "the BIOS and fast frames hash alike at frame ${K} for ${region}")
+    endif()
+  endforeach()
+  if(bios_auto STREQUAL fast_auto)
+    message(FATAL_ERROR "the BIOS and fast frames hash alike at frame ${K}")
+  endif()
+  # The right file gives the runner's BIOS frame with no log line; with the option at its default, or with
+  # any other file wrong-sized, the folder is not read, or the file the region names is the one refused.
+  leg("${CART}" ${bios_auto} bios auto "${OUT}/only_U" 1 0 -)
+  foreach(owner IN ITEMS U E J)
+    foreach(region IN ITEMS U E J)
+      if(owner STREQUAL region)
+        leg("${CART}" ${bios_${region}} bios ${flag_${region}} "${OUT}/only_${owner}" 1 0 -)
+      else()
+        leg("${CART}" ${fast_${region}} bios ${flag_${region}} "${OUT}/only_${owner}" 1 1 "${file_${region}}")
+      endif()
+    endforeach()
+  endforeach()
+  leg("${CART}" ${fast_auto} fast auto "${OUT}/only_U" 0 0 -)
+  leg("${CART}" ${fast_auto} fast auto "${OUT}/hostile" 0 0 -)
+  leg("${CART}" ${fast_auto} bios auto "${OUT}/empty" 1 1 "${file_U}")
+  leg("${CART}" ${fast_auto} bios auto "${OUT}/over" 1 1 "${file_U}")
+  leg("${CART}" ${fast_auto} bios auto @null 1 1 "${file_U}")
+  leg("${CART}" ${fast_auto} bios auto @empty 1 1 "${file_U}")
+  leg("${CART}" ${fast_auto} bios auto @long 1 1 "${file_U}")
+  leg("${CART}" ${fast_auto} bios auto "@false=${OUT}/only_U" 1 1 "${file_U}")
+  leg("${GG_CART}" ${fast_gg} bios auto "${OUT}/only_U" 0 1 "Game Gear")
+  return()
+endif()
+
 set(libretro_scripts ${CMAKE_CURRENT_LIST_DIR}/../cmake)
 
 # Fault prevented: the vendored libretro.h edited in place, so the core no
@@ -164,6 +269,20 @@ if(TARGET cogmaster_libretro)
         -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
       LABELS libretro portable TIMEOUT 10)
     set_tests_properties(libretro.host.korean_control PROPERTIES DEPENDS libretro.host.korean)
+    # Fault prevented: a frontend user locked out by a BIOS that is merely present (a header-failing game
+    # would lock up), a failed load where a warning and a working fast boot would do, a path or a file name
+    # read from anywhere but the one system folder, a Game Gear cartridge sent to a BIOS, and a region that
+    # opens another region's file. The file names come from the built .info.
+    # Timeout: 20 s floor, provisional until the first hosted run times it.
+    string(REPLACE ";" "$<SEMICOLON>" bios_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
+    cogmaster_add_test(NAME libretro.host.bios
+      COMMAND ${CMAKE_COMMAND} -DCASE=bios -DINFO=${PROJECT_BINARY_DIR}/libretro/cogmaster_libretro.info
+        -DCART=${COGMASTER_FIXTURES_DIR}/bios_probe.sms -DGG_CART=${COGMASTER_FIXTURES_DIR}/boot_to_play.gg
+        -DBIOS=${COGMASTER_FIXTURES_DIR}/bios_shape.bin -DOUT=${PROJECT_BINARY_DIR}/tests/libretro-bios
+        -DRUN=$<TARGET_FILE:cogmaster-run> -DHOST=$<TARGET_FILE:cogmaster-test-libretro-host>
+        -DMODULE=$<TARGET_FILE:cogmaster_libretro> "-DEMULATOR=${bios_emulator}"
+        -P ${CMAKE_CURRENT_LIST_FILE}
+      LABELS libretro portable TIMEOUT 20)
     # Fault prevented: a Sports Pad or Paddle title that gets the wrong device, an unbounded motion sum or motion that never reaches
     # the guest, or a non-3-D title held on a picture that never arrives; a Light Phaser pointer
     # mapped without the crop, a crosshair drawn into a hashed or persistent buffer, or a Pause that
@@ -232,5 +351,20 @@ if(TARGET cogmaster_libretro)
   cogmaster_add_test(NAME libretro.info_claims.self_test
     COMMAND ${CMAKE_COMMAND} "-DCMD=${libretro_cmd}" -DCODE=1
       "-DREGEX=savestate = .true. maps to no test" -P ${libretro_scripts}/expect_fail.cmake
+    LABELS libretro TIMEOUT 10)
+  # Fault prevented: a firmware row in the .info that no test backs. A built .info claiming
+  # firmware0_opt against an inventory without libretro.host.bios must fail naming the claim.
+  set(libretro_firmware_info ${PROJECT_BINARY_DIR}/libretro/firmware_claim.info)
+  set(libretro_firmware_inventory ${PROJECT_BINARY_DIR}/libretro/firmware_inventory.txt)
+  file(CONFIGURE OUTPUT ${libretro_firmware_info} CONTENT "firmware0_opt = \"true\"\n"
+    NEWLINE_STYLE UNIX @ONLY)
+  file(CONFIGURE OUTPUT ${libretro_firmware_inventory} CONTENT "libretro.host.content\tlibretro,portable\n"
+    NEWLINE_STYLE UNIX @ONLY)
+  set(libretro_cmd ${CMAKE_COMMAND} -DINFO=${libretro_firmware_info}
+    -DINVENTORY=${libretro_firmware_inventory} -DCHECK=info_claims -P ${libretro_scripts}/repository.cmake)
+  string(REPLACE ";" "$<SEMICOLON>" libretro_cmd "${libretro_cmd}")
+  cogmaster_add_test(NAME libretro.info_claims.self_test.firmware
+    COMMAND ${CMAKE_COMMAND} "-DCMD=${libretro_cmd}" -DCODE=1
+      "-DREGEX=firmware_opt needs libretro.host.bios" -P ${libretro_scripts}/expect_fail.cmake
     LABELS libretro TIMEOUT 10)
 endif()

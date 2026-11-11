@@ -188,18 +188,25 @@ static unsigned options_calls;
 static const char *option_machine, *option_mode, *option_region, *option_aspect, *option_view,
     *option_fm, *option_port1, *option_port2, *option_3d, *option_crosshair, *option_colour;
 static unsigned log_lines;
+static char last_log[128];
+/* The system folder the frontend answers, how many times it was asked, and whether it answers false
+   while still filling the path in. The boot option is the player's choice: fast unless a case says.
+ */
+static const char *system_dir;
+static unsigned system_dir_calls;
+static int system_dir_false;
+static const char *option_boot = "fast";
 static bool option_update, running;
 static unsigned geometry_calls;
 static struct retro_game_geometry notified;
 
 static void RETRO_CALLCONV log_line(enum retro_log_level level, const char *fmt, ...)
 {
-    char text[128];
     va_list args;
     va_start(args, fmt);
-    (void)vsnprintf(text, sizeof text, fmt, args);
+    (void)vsnprintf(last_log, sizeof last_log, fmt, args);
     va_end(args);
-    CHECK(level >= RETRO_LOG_DEBUG && strncmp(text, "cogmaster: ", 11u) == 0);
+    CHECK(level >= RETRO_LOG_DEBUG && strncmp(last_log, "cogmaster: ", 11u) == 0);
     log_lines++;
 }
 
@@ -233,7 +240,14 @@ static bool RETRO_CALLCONV env(unsigned cmd, void *data)
             v->value = option_crosshair;
         if (strcmp(v->key, "cogmaster_crosshair_colour") == 0)
             v->value = option_colour;
+        if (strcmp(v->key, "cogmaster_boot") == 0)
+            v->value = option_boot;
         return v->value != NULL;
+    }
+    if (cmd == RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY) {
+        system_dir_calls++;
+        *(const char **)data = system_dir;
+        return system_dir_false == 0;
     }
     if (cmd == RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE) {
         *(bool *)data = option_update;
@@ -588,6 +602,7 @@ static int frame_test(const char *path, const char *frames, const char *digest)
 #include "battery.h"
 #include "audio.h"
 #include "gun.h"
+#include "bios.h"
 
 static void *span_alloc(void *user, size_t n)
 {
@@ -679,6 +694,15 @@ int main(int argc, char **argv)
     cogmaster_versions v;
     unsigned run, aspect_w, aspect_h, bad_counts = 0;
     size_t total = 0;
+
+    if (argc == 12 && strcmp(argv[2], "bios") == 0) {
+        if (!module_open(argv[1]))
+            return 1;
+        resolve_all();
+        int rc = missing != NULL ? 1 : bios_test(argv + 3);
+        module_close();
+        return rc;
+    }
 
     if (argc == 8 && strcmp(argv[2], "fm_option") == 0) {
         if (!module_open(argv[1]))

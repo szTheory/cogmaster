@@ -103,10 +103,19 @@ static struct retro_core_option_v2_definition lr_definitions[] = {
                 {"yellow", "Yellow"},
                 {NULL, NULL}},
      .default_value = "white"},
+    {.key = "cogmaster_boot",
+     .desc = "Boot (reload content)",
+     .info = "Fast boot starts the game at once. BIOS boot reads bios_U.sms, bios_E.sms or "
+             "bios_J.sms from the system folder, chosen by region and TV; a missing or unusable "
+             "file gives fast boot and one warning. Takes effect on content load.",
+     .values = {{"fast", "Fast boot (no BIOS)"},
+                {"bios", "BIOS from the system folder; PAL needs TV = PAL"},
+                {NULL, NULL}},
+     .default_value = "fast"},
     {0}};
 /* The options every table below must hold; the v2, v1 and v0 tables are separate, and the
    host exercises only v2, so a later option cannot miss one without failing the build. */
-#define LR_OPTION_COUNT 11u
+#define LR_OPTION_COUNT 12u
 _Static_assert(sizeof lr_definitions / sizeof lr_definitions[0] == LR_OPTION_COUNT + 1u,
                "v2 option table");
 static struct retro_core_options_v2 lr_options = {NULL, lr_definitions};
@@ -124,6 +133,7 @@ static struct retro_variable lr_variables[] = {
     {"cogmaster_3d_view", "3-D glasses view; left|right|alternate|anaglyph|off"},
     {"cogmaster_crosshair", "Light Phaser crosshair; on|off"},
     {"cogmaster_crosshair_colour", "Crosshair colour; white|red|green|yellow"},
+    {"cogmaster_boot", "Boot (reload content); fast|bios"},
     {NULL, NULL}};
 _Static_assert(sizeof lr_variables / sizeof lr_variables[0] == LR_OPTION_COUNT + 1u,
                "v0 option table");

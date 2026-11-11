@@ -86,8 +86,8 @@ api_version)
   while(match(h,/struct [a-z_]+ {[^}]*}/)) {s=substr(h,RSTART,RLENGTH); h=substr(h,RSTART+RLENGTH); gsub(/[A-Za-z0-9_)]\([^()]*\)/,"",s); while(match(s,/[A-Za-z_][A-Za-z0-9_]*\)*;/)) {n=substr(s,RSTART,RLENGTH); gsub(/[);]/,"",n); names[n]=1; s=substr(s,RSTART+RLENGTH)} }
   for(n in names) if(tests !~ "[^A-Za-z0-9_]" n "[^A-Za-z0-9_]") { print "in no tests/api/vK.c with K <= " v ": " n; bad=1 } exit bad }' ;;
 info_claims)
-  awk 'BEGIN {claims["supports_no_game"]="libretro.host.xrgb8888"; claims["input_descriptors"]="libretro.host.content"; claims["core_options"]="libretro.presentation.xrgb8888"; claims["libretro_saves"]="libretro.span.eeprom"; while((getline s < ENVIRON["INVENTORY"])>0) {split(s,a,"\t"); inventory[a[1]]=1} }
-  /^[a-z_0-9]+ = "true"$/ && $1!="is_experimental" { if(!($1 in claims)) {print $0 " maps to no test"; bad=1} else if(!(claims[$1] in inventory)) {print $1 " needs " claims[$1] ", which is not in " ENVIRON["INVENTORY"]; bad=1} } END {exit bad}' "$INFO" ;;
+  awk 'BEGIN {claims["supports_no_game"]="libretro.host.xrgb8888"; claims["input_descriptors"]="libretro.host.content"; claims["core_options"]="libretro.presentation.xrgb8888"; claims["libretro_saves"]="libretro.span.eeprom"; claims["firmware_opt"]="libretro.host.bios"; while((getline s < ENVIRON["INVENTORY"])>0) {split(s,a,"\t"); inventory[a[1]]=1} }
+  /^[a-z_0-9]+ = "true"$/ && $1!="is_experimental" { k=$1; sub(/^firmware[0-9]+/,"firmware",k); if(!(k in claims)) {print $0 " maps to no test"; bad=1} else if(!(claims[k] in inventory)) {print k " needs " claims[k] ", which is not in " ENVIRON["INVENTORY"]; bad=1} } END {exit bad}' "$INFO" ;;
 bios_table)
   # A mistyped digest leaves a real dump unrecognised or unscanned: the doc rows and the table rows must agree both ways.
   awk 'FNR==NR { n=split($0,f,"|"); split(f[2],p,"`"); split(f[5],q,"`"); s=f[3]; gsub(/[ ,]/,"",s); if(n>5 && p[2]!="" && length(q[2])==40) {doc[p[2]]=s " " q[2]; nd++} next }

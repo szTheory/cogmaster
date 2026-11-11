@@ -272,6 +272,7 @@ libretro.host.audio.boot_to_play.gg	libretro,portable
 libretro.host.audio.boot_to_play.sms	libretro,portable
 libretro.host.audio.psg_sweep.gg	libretro,portable
 libretro.host.audio.psg_sweep.sms	libretro,portable
+libretro.host.bios	libretro,portable
 libretro.host.content	libretro,portable
 libretro.host.content.gg	libretro,portable
 libretro.host.devices.clamp	libretro,portable
@@ -293,6 +294,7 @@ libretro.host.stereo.one_eye	libretro,portable
 libretro.host.xrgb8888	libretro,portable
 libretro.info_claims	libretro
 libretro.info_claims.self_test	libretro
+libretro.info_claims.self_test.firmware	libretro
 libretro.presentation.rgb565	libretro,portable
 libretro.presentation.xrgb8888	libretro,portable
 libretro.screenshot.fixture	libretro,portable
