@@ -89,6 +89,8 @@ byte-identical files. Built files stay in the build directory; they never reach 
 | Store Display unit (`smssdisp.rom`) | 16,384 | `ee2c29ba` | `fc465122134d95363112eb51b9ab71db3576cefd` |
 | Game Gear Majesco BIOS (`majbios.rom`) | 1,024 | `0ebea9d4` | `914aa165e3d879f060be77870d345b60cfeb4ede` |
 
+The table in `host/bios_table.inc` holds these names, sizes and SHA-1 digests, and `policy.bios_table` checks it against
+these rows in both directions; the rows stay here as the public record, CRC32 and SHA-1 columns kept.
 No SHA-256 is recorded upstream; the first maintainer dump that matches both CRC32 and SHA-1 records one here.
 The runner reports an unknown BIOS digest by name instead of guessing. libretro's BIOS file names for other cores
 are in HOSTS-AND-INTEGRATION 1.

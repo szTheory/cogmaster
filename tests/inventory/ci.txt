@@ -315,6 +315,11 @@ perf.gate.plus_1_00	perf
 perf.gate.plus_1_01	perf
 perf.gate.unstable	perf
 perf.playing	perf,portable
+policy.bios_dir_reads	policy
+policy.bios_dir_reads.self_test	policy
+policy.bios_table	policy
+policy.bios_table.self_test.doc	policy
+policy.bios_table.self_test.table	policy
 policy.compat_doc_fresh	compat,policy
 policy.compat_doc_fresh.self_test	compat,policy
 policy.dependabot	policy
