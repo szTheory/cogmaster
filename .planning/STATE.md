@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 8
 current_phase_name: Sports Pad, Paddle and 3-D glasses
 status: planning
-stopped_at: Completed 08-10-PLAN.md
-last_updated: "2026-11-11T06:08:08.182Z"
+stopped_at: Completed 08-11-PLAN.md
+last_updated: "2026-11-11T06:19:43.572Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 7 complete, transitioned to Phase 8
-state_head: 4fa80bf41a84ab05c565e5b500666cad9414f23e
+state_head: c0ddac181a479c62e58b1ddd377d414bebf85226
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 52
-  completed_plans: 45
+  completed_plans: 46
   percent: 38
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 8 — Sports Pad, Paddle and 3-D glasses
-Plan: 10 of 17 complete (08-01 port layer, 08-02 header delta, 08-03 set_input copy rule, 08-04 glasses core and hosted dispatch 1, 08-05 Sports Pad, Paddle and saved device state, 08-06 state bounds proof and pad fuzz target, 08-07 default controller per dump and the region rule, 08-08 runner device grammar, exit 77 refusal and probe default keys, 08-09 runner delta lines and --eyes, 08-10 Sports Pad fixture and replay); next 08-11
+Plan: 11 of 17 complete (08-01 port layer, 08-02 header delta, 08-03 set_input copy rule, 08-04 glasses core and hosted dispatch 1, 08-05 Sports Pad, Paddle and saved device state, 08-06 state bounds proof and pad fuzz target, 08-07 default controller per dump and the region rule, 08-08 runner device grammar, exit 77 refusal and probe default keys, 08-09 runner delta lines and --eyes, 08-10 Sports Pad fixture and replay, 08-11 Paddle fixture and replay); next 08-12
 Status: Executing
-Last activity: 2026-11-11 — Completed 08-10 (sports_pad.sms polls the pad with 286/143 cycle waits and reports X and Y, the 511 and 512 cycle idle probe and the buttons; rows recomputed from one delta list on export and Japan, two failing controls, a cross-lane device hash row, and a recorded script that replays through the runner to the same hash)
+Last activity: 2026-11-11 — Completed 08-11 (paddle.sms runs the region test, a TR ones sweep at ten loop lengths and the two-nibble position reader; every criterion length reads 126 to 150 ones of 256 so the constant stays 299; positions recomputed from one delta list, three failing controls, a cross-lane device hash row, and a replay on the Japan profile). Runtime Claude Code, model Sonnet 5.5
 
 Progress: [████░░░░░░] 38% of v2.0
 
@@ -171,6 +171,7 @@ Progress: [████░░░░░░] 38% of v2.0
 | Phase 8 P08 | 40min | 2 tasks | 9 files |
 | Phase 08 P09 | 20 min | 2 tasks | 9 files |
 | Phase 8 P10 | 70min | 3 tasks | 11 files |
+| Phase 08 P11 | 45min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -232,6 +233,8 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 08]: Plan 08-09: a pad or an empty port accepts only zero axes, a Paddle or Sports Pad any in-range value; the refusal line names the port and device; --eyes prints last after every other output line
 - [Phase 8]: Sports Pad idle timeout probed at 511 and 512 cycles (1,533 and 1,536 ticks): a gap is whole Z80 cycles of 3 ticks
 - [Phase 8]: Replay recorder keeps motion within 100 counts a frame and drains audio each frame so the last frame follows the last delta and a restored copy matches in state bytes
+- [Phase 08]: PADDLE_HALF_TICKS stays 299: the eight criterion sweep lengths read 126 to 150 ones of 256; src/internal.h untouched
+- [Phase 08]: The Paddle position oracle clamps after every frame's motion (saturating sum), matching the core; the sweep's two shortest periods (29, 31) are the detect loop unrolled because a padded DJNZ loop cannot be shorter than 43 cycles
 
 ### Pending Todos
 
@@ -348,8 +351,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T06:08:08.083Z
-Stopped at: Completed 08-10-PLAN.md
+Last session: 2026-11-11T06:19:43.445Z
+Stopped at: Completed 08-11-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
