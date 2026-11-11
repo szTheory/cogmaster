@@ -107,10 +107,10 @@ Plans:
   3. The libretro core reports saves enabled, and a guard test shows the exported span equals the battery span (SAVE-04).
   4. `cogmaster-run --save-interval N` writes the save after every N completed frames; a kill test between flushes leaves the last complete save readable, stale temporary files are swept on the next run, and the directory is synced after the rename on POSIX (SAVE-05).
   5. A hosted RetroArch run writes a battery save and an EEPROM save, restarts and reads both back, and the budget test keeps `tests/retroarch` at or under 300 lines (SAVE-06).
-**Plans**: 10 plans
+**Plans**: 1/10 plans executed
 
 Plans:
-- [ ] 07-01-PLAN.md — 93C46 device from the data sheet with closed-form and differential tests (SAVE-01)
+- [x] 07-01-PLAN.md — 93C46 device from the data sheet with closed-form and differential tests (SAVE-01)
 - [ ] 07-02-PLAN.md — API 11 surface: EEPROM board constant, versions 11/13/13, v11 program, probe name (SAVE-01, SAVE-02)
 - [ ] 07-03-PLAN.md — EEPROM board arm behind default, 128-byte cart RAM, bounded state and mid-command round trips (SAVE-01, SAVE-02)
 - [ ] 07-04-PLAN.md — eeprom slot flipped and table regenerated with equivalence proof; early perf delta (SAVE-01)
@@ -190,7 +190,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 5. Tune-up | v2.0 | 14/14 | Complete    | 2026-11-10 |
 | 6. Korean cartridges play | v2.0 | 11/11 | Complete    | 2026-11-10 |
-| 7. Saves survive a restart | v2.0 | 0/TBD | Not started | - |
+| 7. Saves survive a restart | v2.0 | 1/10 | In Progress | - |
 | 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 0/TBD | Not started | - |
 | 9. Light Phaser | v2.0 | 0/TBD | Not started | - |
 | 10. BIOS boot | v2.0 | 0/TBD | Not started | - |

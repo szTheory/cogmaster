@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 7
 current_phase_name: Saves survive a restart
 status: planning
-stopped_at: Phase 6 complete, ready to plan Phase 7
-last_updated: "2026-11-10T09:19:07.575Z"
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-11-11T01:06:26.804Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 6 complete, transitioned to Phase 7
-state_head: d652bd5dfb07189df1464c83dab3953cdddae8b7
+state_head: 82c9233428812bdb04067f7517a3fd2a0e51f7ac
 progress:
   total_phases: 8
   completed_phases: 2
-  total_plans: 25
-  completed_plans: 25
+  total_plans: 35
+  completed_plans: 26
   percent: 25
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-10)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 6 — Korean cartridges play
+**Current focus:** Phase 7 — Saves survive a restart
 
 ## Current Position
 
 Phase: 7 — Saves survive a restart
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-10 — Phase 6 complete, transitioned to Phase 7
+Plan: 1 of 10 complete (07-01)
+Status: Executing
+Last activity: 2026-11-10 — Executed 07-01, the 93C46 device and its tests
 
 Progress: [███░░░░░░░] 25% of v2.0
 
@@ -150,6 +150,7 @@ Progress: [███░░░░░░░] 25% of v2.0
 | Phase 06 P09 | 12 min | 2 tasks | 6 files |
 | Phase 06 P10 | 20min | 3 tasks | 12 files |
 | Phase 06 P11 | 25 min | 3 tasks | 3 files |
+| Phase 07 P01 | 45 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -187,6 +188,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 06]: 06-09: the refusal text lives in probe.c beside the board names and main.c makes one call; no test name added, three existing runner cases extended
 - [Phase 06]: 06-10: the Korean, Zemina and 4 PAK images are detected by the scan (board_source heuristic), not by fixture_facts rows; a 4 PAK slot powers up on page 0 (banks 0 and 1)
 - [Phase 06]: 06-11: no perf allow line; boot_to_play delta_bp 0 on final head run 42787536409, eight-lane hash equality green
+- [Phase 07]: 93C46: EWEN/EWDS act on the completing clock; WRITE, ERASE, WRAL and ERAL run when chip select falls, so one change is reported per completed command
 
 ### Pending Todos
 
@@ -266,6 +268,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-10 | Execute phase 6 plan 06-09 (gsd-execute-phase 06); probe board_source and scan keys, every board named in mapper_guess, refusal message naming board and reason, Janggun-looking seed; 2 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 
 | 2026-11-10 | Discuss, plan, execute, verify and ship phase 6 (gsd-autonomous); 11 plans, review 0 critical (WR-01 fixed, rest SEED-009), verifier passed 5/5, hosted run 42787536409, PR #21 squash-merged on green PR run 42789733748 (eight-lane hash-equality, perf delta_bp 0), release PR #22 merged, v0.6.0 | Claude Code | claude-sonnet-5-5 (planner claude-opus-5-5) |
+| 2026-11-10 | Execute phase 7 plan 07-01 (gsd-execute-phase 07, retry after a rate-limit death); 93C46 device, closed-form and differential tests, two negative controls; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -287,8 +290,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T09:09:15.688Z
-Stopped at: Phase 6 shipped as v0.6.0; phase 7 discuss next, ready to plan Phase 7
+Last session: 2026-11-11T01:06:26.740Z
+Stopped at: Completed 07-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
