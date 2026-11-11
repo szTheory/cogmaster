@@ -70,9 +70,9 @@ cogmaster_warnings(cogmaster-test-ports-gun)
 foreach(case IN ITEMS latch_at aim pins hostile_aim model edge luma control order fault_neutral lag
     seen_expiry peek noshot hammer walk th_toggle)
   if(case STREQUAL "noshot")
-    # Timeout: 60 s floor; provisional. Four profiles of 160 frames on three instances; it took
-    # 124.50 s on the be32 lane at 600 frames.
-    set(gun_timeout 60)
+    # Timeout: 69 s; 2 x 34.46 s (be32), slowest of 1 run, run 43010180943. Four profiles of 160 frames on
+    # three instances; it took 124.50 s on the be32 lane at 600 frames.
+    set(gun_timeout 69)
   elseif(case MATCHES "^(hostile_aim|model|hammer|walk|th_toggle)$")
     # Timeout: 60 s floor; 2 x 13.83 s (hostile_aim), slowest of 2 runs, runs 43003041792 and
     # 43003756603. The million-access cases keep 60 s: 1.15 s there, and they are the ones that
@@ -128,8 +128,8 @@ cogmaster_warnings(cogmaster-test-ports-state)
 # outside what a run makes, which would drive the scan off the picture.
 foreach(case IN ITEMS mutation outside sweep midsequence profile_device gun)
   if(case STREQUAL "gun")
-    # Timeout: 120 s floor; provisional.
-    set(state_timeout 120)
+    # Timeout: 20 s floor; 2 x 4.52 s (be32), slowest of 1 run, run 43010180943.
+    set(state_timeout 20)
   else()
     # Timeout: 80 s; 2 x 38.44 s, slowest of 1 run, run 42973268415 (mutation on the be32 lane, 4.7 s native).
     set(state_timeout 80)

@@ -1304,7 +1304,7 @@ endforeach()
 # export, Japanese, PAL and first-model consoles with the gun on port 1, and on port 2 with a pad on port 1 (the
 # row that names the TH bit differs); an aim 16 dots to the left, no aim and a pad on the port must each fall
 # outside a row.
-# Timeout: 10 s floor; provisional.
+# Timeout: 10 s floor; 2 x 0.41 s (mailbox.japan on be32), slowest of 1 run, run 43010180943.
 foreach(profile IN ITEMS export japan pal sms1)
   set(machine sms)
   set(region ntsc-u)
@@ -1330,7 +1330,7 @@ cogmaster_add_test(NAME fixtures.light_phaser.port2
     -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
     -DOUT=${fixtures_out}/light_phaser.port2.txt -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS fixtures portable TIMEOUT 10)
-# Timeout: 10 s floor; provisional.
+# Timeout: 10 s floor; 2 x 0.38 s (control.parked on be32), slowest of 1 run, run 43010180943.
 foreach(control IN ITEMS left parked pad)
   set(input phaser-${control})
   set(device lphaser)

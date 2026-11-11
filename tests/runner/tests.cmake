@@ -1384,7 +1384,7 @@ endforeach()
 
 # Fault prevented: a gun aim typo that runs as no aim and hides a broken script, an aim sent to a pad that is
 # silently dropped, or a Game Gear that runs a gun it cannot have.
-# Timeout: 30 s floor; provisional.
+# Timeout: 30 s floor; 2 x 1.16 s (args on be32), slowest of 1 run, run 43010180943.
 foreach(gun_case IN ITEMS args gg_refused)
   cogmaster_add_test(NAME runner.gun.${gun_case}
     COMMAND ${runner_check} -DCASE=gun_${gun_case}
@@ -1396,7 +1396,7 @@ endforeach()
 # crop the hosts map through; a gun on the port that changes a run in which it sees no light, so a title that
 # never aims is not the title that ran before. The fixture's aim is judged against its row and, 16 dots left, falls
 # outside it; the parked and dark-aimed runs equal the pad's.
-# Timeout: 30 s floor; provisional.
+# Timeout: 30 s floor; 2 x 1.43 s (noshot on be32), slowest of 1 run, run 43010180943.
 if(COGMASTER_FIXTURES)
   set(gun_run ${runner_check} -DIMAGE=${PROJECT_BINARY_DIR}/fixtures/light_phaser.sms -DFRAMES=40
     -DPHASER=${PROJECT_BINARY_DIR}/tests/phaser.input -DLEFT=${PROJECT_BINARY_DIR}/tests/phaser-left.input
