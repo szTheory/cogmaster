@@ -202,7 +202,20 @@ struct cogmaster__io {
     uint8_t gg[6];    /* Game Gear $01-$06 */
     /* $F2 as written, below 4: 0 PSG, 1 FM, 2 neither, 3 both; 0 with no FM unit */
     uint8_t audio_ctrl;
+    /* The 3-D glasses eye last written to $FFF8-$FFFB (COGMASTER_GLASSES_*, 0 for none), and the
+       eye this frame reports: the eye in force at its start unless a write in the top half overrode
+       it. */
+    uint8_t glasses;
+    uint8_t glasses_frame;
 };
+
+/* The 3-D glasses adapter snoops writes to $FFF8-$FFFB: bit 0 clear opens the right shutter, set
+   the left (SMS Power, 3-D Glasses; MAME sms_m.cpp sscope_w, BSD-3). A frame's window starts at
+   line 192 tick 607, so the top 96 active lines of the next picture end this many ticks into it,
+   given the frame's length in lines. The cut at active line 96 is the core's own choice; MAME cuts
+   at half the screen's total height, which is not claimed here. A write before the cut belongs to
+   this window's picture, a later one to the next. */
+#define COGMASTER__GLASSES_CUT_TICKS(frame_lines) (((frame_lines) - 96u) * 684u - 607u)
 
 /* The Master System's work RAM, mirrored over $C000-$FFFF. */
 #define COGMASTER__RAM_SIZE 8192u
@@ -668,6 +681,9 @@ uint8_t cogmaster__io_in(cogmaster *m, uint16_t port);
 void cogmaster__io_out(cogmaster *m, uint16_t port, uint8_t v);
 uint8_t cogmaster__io_open_bus(cogmaster *m);
 void cogmaster__io_reset(cogmaster *m);
+/* A write at $FFF8-$FFFF that reached work RAM's mirror: the Sega mapper registers at $FFFC and up,
+   the 3-D glasses eye below them. Faults as the bus does when it reaches nothing. */
+void cogmaster__io_glasses_write(cogmaster *m, uint16_t addr, uint8_t v);
 /* Every $3F write: the latch of the H counter on a rising TH lives here. */
 void cogmaster__io_th_changed(cogmaster *m, uint8_t old_ctrl, uint8_t new_ctrl, uint64_t tick);
 /* The six pins a port's device drives (b0-b3 D0-D3, b4 TL, b5 TR), 0 = low.

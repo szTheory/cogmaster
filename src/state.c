@@ -58,7 +58,7 @@ _Static_assert(sizeof(struct cogmaster__bus) == 40u, "bus changed: update bus_io
 _Static_assert(sizeof(struct cogmaster__vdp) == 16510u, "vdp changed: update vdp_io");
 _Static_assert(sizeof(struct cogmaster__mapper) == 12u, "mapper changed: update mapper_io");
 _Static_assert(sizeof(struct cogmaster__eeprom) == 8u, "eeprom changed: update eeprom_io");
-_Static_assert(sizeof(struct cogmaster__io) == 9u, "io changed: update io_io");
+_Static_assert(sizeof(struct cogmaster__io) == 11u, "io changed: update io_io");
 /* The saved synth fields are the ring, integrator, DC estimate, head, levels,
    gained levels and the cadence phase. The trace counters, the stats and the
    PCM the host has not taken are its queue and counters, not state, so a new
@@ -379,7 +379,15 @@ static uint8_t io_io(struct cogmaster__sio *io, cogmaster *m)
         cogmaster__sio_check(io, i != 4u || (v & 0x07u) == 0u);
     }
     /* The audio control, which only the FM unit's $F2 writes, within the bits the unit keeps. */
-    return cogmaster__sio_u8(io, "io_audio_ctrl", &p->audio_ctrl, 0u, (uint8_t)m->fm_mask);
+    uint8_t audio_ctrl =
+        cogmaster__sio_u8(io, "io_audio_ctrl", &p->audio_ctrl, 0u, (uint8_t)m->fm_mask);
+    /* The glasses eye is only ever set by a write, together with the eye the frame reports, and a
+       Game Gear never records one. */
+    uint8_t eye = cogmaster__sio_u8(io, "io_glasses", &p->glasses, 0u, 2u);
+    uint8_t eye_frame = cogmaster__sio_u8(io, "io_glasses_frame", &p->glasses_frame, 0u, 2u);
+    cogmaster__sio_check(io, eye_frame == 0u || eye != 0u);
+    cogmaster__sio_check(io, m->machine != COGMASTER_MACHINE_GG || (eye == 0u && eye_frame == 0u));
+    return audio_ctrl;
 }
 
 /* The cadence phase is a fraction of a sample, below the modulus of the

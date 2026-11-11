@@ -120,6 +120,39 @@ void cogmaster__io_reset(cogmaster *m)
     for (uint32_t i = 0; i < 6u; i++) {
         io->gg[i] = gg_reset[i];
     }
+    io->glasses = COGMASTER_GLASSES_NONE;
+    io->glasses_frame = COGMASTER_GLASSES_NONE;
+}
+
+/* A write at $FFF8-$FFFF that reached work RAM's mirror. At $FFFC and up a cartridge on the bus
+   sees it as a mapper register; below, only the 3-D glasses adapter does (SMS Power, 3-D Glasses),
+   which snoops the bus whatever $3E says, so the eye is noted on every Master System profile and
+   never on a Game Gear. The register is write-only, so noting it changes nothing the guest can read
+   and no hashed byte. The window-relative tick is unsigned and never below zero: the window starts
+   at the previous deadline and the CPU is past it. A write with work RAM off reaches nothing and
+   faults as the bus does for any other address. */
+void cogmaster__io_glasses_write(cogmaster *m, uint16_t addr, uint8_t v)
+{
+    int ram_on = (m->io.mem_ctrl & 0x10u) == 0u;
+    if (addr >= 0xFFFCu) {
+        if ((m->io.mem_ctrl & 0x40u) == 0u) {
+            cogmaster__mapper_write(m, addr, v);
+        } else if (!ram_on) {
+            cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_RAM, COGMASTER__FAULT_UNMAPPED_WRITE);
+        }
+        return;
+    }
+    if (m->machine != COGMASTER_MACHINE_GG) {
+        uint8_t eye = (v & 1u) != 0u ? COGMASTER_GLASSES_LEFT : COGMASTER_GLASSES_RIGHT;
+        uint64_t window = m->ticks - (m->bus.deadline - cogmaster__frame_ticks(m));
+        m->io.glasses = eye;
+        if (window < COGMASTER__GLASSES_CUT_TICKS(cogmaster__frame_lines(m))) {
+            m->io.glasses_frame = eye;
+        }
+    }
+    if (!ram_on) {
+        cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_RAM, COGMASTER__FAULT_UNMAPPED_WRITE);
+    }
 }
 
 /* An output TR replaces the pad level, with the Japanese region echo low
