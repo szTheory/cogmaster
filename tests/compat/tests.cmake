@@ -246,7 +246,7 @@ cogmaster_add_test(NAME compat.csv
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat
     -P ${CMAKE_CURRENT_LIST_FILE} LABELS ${compat_labels} TIMEOUT 30)
 # Fault prevented: a ledger row for a Sports Pad or Paddle title that a pad run satisfies, or a device
-# token the key grammar silently accepts. Timeouts are the provisional 30 s of their neighbours.
+# token the key grammar silently accepts. Timeout: 30 s floor; 2 x 1.29 s, slowest of 1 run, run 42978311844.
 cogmaster_add_test(NAME compat.device_key
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=device_key
     -DOUT=${PROJECT_BINARY_DIR}/tests/compat-device-key -P ${CMAKE_CURRENT_LIST_FILE}

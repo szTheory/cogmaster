@@ -20,7 +20,7 @@ cogmaster_warnings(cogmaster-test-eyes)
 
 # Fault prevented: an anaglyph that swaps or drops a channel, or writes into a
 # picture the core still owns, so the 3-D view is wrong or the frame changes.
-# The 10 s limit is provisional until the slowest lane has run it.
+# Timeout: 10 s floor; 2 x 0.08 s, slowest of 1 run, run 42978311844.
 cogmaster_add_test(NAME host.eyes
   COMMAND cogmaster-test-eyes eyes
   LABELS host portable TIMEOUT 10)

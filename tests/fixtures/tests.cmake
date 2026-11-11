@@ -819,7 +819,7 @@ endforeach()
 # Fault prevented: a table default that never reaches a host, or a Paddle dump that loads as export and plays as a pad.
 # The Sports Pad image, run with no --port1, --machine or --region, takes its controller from the table and is judged
 # against the same rows as the explicit export case.
-# Timeout: 10 s floor; 0.02 s slowest local run, no hosted run yet, so provisional.
+# Timeout: 10 s floor; 2 x 0.24 s, slowest of 1 run, run 42978311844.
 cogmaster_add_test(NAME fixtures.sports_pad.default
   COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=sports_pad -DPROFILE=sms-export
     -DINPUT=${PROJECT_BINARY_DIR}/tests/sports.input
@@ -946,7 +946,7 @@ endforeach()
 # The same fault for the Paddle image, whose table row also gives its region: run with no --port1 and no --region it
 # is a Japanese-console dump with a Paddle and is judged on the Japanese rows. The control names an export region, so
 # the default degrades to a pad and the detect rows must fail.
-# Timeout: 10 s floor; 0.05 s slowest local run, no hosted run yet, so provisional.
+# Timeout: 10 s floor; 2 x 0.32 s, slowest of 1 run, run 42978311844.
 cogmaster_add_test(NAME fixtures.paddle.default
   COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=paddle -DPROFILE=sms-japan
     -DINPUT=${PROJECT_BINARY_DIR}/tests/paddle.input

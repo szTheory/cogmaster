@@ -169,7 +169,7 @@ if(TARGET cogmaster_libretro)
     foreach(adapter_case IN ITEMS devices.options devices.sources devices.clamp devices.motion
         stereo.alternate stereo.one_eye)
       string(REGEX REPLACE "^[a-z]+\\." "" adapter_name "${adapter_case}")
-      # Timeout: 60 s floor; provisional until a hosted run measures it.
+      # Timeout: 60 s; 2 x 15.76 s, slowest of 1 run, run 42978311844 (be32 lane).
       cogmaster_add_test(NAME libretro.host.${adapter_case}
         COMMAND cogmaster-test-libretro-host $<TARGET_FILE:cogmaster_libretro> adapter ${adapter_name}
           ${PROJECT_BINARY_DIR}/fixtures

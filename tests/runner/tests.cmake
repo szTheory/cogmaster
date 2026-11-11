@@ -1278,7 +1278,7 @@ endforeach()
 
 # Fault prevented: a table default that never reaches a host, or a Paddle dump that loads as export and plays as a
 # pad, seen through the runner on the two owned device images.
-# Timeout: 30 s floor; each case is a few short runs, provisional.
+# Timeout: 30 s floor; 2 x 13.41 s (default, be32 lane), slowest of 1 run, run 42978311844.
 if(COGMASTER_FIXTURES)
   foreach(device_case IN ITEMS default probe_default paddle_export_refused)
     cogmaster_add_test(NAME runner.device.${device_case}

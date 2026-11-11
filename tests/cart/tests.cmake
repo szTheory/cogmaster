@@ -25,7 +25,7 @@ cogmaster_add_test(NAME cart.fixture_wrong_hash COMMAND ${CMAKE_COMMAND}
   -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake LABELS cart portable TIMEOUT 10)
 # Fault prevented: an owned image edited without its table row, so the default controller or region no
 # longer applies and nothing notices. A wrong declared hash for each image must fail the same check.
-# Timeout: 10 s floor; provisional until a hosted run measures it.
+# Timeout: 10 s floor; 2 x 0.08 s, slowest of 1 run, run 42978311844.
 foreach(row IN ITEMS 3:sports:sports_pad 4:paddle:paddle)
   string(REPLACE ":" ";" row "${row}")
   list(GET row 0 index)
