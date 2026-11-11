@@ -117,7 +117,23 @@ if(CMAKE_SCRIPT_MODE_FILE)
       if(NOT rc STREQUAL "2" OR NOT err MATCHES "invalid ledger record")
         message(FATAL_ERROR "the same device pair twice must be a duplicate key: exit ${rc}")
       endif()
-      message(STATUS "device pairs are distinct keys")
+      # fm is part of the key: an explicit on and an explicit off are two rows, an explicit default is the omitted row.
+      set(header2 "id,title,machine,region,tv,mapper,predicate,status,evidence,date\n")
+      set(fm_rows "")
+      foreach(fm IN ITEMS on off)
+        string(APPEND fm_rows "fixture/a,title,sms,export,ntsc,sega,cfg:video=sms;fm=${fm};port1=pad;port2=pad;script=none;sha256=${empty}/boots@20,unknown,-,2026-10-20\n")
+      endforeach()
+      file(WRITE "${OUT}/fm.csv" "${header2}${fm_rows}")
+      common(normalize "${OUT}/fm.csv")
+      if(NOT rc STREQUAL "0" OR NOT text MATCHES ";fm=off;" OR NOT text MATCHES ";fm=on;")
+        message(FATAL_ERROR "rows differing only in fm must be separate keys: exit ${rc}: ${text}${err}")
+      endif()
+      file(WRITE "${OUT}/fm.csv" "${header2}${fm_rows}fixture/a,title,sms,export,ntsc,sega,boots@20,unknown,-,2026-10-20\n")
+      common(normalize "${OUT}/fm.csv")
+      if(NOT rc STREQUAL "2" OR NOT err MATCHES "invalid ledger record")
+        message(FATAL_ERROR "an omitted fm equal to the explicit default must be a duplicate key: exit ${rc}")
+      endif()
+      message(STATUS "device pairs and fm settings are distinct keys")
       return()
     endif()
     set(refused 0)
@@ -133,6 +149,15 @@ if(CMAKE_SCRIPT_MODE_FILE)
         endif()
         math(EXPR refused "${refused}+1")
       endforeach()
+    endforeach()
+    # An fm token the grammar does not name; the format 2 header, so no refusal can come from the header.
+    foreach(token IN ITEMS auto ON 1 "")
+      file(WRITE "${OUT}/fm.csv" "id,title,machine,region,tv,mapper,predicate,status,evidence,date\nfixture/a,title,sms,japan,ntsc,sega,cfg:video=sms;fm=${token};port1=pad;port2=pad;script=none;sha256=${empty}/boots@20,unknown,-,2026-10-20\n")
+      common(normalize "${OUT}/fm.csv")
+      if(NOT rc STREQUAL "2" OR NOT err MATCHES "invalid ledger record")
+        message(FATAL_ERROR "fm token '${token}' was not refused with exit 2: exit ${rc}: ${text}${err}")
+      endif()
+      math(EXPR refused "${refused}+1")
     endforeach()
     message(FATAL_ERROR "device tokens refused: ${refused}")
   endif()
@@ -224,7 +249,27 @@ if(CMAKE_SCRIPT_MODE_FILE)
   reject("${header}${alias}${second}")
   string(REPLACE "ntsc-u" "any" alias "${row}")
   reject("${header}${row}${alias}")
-  message(STATUS "quoted CSV bounds, duplicate aliases, ordering and zero coverage passed")
+  # audio is a frame-like digest on an owned fixture with no script; every other form is refused.
+  string(REPEAT a 64 digest)
+  string(REPLACE "boots@20" "audio@600=${digest}" audio "${row}")
+  file(WRITE "${OUT}/audio.csv" "${header}${audio}")
+  common(normalize "${OUT}/audio.csv")
+  if(NOT rc STREQUAL "0" OR NOT text MATCHES "/audio@600=${digest}\"")
+    message(FATAL_ERROR "audio with a 64 digit hash on a fixture must normalize and keep its value: exit ${rc}: ${text}${err}")
+  endif()
+  string(REPEAT a 63 short)
+  string(REPEAT a 65 long)
+  string(REPEAT A 64 upper)
+  foreach(predicate IN ITEMS "audio@600" "audio@600=${short}" "audio@600=${long}" "audio@600=${upper}"
+      "audio@0=${digest}" "audio@1000001=${digest}" "audio@600:$C200=00")
+    string(REPLACE "boots@20" "${predicate}" bad "${row}")
+    reject("${header}${bad}")
+  endforeach()
+  string(REPLACE "fixture/a,\"A, \"\"quoted\"\"; title\",sms" "00cfce623709b8d9bc9e6bbb96feb9faf9a81f84,t,sms" bad "${audio}")
+  reject("${header}${bad}")
+  string(REPLACE "boots@20" "cfg:video=sms;port1=pad;port2=pad;script=input.txt;sha256=${digest}/audio@600=${digest}" bad "${row}")
+  reject("${header}${bad}")
+  message(STATUS "quoted CSV bounds, duplicate aliases, ordering, audio forms and zero coverage passed")
   return()
 endif()
 set(compat_labels compat)
@@ -239,6 +284,12 @@ cogmaster_add_test(NAME compat.trusted_judge
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=trusted
     -DOUT=${PROJECT_BINARY_DIR}/tests/compat-trusted -P ${CMAKE_CURRENT_LIST_DIR}/ratchet.cmake
   LABELS ${compat_labels} TIMEOUT 30)
+# Fault prevented: a migration that silently moves a status, an evidence text or a date, drops a row or maps a
+# legacy region to the wrong profile, and a parser that accepts a ledger it must refuse.
+# Timeout: 60 s floor; 5 s slowest local run, no hosted run yet, so provisional.
+cogmaster_add_test(NAME compat.migration
+  COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat-migration
+    -P ${CMAKE_CURRENT_LIST_DIR}/migration.cmake LABELS ${compat_labels} TIMEOUT 60)
 cogmaster_add_test(NAME compat.csv
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat
     -P ${CMAKE_CURRENT_LIST_FILE} LABELS ${compat_labels} TIMEOUT 30)
@@ -252,7 +303,7 @@ set(compat_device_rejected ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=
   -DOUT=${PROJECT_BINARY_DIR}/tests/compat-device-rejected -P ${CMAKE_CURRENT_LIST_FILE})
 string(REPLACE ";" "$<SEMICOLON>" compat_device_rejected "${compat_device_rejected}")
 cogmaster_add_test(NAME compat.device_rejected
-  COMMAND ${CMAKE_COMMAND} "-DCMD=${compat_device_rejected}" -DCODE=1 "-DREGEX=device tokens refused: 6[^0-9]"
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${compat_device_rejected}" -DCODE=1 "-DREGEX=device tokens refused: 10[^0-9]"
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake LABELS ${compat_labels} TIMEOUT 30)
 cogmaster_add_test(NAME compat.public_update
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat-update
