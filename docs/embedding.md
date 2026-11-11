@@ -7,15 +7,20 @@ no floating point. It needs nothing from the C library beyond `memcpy`, `memmove
 This release loads a cartridge image and draws its Mode 4 background. With no image it runs the built-in test card.
 
 `cogmaster_set_input` accepts a size-tagged `cogmaster_input` with `size`, `p1`, `p2`, `pause`, `reset`,
-`start`, `port1` and `port2`. It validates every field before replacing pending input. The two pad masks
+`start`, `port1`, `port2` and the signed axes `x1`, `y1`, `x2` and `y2`. It validates every field before storing
+anything. Buttons and devices replace what was pending; axes add to it, clamped, until a frame takes them, and a
+device change drops that port's waiting motion (see [controllers.md](controllers.md) "Input"). The call copies the
+smaller of the tag and its own size, whole fields only, and zeroes the rest. The two pad masks
 contain six independent bits (Up, Down, Left, Right, button 1, button 2). Console levels are binary.
-`COGMASTER_DEVICE_PAD` is zero, the default; `COGMASTER_DEVICE_NONE` is one and releases that port's pins.
+`COGMASTER_DEVICE_PAD` is zero, the default; `COGMASTER_DEVICE_NONE` is one and releases that port's pins;
+`COGMASTER_DEVICE_PADDLE` and `COGMASTER_DEVICE_SPORTS_PAD` read the axes, and a device the machine and region
+cannot take returns `COGMASTER_STATUS_ERR_PROFILE_REJECTED`.
 The native Game Gear has one local pad. Input latches before the next frame runs; identical submissions
 remain held levels. Pause queues an NMI only on a rising edge. A disconnected port releases its pins;
 reconnecting with Pause held requires release before another press can queue an NMI. Reset drives a
 level only on export SMS1; native GG Start drives its active-low level on `$00`. Opposing directions
 pass through independently. TR output directions override pad levels, with Japanese output echo low.
-The first input struct size is 32 bytes. Oversized zero tails follow the general size-tag rule.
+The first input struct size is 32 bytes; the axes make it 48. Oversized zero tails follow the general size-tag rule.
 
 The appended `cogmaster_run_result.lagged` is one when no decoded controller read occurred in that frame.
 Legacy 12-byte callers receive only their original fields. The runner submits input before each frame and
@@ -26,7 +31,8 @@ it does not prove that every line was enabled. Older 12-byte and 16-byte callers
 
 The libretro adapter accepts `game.data` and `game.size` in memory, advertises
 `sms|gg|bin|rom`, and keeps `need_fullpath` false. One input poll precedes each
-frame; D-pad/B/A map to the six pad bits. Port-1 Start maps to SMS Pause or native
+frame; D-pad/B/A map to the six pad bits, except that on a Sports Pad or Paddle port the D-pad, left stick and
+mouse become axis deltas. Port-1 Start maps to SMS Pause or native
 GG Start, and Select drives SMS Reset. Pad/none and button descriptors are sent
 to the frontend. Missing callbacks and none devices submit released levels.
 Their reconnection follows the same Pause arming rule as the library. Port 2 never supplies console
