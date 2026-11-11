@@ -279,6 +279,25 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(NOT before STREQUAL after)
       message(FATAL_ERROR "oversize save was changed")
     endif()
+    # An EEPROM save is 0 or 128 bytes: the refusal says which length it wanted, and the file stays.
+    file(MAKE_DIRECTORY "${OUT}/eeprom")
+    foreach(size 100 129)
+      string(REPEAT x ${size} wrong)
+      file(WRITE "${OUT}/eeprom/eeprom.srm" "${wrong}")
+      file(SHA256 "${OUT}/eeprom/eeprom.srm" before)
+      if(size EQUAL 100)
+        expect_exit(4 "(length|size)[^\n]*128" --frames 1 --save-dir "${OUT}/eeprom" "${EEPROM}")
+      else()
+        expect_exit(4 "oversized" --frames 1 --save-dir "${OUT}/eeprom" "${EEPROM}")
+      endif()
+      file(SHA256 "${OUT}/eeprom/eeprom.srm" after)
+      if(NOT before STREQUAL after)
+        message(FATAL_ERROR "a refused ${size}-byte EEPROM save was changed")
+      endif()
+    endforeach()
+    string(REPEAT x 128 whole)
+    file(WRITE "${OUT}/eeprom/eeprom.srm" "${whole}")
+    expect_exit(0 "^$" --frames 1 --save-dir "${OUT}/eeprom" "${EEPROM}")
     file(REMOVE "${OUT}/battery.srm")
     file(MAKE_DIRECTORY "${OUT}/battery.srm")
     expect_exit(1 "cannot read" --frames 1 --save-dir "${OUT}" "${BATTERY}")
@@ -923,6 +942,7 @@ if(COGMASTER_FIXTURES)
   cogmaster_add_test(NAME runner.save.import
     COMMAND ${runner_check} -DCASE=save_import
       -DOUT=${PROJECT_BINARY_DIR}/tests/save-import
+      -DEEPROM=${PROJECT_BINARY_DIR}/fixtures/eeprom.gg
       -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
     LABELS runner portable TIMEOUT 10)
 endif()

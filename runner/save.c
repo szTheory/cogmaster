@@ -113,7 +113,12 @@ int cogmaster__save_load(cogmaster__save *save, cogmaster *m, const char *dir, c
     if (status == COGMASTER__EXIT_OK) {
         cogmaster_status st = cogmaster_import_battery(m, data, n);
         if (st == COGMASTER_STATUS_ERR_SAVE_SIZE) {
-            fprintf(stderr, "cogmaster-run: save: oversized file\n");
+            if (n > b.length)
+                fprintf(stderr, "cogmaster-run: save: oversized file\n");
+            else
+                fprintf(stderr,
+                        "cogmaster-run: save: file length %lu does not match the %lu-byte save\n",
+                        (unsigned long)n, (unsigned long)b.length);
             status = COGMASTER__EXIT_SAVE_SIZE;
         } else if (st != COGMASTER_STATUS_OK) {
             status = save_error("cannot import battery");

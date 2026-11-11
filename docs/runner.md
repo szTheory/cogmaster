@@ -297,8 +297,9 @@ storage remain properties of the host's preopened directory.
 
 `--save-dir DIR` reads `<ROM stem>.srm` before emulation and saves changed battery data on exit.
 Only the last extension is removed: `round.trip.sms` uses `round.trip.srm`. Missing files start fresh
-with FF bytes; empty and short files pad with FF. An oversized file exits 4 before running and stays
-unchanged. Other file errors exit 1. Unknown persistence and unsupported geometry refuse with distinct
+with FF bytes; for a battery save, empty and short files pad with FF. An EEPROM save must be 0 or 128
+bytes. An oversized file, or an EEPROM file of any other length, exits 4 before running with a message
+that names the length wanted, and stays unchanged. Other file errors exit 1. Unknown persistence and unsupported geometry refuse with distinct
 messages and exit 77 before running. Classified nonbattery cartridges need no file. Without this option,
 the runner does no battery file I/O.
 
