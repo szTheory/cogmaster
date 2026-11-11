@@ -5,6 +5,7 @@
    for both machines (rcheevos rc_hash.c, generic whole-file case; HOSTS-AND-INTEGRATION section 2).
  */
 #include "probe.h"
+#include "args.h"
 #include "path.h"
 
 #include <stdio.h>
@@ -168,6 +169,14 @@ int cogmaster__refusal_board(const uint8_t *image, size_t n)
     return 1;
 }
 
+/* The table's raw intent: a pad for any code other than the paddle and the sports pad. */
+static const char *default_name(uint32_t device)
+{
+    return device == COGMASTER_DEVICE_PADDLE || device == COGMASTER_DEVICE_SPORTS_PAD
+               ? cogmaster__device_name(device)
+               : "pad";
+}
+
 int cogmaster__probe_print(const char *path, const uint8_t *image, size_t n)
 {
     cogmaster_cart_info info;
@@ -210,12 +219,14 @@ int cogmaster__probe_print(const char *path, const uint8_t *image, size_t n)
            (unsigned long)info.persistence_geometry, (unsigned long)info.video_mode, info.sha1,
            info.title);
     printf("board_source=%s\nboard_candidate=%s\nscan_sega=%lu\nscan_candidate=%lu\n"
-           "scan_runner_up=%lu\nunsupported_id=%lu\nunsupported_reason=%s\n",
+           "scan_runner_up=%lu\nunsupported_id=%lu\nunsupported_reason=%s\nport1_default=%s\n"
+           "port2_default=%s\n",
            sources[info.board_source <= 4u ? info.board_source : 0u],
            info.board_candidate != 0u ? cogmaster__board_name(info.board_candidate) : "none",
            (unsigned long)info.scan_sega, (unsigned long)info.scan_candidate,
            (unsigned long)info.scan_runner_up, (unsigned long)info.unsupported_id,
-           info.unsupported_reason);
+           info.unsupported_reason, default_name(info.default_port1),
+           default_name(info.default_port2));
     if (st == COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD ||
         st == COGMASTER_STATUS_ERR_UNSUPPORTED_SIZE) {
         return COGMASTER__EXIT_REFUSED;

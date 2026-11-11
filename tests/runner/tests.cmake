@@ -52,6 +52,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
       "persistence_geometry=[012]\nvideo_mode=[012]\nidentity_sha1=(${h40}|)\ntitle=[^\n]*\n"
       "board_source=(db|header|heuristic|default|none)\nboard_candidate=[a-z0-9_]+\nscan_sega=[0-9]+\n"
       "scan_candidate=[0-9]+\nscan_runner_up=[0-9]+\nunsupported_id=[0-9]+\nunsupported_reason=[^\n]*\n"
+      "port1_default=(pad|paddle|sports)\nport2_default=(pad|paddle|sports)\n"
       "$")
     string(CONCAT form ${form})
     if(NOT out MATCHES "${form}")

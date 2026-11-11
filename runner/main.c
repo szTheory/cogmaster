@@ -267,6 +267,33 @@ static int load_status(cogmaster_status st, const uint8_t *image, size_t image_s
     }
 }
 
+/* The one call that sets the controllers before frame 1. A device the machine and region cannot
+   take is a refusal that names the fix; the Paddle was made for the Japanese console only and the
+   Game Gear has no controller ports (the same rule as src/ports.c). */
+static int set_devices(cogmaster *m, uint32_t port1, uint32_t port2)
+{
+    cogmaster_input in = {0};
+    in.size = sizeof in;
+    in.port1 = port1;
+    in.port2 = port2;
+    cogmaster_status st = cogmaster_set_input(m, &in);
+    if (st == COGMASTER_STATUS_OK) {
+        return COGMASTER__EXIT_OK;
+    }
+    if (st != COGMASTER_STATUS_ERR_PROFILE_REJECTED) {
+        fprintf(stderr, "cogmaster-run: cogmaster_set_input failed with status %lu\n",
+                (unsigned long)st);
+        return COGMASTER__EXIT_FAILURE;
+    }
+    uint32_t bad =
+        port1 == COGMASTER_DEVICE_PADDLE || port1 == COGMASTER_DEVICE_SPORTS_PAD ? port1 : port2;
+    fprintf(stderr, "cogmaster-run: unsupported: %s on port %d is not available here; %s\n",
+            cogmaster__device_name(bad), bad == port1 ? 1 : 2,
+            bad == COGMASTER_DEVICE_PADDLE ? "the Paddle needs --region ntsc-j on a Master System"
+                                           : "the Game Gear has no such controller");
+    return COGMASTER__EXIT_REFUSED;
+}
+
 /* Runs the frames. The pixel buffer and the bench samples are on the heap:
    a field is too large for a small stack such as wasm32's, and the samples
    take 4 bytes per frame. Returns the exit status. */
@@ -317,6 +344,22 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     media.tv = opt->tv;
     media.video_mode = opt->video_mode;
     int status = load_status(cogmaster_load(m, &media), image, image_size);
+    /* auto takes the library's default for this content, already degraded to a pad when the
+       machine and region cannot take it; the call is made once, so a later frame never changes it.
+     */
+    uint32_t port1 = opt->port1;
+    uint32_t port2 = opt->port2;
+    if (status == COGMASTER__EXIT_OK) {
+        cogmaster_info dev = {0};
+        dev.size = sizeof dev;
+        if (cogmaster_get_info(m, &dev) != COGMASTER_STATUS_OK) {
+            status = COGMASTER__EXIT_FAILURE;
+        } else {
+            port1 = opt->port1_given ? opt->port1 : dev.default_port1;
+            port2 = opt->port2_given ? opt->port2 : dev.default_port2;
+            status = set_devices(m, port1, port2);
+        }
+    }
     cogmaster__audio audio = {0};
     if (status == COGMASTER__EXIT_OK && opt->hash_audio) {
         cogmaster_info info = {0};
@@ -366,12 +409,12 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
         char hex[65];
         cogmaster__sha256_final(&hash, digest);
         cogmaster__sha256_hex(digest, hex);
-        printf("execution machine=%lu region=%lu tv=%lu video=%lu mapper=%lu port1=%lu port2=%lu "
+        printf("execution machine=%lu region=%lu tv=%lu video=%lu mapper=%lu port1=%s port2=%s "
                "script_sha256=%s cap=%lu behaviour=%lu\n",
                (unsigned long)info.machine, (unsigned long)info.region, (unsigned long)info.tv,
-               (unsigned long)info.video_mode, (unsigned long)cart.board, (unsigned long)opt->port1,
-               (unsigned long)opt->port2, hex, (unsigned long)opt->frames,
-               (unsigned long)versions.behaviour);
+               (unsigned long)info.video_mode, (unsigned long)cart.board,
+               cogmaster__device_name(port1), cogmaster__device_name(port2), hex,
+               (unsigned long)opt->frames, (unsigned long)versions.behaviour);
     }
     cogmaster_fault fault;
     memset(&fault, 0, sizeof fault);
@@ -390,8 +433,8 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
                 break;
             }
         }
-        in.port1 = opt->port1;
-        in.port2 = opt->port2;
+        in.port1 = port1;
+        in.port2 = port2;
         if (cogmaster_set_input(m, &in) != COGMASTER_STATUS_OK) {
             status = COGMASTER__EXIT_FAILURE;
             break;

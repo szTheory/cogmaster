@@ -21,7 +21,8 @@ typedef struct cogmaster__run_options {
     const char *save_dir;
     uint32_t save_interval; /* --save-interval: flush after every Nth frame; 0 is off */
     uint32_t port1, port2;
-    uint32_t machine; /* COGMASTER_MACHINE_*; AUTO is resolved from the file */
+    int port1_given, port2_given; /* 0 for auto: the library's default for the content */
+    uint32_t machine;             /* COGMASTER_MACHINE_*; AUTO is resolved from the file */
     uint32_t video_mode;
     uint32_t region, tv;          /* COGMASTER_REGION_* and COGMASTER_TV_* */
     const char *file;             /* the cartridge image, or NULL for the test card */
@@ -38,5 +39,8 @@ typedef struct cogmaster__run_options {
    --version print here and set o->printed. o->pngs must have room for argc
    entries. */
 int cogmaster__parse_options(int argc, char **argv, cogmaster__run_options *o);
+
+/* The option word for a COGMASTER_DEVICE_* value: pad, none, paddle or sports. */
+const char *cogmaster__device_name(uint32_t device);
 
 #endif /* COGMASTER_RUNNER_ARGS_H */

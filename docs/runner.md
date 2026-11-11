@@ -29,8 +29,8 @@ can inspect the resolved machine and video mode through `cogmaster_get_info`.
 Right, button 1 and button 2. Console values are 0 or 1. LF, CRLF and an optional final newline work.
 Blank lines, comments, unknown or repeated fields, high mask bits, overlong lines, missing and surplus
 records exit 2 before running. File errors exit 1. The reader uses fixed memory and validates the whole
-body before execution. Without `--input`, all levels are released. `--port1 pad|none` and `--port2 pad|none`
-default to pad; none releases that pad's pins. Opposing directions remain independent.
+body before execution. Without `--input`, all levels are released. `--port1` and `--port2` take `auto`, `pad`, `none`, `paddle` or
+`sports`; `none` releases that port's pins. Opposing directions remain independent.
 With `--input`, a successful run appends `lag_frames=N` to standard output,
 counting completed frames without a decoded guest controller read. Host polling, peeks, disabled and
 undriven port reads do not remove lag. Early stops count only the frames actually completed.
@@ -57,7 +57,7 @@ cogmaster-run --help | --version
 | `--region NAME` | Region and TV standard together: `ntsc-u` is export NTSC, `ntsc-j` Japanese NTSC and `pal` export PAL. `auto` uses probe metadata/header region when present, otherwise export NTSC. |
 | `--video-mode NAME` | `auto`, `sms` or `gg`; video selection is independent of the machine profile. |
 | `--input FILE` | Exactly one absolute input record per requested frame, applied before that frame. |
-| `--port1 NAME`, `--port2 NAME` | `pad` or `none`; disconnected pads release their pins. |
+| `--port1 NAME`, `--port2 NAME` | `auto` (the default), `pad`, `none`, `paddle` or `sports`. `auto` takes the controller the loaded cartridge was made for, a pad for any other content. A `paddle` needs `--region ntsc-j` on a Master System, and `sports` needs a Master System. |
 | `--frames N` | Run N frames, N from 1 to 4294967295. Give either `--frames` or `--bench`, once. |
 | `--bench N` | Run N frames, time each one and print the report described under [Bench report](#bench-report). N is from 1 to 1073741823. The runner keeps 4 bytes per frame, so a very large N can exit 1 because memory ran out. |
 | `--hash` | After the last frame, print the SHA-256 of its picture. |
@@ -85,6 +85,7 @@ The runner exits 77 and runs nothing when it cannot run what was asked:
   the Sega mapper and the Codemasters mapper;
 - an 8 KiB image on the Game Gear, which is the X-Terminator cheat device rather than a game;
 - a machine and region no console had: PAL with the Game Gear or with `ntsc-j`'s Japanese console;
+- a controller the machine and region cannot take: `--port1 paddle` without `--region ntsc-j`, or any `paddle` or `sports` choice on the Game Gear; the message names the fix;
 - a file whose name ends in `.sg` or `.sc`, refused unread with `unsupported: SG-1000 (planned)`.
 
 A file that cannot be read exits 1.
@@ -172,6 +173,7 @@ add keys at the end. Integers are decimal and digests lowercase hexadecimal.
 | `scan_sega`, `scan_candidate`, `scan_runner_up` | store sites counted for the Sega board, for the leading other family and for the runner-up |
 | `unsupported_id` | the number of the named unsupported board a database row or the scan matched, 0 for none |
 | `unsupported_reason` | that board's name and the reason, empty for none |
+| `port1_default`, `port2_default` | the controller each port's table row names: `pad`, `paddle` or `sports` |
 
 Each header field from `checksum` to `rom_size_code` is `none` when the image has no ROM header. `md5` is the
 RetroAchievements hash for both machines: the MD5 of the whole file, copier header included. `crc32` is the value
@@ -363,7 +365,7 @@ fail establishes gameplay, completion or sound; sound has no predicate yet.
 
 Each observation prints its frame, normalized kind/address and observed hash alongside
 display/distinct/fault facts. Expected values stay in the accepted file. The execution
-line reports resolved machine/region/TV/video/board, both devices, cap, behaviour revision
+line reports resolved machine/region/TV/video/board, both devices by name (`port1=sports`), cap, behaviour revision
 and SHA-256 of input bytes (the empty digest without a script). The first fault remains
 a diagnostic and does not stop the capped run. `--trace`, `--mailbox`, `--bench` and
 `--probe` conflict with `--expect`. A signal before an expected frame is infrastructure
@@ -379,7 +381,7 @@ failure; mismatches exit 3, unsupported capabilities 77, invalid syntax 2 and I/
   2  usage    the command line or input script is invalid, so nothing ran
   3  mismatch  an accepted expectation did not match the observed predicate
   4  save     the battery file is oversized, so nothing ran
-  77  refused  the cartridge, its size or the machine and region is not supported, so nothing ran
+  77  refused  the cartridge, its size, the machine and region, or a controller is not supported, so nothing ran
 ```
 
 Errors and usage messages go to standard error. Standard output holds only the results described above.

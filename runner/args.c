@@ -27,8 +27,8 @@ static const char synopsis[] =
     "  --input FILE         absolute pad and console record per frame\n"
     "  --save-dir DIR       read and persist battery data in an existing directory\n"
     "  --save-interval N    also write the save after every N frames (0 is off; needs --save-dir)\n"
-    "  --port1 pad|none     first controller device (default pad)\n"
-    "  --port2 pad|none     second controller device (default pad)\n"
+    "  --port1 NAME         first controller: auto (default), pad, none, paddle or sports\n"
+    "  --port2 NAME         second controller: auto (default), pad, none, paddle or sports\n"
     "  --png N:FILE         write frame N's crop to FILE as a PNG (1 <= N <= --frames)\n"
     "  --trace first-fault  stop at the first fault and print it, or 'fault none'\n"
     "  --mailbox            stop when the RAM mailbox reports done; print its records\n"
@@ -113,6 +113,41 @@ static int parse_png(const char *text, cogmaster__png_request *out)
 static int is(const char *value, const char *word)
 {
     return value != NULL && strcmp(value, word) == 0;
+}
+
+static const struct {
+    const char *name;
+    uint32_t device;
+} devices[] = {
+    {"pad", COGMASTER_DEVICE_PAD},
+    {"none", COGMASTER_DEVICE_NONE},
+    {"paddle", COGMASTER_DEVICE_PADDLE},
+    {"sports", COGMASTER_DEVICE_SPORTS_PAD},
+};
+
+const char *cogmaster__device_name(uint32_t device)
+{
+    for (size_t i = 0; i < sizeof devices / sizeof devices[0]; i++) {
+        if (devices[i].device == device) {
+            return devices[i].name;
+        }
+    }
+    return "pad";
+}
+
+/* --port1 and --port2 NAME: auto leaves the choice to the library's default for the
+   loaded content. Returns 0 for an unknown name. */
+static int parse_device(const char *value, uint32_t *device, int *given)
+{
+    *given = 1;
+    for (size_t i = 0; i < sizeof devices / sizeof devices[0]; i++) {
+        if (is(value, devices[i].name)) {
+            *device = devices[i].device;
+            return 1;
+        }
+    }
+    *given = 0;
+    return is(value, "auto");
 }
 
 /* --machine NAME. Returns 0 for an unknown name. */
@@ -248,14 +283,10 @@ int cogmaster__parse_options(int argc, char **argv, cogmaster__run_options *o)
             o->input = value;
             i++;
         } else if (strcmp(arg, "--port1") == 0 || strcmp(arg, "--port2") == 0) {
-            if (!is(value, "pad") && !is(value, "none")) {
-                return usage("--port1 and --port2 need pad or none");
-            }
-            uint32_t device = is(value, "none") ? COGMASTER_DEVICE_NONE : COGMASTER_DEVICE_PAD;
-            if (strcmp(arg, "--port1") == 0) {
-                o->port1 = device;
-            } else {
-                o->port2 = device;
+            int first = strcmp(arg, "--port1") == 0;
+            if (!parse_device(value, first ? &o->port1 : &o->port2,
+                              first ? &o->port1_given : &o->port2_given)) {
+                return usage("--port1 and --port2 need auto, pad, none, paddle or sports");
             }
             i++;
         } else if (strcmp(arg, "--hash") == 0) {
