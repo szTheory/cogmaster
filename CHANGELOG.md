@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/szTheory/cogmaster/compare/v0.9.0...v0.10.0) (2026-11-11)
+
+
+### Features
+
+* boot from a BIOS ([#29](https://github.com/szTheory/cogmaster/issues/29)) ([93e2826](https://github.com/szTheory/cogmaster/commit/93e28261bf7c3a3fed3f783d2ccda57944e1265b))
+
 ## [0.9.0](https://github.com/szTheory/cogmaster/compare/v0.8.0...v0.9.0) (2026-11-11)
 
 
