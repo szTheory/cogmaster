@@ -219,6 +219,38 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(NOT rc STREQUAL "4" OR NOT err MATCHES "oversized" OR NOT before STREQUAL after)
       message(FATAL_ERROR "oversize control: exit ${rc}; target changed or refusal missing: ${err}")
     endif()
+  elseif(CASE STREQUAL "save_eeprom")
+    # Two fresh processes continue one 128-byte EEPROM save. The first four
+    # bytes are the signature word 34 12 and the run counter, low byte first;
+    # the mailbox must also say the word read back was the one written
+    # (record 02) and the write after EWDS changed nothing (record 03).
+    # SECOND overrides the expected second prefix, for the negative control.
+    if(NOT DEFINED SECOND)
+      set(SECOND 34120200)
+    endif()
+    file(MAKE_DIRECTORY "${OUT}")
+    file(REMOVE "${OUT}/eeprom.srm")
+    function(continue_eeprom prefix counter)
+      execute_process(COMMAND ${EMULATOR} ${RUN} --frames 60 --mailbox
+        --save-dir "${OUT}" "${EEPROM}" RESULT_VARIABLE rc
+        OUTPUT_VARIABLE out ERROR_VARIABLE err)
+      if(NOT rc STREQUAL "0" OR NOT out MATCHES "status=00\nrom=0A\nmagic=ok\ncrc=ok\n"
+          OR NOT out MATCHES "01=${counter} flags=1\n"
+          OR NOT out MATCHES "02=0001 flags=1\n" OR NOT out MATCHES "03=0001 flags=1\n")
+        message(FATAL_ERROR "eeprom continuation: exit ${rc}\n${out}${err}")
+      endif()
+      file(SIZE "${OUT}/eeprom.srm" size)
+      file(READ "${OUT}/eeprom.srm" head HEX LIMIT 4)
+      if(NOT size EQUAL 128 OR NOT head STREQUAL "${prefix}")
+        message(FATAL_ERROR "eeprom save is ${size} bytes starting ${head}, expected 128 starting ${prefix}")
+      endif()
+      file(GLOB temps "${OUT}/eeprom.srm.tmp-*")
+      if(temps)
+        message(FATAL_ERROR "eeprom writer leaked temporary files")
+      endif()
+    endfunction()
+    continue_eeprom(34120100 0001)
+    continue_eeprom(${SECOND} 0002)
   elseif(CASE STREQUAL "save_import")
     file(MAKE_DIRECTORY "${OUT}")
     file(REMOVE "${OUT}/battery.srm")
@@ -977,6 +1009,12 @@ if(COGMASTER_FIXTURES)
       -DCASE=save_continuation
       -DOUT=${PROJECT_BINARY_DIR}/tests/save-continuation-normal
       -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS runner portable TIMEOUT 10)
+  # Fault prevented: an EEPROM save that a fresh process cannot continue, or a refused write that still lands.
+  cogmaster_add_test(NAME runner.save.continuation.eeprom
+    COMMAND ${runner_check} -DCASE=save_eeprom
+      -DOUT=${PROJECT_BINARY_DIR}/tests/save-continuation-eeprom
+      -DEEPROM=${PROJECT_BINARY_DIR}/fixtures/eeprom.gg -P ${CMAKE_CURRENT_LIST_FILE}
     LABELS runner portable TIMEOUT 10)
 endif()
 

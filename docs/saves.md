@@ -79,7 +79,9 @@ not verified on real hardware.
 
 ## Testing saves
 
-`runner.save.continuation.normal`, `.term` and `.int` verify fresh-process numeric
+The EEPROM board has its own cases: `eeprom.*` drive the chip bit by bit and the board through the bus, `fuzz.regress.eeprom`
+(and the nightly libFuzzer entry) clock it with hostile streams, and `runner.save.continuation.eeprom` continues the owned fixture's
+128-byte save across two fresh processes. `runner.save.continuation.normal`, `.term` and `.int` verify fresh-process numeric
 continuation, missing and exact-size wrong-save controls, full save bytes and unchanged
 oversize rejection; see [conformance](conformance.md). `libretro.battery.sms2` and
 `.gg` restore the real classified battery fixture through the frontend's SAVE_RAM
