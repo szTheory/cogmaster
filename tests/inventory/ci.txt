@@ -323,6 +323,10 @@ policy.lessons_unique.empty	policy
 policy.lessons_unique.self_test	policy
 policy.no_skip	policy
 policy.no_skip.self_test	policy
+policy.no_title_table	policy
+policy.no_title_table.self_test.array	policy
+policy.no_title_table.self_test.comments	policy
+policy.no_title_table.self_test.hook	policy
 policy.notices	policy
 policy.quality	policy
 policy.quality.base_absent	policy
