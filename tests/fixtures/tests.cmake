@@ -411,6 +411,25 @@ foreach(height IN ITEMS 192 224 240)
       ${fixtures_src}/header.inc ${fixtures_src}/mailbox.inc VERBATIM)
   list(APPEND fixtures_images ${image})
 endforeach()
+# One source builds the V counter table images, as vdp_lines does: LINES_HEIGHT picks the
+# screen height and each image gets its own link file.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${fixtures_src}/vdp_vtable.link)
+file(READ ${fixtures_src}/vdp_vtable.link vtable_link)
+foreach(height IN ITEMS 192 224 240)
+  string(REPLACE "vdp_vtable.o" "vdp_vtable_${height}.o" link "${vtable_link}")
+  set(image ${COGMASTER_FIXTURES_DIR}/vdp_vtable_${height}.sms)
+  file(GENERATE OUTPUT ${COGMASTER_FIXTURES_DIR}/vdp_vtable_${height}.link
+    CONTENT "${link}")
+  add_custom_command(OUTPUT ${image}
+    COMMAND ${COGMASTER_WLA_Z80} -q -D LINES_HEIGHT=${height}
+      -o ${COGMASTER_FIXTURES_DIR}/vdp_vtable_${height}.o vdp_vtable.asm
+    COMMAND ${CMAKE_COMMAND} -E chdir ${COGMASTER_FIXTURES_DIR}
+      ${COGMASTER_WLALINK} -r vdp_vtable_${height}.link ${image}
+    WORKING_DIRECTORY ${fixtures_src}
+    DEPENDS ${fixtures_src}/vdp_vtable.asm ${fixtures_src}/vdp_vtable.link
+      ${fixtures_src}/header.inc ${fixtures_src}/mailbox.inc VERBATIM)
+  list(APPEND fixtures_images ${image})
+endforeach()
 # One source builds the Korean, Zemina and 4 PAK images, as vdp_lines does: FIXTURE_BOARD picks
 # the board and each image gets its own link file.
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${fixtures_src}/mapper_korean.link)
