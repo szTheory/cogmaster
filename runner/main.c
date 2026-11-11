@@ -441,6 +441,13 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
             cogmaster__mailbox_done(m, &mailbox_running)) {
             break;
         }
+        /* --save-interval counts frames, never time. A failed periodic flush
+           ends the run at once; the exit flush below stays as it is. */
+        if (save_loaded && status == COGMASTER__EXIT_OK && opt->save_interval != 0u &&
+            n % opt->save_interval == 0u && cogmaster__save_flush(&save, m) != COGMASTER__EXIT_OK) {
+            status = COGMASTER__EXIT_FAILURE;
+            break;
+        }
         /* A stop request ends the run only between whole frames, after the
            frame's outputs are written. */
         if (cogmaster__stop_requested()) {

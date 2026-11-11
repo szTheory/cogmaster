@@ -63,6 +63,7 @@ cogmaster-run --help | --version
 | `--hash` | After the last frame, print the SHA-256 of its picture. |
 | `--hash-audio` | After the last frame, print two lines hashing the sound's level changes and its samples, described under [Sound hashes](#sound-hashes). It does not need `--hash` and `--hash` does not need it. It is a usage error with `--bench` or `--probe`. |
 | `--save-dir DIR` | Import and persist raw battery data in an existing directory. Requires content. |
+| `--save-interval N` | Also write the save after every Nth frame, counted in frames and never in time. N is from 0 to 4294967295; 0 or no option is off. It needs `--save-dir`; a malformed N is a usage error. |
 | `--png N:FILE` | After frame N, write its picture to FILE as a PNG. N is from 1 to the frame count. Repeat the option to write more frames or files. If the run stops before frame N, FILE is not written and a line on standard error names it. |
 | `--trace first-fault` | After each frame, read the core's first-fault record; stop at the first fault and print it, described under [First fault](#first-fault). |
 | `--mailbox` | After each frame, read the RAM mailbox a diagnostic ROM fills; stop at the first frame whose status reads done after reading running, and print the mailbox, described under [Mailbox](#mailbox). |

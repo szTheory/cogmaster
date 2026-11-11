@@ -347,6 +347,7 @@ runner.save.excluded	portable,runner
 runner.save.failures	portable,runner
 runner.save.import	portable,runner
 runner.save.imports	portable,runner
+runner.save.interval	portable,runner
 runner.save.native_error	portable,runner
 runner.save.process.close	portable,runner
 runner.save.process.create	portable,runner
@@ -367,6 +368,7 @@ runner.usage.frame_range	portable,runner
 runner.usage.no_args	portable,runner
 runner.usage.png_syntax	portable,runner
 runner.usage.positional	portable,runner
+runner.usage.save_interval	portable,runner
 runner.usage.unknown	portable,runner
 runner.version	portable,runner
 vdp.background	portable,vdp

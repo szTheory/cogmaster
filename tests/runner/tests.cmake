@@ -289,6 +289,40 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(NOT EXISTS "${OUT}/save café 游戏/round.trip café 游戏.srm")
       message(FATAL_ERROR "Unicode save target missing")
     endif()
+  elseif(CASE STREQUAL "save_interval_usage")
+    expect_exit(2 "usage" --frames 1 --save-dir "${OUT}" "${OUT}/x.sms" --save-interval abc)
+    expect_exit(2 "usage" --frames 1 --save-dir "${OUT}" "${OUT}/x.sms" --save-interval 1x)
+    expect_exit(2 "usage" --frames 1 --save-dir "${OUT}" "${OUT}/x.sms" --save-interval 4294967296)
+    expect_exit(2 "usage" --frames 1 --save-dir "${OUT}" "${OUT}/x.sms" --save-interval)
+    expect_exit(2 "usage" --frames 1 "${OUT}/x.sms" --save-interval 5)
+    expect_exit(2 "usage" --probe "${OUT}/x.sms" --save-interval 5)
+  elseif(CASE STREQUAL "save_interval")
+    # Each run starts from an empty directory, so the saves compare byte for byte.
+    function(interval_run name)
+      file(REMOVE_RECURSE "${OUT}/${name}")
+      file(MAKE_DIRECTORY "${OUT}/${name}")
+      execute_process(COMMAND ${EMULATOR} ${RUN} --frames 10 --hash --save-dir "${OUT}/${name}"
+        ${ARGN} "${BATTERY}" RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+      if(NOT rc STREQUAL "0" OR NOT out MATCHES "^frame 10 sha256 [0-9a-f]+\n$")
+        message(FATAL_ERROR "interval run ${name}: exit ${rc}\n${out}${err}")
+      endif()
+      file(SHA256 "${OUT}/${name}/battery.srm" sum)
+      set(${name}_out "${out}" PARENT_SCOPE)
+      set(${name}_sum "${sum}" PARENT_SCOPE)
+    endfunction()
+    interval_run(plain)
+    interval_run(off --save-interval 0)
+    interval_run(every --save-interval 1)
+    interval_run(over --save-interval 20)
+    foreach(name off every over)
+      if(NOT ${name}_out STREQUAL plain_out OR NOT ${name}_sum STREQUAL plain_sum)
+        message(FATAL_ERROR "--save-interval changed the hash or the save bytes (${name})")
+      endif()
+    endforeach()
+    file(GLOB temps "${OUT}/*/battery.srm.tmp-*")
+    if(temps)
+      message(FATAL_ERROR "an interval run leaked a temporary: ${temps}")
+    endif()
   elseif(CASE STREQUAL "video_override")
     expect_exit(0 "^$" --frames 1 --machine sms1)
     expect_exit(0 "^$" --frames 1 --machine sms --video-mode sms)
@@ -1016,6 +1050,13 @@ if(COGMASTER_FIXTURES)
       -DOUT=${PROJECT_BINARY_DIR}/tests/save-continuation-eeprom
       -DEEPROM=${PROJECT_BINARY_DIR}/fixtures/eeprom.gg -P ${CMAKE_CURRENT_LIST_FILE}
     LABELS runner portable TIMEOUT 10)
+  # Fault prevented: a periodic flush that changes save bytes or hashes, accepts a malformed interval, or
+  # runs when the interval exceeds the run.
+  cogmaster_add_test(NAME runner.save.interval
+    COMMAND ${runner_check} -DCASE=save_interval
+      -DOUT=${PROJECT_BINARY_DIR}/tests/save-interval
+      -DBATTERY=${PROJECT_BINARY_DIR}/fixtures/battery.sms -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS runner portable TIMEOUT 30)
 endif()
 
 set(bench_check ${runner_check} -DUNIT=$<TARGET_FILE:cogmaster-test-bench>)
@@ -1089,6 +1130,13 @@ foreach(case no_args unknown positional frame_range)
     COMMAND ${runner_check} -DCASE=${case} -P ${CMAKE_CURRENT_LIST_FILE}
     LABELS portable runner TIMEOUT 30)
 endforeach()
+
+# Fault prevented: a malformed or unusable --save-interval that is accepted instead of refused as a
+# usage error.
+cogmaster_add_test(NAME runner.usage.save_interval
+  COMMAND ${runner_check} -DCASE=save_interval_usage -DOUT=${PROJECT_BINARY_DIR}/tests/save-interval-usage
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 30)
 
 # Fault prevented: a hash that depends on the frame count for a card that
 # does not move, or a hash line that names the wrong frame.

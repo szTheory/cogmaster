@@ -19,6 +19,7 @@ typedef struct cogmaster__run_options {
     const char *input;
     const char *expect;
     const char *save_dir;
+    uint32_t save_interval; /* --save-interval: flush after every Nth frame; 0 is off */
     uint32_t port1, port2;
     uint32_t machine; /* COGMASTER_MACHINE_*; AUTO is resolved from the file */
     uint32_t video_mode;
