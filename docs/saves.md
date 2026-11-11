@@ -100,8 +100,8 @@ are unchanged, direct host writes and API imports are generation-neutral, and th
 next guest write increments generation once. `battery.excluded` covers known-none,
 unknown and unsupported geometry at the public battery-query boundary; mapper tests
 keep volatile RAM separate. In-process tests load the production module and do not
-count toward the hosted RetroArch code budget. They do not establish the deferred
-hosted save-file claim. Interoperability with another emulator's save file is claimed only
+count toward the hosted RetroArch code budget. They do not establish the hosted
+save-file claim; the hosted RetroArch restart steps do. Interoperability with another emulator's save file is claimed only
 for layouts that cogmaster wrote or that were measured once with released binaries
 (2026-11-11, under the pinned RetroArch with the null drivers). Released Gearsystem
 (option `EEPROM 93C46`) wrote the owned EEPROM fixture's save as 128 bytes starting `34 12`,
