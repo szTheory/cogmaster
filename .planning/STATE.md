@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 9
 current_phase_name: Light Phaser
 status: planning
-stopped_at: Completed 09-08-PLAN.md
-last_updated: "2026-11-11T11:28:34.968Z"
+stopped_at: Completed 09-09-PLAN.md
+last_updated: "2026-11-11T11:33:16.730Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 8 complete, transitioned to Phase 9
-state_head: 4384ebd88fdbff8d5cbfdaa47085833eccb1637d
+state_head: f3653c6868445376bbaf23efbf9a59fb9baab18d
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 64
-  completed_plans: 60
+  completed_plans: 61
   percent: 50
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 9 — Light Phaser
-Plan: 08 of 12 complete; next 09
+Plan: 09 of 12 complete; next 10
 Status: Executing
-Last activity: 2026-11-11 — Plan 09-08 complete (policy.no_title_table, a comment-stripping check over the five files the sensor reaches with three self-tests, ports.gun.identity over four profiles, the sensor's early-render paragraph in docs/hardware/video.md)
+Last activity: 2026-11-11 — Plan 09-09 complete (host/aim.{c,h}: pointer to field aim through the crop rectangle, clamped cursor, crosshair dots; host.aim with a crop-blind control)
 
 Progress: [█████░░░░░] 50% of v2.0
 
@@ -187,6 +187,7 @@ Progress: [█████░░░░░] 50% of v2.0
 | Phase 09 P06 | 25min | 2 tasks | 10 files |
 | Phase 09 P07 | 95min | 3 tasks | 11 files |
 | Phase 09 P08 | 6min | 3 tasks | 7 files |
+| Phase 09 P09 | 5 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -267,6 +268,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 09]: Plan 09-06: runner phaser aim is validated per device in input_motion_ok (0 0, or x 1 to 256 and y 1 to 240); no crosshair or mapping in the runner
 - [Phase 09]: Plan 09-07: the fixture's rows are derived by a CMake oracle from the image's .DEFINEs and judged on the port1 and port2 profile labels, the first part runs in frame 4 after a two-flag set-up wait, and ports.state.gun is settled at 20 s (4.52 s hosted) instead of its provisional 120 s
 - [Phase 09]: Plan 09-08: no_title_table strips comments then scans exactly five sensor files (a 12-line awk case, 735 of 922 counted lines), and ports.gun.identity flips the whole header identity of the owned fixture over four profiles and compares mailbox, frame and frame count against an unflipped and a parked run
+- [Phase 09]: Host aim cursor is a 1-based aim (centre x + w / 2 + 1); out-of-range pointers, empty rectangles and a NULL rectangle park as 0 0; an aim outside the rectangle draws no crosshair
 
 ### Pending Todos
 
@@ -371,6 +373,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 9 plan 09-06 (gsd-execute-phase 09); the runner's lphaser word, a strict per-device aim check beside input_motion_ok, the probe word, runner.gun.args and runner.gun.gg_refused with a one-shot control, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 9 plan 09-07 (gsd-execute-phase 09); the light_phaser fixture with an oracle derived in CMake, 29 rows judged on four profiles and port 2, three controls and two one-shot mutations, runner.gun.crop and runner.gun.noshot, one device hash row, hosted dispatch 2 (run 43010180943 green on every lane, ports.gun.noshot 34.46 s on be32), timeouts settled; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 9 plan 09-08 (gsd-execute-phase 09); the no_title_table case of repository.sh (12 counted lines, 735 of 922) with three self-tests, ports.gun.identity flipping the fixture's header over four profiles with a parked control, one-shot controls on src/gun.c and src/ports.c, the early-render paragraph of video.md, no push; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 9 plan 09-09 (gsd-execute-phase 09); host/aim helper (pointer to 1-based field aim through the crop rectangle in 32-bit arithmetic, clamped cursor, 17-dot crosshair) and host.aim with a crop-blind control, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -392,8 +395,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T11:28:34.845Z
-Stopped at: Completed 09-08-PLAN.md
+Last session: 2026-11-11T11:33:16.598Z
+Stopped at: Completed 09-09-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

@@ -161,7 +161,7 @@ Plans:
   2. The sensor reads the emitted pixel at the beam position and latches H at the edge tick, and a check finds no per-title offset table in `src/` (GUN-01).
   3. A run with the gun plugged in and no shot has the same frame hash as one without it, and a poll-hammer test shows sensor work bounded per line however often the game polls (GUN-02).
   4. Runner and libretro tests map aim through the SMS and Game Gear crops to field coordinates, and the frame hash is the same with the crosshair drawn or not (GUN-03).
-**Plans**: 8/12 plans executed
+**Plans**: 9/12 plans executed
 
 Plans:
 - [x] 09-01-PLAN.md — header delta inert: the Light Phaser constant, versions 13/15/15, unchanged layout, v13 pins on three lanes (GUN-01)
@@ -172,7 +172,7 @@ Plans:
 - [x] 09-06-PLAN.md — runner: device word, strict aim check, probe word, Game Gear exit 77 (GUN-03)
 - [x] 09-07-PLAN.md — light_phaser fixture, oracle rows on four profiles and both ports, controls, runner crop case, hosted dispatch 2 (GUN-03, GUN-04)
 - [x] 09-08-PLAN.md — policy.no_title_table with three self-tests and the header-identity test (GUN-01)
-- [ ] 09-09-PLAN.md — host aim helper with the crop mapping, step and crosshair points and its unit test (GUN-03)
+- [x] 09-09-PLAN.md — host aim helper with the crop mapping, step and crosshair points and its unit test (GUN-03)
 - [ ] 09-10-PLAN.md — libretro: LIGHTGUN type, pointer and cursor aim, Pause and Reset on a gun port, crosshair outside the hash (GUN-03)
 - [ ] 09-11-PLAN.md — table default for the gun, ledger token lphaser, changed-key cases, testing guide rows (GUN-01, GUN-03)
 - [ ] 09-12-PLAN.md — controller docs, wording amendments, floors, local judge, final hosted runs and ship list (GUN-01, GUN-02, GUN-03, GUN-04)
@@ -225,7 +225,7 @@ Plans:
 | 6. Korean cartridges play | v2.0 | 11/11 | Complete    | 2026-11-10 |
 | 7. Saves survive a restart | v2.0 | 10/10 | Complete    | 2026-11-10 |
 | 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 17/17 | Complete    | 2026-11-11 |
-| 9. Light Phaser | v2.0 | 8/12 | In Progress | - |
+| 9. Light Phaser | v2.0 | 9/12 | In Progress | - |
 | 10. BIOS boot | v2.0 | 0/TBD | Not started | - |
 | 11. PAL and Japanese FM | v2.0 | 0/TBD | Not started | - |
 | 12. The whole list in the ledger | v2.0 | 0/TBD | Not started | - |
