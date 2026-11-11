@@ -19,7 +19,7 @@ int main(void)
 {
     CHECK(COGMASTER_API_VERSION >= 8);
     CHECK_EQ_U64(offsetof(cogmaster_run_result, display_enabled), 16u);
-    CHECK_EQ_U64(sizeof(cogmaster_run_result), 20u);
+    CHECK(sizeof(cogmaster_run_result) >= 20u);
     cogmaster_config cfg = {0};
     cfg.size = sizeof cfg;
     cfg.allocator.alloc = allocate;

@@ -72,10 +72,10 @@ int main(void)
     in.pause = 2u;
     CHECK_EQ_U64(cogmaster_set_input(m, &in), COGMASTER_STATUS_ERR_ARGUMENT);
     in.pause = 0u;
-    in.port2 = 2u;
+    in.port2 = 99u;
     CHECK_EQ_U64(cogmaster_set_input(m, &in), COGMASTER_STATUS_ERR_ARGUMENT);
     in.port2 = 0u;
-    in.size--;
+    in.size = 31u;
     CHECK_EQ_U64(cogmaster_set_input(m, &in), COGMASTER_STATUS_ERR_STRUCT_SIZE);
     cogmaster_run_result r = {0};
     r.size = sizeof r;

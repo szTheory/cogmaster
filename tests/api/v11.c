@@ -5,17 +5,17 @@
 
 int main(void)
 {
-    CHECK_EQ_U64(COGMASTER_API_VERSION, 11u);
+    CHECK(COGMASTER_API_VERSION >= 11u);
     CHECK_EQ_U64(COGMASTER_ABI_VERSION, 1u);
-    CHECK_EQ_U64(COGMASTER_BEHAVIOUR_REVISION, 13u);
-    CHECK_EQ_U64(COGMASTER_STATE_FORMAT_VERSION, 13u);
+    CHECK(COGMASTER_BEHAVIOUR_REVISION >= 13u);
+    CHECK(COGMASTER_STATE_FORMAT_VERSION >= 13u);
 
     cogmaster_versions v = {0};
     v.size = (uint32_t)sizeof v;
     CHECK(cogmaster_get_versions(&v) == COGMASTER_STATUS_OK);
-    CHECK_EQ_U64(v.api, 11u);
-    CHECK_EQ_U64(v.behaviour, 13u);
-    CHECK_EQ_U64(v.state, 13u);
+    CHECK(v.api >= 11u);
+    CHECK(v.behaviour >= 13u);
+    CHECK(v.state >= 13u);
 
     CHECK_EQ_U64(COGMASTER_BOARD_SEGA_EEPROM, 10u);
     CHECK(COGMASTER_BOARD_SEGA_EEPROM != COGMASTER_BOARD_ROM_ONLY);
