@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 9
 current_phase_name: Light Phaser
 status: planning
-stopped_at: Completed 09-05-PLAN.md
-last_updated: "2026-11-11T10:57:29.808Z"
+stopped_at: Completed 09-06-PLAN.md
+last_updated: "2026-11-11T11:01:19.075Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 8 complete, transitioned to Phase 9
-state_head: 3214b5c4defc8b613e423fb01b5ffd6a79742569
+state_head: e846f67e1b6c2e53e3479bb7c79688dd5cba620c
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 64
-  completed_plans: 57
+  completed_plans: 58
   percent: 50
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 9 — Light Phaser
-Plan: 05 of 12 complete; next 06
+Plan: 06 of 12 complete; next 07
 Status: Executing
-Last activity: 2026-11-11 — Plan 09-05 complete (ports.state.gun against an independent checker, the pad fuzz target drawing the phaser with a polled twin, four phaser seeds, ports.gun.noshot cut to a third of its cost)
+Last activity: 2026-11-11 — Plan 09-06 complete (the runner's lphaser word, a strict per-device aim check, runner.gun.args and runner.gun.gg_refused)
 
 Progress: [█████░░░░░] 50% of v2.0
 
@@ -184,6 +184,7 @@ Progress: [█████░░░░░] 50% of v2.0
 | Phase 09 P03 | 45min | 3 tasks | 10 files |
 | Phase 09 P04 | 35min | 3 tasks | 10 files |
 | Phase 09 P05 | 75min | 3 tasks | 7 files |
+| Phase 09 P06 | 25min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -261,6 +262,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 09]: Phase 09 plan 3: a power reset keeps the pending aim like a soft reset and only a load zeroes it, because cogmaster_reset never touches pending_input; the docs say a load parks the aim
 - [Phase 09]: Phase 09 plan 4: gun_wrap runs after the height update so the next picture is armed for the height it has, and a sync renders ahead only when a due dot is not yet emitted, so a gun that finds nothing leaves the render cursor as an unplugged run does
 - [Phase 09]: Phase 09 plan 5: a fuzz frame brings the lazy sensor up to the beam before run_frame because a device change applied from a mid-window state drops dots a lazy sensor has not yet looked at (unreachable through the public API); the noshot case runs 160 frames per profile, past the last new poll-loop alignment, instead of 600
+- [Phase 09]: Plan 09-06: runner phaser aim is validated per device in input_motion_ok (0 0, or x 1 to 256 and y 1 to 240); no crosshair or mapping in the runner
 
 ### Pending Todos
 
@@ -362,6 +364,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 9 plan 09-03 (gsd-execute-phase 09); the phaser device with an absolute last-wins aim, the 24-byte port block and its state bounds, the two independent checkers moved with the ceiling, ports.gun.aim, pins and hostile_aim with controls, no push; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 9 plan 09-04 (gsd-execute-phase 09); the lazy Light Phaser sensor and its five guarded sync sites, 13 ports.gun cases with independent oracles and seven one-shot mutation controls, hosted dispatch 1 (runs 43003041792 failed on MSVC, 43003756603 green) and a fresh main run 43003064146, perf delta 0 basis points, timeouts settled; 3 tasks, 5 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 9 plan 09-05 (gsd-execute-phase 09); ports.state.gun with a 31-row just-outside table, the pad fuzz target drawing the phaser with a paint op, an unsupported-mode op and a polled twin that saves the same bytes at every frame, four phaser seeds, ports.gun.noshot cut from 600 to 160 frames per profile (be32 about 35 s from 124 s), three one-shot controls, no push; 2 tasks and the extra task, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 9 plan 09-06 (gsd-execute-phase 09); the runner's lphaser word, a strict per-device aim check beside input_motion_ok, the probe word, runner.gun.args and runner.gun.gg_refused with a one-shot control, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -383,8 +386,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T10:57:29.685Z
-Stopped at: Completed 09-05-PLAN.md
+Last session: 2026-11-11T11:01:18.941Z
+Stopped at: Completed 09-06-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
