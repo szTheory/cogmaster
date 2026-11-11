@@ -5,7 +5,7 @@ milestone_name: The whole library
 current_phase: 11
 current_phase_name: PAL and Japanese FM
 status: planning
-stopped_at: Completed 11-03-PLAN.md
+stopped_at: Completed 11-04-PLAN.md
 last_updated: "2026-11-11T21:47:36.855Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 10 complete, transitioned to Phase 11
@@ -14,7 +14,7 @@ progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 84
-  completed_plans: 78
+  completed_plans: 79
   percent: 75
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 11 — PAL and Japanese FM
-Plan: 4 of 9
+Plan: 5 of 9
 Status: Ready to execute
-Last activity: 2026-11-11 — Completed 11-03-PLAN.md
+Last activity: 2026-11-11 — Completed 11-04-PLAN.md
 
 Progress: [████████░░] 75% of v2.0
 
@@ -207,6 +207,7 @@ Progress: [████████░░] 75% of v2.0
 | Phase 11 P01 | 50min | 3 tasks | 8 files |
 | Phase 11 P02 | 75min | 3 tasks | 14 files |
 | Phase 11 P03 | 25min | 3 tasks | 13 files |
+| Phase 11 P04 | 40min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -308,6 +309,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 11]: Plan 01: the tree scan reads each file once into one temporary file (counted lines unchanged at 845) and the analyzer runs four processes at a time; local medians 27 to 21 s and 21 to 16 s
 - [Phase 11]: Plan 02: --fm is strict and once and the core's profile refusal gives exit 77 for a Game Gear; audio@F=H copies the running transition hash so one drain serves several frames; an audio case with a reset script exits 2 at load; every frame holds exactly floor(f x N / D) minus floor((f - 1) x N / D) samples on both TVs
 - [Phase 11]: Ledger parser: a format 1 row is widened to ten slots at read time and the default fm is resolved once in predicate(); audio is accepted only for fixture or built ids with script none
+- [Phase 11]: Plan 04: the committed ledger is the normalize output (format 2, nothing moved); the ci.yml bridge triggers only on the exact format 1 to format 2 header literal pair compared as strings, so a quoted, CR-damaged or other header fails closed in the base judge; apt calls retry three times
 
 ### Pending Todos
 
@@ -432,6 +434,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 11 plan 11-01 (gsd-execute-phase 11); controller and sound-hash prose moved to controllers.md and audio.md, MAME provenance row corrected, hygiene.sh reads each file once with header_offset control, analyzer parallel, CI speed section; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 11 plan 11-02 (gsd-execute-phase 11); runner --fm and the fm= execution field, audio@F=H over the transition stream with one drain and a reset refusal, exact samples per frame on NTSC and PAL, four new tests with negative controls; counted check code 845, docs/runner.md 34,054 bytes, no dispatch; 3 tasks, 3 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 11 plan 11-03 (gsd-execute-phase 11); one ledger parser reads format 1 or 2 and writes format 2 (tv column, export or japan, fm in the cfg with its default resolved once, audio kind, impossible profiles refused), cases fields read by the library judge and the fixtures check, compat.migration on literals with 26 controls, eight cross-format ratchet cases, grammar stated once in conformance.md (30,081 bytes); counted check code 852, no dispatch; 3 tasks, 3 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 11 plan 11-04 (gsd-execute-phase 11); committed ledger migrated to format 2 with nothing moved (real-file cmp exit 0), live assertions in compat.migration (28 controls), ratchet and update tests on format 2 with tv and fm pairs, ci.yml bridge for the exact header pair plus apt retries proved by seven recorded simulations, page intro, format note and README lines; counted check code 852, conformance.md 30,557 and testing.md 31,682 bytes, no dispatch; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -453,8 +456,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T21:47:36.515Z
-Stopped at: Completed 11-03-PLAN.md
+Last session: 2026-11-11T22:30:00.000Z
+Stopped at: Completed 11-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
