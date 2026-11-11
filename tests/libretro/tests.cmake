@@ -273,7 +273,7 @@ if(TARGET cogmaster_libretro)
     # would lock up), a failed load where a warning and a working fast boot would do, a path or a file name
     # read from anywhere but the one system folder, a Game Gear cartridge sent to a BIOS, and a region that
     # opens another region's file. The file names come from the built .info.
-    # Timeout: 20 s floor, provisional until the first hosted run times it.
+    # Timeout: 20 s floor; 2 x 1.68 s (be32), slowest of 8 runs, run 43074158512.
     string(REPLACE ";" "$<SEMICOLON>" bios_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
     cogmaster_add_test(NAME libretro.host.bios
       COMMAND ${CMAKE_COMMAND} -DCASE=bios -DINFO=${PROJECT_BINARY_DIR}/libretro/cogmaster_libretro.info
@@ -363,8 +363,9 @@ if(TARGET cogmaster_libretro)
   set(libretro_cmd ${CMAKE_COMMAND} -DINFO=${libretro_firmware_info}
     -DINVENTORY=${libretro_firmware_inventory} -DCHECK=info_claims -P ${libretro_scripts}/repository.cmake)
   string(REPLACE ";" "$<SEMICOLON>" libretro_cmd "${libretro_cmd}")
+  # Timeout: 20 s floor; 2 x 0.27 s (windows-arm64), slowest of 7 runs, run 43074158512.
   cogmaster_add_test(NAME libretro.info_claims.self_test.firmware
     COMMAND ${CMAKE_COMMAND} "-DCMD=${libretro_cmd}" -DCODE=1
       "-DREGEX=firmware_opt needs libretro.host.bios" -P ${libretro_scripts}/expect_fail.cmake
-    LABELS libretro TIMEOUT 10)
+    LABELS libretro TIMEOUT 20)
 endif()
