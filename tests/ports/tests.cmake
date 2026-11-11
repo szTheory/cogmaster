@@ -124,9 +124,16 @@ set_target_properties(cogmaster-test-ports-state PROPERTIES
 cogmaster_warnings(cogmaster-test-ports-state)
 
 # Fault prevented: a loader that accepts a device state no run produces, or refuses one a run does, so a
-# corrupt save drives the core outside its bounds or a valid save is lost.
-foreach(case IN ITEMS mutation outside sweep midsequence profile_device)
-  # Timeout: 80 s; 2 x 38.44 s, slowest of 1 run, run 42973268415 (mutation on the be32 lane, 4.7 s native).
+# corrupt save drives the core outside its bounds or a valid save is lost; a saved sensor cursor or aim
+# outside what a run makes, which would drive the scan off the picture.
+foreach(case IN ITEMS mutation outside sweep midsequence profile_device gun)
+  if(case STREQUAL "gun")
+    # Timeout: 120 s floor; provisional.
+    set(state_timeout 120)
+  else()
+    # Timeout: 80 s; 2 x 38.44 s, slowest of 1 run, run 42973268415 (mutation on the be32 lane, 4.7 s native).
+    set(state_timeout 80)
+  endif()
   cogmaster_add_test(NAME ports.state.${case} COMMAND cogmaster-test-ports-state ${case}
-    LABELS ports portable TIMEOUT 80)
+    LABELS ports portable TIMEOUT ${state_timeout})
 endforeach()

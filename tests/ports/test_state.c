@@ -24,6 +24,7 @@
 #define NEXT_WAIT 429u     /* and between the other nibbles: about 40 microseconds */
 #define MAX_ITEMS 96u
 #define SEEN_MAX 2048u
+#define LINE_TICKS 684u /* the ticks of one line */
 
 static uint8_t image[IMAGE_SIZE];
 static uint8_t good[BUF];
@@ -180,7 +181,56 @@ static void prep_japan_pad(cogmaster *m)
     frame(m);
 }
 
+/* The beam, moved forward to (line, t) without running the CPU. */
+static void walk_to(cogmaster *m, uint32_t line, uint32_t t)
+{
+    uint32_t total = cogmaster__frame_lines(m) * LINE_TICKS;
+    uint32_t want = line * LINE_TICKS + t;
+    uint32_t cur = m->bus.line * LINE_TICKS + m->bus.t;
+    m->ticks += (want + total - cur) % total;
+    cogmaster__bus_sync(m);
+}
+
+/* Two Light Phasers aimed within a few dots of each other at a picture that is bright all over,
+   with both TH lines inputs, stopped inside the first chord of each disc: both ports hold a scan
+   in progress, the light on and the light seen, and an aim in every record. */
+static void prep_gun(cogmaster *m)
+{
+    struct cogmaster__vdp *v = &m->vdp;
+    v->reg[0] = 0x04u;
+    v->reg[1] = 0x40u;
+    v->reg[2] = 0x0Eu;
+    v->reg[5] = 0x7Eu;
+    v->reg[7] = 0u;
+    v->cram[15] = 0x3Fu;
+    for (uint32_t i = 0u; i < 32u; i++) {
+        v->vram[32u + i] = 0xFFu;
+    }
+    for (uint32_t i = 0u; i < 64u; i++) {
+        v->vram[0x3F00u + i] = 0xD0u;
+    }
+    for (uint32_t i = 0u; i < 24u * 32u; i++) {
+        v->vram[0x3800u + 2u * i] = 1u;
+    }
+    cogmaster__io_out(m, 0x3Fu, 0xFFu);
+    CHECK_EQ_U64(send(m, COGMASTER_DEVICE_LIGHT_PHASER, COGMASTER_DEVICE_LIGHT_PHASER, 0u, 0u, 100,
+                      100, 104, 100),
+                 COGMASTER_STATUS_OK);
+    frame(m);
+    walk_to(m, 99u, 240u);
+    cogmaster__gun_sync(m);
+    for (uint32_t p = 0u; p < 2u; p++) {
+        CHECK_EQ_U64(m->ports[p].g_scan, 1u);
+        CHECK_EQ_U64(m->ports[p].g_sense, 3u);
+        CHECK(m->ports[p].g_ax != 0u && m->ports[p].g_ay != 0u && m->ports[p].g_dot != 0u);
+        CHECK_EQ_U64(m->ports[p].g_line, 99u);
+    }
+}
+
 enum { SPORTS, PADDLE, GG, EYE_A, EYE_B, JAPAN_PAD, CFG_COUNT };
+
+static const struct cfg gun_cfg = {"phaser", COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT,
+                                   COGMASTER_TV_NTSC, prep_gun};
 
 static const struct cfg cfgs[CFG_COUNT] = {
     {"sports", COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT, COGMASTER_TV_NTSC, prep_sports},
@@ -572,6 +622,21 @@ static void pair_close(struct pair *pr)
 
 /* ---- mutation ---- */
 
+/* Every byte of the field set to each of six values, the patched state sealed and loaded. */
+static void mutate_item(const struct pair *pr, const struct item *it, struct counts *c)
+{
+    for (uint32_t b = 0u; b < it->width; b++) {
+        uint8_t was = good[it->off + b];
+        const uint8_t values[6] = {0x00u, 0x01u, 0x7Fu, 0x80u, 0xFFu, (uint8_t)~was};
+        for (uint32_t v = 0u; v < 6u; v++) {
+            memcpy(bad, good, pr->size);
+            bad[it->off + b] = values[v];
+            cogmaster__state_seal(bad, pr->size);
+            load_and_judge(it->name, pr->target, &pr->L, pr->size, c);
+        }
+    }
+}
+
 static void test_mutation(void)
 {
     struct counts total = {0u, 0u};
@@ -584,16 +649,7 @@ static void test_mutation(void)
             if (it->fixed) {
                 continue;
             }
-            for (uint32_t b = 0u; b < it->width; b++) {
-                uint8_t was = good[it->off + b];
-                const uint8_t values[6] = {0x00u, 0x01u, 0x7Fu, 0x80u, 0xFFu, (uint8_t)~was};
-                for (uint32_t v = 0u; v < 6u; v++) {
-                    memcpy(bad, good, pr.size);
-                    bad[it->off + b] = values[v];
-                    cogmaster__state_seal(bad, pr.size);
-                    load_and_judge(it->name, pr.target, &pr.L, pr.size, &c);
-                }
-            }
+            mutate_item(&pr, it, &c);
         }
         CHECK(c.accepted > 0u && c.refused > 0u);
         printf("%s: %u accepted, %u refused\n", cfgs[ci].name, c.accepted, c.refused);
@@ -615,7 +671,7 @@ struct patch {
     int64_t v;
 };
 
-#define MAX_PATCH 3u
+#define MAX_PATCH 14u
 
 struct outside {
     uint32_t cfg;
@@ -712,6 +768,31 @@ static void patch_in(const struct pair *pr, const struct patch *p, uint8_t *buf)
     put_le(buf + it->off, it->is_signed ? flip(v, it->width) : (uint64_t)v, it->width);
 }
 
+/* One row of a table: the profile's saved state with the patches made, which the checker and the
+   loader must both judge as the row says. */
+static void judge_outside(struct pair *pr, const struct outside *o)
+{
+    /* good holds the last opened profile's bytes, so take this profile's again. */
+    size_t size = save(pr->src, good);
+    memcpy(bad, good, size);
+    for (uint32_t k = 0u; k < MAX_PATCH && o->p[k].name != NULL; k++) {
+        patch_in(pr, &o->p[k], bad);
+    }
+    cogmaster__state_seal(bad, size);
+    struct snap s;
+    snap_from_buffer(&s, &pr->L, bad);
+    if (model_ok(&s) == o->refused) {
+        fprintf(stderr, "%s: the checker says %s\n", o->what, o->refused ? "ok" : "refused");
+        check_failures++;
+    }
+    struct counts c = {0u, 0u};
+    load_and_judge(o->what, pr->target, &pr->L, size, &c);
+    if ((c.refused == 1u) != (o->refused != 0)) {
+        fprintf(stderr, "%s: the loader says %s\n", o->what, o->refused ? "ok" : "refused");
+        check_failures++;
+    }
+}
+
 static void test_outside(void)
 {
     struct pair pr[CFG_COUNT];
@@ -721,31 +802,158 @@ static void test_outside(void)
         if (pr[o->cfg].src == NULL) {
             pair_open(&pr[o->cfg], &cfgs[o->cfg]);
         }
-        /* good holds the last opened profile's bytes, so take this profile's again. */
-        size_t size = save(pr[o->cfg].src, good);
-        memcpy(bad, good, size);
-        for (uint32_t k = 0u; k < MAX_PATCH && o->p[k].name != NULL; k++) {
-            patch_in(&pr[o->cfg], &o->p[k], bad);
-        }
-        cogmaster__state_seal(bad, size);
-        struct snap s;
-        snap_from_buffer(&s, &pr[o->cfg].L, bad);
-        if (model_ok(&s) == o->refused) {
-            fprintf(stderr, "%s: the checker says %s\n", o->what, o->refused ? "ok" : "refused");
-            check_failures++;
-        }
-        struct counts c = {0u, 0u};
-        load_and_judge(o->what, pr[o->cfg].target, &pr[o->cfg].L, size, &c);
-        if ((c.refused == 1u) != (o->refused != 0)) {
-            fprintf(stderr, "%s: the loader says %s\n", o->what, o->refused ? "ok" : "refused");
-            check_failures++;
-        }
+        judge_outside(&pr[o->cfg], o);
     }
     for (uint32_t i = 0u; i < CFG_COUNT; i++) {
         if (pr[i].src != NULL) {
             pair_close(&pr[i]);
         }
     }
+}
+
+/* ---- gun ---- */
+
+/* The six gun fields of port 0 as a port with no phaser leaves them. */
+#define CLEAR_GUN_0                                                                                \
+    {"port_gun_ax", 0u, 0}, {"port_gun_dot", 0u, 0}, {"port_gun_ay", 0u, 0},                       \
+        {"port_gun_line", 0u, 0}, {"port_gun_sense", 0u, 0}, {"port_gun_scan", 0u, 0}
+/* Both ports scanning in the first chord of a disc, lit and seen, over a picture of 192 rows. Each
+   refused row violates one bound or one cross-check; the accepted row beside a group is the same
+   patch with that one rule satisfied, so the refusal is that rule and not the patch. */
+static const struct outside gun_table[] = {
+    {0, "g_ax 257", 1, {{"port_gun_ax", 0u, 257}}},
+    {0, "g_ax 256", 0, {{"port_gun_ax", 0u, 256}}},
+    {0, "g_ay 241", 1, {{"port_gun_ay", 0u, 241}}},
+    {0, "g_ay 240", 0, {{"port_gun_ay", 0u, 240}}},
+    {0, "g_line 240", 1, {{"port_gun_line", 1u, 240}}},
+    {0, "g_dot 257", 1, {{"port_gun_dot", 0u, 257}}},
+    {0, "g_sense 4", 1, {{"port_gun_sense", 1u, 4}}},
+    {0, "g_scan 2", 1, {{"port_gun_scan", 0u, 2}}},
+    {0, "a pending aim of 1 0", 1, {{"pending_x1", 0u, 1}, {"pending_y1", 0u, 0}}},
+    {0, "a pending aim of 0 1", 1, {{"pending_x2", 0u, 0}, {"pending_y2", 0u, 1}}},
+    {0, "a pending aim off the field", 1, {{"pending_x2", 0u, 257}}},
+    {0, "an in-force aim of 5 0", 1, {{"active_x2", 0u, 5}, {"active_y2", 0u, 0}}},
+    {0, "an in-force aim off the field", 1, {{"active_y1", 0u, 241}}},
+    {0, "a snapshot with an x and no y", 1, {{"port_gun_ay", 1u, 0}}},
+    {0, "a scan with no snapshot", 1, {{"port_gun_ax", 0u, 0}, {"port_gun_ay", 0u, 0}}},
+    {0, "a scan past the picture", 1, {{"port_gun_line", 0u, 192}}},
+    {0, "a scan at the last row", 0, {{"port_gun_line", 0u, 191}}},
+    {0,
+     "g_scan 0 with g_line 5",
+     1,
+     {{"port_gun_scan", 0u, 0},
+      {"port_gun_line", 0u, 5},
+      {"port_gun_dot", 0u, 0},
+      {"port_gun_sense", 0u, 2}}},
+    {0,
+     "g_scan 0 with g_dot 3",
+     1,
+     {{"port_gun_scan", 0u, 0},
+      {"port_gun_line", 0u, 0},
+      {"port_gun_dot", 0u, 3},
+      {"port_gun_sense", 0u, 2}}},
+    {0,
+     "g_scan 0 with the light on",
+     1,
+     {{"port_gun_scan", 0u, 0},
+      {"port_gun_line", 0u, 0},
+      {"port_gun_dot", 0u, 0},
+      {"port_gun_sense", 0u, 3}}},
+    {0,
+     "g_scan 0 with the light seen and off",
+     0,
+     {{"port_gun_scan", 0u, 0},
+      {"port_gun_line", 0u, 0},
+      {"port_gun_dot", 0u, 0},
+      {"port_gun_sense", 0u, 2}}},
+    {0, "a held phaser with step 1", 1, {{"port_step", 0u, 1}}},
+    {0, "a held phaser with an edge", 1, {{"port_edge", 1u, 1}}},
+    {0, "a held phaser with an acc", 1, {{"port_acc", 2u, 1}}},
+    {0, "a held phaser with a pos", 1, {{"port_pos", 0u, 1}}},
+    {0, "an aim pending on a pad port", 1, {{"input_port1", 0u, 0}}},
+    {0,
+     "a pad in force with an aim in force",
+     1,
+     {{"input_port1", 0u, 0},
+      {"input_port1", 1u, 0},
+      {"pending_x1", 0u, 0},
+      {"pending_y1", 0u, 0},
+      CLEAR_GUN_0}},
+    {0,
+     "a pad in force with a gun field",
+     1,
+     {{"input_port1", 0u, 0},
+      {"input_port1", 1u, 0},
+      {"pending_x1", 0u, 0},
+      {"pending_y1", 0u, 0},
+      {"active_x1", 0u, 0},
+      {"active_y1", 0u, 0}}},
+    {0,
+     "a pad on the port with nothing left",
+     0,
+     {{"input_port1", 0u, 0},
+      {"input_port1", 1u, 0},
+      {"pending_x1", 0u, 0},
+      {"pending_y1", 0u, 0},
+      {"active_x1", 0u, 0},
+      {"active_y1", 0u, 0},
+      CLEAR_GUN_0}},
+    {0,
+     "a pad in force with a non-zero block",
+     1,
+     {{"input_port1", 0u, 0},
+      {"input_port1", 1u, 0},
+      {"pending_x1", 0u, 0},
+      {"pending_y1", 0u, 0},
+      {"active_x1", 0u, 0},
+      {"active_y1", 0u, 0},
+      {"port_edge", 0u, 1},
+      CLEAR_GUN_0}},
+    {0,
+     "an aim at the far corner, lit, at the closing dot",
+     0,
+     {{"pending_x1", 0u, 256},
+      {"pending_y1", 0u, 240},
+      {"active_x1", 0u, 256},
+      {"active_y1", 0u, 240},
+      {"port_gun_ax", 0u, 256},
+      {"port_gun_ay", 0u, 240},
+      {"port_gun_dot", 0u, 256}}},
+};
+
+/* Both ports of a phaser mid-picture: every byte of every field of the aim, the cursor and the
+   sensor's bits changed in six ways, each bound just outside, each cross-check violated once and a
+   far corner that is a state a run makes. */
+static void test_gun(void)
+{
+    struct pair pr;
+    pair_open(&pr, &gun_cfg);
+    struct counts mine = {0u, 0u};
+    uint32_t bytes = 0u;
+    for (uint32_t i = 0u; i < pr.L.n; i++) {
+        const struct item *it = &pr.L.it[i];
+        int gun = strncmp(it->name, "port_gun_", 9u) == 0;
+        if (!gun && strncmp(it->name, "active_", 7u) != 0 &&
+            strncmp(it->name, "pending_", 8u) != 0) {
+            continue;
+        }
+        struct counts c = {0u, 0u};
+        mutate_item(&pr, it, &c);
+        if (gun) {
+            bytes += it->width;
+            mine.accepted += c.accepted;
+            mine.refused += c.refused;
+        }
+    }
+    /* Two ports of 2 + 2 + 1 + 1 + 1 + 1 bytes, six values each. */
+    CHECK_EQ_U64(bytes, 16u);
+    CHECK_EQ_U64(mine.accepted + mine.refused, 16u * 6u);
+    CHECK(mine.accepted > 0u && mine.refused > 0u);
+    printf("gun fields: %u accepted, %u refused\n", mine.accepted, mine.refused);
+    for (size_t i = 0u; i < sizeof gun_table / sizeof gun_table[0]; i++) {
+        judge_outside(&pr, &gun_table[i]);
+    }
+    pair_close(&pr);
 }
 
 /* ---- sweep ---- */
@@ -956,6 +1164,8 @@ int main(int argc, char **argv)
         test_mutation();
     } else if (strcmp(argv[1], "outside") == 0) {
         test_outside();
+    } else if (strcmp(argv[1], "gun") == 0) {
+        test_gun();
     } else if (strcmp(argv[1], "sweep") == 0) {
         test_sweep();
     } else if (strcmp(argv[1], "midsequence") == 0) {

@@ -334,6 +334,7 @@ ports.input.tags	portable,ports
 ports.latch	portable,ports
 ports.latch_control	portable,ports
 ports.pins	portable,ports
+ports.state.gun	portable,ports
 ports.state.midsequence	portable,ports
 ports.state.mutation	portable,ports
 ports.state.outside	portable,ports
