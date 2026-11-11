@@ -211,6 +211,34 @@ eye's latest picture, `alternate` and `off` send each frame as drawn, and `anagl
 reports no eye or one that never changes, the frame goes out untouched. Only the adapter does this; nothing is saved
 and no hash changes. The default is `left`.
 
+## Tests
+
+Each family guards one fault in the controller path above; every one has a negative
+control that must fail.
+
+| Tests | What they guard |
+|---|---|
+| `ports.latch`, `ports.pins` | Every `$3F` write pair latches the H counter, and every pad state reads the same `$DC` and `$DD`, as before the port layer; `ports.latch_control` shows an oracle that latches on the wrong edge disagrees. |
+| `ports.input.*` | `cogmaster_set_input` never reads past a smaller caller (poison bytes, an exact-size allocation on the `asan` lane), refuses every bad tag, device and axis without changing state, and writes only the bytes a short result or info caller can hold. |
+| `ports.glasses.*` | The eye of a frame by the cut rule at its boundaries on NTSC, PAL and the taller modes; the Game Gear always none; a store is never a poll and never changes the RAM-off fault; the saved eye pair. |
+| `ports.devices.*` | The Sports Pad's tick cases, the Paddle's position and clock, delta accumulation and clamps, availability, resets, replay from recorded deltas and the poll hammer. |
+| `ports.state.*` | Every byte of every device field in a saved state, patched and loaded: a refusal leaves the instance unchanged and an acceptance saves back equal. |
+| `ports.gun.*` | The Light Phaser's sensor against an independent oracle, the edge tick, the lazy bounds and the poll hammer, the two-gun merge, the sticky bit and its expiry, the no-shot neutrality, and the aim and pin rules; the controls (a wrong-edge oracle, a pad in place of the gun, a parked aim) must disagree. |
+| `ports.state.gun` | Every byte of the saved gun fields, patched and loaded: a refusal leaves the instance unchanged and an acceptance saves back equal. |
+| `fuzz.regress.pad` | The pad fuzz target's seeds and regressions on every lane. |
+| `fixtures.sports_pad.*`, `fixtures.paddle.*`, `fixtures.glasses.*` | Self-written images read the devices from Z80 code and report what they decode; the expected values come from the scripted motion, not from the core. The controls run the pad on the device image, freeze the clock, drop a delta and degrade the Paddle. |
+| `fixtures.light_phaser.*` | A self-written image latches the gun from Z80 code at ten loop lengths, on four profiles and both ports, against a closed form derived in CMake rather than from the core; three controls (a left aim, a pad, a parked gun) must read differently. |
+| `runner.device.*`, `runner.input.axes_*`, `runner.eyes.*` | The runner's controller options, exit 77, probe keys, the 75-byte script line and the `--eyes` line. |
+| `cart.device.*`, `cart.fixture_identity.*` | The table's default for every row, the region rule, and the two owned fixtures' rows. |
+| `runner.gun.*` | The runner's script aim as the field dot through each machine's crop, its strict refusals, the Game Gear exit 77, and a gun that changes nothing in a run where it sees no light. |
+| `host.eyes` | The anaglyph mix with a variant that writes into its input as the control. |
+| `host.aim` | The pointer-to-field mapping through the Master System and Game Gear rectangles: a pointer mapped without the crop offset, off by one dot or clamped onto an edge dot disagrees. |
+| `libretro.host.devices.*`, `libretro.host.stereo.*` | The adapter's option resolution, input sums, clamps and motion, and the view rule: alternating titles composed, one-eye titles untouched. |
+| `libretro.host.gun.*` | The adapter's pointer and cursor sources, Pause on a gun port, and a crosshair that is drawn into the shown picture only and stays out of the frame hash. |
+| `policy.no_title_table*` | A static check that no per-title table can enter the sensor or its hooks, with self-tests that must trip it (a brace or string array, `//` and `/*` inside a string) or must not (comments). |
+| `abi.api_v13` | The Light Phaser device constant and the three version numbers, with every struct size and axis offset pinned again. |
+| `compat.device_key`, `compat.device_rejected` | A ledger key names its controller on each port, the Light Phaser included; only `auto` is refused. |
+
 ## Limits
 
 The timings follow MAME and ares and are unverified on hardware. The Sports Pad sign, the Paddle direction and

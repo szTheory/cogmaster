@@ -157,6 +157,16 @@ need the Checks read and Commit statuses read permissions. The job holds only co
 pull requests read and issues write, and uses no App token. `policy.digest` fails a widened permission, a
 schedule other than one Monday cron, a missing `dry_run` input, an App token or a privileged trigger.
 
+## CI speed
+
+A pull request run takes about 10.6 minutes: the macOS builds, then the release rehearsal (5.5 minutes), are the
+critical path. The static analyzer and the tree scan cost runner minutes, not wall time.
+
+Never run two macOS-using workflows at once (CI and Nightly).
+
+A job that fails at an `apt` step with "Temporary failure resolving" hit a runner DNS fault: `gh run rerun <id> --failed`
+reruns only the failed jobs, reuses the green ones and spends no macOS minutes.
+
 ## Repository settings
 
 `scripts/apply-repo-settings.sh` holds the repository's settings as code, and `.github/rulesets/main.json` holds

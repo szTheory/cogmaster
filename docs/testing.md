@@ -115,28 +115,7 @@ It passes only for exactly `COUNT` files, all present and byte-identical, and ot
 differs. The fixed count means a lane that stops uploading fails the job instead of silently dropping out. The
 eight files are the six `build` legs, `be32` and `wasm32`.
 
-The file also carries the sound rows: 300 frames of `cogmaster-run --hash-audio` over `psg_sweep.sms` (Master System
-on NTSC, PAL and Japan, and the Game Gear in Master System mode), `psg_sweep.gg` (native) and `fm_sweep.sms` (Master
-System, Japan and NTSC). Each `audio-transitions` and
-`audio-pcm` line is tagged `<file> <profile> <region> baseline` after its keyword. `tests/audio/transitions.txt` and
-`tests/audio/pcm.txt` freeze those lines; `runner.hashes_file` requires the rows to equal them and names the first
-line that differs, and `runner.hash_audio` requires its own `psg_sweep.sms` lines to be among them. The Japan row of
-`psg_sweep.sms` differs from the NTSC one only because the Japanese console carries the FM unit, which adds the control
-record and lowers the PSG; every other existing row is unchanged. `fm_sweep.sms` has its own detection routine for
-port `$F2`: the three `fixtures.fm_sweep.*` tests judge its detect record on the Japanese console (1), the export
-console (0) and the Game Gear (0); `fm.detect` loads the built image with the unit forced on for an export console
-(1) and off for a Japanese one (0); and `runner.hash_audio.fm` shows its Japanese and export runs repeat, equal their
-frozen lines and differ from each other. `ctest -L fm` runs all of these with the chip and unit tests. After an
-intended change, regenerate them from a clean `ci` build:
-
-```sh
-grep '^audio-transitions' build/ci/hashes.txt > tests/audio/transitions.txt
-grep '^audio-pcm' build/ci/hashes.txt > tests/audio/pcm.txt
-```
-
-The transitions hash covers every sound-chip output change in order, so it proves the emulated behaviour; the PCM
-hash covers the samples after synthesis, so it also proves the mix. A mix retune changes only `pcm.txt`; a change
-to `transitions.txt` means the emulated behaviour moved.
+The file also carries the sound rows; what they hold and how to regenerate their pins is in [audio.md](audio.md#the-frozen-sound-hashes).
 
 `ctest --preset ci -R <regex>` reruns part of the suite after a build; `ctest --test-dir build/ci -L <label>`
 selects by label.
@@ -256,33 +235,7 @@ The `perf.gate.*` tests feed the instructions-per-frame comparison its edge case
 `policy.publish_signer` show that a release verifies only from `refs/heads/main` and only as signed by
 `release.yml`, using logging `gh` and `curl` stubs.
 
-## Controller tests
-
-Each family guards one fault in the controller path ([controllers.md](controllers.md)); every one has a negative
-control that must fail.
-
-| Tests | What they guard |
-|---|---|
-| `ports.latch`, `ports.pins` | Every `$3F` write pair latches the H counter, and every pad state reads the same `$DC` and `$DD`, as before the port layer; `ports.latch_control` shows an oracle that latches on the wrong edge disagrees. |
-| `ports.input.*` | `cogmaster_set_input` never reads past a smaller caller (poison bytes, an exact-size allocation on the `asan` lane), refuses every bad tag, device and axis without changing state, and writes only the bytes a short result or info caller can hold. |
-| `ports.glasses.*` | The eye of a frame by the cut rule at its boundaries on NTSC, PAL and the taller modes; the Game Gear always none; a store is never a poll and never changes the RAM-off fault; the saved eye pair. |
-| `ports.devices.*` | The Sports Pad's tick cases, the Paddle's position and clock, delta accumulation and clamps, availability, resets, replay from recorded deltas and the poll hammer. |
-| `ports.state.*` | Every byte of every device field in a saved state, patched and loaded: a refusal leaves the instance unchanged and an acceptance saves back equal. |
-| `ports.gun.*` | The Light Phaser's sensor against an independent oracle, the edge tick, the lazy bounds and the poll hammer, the two-gun merge, the sticky bit and its expiry, the no-shot neutrality, and the aim and pin rules; the controls (a wrong-edge oracle, a pad in place of the gun, a parked aim) must disagree. |
-| `ports.state.gun` | Every byte of the saved gun fields, patched and loaded: a refusal leaves the instance unchanged and an acceptance saves back equal. |
-| `fuzz.regress.pad` | The pad fuzz target's seeds and regressions on every lane. |
-| `fixtures.sports_pad.*`, `fixtures.paddle.*`, `fixtures.glasses.*` | Self-written images read the devices from Z80 code and report what they decode; the expected values come from the scripted motion, not from the core. The controls run the pad on the device image, freeze the clock, drop a delta and degrade the Paddle. |
-| `fixtures.light_phaser.*` | A self-written image latches the gun from Z80 code at ten loop lengths, on four profiles and both ports, against a closed form derived in CMake rather than from the core; three controls (a left aim, a pad, a parked gun) must read differently. |
-| `runner.device.*`, `runner.input.axes_*`, `runner.eyes.*` | The runner's controller options, exit 77, probe keys, the 75-byte script line and the `--eyes` line. |
-| `cart.device.*`, `cart.fixture_identity.*` | The table's default for every row, the region rule, and the two owned fixtures' rows. |
-| `runner.gun.*` | The runner's script aim as the field dot through each machine's crop, its strict refusals, the Game Gear exit 77, and a gun that changes nothing in a run where it sees no light. |
-| `host.eyes` | The anaglyph mix with a variant that writes into its input as the control. |
-| `host.aim` | The pointer-to-field mapping through the Master System and Game Gear rectangles: a pointer mapped without the crop offset, off by one dot or clamped onto an edge dot disagrees. |
-| `libretro.host.devices.*`, `libretro.host.stereo.*` | The adapter's option resolution, input sums, clamps and motion, and the view rule: alternating titles composed, one-eye titles untouched. |
-| `libretro.host.gun.*` | The adapter's pointer and cursor sources, Pause on a gun port, and a crosshair that is drawn into the shown picture only and stays out of the frame hash. |
-| `policy.no_title_table*` | A static check that no per-title table can enter the sensor or its hooks, with self-tests that must trip it (a brace or string array, `//` and `/*` inside a string) or must not (comments). |
-| `abi.api_v13` | The Light Phaser device constant and the three version numbers, with every struct size and axis offset pinned again. |
-| `compat.device_key`, `compat.device_rejected` | A ledger key names its controller on each port, the Light Phaser included; only `auto` is refused. |
+The controller path's tests and what each guards are listed in [controllers.md](controllers.md#tests).
 
 ## Pinned card hashes
 
@@ -311,6 +264,7 @@ are recognised on Windows only. `abi.api_version` requires every name in the hea
 `.github/workflows/ci.yml` runs on every pull request, on each push to `main`, by hand, and when `release.yml`
 calls it with a `ref`. Each job runs the same workflow preset you run locally, then the JUnit check with its
 lane's inventory and labels. Every action is pinned by full commit SHA.
+[CI speed](maintaining.md#ci-speed) says where a run's time goes and what to do about a failed runner setup step.
 
 | Job | Runner | Runs |
 |---|---|---|
