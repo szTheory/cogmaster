@@ -10,7 +10,8 @@ int main(void)
     CHECK_EQ_U64(COGMASTER_BEHAVIOUR_REVISION, 13u);
     CHECK_EQ_U64(COGMASTER_STATE_FORMAT_VERSION, 13u);
 
-    cogmaster_versions v;
+    cogmaster_versions v = {0};
+    v.size = (uint32_t)sizeof v;
     CHECK(cogmaster_get_versions(&v) == COGMASTER_STATUS_OK);
     CHECK_EQ_U64(v.api, 11u);
     CHECK_EQ_U64(v.behaviour, 13u);
