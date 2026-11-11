@@ -53,8 +53,10 @@ The nine columns are `id,title,machine,region,mapper,predicate,status,evidence,d
 resolves region `any` to `ntsc-u`, inserts default SMS/GG video and pad devices, and uses the empty
 SHA-256 for no script. A configuration prefix has the fixed grammar
 `cfg:video=sms;port1=pad;port2=pad;script=none;sha256=DIGEST/` before the runner predicate;
-video accepts `sms|gg`, devices accept `pad|none`, and script is a logical identifier plus its content
-SHA-256. Frame numbers are decimal; RAM addresses and expected bytes normalize to uppercase hex.
+video accepts `sms|gg`, devices accept `pad|none|paddle|sports`, and script is a logical identifier plus
+its content SHA-256. A row for a device title names its device in its prefix, so a pad run never satisfies
+it; a row proves a boot or a frame hash and never that motion tracks. `auto` and the light phaser token are
+not accepted. Frame numbers are decimal; RAM addresses and expected bytes normalize to uppercase hex.
 Expected hashes/bytes remain separate from identity, which includes the resolved profile, board,
 devices, script identity/content, predicate kind, frame and address. A boot cap is at most 1,000,000
 frames; sound predicates are unavailable. The libretro core stays experimental through v2.0.
