@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 7
 current_phase_name: Saves survive a restart
 status: planning
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-11-11T01:06:26.804Z"
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-11-11T01:08:52.136Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 6 complete, transitioned to Phase 7
-state_head: 82c9233428812bdb04067f7517a3fd2a0e51f7ac
+state_head: 4ee7a171de6788f9ef76c7182a7e6d5681fe2f06
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 35
-  completed_plans: 26
+  completed_plans: 27
   percent: 25
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 7 — Saves survive a restart
-Plan: 1 of 10 complete (07-01)
+Plan: 2 of 10 complete (07-01, 07-02)
 Status: Executing
-Last activity: 2026-11-10 — Executed 07-01, the 93C46 device and its tests
+Last activity: 2026-11-10 — Executed 07-02, the API 11 surface and the sega_eeprom board name
 
 Progress: [███░░░░░░░] 25% of v2.0
 
@@ -151,6 +151,7 @@ Progress: [███░░░░░░░] 25% of v2.0
 | Phase 06 P10 | 20min | 3 tasks | 12 files |
 | Phase 06 P11 | 25 min | 3 tasks | 3 files |
 | Phase 07 P01 | 45 min | 2 tasks | 7 files |
+| Phase 07 P02 | 12 min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -189,6 +190,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 06]: 06-10: the Korean, Zemina and 4 PAK images are detected by the scan (board_source heuristic), not by fixture_facts rows; a 4 PAK slot powers up on page 0 (banks 0 and 1)
 - [Phase 06]: 06-11: no perf allow line; boot_to_play delta_bp 0 on final head run 42787536409, eight-lane hash equality green
 - [Phase 07]: 93C46: EWEN/EWDS act on the completing clock; WRITE, ERASE, WRAL and ERAL run when chip select falls, so one change is reported per completed command
+- [Phase 07]: 07-02: COGMASTER_BOARD_SEGA_EEPROM appended at 10 with API 11, behaviour 13 and state format 13; the probe word is sega_eeprom and the catalog generator must match it
 
 ### Pending Todos
 
@@ -290,8 +292,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T01:06:26.740Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-11-11T01:08:52.066Z
+Stopped at: Completed 07-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
