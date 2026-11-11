@@ -343,6 +343,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 8 plan 08-06 (gsd-execute-phase 08); byte-mutation, just-outside, sweep, mid-sequence and availability state cases against an independent checker (2952 loads), fuzz_pad.c as the fifth fuzz target with seeds, regress and libFuzzer registrations, three local negative controls, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 8 plan 08-07 (gsd-execute-phase 08); table controller intent in cart_info and the profile-resolved default in info, paddle region rule (1 of 1658 rows moved), four cart.device cases with two local negative controls, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 8 plan 08-10 (gsd-execute-phase 08); sports_pad.asm with cycle-counted waits and the 511/512-cycle idle probe, 30 rows on two profiles recomputed from one delta list, dropped-delta and plain-pad controls, a device hash row (14 added lines), record mode and a three-region replay case with a control; 3 tasks, 3 commits, no push | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 8 plan 08-17 (gsd-execute-phase 08); controller guide, test family rows, README link, floors 548 and 511, PAD-04 and PAD-05 wording amended in REQUIREMENTS and ROADMAP, local judge, unchanged-proof, budgets and hosted dispatch 3 with the nightly | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 

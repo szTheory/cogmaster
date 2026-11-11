@@ -128,10 +128,10 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Every TH change goes through one edge detector in the pin-level port layer, and the pad-only frame hashes and the existing `io` tests are unchanged on all eight lanes (PAD-01).
   2. A Sports Pad fixture tracks relative motion through the runner and libretro with timeouts in integer ticks; a Paddle fixture works on a Japan profile and is refused on a profile without it, and replaying the recorded deltas gives the same frame hash (PAD-02, PAD-03).
-  3. The 3-D glasses eye state is reported at frame end only while the cartridge enable bit is set, and the frame hash is the same whether or not the host composes the eyes (PAD-04).
-  4. A caller built against the version 9 `cogmaster_input` passes its smaller struct and an ASan test shows `cogmaster_set_input` never reads past it, copying the smaller size and zeroing the rest (PAD-05).
+  3. The 3-D glasses eye is reported with each frame on every Master System profile whatever `$3E` says, is 0 on a Game Gear and when nothing wrote it, and the frame hash is the same whether or not the host composes the eyes (PAD-04).
+  4. A caller built against the 32-byte `cogmaster_input` of API versions 1 to 11 passes its smaller struct and an ASan test shows `cogmaster_set_input` never reads past it, copying the smaller size and zeroing the rest (PAD-05).
   5. A dump's default device comes from the hash table with no option, a user option overrides it, the ledger key carries the device, the state visitor refuses out-of-range device state, and each device is in the fuzz target (PAD-06, PAD-07).
-**Plans**: 16/17 plans executed
+**Plans**: 17 plans
 
 Plans:
 - [x] 08-01-PLAN.md — pin-level port layer with the pad arm and the one TH-change function, proven by a 256 x 256 latch and pin differential (PAD-01)
