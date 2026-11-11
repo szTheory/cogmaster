@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 8
 current_phase_name: Sports Pad, Paddle and 3-D glasses
 status: planning
-stopped_at: Completed 08-14-PLAN.md
-last_updated: "2026-11-11T06:50:20.003Z"
+stopped_at: Completed 08-15-PLAN.md
+last_updated: "2026-11-11T07:06:04.739Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 7 complete, transitioned to Phase 8
-state_head: ff602aa41849e349720d4c809c70e7fe74fea0e4
+state_head: 3b53a73cd8ce005783af8371214804ff9a592147
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 52
-  completed_plans: 49
+  completed_plans: 50
   percent: 38
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 8 — Sports Pad, Paddle and 3-D glasses
-Plan: 14 of 17 complete (08-01 port layer, 08-02 header delta, 08-03 set_input copy rule, 08-04 glasses core and hosted dispatch 1, 08-05 Sports Pad, Paddle and saved device state, 08-06 state bounds proof and pad fuzz target, 08-07 default controller per dump and the region rule, 08-08 runner device grammar, exit 77 refusal and probe default keys, 08-09 runner delta lines and --eyes, 08-10 Sports Pad fixture and replay, 08-11 Paddle fixture and replay, 08-12 glasses fixture and hosted dispatch 2, 08-13 table rows for the two device fixtures, 08-14 anaglyph composition in the host library); next 08-15
+Plan: 15 of 17 complete (08-01 port layer, 08-02 header delta, 08-03 set_input copy rule, 08-04 glasses core and hosted dispatch 1, 08-05 Sports Pad, Paddle and saved device state, 08-06 state bounds proof and pad fuzz target, 08-07 default controller per dump and the region rule, 08-08 runner device grammar, exit 77 refusal and probe default keys, 08-09 runner delta lines and --eyes, 08-10 Sports Pad fixture and replay, 08-11 Paddle fixture and replay, 08-12 glasses fixture and hosted dispatch 2, 08-13 table rows for the two device fixtures, 08-14 anaglyph composition in the host library, 08-15 libretro device options, motion sources and 3-D view); next 08-16
 Status: Executing
-Last activity: 2026-11-11 — Completed 08-14 (cogmaster__eyes_anaglyph in host/eyes.c mixes red from the left picture with green and blue from the right one, proven by host.eyes with a bad-variant control on every lane; the core's hashed frame is untouched). Runtime Claude Code, model Sonnet 5.5
+Last activity: 2026-11-11 — Completed 08-15 (the libretro adapter picks the device per port from cogmaster_port1/2 and the table, sums mouse, stick and D-pad motion clamped to 32767 for Sports Pad and Paddle ports, and shows 3-D titles through cogmaster_3d_view only while the eye alternates; six in-process cases compare its picture with the library's, three negative controls fail them). Runtime Claude Code, model Sonnet 5.5
 
 Progress: [████░░░░░░] 38% of v2.0
 
@@ -175,6 +175,7 @@ Progress: [████░░░░░░] 38% of v2.0
 | Phase 08 P12 | 14 min | 3 tasks | 13 files |
 | Phase 8 P13 | 45min | 2 tasks | 11 files |
 | Phase 08 P14 | 15 min | 2 tasks | 7 files |
+| Phase 08 P15 | 70 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -243,6 +244,8 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 8]: 08-13: the two device fixtures' table rows are plain ROM, SMS, persistence 0 and region 0, so the table adds only the default controllers and the Paddle's Japan region
 - [Phase 8]: 08-13: any later edit of sports_pad.asm or paddle.asm fails the build identity check until its row in fixture_facts.txt is re-pinned and src/cartdb.inc regenerated
 - [Phase 08]: 08-14: cogmaster__eyes_anaglyph is a pure host function (red from left, green and blue from right, top bits zero) tested by a closed-form grid plus a bad-variant control; the test is its own executable with one case name
+- [Phase 08]: 08-15: a device the profile cannot take is found by one set_input probe per port at load, so the one log line comes at load and each port is judged alone
+- [Phase 08]: 08-15: glasses.sms draws nothing, so the stereo cases use two guests the test builds and a model of the rule built from the library's own eyes and pictures
 
 ### Pending Todos
 
@@ -359,8 +362,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T06:50:19.904Z
-Stopped at: Completed 08-14-PLAN.md
+Last session: 2026-11-11T07:06:04.621Z
+Stopped at: Completed 08-15-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
