@@ -511,6 +511,45 @@ if(CMAKE_SCRIPT_MODE_FILE)
     expect_exit(2 "usage" --frames 1 --port1 other)
     expect_exit(2 "usage" --frames 1 --port2)
     expect_exit(0 "frame 1 sha256" --frames 1 --port1 none --port2 none --hash)
+  elseif(CASE STREQUAL "device_usage")
+    expect_exit(0 "frame 1 sha256" --frames 1 --port1 auto --hash)
+    expect_exit(0 "frame 1 sha256" --frames 1 --port1 paddle --region ntsc-j --hash)
+    expect_exit(0 "frame 1 sha256" --frames 1 --port2 sports --hash)
+    expect_exit(2 "usage" --frames 1 --port1 lphaser)
+    expect_exit(2 "usage" --frames 1 --port1 AUTO)
+    expect_exit(2 "usage" --frames 1 --port2 Paddle)
+  elseif(CASE STREQUAL "device_names")
+    # The execution line names each device and keeps the prefix older checks match.
+    file(WRITE "${OUT}" "ram@2:$C200=00\n")
+    set(line "execution machine=[0-9]+ region=[0-9]+ tv=[0-9]+ video=[0-9]+ mapper=[0-9]+ port1=")
+    expect_exit(0 "${line}pad port2=pad " --frames 2 --expect ${OUT})
+    expect_exit(0 "${line}sports port2=none " --frames 2 --expect ${OUT}
+      --port1 sports --port2 none)
+    expect_exit(0 "${line}paddle port2=pad " --frames 2 --expect ${OUT}
+      --port1 paddle --region ntsc-j)
+  elseif(CASE STREQUAL "device_refused")
+    expect_exit(77 "unsupported.*--region" --frames 1 --port1 paddle)
+    expect_exit(77 "unsupported.*--region" --frames 1 --port2 paddle --region ntsc-u)
+    expect_exit(77 "unsupported.*Game Gear" --frames 1 --port1 sports --machine gg)
+    expect_exit(77 "unsupported.*Game Gear" --frames 1 --port2 paddle --machine gg
+      --region ntsc-j)
+    expect_exit(77 "paddle on port 2" --frames 1 --port1 sports --port2 paddle)
+    expect_exit(0 "frame 1 sha256" --frames 1 --port1 paddle --region ntsc-j --hash)
+    expect_exit(0 "frame 1 sha256" --frames 1 --port1 sports --hash)
+  elseif(CASE STREQUAL "device_auto")
+    # A pad-only image resolves auto to a pad, whether the option is absent or spelled out,
+    # and its probe reports pad defaults after unsupported_reason.
+    file(WRITE "${OUT}" "ram@2:$C200=00\n")
+    set(line "mapper=[0-9]+ port1=pad port2=pad ")
+    expect_exit(0 "${line}" ${SEEDS}/di-halt.sms --frames 2 --expect ${OUT})
+    expect_exit(0 "${line}" ${SEEDS}/di-halt.sms --frames 2 --expect ${OUT}
+      --port1 auto --port2 auto)
+    expect_exit(0 "mapper=[0-9]+ port1=pad port2=sports " ${SEEDS}/di-halt.sms --frames 2
+      --expect ${OUT} --port2 sports)
+    probe(${SEEDS}/di-halt.sms)
+    if(NOT out MATCHES "unsupported_reason=[^\n]*\nport1_default=pad\nport2_default=pad\n$")
+      message(FATAL_ERROR "--probe: pad defaults missing after unsupported_reason in\n${out}")
+    endif()
   elseif(CASE STREQUAL "probe_keys")
     # A 128 KiB export image with a good header and no mapper stores: the
     # keys in order, the header read at $7FF0 and the Sega board guessed.
@@ -1053,6 +1092,16 @@ if(COGMASTER_FIXTURES)
       -P ${CMAKE_CURRENT_LIST_FILE}
     LABELS runner portable TIMEOUT 10)
 endif()
+
+# Fault prevented: a controller choice the profile cannot honour that runs silently as a pad, or a default that never
+# reaches the host, so a Paddle title plays with the wrong device.
+# Timeout: 30 s floor; each case is a few short runs, provisional.
+foreach(device_case IN ITEMS usage names refused auto)
+  cogmaster_add_test(NAME runner.device.${device_case}
+    COMMAND ${runner_check} -DCASE=device_${device_case}
+      -DOUT=${PROJECT_BINARY_DIR}/tests/device-${device_case}.expect -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS portable runner TIMEOUT 30)
+endforeach()
 
 # Fault prevented: malformed, truncated or surplus absolute input being run as released input.
 cogmaster_add_test(NAME runner.input

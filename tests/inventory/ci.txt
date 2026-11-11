@@ -345,6 +345,10 @@ release.single_version_source.self_test	policy
 runner.bench.bytes	bench,portable,runner
 runner.bench.format	bench,portable,runner
 runner.bench.percentile	bench,portable,runner
+runner.device.auto	portable,runner
+runner.device.names	portable,runner
+runner.device.refused	portable,runner
+runner.device.usage	portable,runner
 runner.exit.failure	portable,runner
 runner.exit.table	runner
 runner.expect.predicates	portable,runner

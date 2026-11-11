@@ -270,13 +270,18 @@ static int load_status(cogmaster_status st, const uint8_t *image, size_t image_s
 /* The one call that sets the controllers before frame 1. A device the machine and region cannot
    take is a refusal that names the fix; the Paddle was made for the Japanese console only and the
    Game Gear has no controller ports (the same rule as src/ports.c). */
-static int set_devices(cogmaster *m, uint32_t port1, uint32_t port2)
+static cogmaster_status send_devices(cogmaster *m, uint32_t port1, uint32_t port2)
 {
     cogmaster_input in = {0};
     in.size = sizeof in;
     in.port1 = port1;
     in.port2 = port2;
-    cogmaster_status st = cogmaster_set_input(m, &in);
+    return cogmaster_set_input(m, &in);
+}
+
+static int set_devices(cogmaster *m, uint32_t port1, uint32_t port2)
+{
+    cogmaster_status st = send_devices(m, port1, port2);
     if (st == COGMASTER_STATUS_OK) {
         return COGMASTER__EXIT_OK;
     }
@@ -285,12 +290,17 @@ static int set_devices(cogmaster *m, uint32_t port1, uint32_t port2)
                 (unsigned long)st);
         return COGMASTER__EXIT_FAILURE;
     }
-    uint32_t bad =
-        port1 == COGMASTER_DEVICE_PADDLE || port1 == COGMASTER_DEVICE_SPORTS_PAD ? port1 : port2;
-    fprintf(stderr, "cogmaster-run: unsupported: %s on port %d is not available here; %s\n",
-            cogmaster__device_name(bad), bad == port1 ? 1 : 2,
-            bad == COGMASTER_DEVICE_PADDLE ? "the Paddle needs --region ntsc-j on a Master System"
-                                           : "the Game Gear has no such controller");
+    /* A refused call changes nothing, so asking about port 1 alone names the culprit. */
+    int first =
+        send_devices(m, port1, COGMASTER_DEVICE_PAD) == COGMASTER_STATUS_ERR_PROFILE_REJECTED;
+    uint32_t bad = first ? port1 : port2;
+    fprintf(
+        stderr, "cogmaster-run: unsupported: %s on port %d is not available here; %s\n",
+        cogmaster__device_name(bad), first ? 1 : 2,
+        bad == COGMASTER_DEVICE_PADDLE
+            ? "the Paddle needs --region ntsc-j on a Master System, and the Game Gear has no such "
+              "controller"
+            : "the Game Gear has no such controller");
     return COGMASTER__EXIT_REFUSED;
 }
 
