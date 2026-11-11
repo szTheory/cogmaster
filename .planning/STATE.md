@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 7
 current_phase_name: Saves survive a restart
 status: planning
-stopped_at: Completed 07-09-PLAN.md
-last_updated: "2026-11-11T02:09:07.609Z"
+stopped_at: Completed 07-10-PLAN.md
+last_updated: "2026-11-11T02:25:18.223Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 6 complete, transitioned to Phase 7
-state_head: 56857589687f11f744aac14febecd1fae2335047
+state_head: cad977acee00628aeae56380bb563b307b8535eb
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 35
-  completed_plans: 34
+  completed_plans: 35
   percent: 25
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 7 — Saves survive a restart
-Plan: 9 of 10 complete (07-01, 07-02, 07-03, 07-04, 07-05, 07-06, 07-07, 07-08, 07-09)
-Status: Executing
-Last activity: 2026-11-11 — Executed 07-09, runner sweep of stale temporaries, POSIX directory sync and the kill test (runtime Claude Code, model Sonnet 5.5)
+Plan: 10 of 10 complete (07-01 to 07-10)
+Status: Executed; ready for code review, verification and ship
+Last activity: 2026-11-11 — Executed 07-10, hosted RetroArch save restart steps, wording and floors; final hosted run 42945252988 green (runtime Claude Code, model Sonnet 5.5)
 
 Progress: [███░░░░░░░] 25% of v2.0
 
@@ -159,6 +159,7 @@ Progress: [███░░░░░░░] 25% of v2.0
 | Phase 07 P07 | 40 min | 3 tasks | 8 files |
 | Phase 07 P08 | 25 min | 3 tasks | 8 files |
 | Phase 7 P09 | 40min | 3 tasks | 7 files |
+| Phase 7 P10 | 35 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -206,6 +207,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 07]: 07-08: --save-interval 0 is accepted without --save-dir (off); a periodic flush failure ends the run at once and the exit flush is unchanged; the EEPROM refusal tells oversize from a wrong length by comparing the read length with the span
 - [Phase 7]: 07-09: the same test names are registered on every lane; only the asserted behaviour differs per platform (dirsync, next_index)
 - [Phase 7]: 07-09: the kill test locates the kill with a --png file because a killed process loses unflushed stdout
+- [Phase 7]: 07-10: RetroArch writes saves to saves/cogmaster/<name>.srm; the hosted restart steps compare that file with the runner after each pass and the control asserts exit 1 with REGEX ^ because compare_files is silent
 
 ### Pending Todos
 
@@ -292,6 +294,8 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 7 plan 07-06 (gsd-execute-phase 07); EEPROM fuzz entry with a generated clock-stream seed, fuzz.regress.eeprom on every portable lane, runner.save.continuation.eeprom across two processes; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 7 plan 07-07 (gsd-execute-phase 07); EEPROM import rule and length matrix, libretro span guard and libretro_saves flip, two-core srm measurement recorded; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 7 plan 07-08 (gsd-execute-phase 07); --save-interval with usage, byte-equality and fail-at-once tests, EEPROM wrong-length refusal naming 128, five negative controls; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 7 plan 07-09 (gsd-execute-phase 07); load-time sweep, POSIX directory sync, kill test on every lane; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 7 plan 07-10 (gsd-execute-phase 07); RetroArch restart round trips for battery and EEPROM, SAVE-03 wording, floors 465 and 434, hosted runs 42944235132 (retroarch path fix) and 42945252988 green; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -313,8 +317,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T02:09:07.305Z
-Stopped at: Completed 07-09-PLAN.md
+Last session: 2026-11-11T02:25:17.981Z
+Stopped at: Completed 07-10-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
