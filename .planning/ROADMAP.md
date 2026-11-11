@@ -135,9 +135,9 @@ Plans:
 
 Plans:
 - [ ] 08-01-PLAN.md — pin-level port layer with the pad arm and the one TH-change function, proven by a 256 x 256 latch and pin differential (PAD-01)
-- [ ] 08-02-PLAN.md — the whole header delta with inert behaviour, versions 12/14/14, the bounded input copy and the shape-only test edits (PAD-05)
-- [ ] 08-03-PLAN.md — copy-rule proof (poison, exact malloc, tags, refusals) and the abi.api_v12 pins (PAD-05)
-- [ ] 08-04-PLAN.md — glasses eye hook, cut rule, state bytes and hosted dispatch 1 (PAD-04, PAD-07)
+- [ ] 08-02-PLAN.md — the shape-only test edits, then the whole header delta with inert behaviour, versions 12/14/14 and the v12 pins file (PAD-05)
+- [ ] 08-03-PLAN.md — abi.api_v12 registration, the bounded input copy and its proof (poison, exact malloc, tags, refusals) (PAD-05)
+- [ ] 08-04-PLAN.md — glasses eye hook, cut rule, state bytes and hosted dispatch 1 with a computed perf delta (PAD-04, PAD-07)
 - [ ] 08-05-PLAN.md — Sports Pad and Paddle models, availability, delta accumulation and saved device state (PAD-01, PAD-02, PAD-03, PAD-07)
 - [ ] 08-06-PLAN.md — state-bound byte-mutation proof and the pad fuzz target (PAD-07)
 - [ ] 08-07-PLAN.md — library table defaults, profile resolution and the region rule (PAD-06)
@@ -148,7 +148,7 @@ Plans:
 - [ ] 08-12-PLAN.md — glasses fixture with eye-count cases and hosted dispatch 2 (PAD-04)
 - [ ] 08-13-PLAN.md — table rows for the two device fixtures and the no-option default, region trap and exit 77 cases (PAD-06, PAD-03, PAD-02)
 - [ ] 08-14-PLAN.md — host anaglyph composition with its unit test (PAD-04)
-- [ ] 08-15-PLAN.md — libretro device options, motion sources and the 3-D view (PAD-02, PAD-03, PAD-04)
+- [ ] 08-15-PLAN.md — libretro device options, motion sources reaching the guest and the 3-D view (PAD-02, PAD-03, PAD-04)
 - [ ] 08-16-PLAN.md — ledger key device token and the changed-device cases (PAD-06)
 - [ ] 08-17-PLAN.md — controller docs, wording amendments, floors, local judge, final hosted runs and ship list (PAD-01, PAD-04, PAD-05)
 
