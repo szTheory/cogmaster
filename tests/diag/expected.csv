@@ -256,3 +256,5 @@ paddle,16:frame_11_position,sms-japan,0179,derived,SMS-CARTRIDGES section 3.6 an
 paddle,17:frame_12_position,sms-japan,0079,derived,SMS-CARTRIDGES section 3.6 and the scripted deltas with a saturating sum
 paddle,18:frame_13_position,sms-japan,0000,derived,SMS-CARTRIDGES section 3.6 and the scripted deltas with a saturating sum
 paddle,19:frame_14_position,sms-japan,007F,derived,SMS-CARTRIDGES section 3.6 and the scripted deltas with a saturating sum
+glasses,01:ram_routine_bytes,*,0010,doc,the routine copied to work RAM is 16 bytes
+glasses,02:ram_mirror_last_write,*,0007,doc,SMS-CARTRIDGES-AND-PERIPHERALS section 3.4: the register is readable only through the work RAM mirror
