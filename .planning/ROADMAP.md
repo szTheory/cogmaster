@@ -35,7 +35,7 @@ pull request and one automated release.
 
 - [x] **Phase 5: Tune-up** - The v1.0 debt merged away: measured timeouts, an armed perf gate, `quality.json`, budget headroom, the README's ROM step and the weekly digest (completed 2026-11-10)
 - [x] **Phase 6: Korean cartridges play** - The remaining mapper boards load and play with no setting, detected hash-first, with no shipped hash moving (completed 2026-11-10)
-- [ ] **Phase 7: Saves survive a restart** - 93C46 EEPROM and battery saves persist through the runner and RetroArch, with `.srm` interop only in measured layouts
+- [x] **Phase 7: Saves survive a restart** - 93C46 EEPROM and battery saves persist through the runner and RetroArch, with `.srm` interop only in measured layouts (completed 2026-11-10)
 - [ ] **Phase 8: Sports Pad, Paddle and 3-D glasses** - Pin-level ports and a grown input struct make the pad-device and 3-D titles play, with replays matching
 - [ ] **Phase 9: Light Phaser** - Light Phaser titles hit where the player aims, sensed from the emitted pixel at the beam
 - [ ] **Phase 10: BIOS boot** - A user boots from their own BIOS dump in the runner or RetroArch; fast boot stays the default
@@ -107,7 +107,7 @@ Plans:
   3. The libretro core reports saves enabled, and a guard test shows the exported span equals the battery span (SAVE-04).
   4. `cogmaster-run --save-interval N` writes the save after every N completed frames; a kill test between flushes leaves the last complete save readable, stale temporary files are swept on the next run, and the directory is synced after the rename on POSIX (SAVE-05).
   5. A hosted RetroArch run writes a battery save and an EEPROM save, restarts and reads both back, and the budget test keeps `tests/retroarch` at or under 300 lines (SAVE-06).
-**Plans**: 10/10 plans executed
+**Plans**: 10/10 plans complete
 
 Plans:
 - [x] 07-01-PLAN.md — 93C46 device from the data sheet with closed-form and differential tests (SAVE-01)
@@ -190,7 +190,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 5. Tune-up | v2.0 | 14/14 | Complete    | 2026-11-10 |
 | 6. Korean cartridges play | v2.0 | 11/11 | Complete    | 2026-11-10 |
-| 7. Saves survive a restart | v2.0 | 10/10 | In Progress | - |
+| 7. Saves survive a restart | v2.0 | 10/10 | Complete    | 2026-11-10 |
 | 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 0/TBD | Not started | - |
 | 9. Light Phaser | v2.0 | 0/TBD | Not started | - |
 | 10. BIOS boot | v2.0 | 0/TBD | Not started | - |
