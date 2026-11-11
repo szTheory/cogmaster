@@ -380,6 +380,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 9 plan 09-09 (gsd-execute-phase 09); host/aim helper (pointer to 1-based field aim through the crop rectangle in 32-bit arithmetic, clamped cursor, 17-dot crosshair) and host.aim with a crop-blind control, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 9 plan 09-10 (gsd-execute-phase 09); libretro LIGHTGUN type, lphaser option, pointer and cursor aim sources, Pause and Reset on a gun port 0, the crosshair after the conversion loop, tests/libretro/gun.h with three cases and six one-shot controls, no push; 3 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 9 plan 09-11 (gsd-execute-phase 09); table code 1 maps to the Light Phaser, lphaser in each ledger key grammar copy with 25-pair key and 6-token rejection cases and ratchet cases, eight testing-guide rows and the README line, two one-shot controls, no push; 3 tasks, 3 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 9 plan 09-12 (gsd-execute-phase 09); the Light Phaser section of the controller guide, GUN-02 and GUN-03 wording amended, GUN-01 to GUN-04 complete, floors 588 and 548, the SEED-010 hand-off, hosted dispatch 3 and the last timeouts (rows revised with the final dispatch) | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 

@@ -52,10 +52,10 @@ Requirements for this milestone. Each maps to one roadmap phase. Scope decisions
 
 ### Light Phaser
 
-- [ ] **GUN-01**: The Light Phaser senses the emitted pixel at the beam position and latches H at the edge tick, with no per-title offset table
-- [ ] **GUN-02**: A run with the gun plugged in and no shot has the same frame hash as one without it, and sensor work is bounded per line however often a game polls
-- [ ] **GUN-03**: The runner and libretro map aim through the crop to field coordinates, and the crosshair is drawn outside the hashed frame
-- [ ] **GUN-04**: A self-authored fixture lights a known square and polls TH at several loop lengths, and the latched X matches within a stated tolerance, with the existing latch positions unchanged
+- [x] **GUN-01**: The Light Phaser senses the emitted pixel at the beam position and latches H at the edge tick, with no per-title offset table
+- [x] **GUN-02**: A run with the Light Phaser plugged in, the trigger never pulled and no light in the sensor's view has the same frame and audio hashes and the same machine state, apart from the gun's own fields, as a run with a pad and nothing pressed, and sensor work is bounded per picture and per line however often a game polls
+- [x] **GUN-03**: A pure host helper maps a pointer through the rectangle of the last frame (the crop) to a field-dot aim, tested with Master System and Game Gear rectangles; libretro aims through it, the runner's script aim is the field dot itself (a Game Gear holds no Light Phaser), and the crosshair is drawn only into the libretro output buffer, outside the hashed frame
+- [x] **GUN-04**: A self-authored fixture lights a known square and polls TH at several loop lengths, and the latched X matches within a stated tolerance, with the existing latch positions unchanged
 
 ### BIOS boot
 
@@ -140,10 +140,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PAD-05 | Phase 8 | Complete |
 | PAD-06 | Phase 8 | Complete |
 | PAD-07 | Phase 8 | Complete |
-| GUN-01 | Phase 9 | Pending |
-| GUN-02 | Phase 9 | Pending |
-| GUN-03 | Phase 9 | Pending |
-| GUN-04 | Phase 9 | Pending |
+| GUN-01 | Phase 9 | Complete |
+| GUN-02 | Phase 9 | Complete |
+| GUN-03 | Phase 9 | Complete |
+| GUN-04 | Phase 9 | Complete |
 | BIOS-01 | Phase 10 | Pending |
 | BIOS-02 | Phase 10 | Pending |
 | BIOS-03 | Phase 10 | Pending |

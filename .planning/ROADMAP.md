@@ -37,7 +37,7 @@ pull request and one automated release.
 - [x] **Phase 6: Korean cartridges play** - The remaining mapper boards load and play with no setting, detected hash-first, with no shipped hash moving (completed 2026-11-10)
 - [x] **Phase 7: Saves survive a restart** - 93C46 EEPROM and battery saves persist through the runner and RetroArch, with `.srm` interop only in measured layouts (completed 2026-11-10)
 - [x] **Phase 8: Sports Pad, Paddle and 3-D glasses** - Pin-level ports and a grown input struct make the pad-device and 3-D titles play, with replays matching (completed 2026-11-11)
-- [ ] **Phase 9: Light Phaser** - Light Phaser titles hit where the player aims, sensed from the emitted pixel at the beam
+- [x] **Phase 9: Light Phaser** - Light Phaser titles hit where the player aims, sensed from the emitted pixel at the beam (completed 2026-11-11)
 - [ ] **Phase 10: BIOS boot** - A user boots from their own BIOS dump in the runner or RetroArch; fast boot stays the default
 - [ ] **Phase 11: PAL and Japanese FM** - PAL timing proven on every lane and the owner's PAL and FM carts judged under the right profile
 - [ ] **Phase 12: The whole list in the ledger** - Every SMS and Game Gear entry at the pin has an honest row, and `is_experimental` leaves the core
@@ -159,9 +159,9 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. A self-authored fixture lights a known square and polls TH at several loop lengths, and the latched X matches within the stated tolerance at every length, while the existing latch-position tests stay unchanged (GUN-04).
   2. The sensor reads the emitted pixel at the beam position and latches H at the edge tick, and a check finds no per-title offset table in `src/` (GUN-01).
-  3. A run with the gun plugged in and no shot has the same frame hash as one without it, and a poll-hammer test shows sensor work bounded per line however often the game polls (GUN-02).
-  4. Runner and libretro tests map aim through the SMS and Game Gear crops to field coordinates, and the frame hash is the same with the crosshair drawn or not (GUN-03).
-**Plans**: 11/12 plans executed
+  3. A run with the gun plugged in, no shot and no light in its view has the same frame hash as one without it, and a poll-hammer test shows sensor work bounded per line however often the game polls (GUN-02).
+  4. Host tests map aim through the Master System and Game Gear frame rectangles to field-dot coordinates, a runner script aim at the fixture square latches the expected X, and the frame hash is the same with the crosshair drawn or not (GUN-03).
+**Plans**: 12/12 plans complete
 
 Plans:
 - [x] 09-01-PLAN.md — header delta inert: the Light Phaser constant, versions 13/15/15, unchanged layout, v13 pins on three lanes (GUN-01)
@@ -175,7 +175,7 @@ Plans:
 - [x] 09-09-PLAN.md — host aim helper with the crop mapping, step and crosshair points and its unit test (GUN-03)
 - [x] 09-10-PLAN.md — libretro: LIGHTGUN type, pointer and cursor aim, Pause and Reset on a gun port, crosshair outside the hash (GUN-03)
 - [x] 09-11-PLAN.md — table default for the gun, ledger token lphaser, changed-key cases, testing guide rows (GUN-01, GUN-03)
-- [ ] 09-12-PLAN.md — controller docs, wording amendments, floors, local judge, final hosted runs and ship list (GUN-01, GUN-02, GUN-03, GUN-04)
+- [x] 09-12-PLAN.md — controller docs, wording amendments, floors, local judge, final hosted runs and ship list (GUN-01, GUN-02, GUN-03, GUN-04)
 
 ### Phase 10: BIOS boot
 **Goal**: A user boots from their own BIOS dump in the runner or RetroArch, fast boot stays the default, BIOS and cartridge arbitration follows the documented hardware, and no BIOS byte ever enters the tree or a release.
