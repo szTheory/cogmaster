@@ -131,7 +131,26 @@ Plans:
   3. The 3-D glasses eye state is reported at frame end only while the cartridge enable bit is set, and the frame hash is the same whether or not the host composes the eyes (PAD-04).
   4. A caller built against the version 9 `cogmaster_input` passes its smaller struct and an ASan test shows `cogmaster_set_input` never reads past it, copying the smaller size and zeroing the rest (PAD-05).
   5. A dump's default device comes from the hash table with no option, a user option overrides it, the ledger key carries the device, the state visitor refuses out-of-range device state, and each device is in the fuzz target (PAD-06, PAD-07).
-**Plans**: TBD
+**Plans**: 17 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — pin-level port layer with the pad arm and the one TH-change function, proven by a 256 x 256 latch and pin differential (PAD-01)
+- [ ] 08-02-PLAN.md — the whole header delta with inert behaviour, versions 12/14/14, the bounded input copy and the shape-only test edits (PAD-05)
+- [ ] 08-03-PLAN.md — copy-rule proof (poison, exact malloc, tags, refusals) and the abi.api_v12 pins (PAD-05)
+- [ ] 08-04-PLAN.md — glasses eye hook, cut rule, state bytes and hosted dispatch 1 (PAD-04, PAD-07)
+- [ ] 08-05-PLAN.md — Sports Pad and Paddle models, availability, delta accumulation and saved device state (PAD-01, PAD-02, PAD-03, PAD-07)
+- [ ] 08-06-PLAN.md — state-bound byte-mutation proof and the pad fuzz target (PAD-07)
+- [ ] 08-07-PLAN.md — library table defaults, profile resolution and the region rule (PAD-06)
+- [ ] 08-08-PLAN.md — runner device grammar, resolved defaults, exit 77 refusal and probe keys (PAD-06, PAD-02)
+- [ ] 08-09-PLAN.md — runner 75-byte delta script line and the --eyes report (PAD-02, PAD-03, PAD-04)
+- [ ] 08-10-PLAN.md — Sports Pad fixture, mailbox rows with controls and the recorded-delta replay (PAD-02, PAD-03)
+- [ ] 08-11-PLAN.md — Paddle fixture, the loop-length sweep and its controls (PAD-03, PAD-02)
+- [ ] 08-12-PLAN.md — glasses fixture with eye-count cases and hosted dispatch 2 (PAD-04)
+- [ ] 08-13-PLAN.md — table rows for the two device fixtures and the no-option default, region trap and exit 77 cases (PAD-06, PAD-03, PAD-02)
+- [ ] 08-14-PLAN.md — host anaglyph composition with its unit test (PAD-04)
+- [ ] 08-15-PLAN.md — libretro device options, motion sources and the 3-D view (PAD-02, PAD-03, PAD-04)
+- [ ] 08-16-PLAN.md — ledger key device token and the changed-device cases (PAD-06)
+- [ ] 08-17-PLAN.md — controller docs, wording amendments, floors, local judge, final hosted runs and ship list (PAD-01, PAD-04, PAD-05)
 
 ### Phase 9: Light Phaser
 **Goal**: Light Phaser titles hit where the player aims, sensed from the emitted pixel at the beam position with H latched at the edge tick, without changing any run that has no gun or fires no shot.
