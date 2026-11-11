@@ -46,6 +46,10 @@ bus.halt_bound.ie_positive	bus,portable
 bus.hostile_vdp_loop	bus,portable
 bus.stamps	bus,portable
 cart.database	cart,portable
+cart.device.defaults	cart,portable
+cart.device.degrade	cart,portable
+cart.device.none	cart,portable
+cart.device.region	cart,portable
 cart.fixture_hash	cart,portable
 cart.fixture_identity	cart,portable
 cart.fixture_wrong_hash	cart,portable

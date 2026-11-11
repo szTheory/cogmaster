@@ -45,3 +45,20 @@ foreach(case IN ITEMS probe.branches probe.pure probe.scan probe.sizes)
   cogmaster_add_test(NAME cart.${case} COMMAND cogmaster-test-cart ${case}
     LABELS cart portable TIMEOUT 10)
 endforeach()
+
+# The controller a dump defaults to, the region a paddle dump gets and the default a profile cannot
+# take, over every row of the table against the codes and the availability rule written out again.
+add_executable(cogmaster-test-cart-device ${CMAKE_CURRENT_LIST_DIR}/test_cart_device.c)
+target_include_directories(cogmaster-test-cart-device PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-cart-device PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-cart-device PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-cart-device)
+
+# Fault prevented: a Paddle dump that loads as export and finds no paddle, or a default the profile
+# cannot take that fails the load instead of degrading to a pad.
+foreach(case IN ITEMS defaults region degrade none)
+  # Timeout: 20 s floor; provisional until a hosted run measures it.
+  cogmaster_add_test(NAME cart.device.${case} COMMAND cogmaster-test-cart-device ${case}
+    LABELS cart portable TIMEOUT 20)
+endforeach()
