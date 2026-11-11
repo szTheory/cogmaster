@@ -6,6 +6,7 @@ abi.api_v1	abi,portable
 abi.api_v10	abi,portable
 abi.api_v11	abi,portable
 abi.api_v12	abi,portable
+abi.api_v13	abi,portable
 abi.api_v2	abi,portable
 abi.api_v3	abi,portable
 abi.api_v4	abi,portable
