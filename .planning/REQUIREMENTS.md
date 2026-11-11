@@ -59,7 +59,7 @@ Requirements for this milestone. Each maps to one roadmap phase. Scope decisions
 
 ### BIOS boot
 
-- [ ] **BIOS-01**: The two firmware legality scans (release and local window) exist, each with a negative control, before any BIOS code lands
+- [x] **BIOS-01**: The two firmware legality scans (release and local window) exist, each with a negative control, before any BIOS code lands
 - [ ] **BIOS-02**: A user boots from their own BIOS dump with `--boot bios --bios FILE` or the libretro option, fast boot stays the default, the dump is recognised by SHA-1, and the runner exits 77 when a BIOS is required and absent
 - [ ] **BIOS-03**: CI runs a self-authored BIOS-shaped image with no skip, and a check shows the fast-boot hand-off equals the state that image reaches
 - [ ] **BIOS-04**: The libretro `.info` declares the firmware as optional and the adapter reads it from the system directory
@@ -144,7 +144,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GUN-02 | Phase 9 | Complete |
 | GUN-03 | Phase 9 | Complete |
 | GUN-04 | Phase 9 | Complete |
-| BIOS-01 | Phase 10 | Pending |
+| BIOS-01 | Phase 10 | Complete |
 | BIOS-02 | Phase 10 | Pending |
 | BIOS-03 | Phase 10 | Pending |
 | BIOS-04 | Phase 10 | Pending |

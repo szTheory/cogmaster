@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 10
 current_phase_name: BIOS boot
 status: planning
-stopped_at: Completed 10-02-PLAN.md
-last_updated: "2026-11-11T16:04:21.978Z"
+stopped_at: Completed 10-03-PLAN.md
+last_updated: "2026-11-11T16:13:39.548Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 9 complete, transitioned to Phase 10
-state_head: 45def49b4d3fdcb0c970baec1c6958c29a2d0067
+state_head: 4fa66aebf254d34120d809080071d8a4a5c9637e
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 75
-  completed_plans: 66
+  completed_plans: 67
   percent: 63
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 10 — BIOS boot
-Plan: 2 of 11 complete (10-02: window scan, retyped-bytes tripwire and hooks)
+Plan: 3 of 11 complete (10-03: media struct BIOS fields, API 14, behaviour 16, state 16)
 Status: Executing Phase 10
-Last activity: 2026-11-11 — Completed 10-02-PLAN.md
+Last activity: 2026-11-11 — Completed 10-03-PLAN.md
 
 Progress: [██████░░░░] 63% of v2.0
 
@@ -194,6 +194,7 @@ Progress: [██████░░░░] 63% of v2.0
 | Phase 9 P12 | 20 min | 3 tasks | 9 files |
 | Phase 10 P01 | 55 min | 2 tasks | 10 files |
 | Phase 10 P02 | 70 min | 3 tasks | 10 files |
+| Phase 10 P03 | 25min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -282,6 +283,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 10]: firmware_scan reads the two digest tables through cmake -E cat so a missing table is empty and fails vacuous; the tables themselves are not hashed as scanned files
 - [Phase 10]: The window scan rolls a 32-byte window through od output line by line (one hash lookup per byte) because sliding substr over one long hex string is quadratic in BWK awk; the end and low_entropy controls use their own dumps since the plan's dump repeats every 256 bytes
 - [Phase 10]: The hygiene job timeout is 3 minutes after a measured 63 s, and hosted dispatch 1 saw perf, be32 and wasm32 fail at their apt-get step on runner DNS in three attempts and on main, so those legs are unproven for this branch
+- [Phase 10]: 10-03: the media struct grows at its end (reserved3, bios, bios_size) and only its size pin loosens to >=; every offset pin stays exact
 
 ### Pending Todos
 
@@ -393,6 +395,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Plan phase 10 (gsd-plan-phase 10); research skipped (the discuss step did it), 11 plans of at most ten files, wave equals plan number, hosted dispatches D1, D2 and D3 inside the plans and D4 in the closing plan (no extra dispatch for the timeouts of plans 6 and 7: they are settled from D3's times, libretro in plan 10 and the rest in plan 11), the BIOS-01 scans first | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-01 (gsd-execute-phase 10); host/bios_table.inc (13 digests converted from ASSET_POLICY), policy.bios_table both ways with two self-tests, policy.bios_dir_reads, release.firmware_scan on the leg's three zips with eleven owned-byte controls, the MAME BIOS digests notice, ASSET_POLICY sections 4 and 5 as built, counted check code 788 of 847, no code file touched, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-02 (gsd-execute-phase 10); scripts/firmware-window.sh (rolling 32-byte window, one line per hit, 0 compared when no dump), local.firmware_window_scan in the library preset, ten hygiene-lane controls, hygiene.sh byte_run and the staged and history hook branches each controlled, counted check code 833 of 847, hosted dispatch 1 (runs 43047222253, 43049044281, 43051607563 on 947ac8e: every leg that could start green and release.firmware_scan Passed on all six build legs; perf, be32 and wasm32 failed at their apt-get step on runner DNS, main run 43053345486 fails perf the same way), timeouts of plans 01 and 02 settled, hygiene job timeout 2 to 3 minutes; 3 tasks, 3 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 10 plan 10-03 (gsd-execute-phase 10); cogmaster_media gains reserved3, bios and bios_size (72 / 40 bytes), versions API 14, behaviour 16, state 16, layout asserts only in src, size pins loosened to >= with every offset pin exact, tests/api/v14.c and abi.api_v14 on ci, wasm32 and nofp, order evidence for BIOS-01 recorded (scans precede the first code commit: exit 0 forward, 1 reversed), counted check code 833 of 847, no dispatch (runner DNS not re-observed; main still shows the failed dispatch); 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -414,8 +417,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T16:04:21.767Z
-Stopped at: Completed 10-02-PLAN.md
+Last session: 2026-11-11T16:13:39.401Z
+Stopped at: Completed 10-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
