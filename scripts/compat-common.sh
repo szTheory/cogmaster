@@ -33,7 +33,7 @@ function predicate(s, machine, region, p,n,a,b,t,frame,address,value,cfg,fm) {
 }
 function emit(k, j,line) { line=""; for(j=1;j<=10;j++) line=line (j>1?",":"") quote(r[k,j]); print line }
 BEGIN { header1="id,title,machine,region,mapper,predicate,status,evidence,date"; header="id,title,machine,region,tv,mapper,predicate,status,evidence,date"; empty="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"; if(mode!="normalize" && mode!="cases" && mode!="docs" && mode!="ratchet" && mode!="results" && mode!="update") bad();
-  if(mode=="update") while((getline line < ENVIRON["COMPAT_CATALOG"])>0) { split(line,t,"\t"); if(length(t[1])==40 && t[1] ~ /^[0-9a-f]+$/) titles[t[1]]=t[5] }
+  if(mode=="update") while((getline line < ENVIRON["COMPAT_CATALOG"])>0) { split(line,t,"\t"); if(length(t[1])==40 && t[1] ~ /^[0-9a-f]+$/) titles[t[1]]=t[5]; cm[t[1]]=t[2]; cp[t[1]]=t[3] }
 }
 {
   sub(/\r$/,"" ); if(length($0)>4096 || $0=="" || $0 ~ /[[:cntrl:]]/ || FNR>4097) bad();
@@ -53,7 +53,14 @@ BEGIN { header1="id,title,machine,region,mapper,predicate,status,evidence,date";
   if(parameter ~ /^audio@/ && (config !~ /;script=none;/ || f[1] !~ /^(fixture|built)\//)) bad();
   if((stage SUBSEP key) in seen) bad(); seen[stage,key]=1;
   if(mode=="update" && stage==2) {
-    if(!(f[1] in titles) || !(key SUBSEP 1 in r) || f[7]!=r[key,7]) next;
+    # Fault prevented: a candidate adding rows by frame, device or profile for a catalog id, growing the page past its cap or smuggling a golden into the ledger.
+    if(!(f[1] in titles)) next;
+    if(key SUBSEP 1 in r) { if(f[7]!=r[key,7]) next }
+    else {
+      match(config,/;fm=(on|off)/); pf=substr(config,RSTART+4,RLENGTH-4); w=(f[3]=="gg"?" export,ntsc,off japan,ntsc,off ":(f[3]~/^sms1?$/?" export,ntsc,off export,pal,off japan,ntsc,on ":""));
+      if(f[3]!=cm[f[1]] || f[6]!=cp[f[1]] || parameter!="boots@600" || f[8]!~/^(pass|fail)$/ || !index(w," " f[4] "," f[5] "," pf " ") || config!="cfg:video=" (f[3]=="gg"?"gg":"sms") ";fm=" pf ";port1=pad;port2=pad;script=none;sha256=" empty) next;
+      order[++count]=key
+    }
     f[2]=titles[f[1]]; f[9]="core=" ENVIRON["COMPAT_REV"]; day(f[10]); for(i=1;i<=10;i++) r[key,i]=f[i]; next;
   }
   order[++count]=key;
