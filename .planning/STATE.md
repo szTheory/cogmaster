@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 9
 current_phase_name: Light Phaser
 status: planning
-stopped_at: Phase 8 complete, ready to plan Phase 9
-last_updated: "2026-11-11T07:47:44.313Z"
+stopped_at: Completed 09-01-PLAN.md
+last_updated: "2026-11-11T09:46:12.517Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 8 complete, transitioned to Phase 9
-state_head: 9cad5281a4d4cbf35317bc9473e34a73d8adbd6e
+state_head: 591e911a9887b79b1470a4a33b616d0691ed7abb
 progress:
   total_phases: 8
   completed_phases: 4
-  total_plans: 52
-  completed_plans: 52
+  total_plans: 64
+  completed_plans: 53
   percent: 50
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 9 — Light Phaser
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-11 — Phase 8 complete, transitioned to Phase 9
+Plan: 01 of 12 complete; next 02
+Status: Executing
+Last activity: 2026-11-11 — Plan 09-01 complete (phaser constant, versions 13/15/15, abi.api_v13)
 
 Progress: [█████░░░░░] 50% of v2.0
 
@@ -179,6 +179,7 @@ Progress: [█████░░░░░] 50% of v2.0
 | Phase 08 P15 | 70 min | 3 tasks | 6 files |
 | Phase 08 P16 | 14min | 2 tasks | 8 files |
 | Phase 8 P17 | 95min | 3 tasks | 13 files |
+| Phase 09 P01 | 15min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -251,6 +252,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 08]: 08-15: glasses.sms draws nothing, so the stereo cases use two guests the test builds and a model of the rule built from the library's own eyes and pictures
 - [Phase 08]: 08-16: the ledger key device token is pad|none|paddle|sports in the normalizer, library lane, fixture lane and doc; changed-key ratchet cases are paired with adjacent-key cases because a rejecting grammar also answers exit 2
 - [Phase 8]: Phase 8 closes with the controller guide in docs/controllers.md as the one behaviour prose; the local library judge is carried to ship because the agent had no library location, and the cogmaster_3d_view default stays left
+- [Phase 09]: Phase 9 plan 1: COGMASTER__DEVICE_LAST stays SPORTS_PAD until the plan that teaches device_ok and the models about the phaser; v13.c pins no phaser answer
 
 ### Pending Todos
 
@@ -347,6 +349,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 8 plan 08-07 (gsd-execute-phase 08); table controller intent in cart_info and the profile-resolved default in info, paddle region rule (1 of 1658 rows moved), four cart.device cases with two local negative controls, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 8 plan 08-10 (gsd-execute-phase 08); sports_pad.asm with cycle-counted waits and the 511/512-cycle idle probe, 30 rows on two profiles recomputed from one delta list, dropped-delta and plain-pad controls, a device hash row (14 added lines), record mode and a three-region replay case with a control; 3 tasks, 3 commits, no push | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 8 plan 08-17 (gsd-execute-phase 08); controller guide, test family rows, README link, floors 548 and 511, PAD-04 and PAD-05 wording amended in REQUIREMENTS and ROADMAP, local judge, unchanged-proof, budgets and hosted dispatch 3 with the nightly | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 9 plan 09-01 (gsd-execute-phase 09); the phaser constant, versions 13, 15 and 15 with the layout and device ceiling unchanged, abi.api_v13 on three lanes, one negative control, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -368,8 +371,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T07:28:55.559Z
-Stopped at: Phase 8 complete, ready to plan Phase 9
+Last session: 2026-11-11T09:46:12.405Z
+Stopped at: Completed 09-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

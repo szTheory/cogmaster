@@ -161,10 +161,10 @@ Plans:
   2. The sensor reads the emitted pixel at the beam position and latches H at the edge tick, and a check finds no per-title offset table in `src/` (GUN-01).
   3. A run with the gun plugged in and no shot has the same frame hash as one without it, and a poll-hammer test shows sensor work bounded per line however often the game polls (GUN-02).
   4. Runner and libretro tests map aim through the SMS and Game Gear crops to field coordinates, and the frame hash is the same with the crosshair drawn or not (GUN-03).
-**Plans**: 0/12 plans complete
+**Plans**: 1/12 plans executed
 
 Plans:
-- [ ] 09-01-PLAN.md — header delta inert: the Light Phaser constant, versions 13/15/15, unchanged layout, v13 pins on three lanes (GUN-01)
+- [x] 09-01-PLAN.md — header delta inert: the Light Phaser constant, versions 13/15/15, unchanged layout, v13 pins on three lanes (GUN-01)
 - [ ] 09-02-PLAN.md — vdp_hcount_at, th_edge, an empty gun module and the latch_at differential, no behaviour change (GUN-01, GUN-04)
 - [ ] 09-03-PLAN.md — device, absolute last-wins aim, persistence, 24-byte port block, state bounds and the two independent checkers (GUN-01, GUN-02)
 - [ ] 09-04-PLAN.md — the lazy sensor, TH level and sticky bit, bound and neutrality proofs, hosted dispatch 1 with the perf delta (GUN-01, GUN-02)
@@ -225,7 +225,7 @@ Plans:
 | 6. Korean cartridges play | v2.0 | 11/11 | Complete    | 2026-11-10 |
 | 7. Saves survive a restart | v2.0 | 10/10 | Complete    | 2026-11-10 |
 | 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 17/17 | Complete    | 2026-11-11 |
-| 9. Light Phaser | v2.0 | 0/TBD | Not started | - |
+| 9. Light Phaser | v2.0 | 1/12 | In Progress | - |
 | 10. BIOS boot | v2.0 | 0/TBD | Not started | - |
 | 11. PAL and Japanese FM | v2.0 | 0/TBD | Not started | - |
 | 12. The whole list in the ledger | v2.0 | 0/TBD | Not started | - |
