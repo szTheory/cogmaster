@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 7
 current_phase_name: Saves survive a restart
 status: planning
-stopped_at: Completed 07-05-PLAN.md
-last_updated: "2026-11-11T01:32:44.034Z"
+stopped_at: Completed 07-06-PLAN.md
+last_updated: "2026-11-11T01:46:20.109Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 6 complete, transitioned to Phase 7
-state_head: 7ca035277a095035659bc5857fbbb84353a6c5be
+state_head: 6388449d2f78e256aa6991a8626dfc70cf7d498f
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 35
-  completed_plans: 30
+  completed_plans: 31
   percent: 25
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 7 — Saves survive a restart
-Plan: 5 of 10 complete (07-01, 07-02, 07-03, 07-04, 07-05)
+Plan: 6 of 10 complete (07-01, 07-02, 07-03, 07-04, 07-05, 07-06)
 Status: Executing
-Last activity: 2026-11-11 — Executed 07-05, the owned eeprom.gg fixture, its facts row and the eighth changed table row
+Last activity: 2026-11-11 — Executed 07-06, the EEPROM fuzz entry and the runner continuation across two processes
 
 Progress: [███░░░░░░░] 25% of v2.0
 
@@ -155,6 +155,7 @@ Progress: [███░░░░░░░] 25% of v2.0
 | Phase 07 P03 | 5 min | 3 tasks | 9 files |
 | Phase 07 P04 | 45 min | 2 tasks | 7 files |
 | Phase 07 P05 | 12 min | 2 tasks | 10 files |
+| Phase 7 P06 | 25min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -197,6 +198,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 07]: 07-03: board 10 keeps its banks in the ext arm over the existing bank array; the chip is visited with per-phase count bounds (command 0-7, data and read 0-15) and CS low implies idle; a generation moves only while a battery span exists
 - [Phase 07]: 07-04: the eeprom slot sets persistence 2 and 128 bytes by board constant; persistence 3 is no longer emitted
 - [Phase 07]: 07-05: the owned EEPROM fixture row is region 1 (export, Game Gear header code 6); cartdb --fixture accepts exactly the battery and EEPROM row shapes
+- [Phase 7]: 07-06: the EEPROM fuzz entry opens the chip window itself and bounds the command phase at 7 clocks; a generated eeprom-clocks seed drives the replay
 
 ### Pending Todos
 
@@ -280,6 +282,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 7 plan 07-03 (gsd-execute-phase 07); Sega EEPROM board arm in mapper_ext.c, 128-byte erased cart RAM, bounded chip state visit, eight eeprom.* cases, saves.md section, one negative control; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 7 plan 07-04 (gsd-execute-phase 07); eeprom slot on board 10, table and catalog regenerated with 7 rows changed, early perf delta_bp=0 from two dispatch runs, one API 11 test fix; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 7 plan 07-05 (gsd-execute-phase 07); owned eeprom.gg fixture driving the 93C46, second fixture facts row with ROW support and a stricter generator, table regenerated with one new row; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 7 plan 07-06 (gsd-execute-phase 07); EEPROM fuzz entry with a generated clock-stream seed, fuzz.regress.eeprom on every portable lane, runner.save.continuation.eeprom across two processes; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -301,8 +304,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T01:32:43.831Z
-Stopped at: Completed 07-05-PLAN.md
+Last session: 2026-11-11T01:46:19.928Z
+Stopped at: Completed 07-06-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
