@@ -87,7 +87,8 @@ if(MODE STREQUAL "write")
       # the frames are the script's lines, since the runner takes one record per frame.
       foreach(row IN ITEMS "sports_pad.sms|sports|--port1 sports --input ${OUT}/tests/sports.input"
           "paddle.sms|paddle|--port1 paddle --input ${OUT}/tests/paddle.input"
-          "glasses.sms|glasses|")
+          "glasses.sms|glasses|"
+          "light_phaser.sms|phaser|--port1 lphaser --input ${OUT}/tests/phaser.input")
         if(row MATCHES "^${filename}[|]([^|]*)[|](.*)$")
           separate_arguments(device_args UNIX_COMMAND "${CMAKE_MATCH_2}")
           file(STRINGS "${OUT}/tests/${CMAKE_MATCH_1}.input" device_script)

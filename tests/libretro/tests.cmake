@@ -165,7 +165,9 @@ if(TARGET cogmaster_libretro)
       LABELS libretro portable TIMEOUT 10)
     set_tests_properties(libretro.host.korean_control PROPERTIES DEPENDS libretro.host.korean)
     # Fault prevented: a Sports Pad or Paddle title that gets the wrong device, an unbounded motion sum or motion that never reaches
-    # the guest, or a non-3-D title held on a picture that never arrives.
+    # the guest, or a non-3-D title held on a picture that never arrives; a Light Phaser pointer
+    # mapped without the crop, a crosshair drawn into a hashed or persistent buffer, or a Pause that
+    # a gun on port 0 loses.
     foreach(adapter_case IN ITEMS devices.options devices.sources devices.clamp devices.motion
         stereo.alternate stereo.one_eye)
       string(REGEX REPLACE "^[a-z]+\\." "" adapter_name "${adapter_case}")
@@ -174,6 +176,14 @@ if(TARGET cogmaster_libretro)
         COMMAND cogmaster-test-libretro-host $<TARGET_FILE:cogmaster_libretro> adapter ${adapter_name}
           ${PROJECT_BINARY_DIR}/fixtures
         LABELS libretro portable TIMEOUT 60)
+    endforeach()
+    foreach(adapter_case IN ITEMS gun.aim gun.cursor gun.crosshair)
+      string(REGEX REPLACE "^[a-z]+\\." "" adapter_name "${adapter_case}")
+      # Timeout: 10 s floor; 2 x 1.72 s (gun.crosshair on be32), slowest of 8 runs, run 43015673654.
+      cogmaster_add_test(NAME libretro.host.${adapter_case}
+        COMMAND cogmaster-test-libretro-host $<TARGET_FILE:cogmaster_libretro> adapter ${adapter_name}
+          ${PROJECT_BINARY_DIR}/fixtures
+        LABELS libretro portable TIMEOUT 10)
     endforeach()
     # Fault prevented: the FM option attaching, detaching or refusing the unit differently from the
     # library's setting, or failing the load of Game Gear content.

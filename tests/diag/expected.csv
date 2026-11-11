@@ -258,3 +258,32 @@ paddle,18:frame_13_position,sms-japan,0000,derived,SMS-CARTRIDGES section 3.6 an
 paddle,19:frame_14_position,sms-japan,007F,derived,SMS-CARTRIDGES section 3.6 and the scripted deltas with a saturating sum
 glasses,01:ram_routine_bytes,*,0010,doc,the routine copied to work RAM is 16 bytes
 glasses,02:ram_mirror_last_write,*,0007,doc,SMS-CARTRIDGES-AND-PERIPHERALS section 3.4: the register is readable only through the work RAM mirror
+light_phaser,01:parked_th_low_reads,*,0000,doc,SMS Power Light Phaser and MacDonald msvdp section 11
+light_phaser,02:period_029_after_th_high,*,0048-004A,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,03:period_031_after_th_high,*,0048-004A,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,04:period_047_after_th_high,*,0048-004A,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,05:period_064_after_th_high,*,0048-004A,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,06:period_097_after_th_high,*,0048-004A,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,07:period_100_after_th_high,*,0048-004A,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,08:period_101_after_th_high,*,0048-004A,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,09:period_200_after_th_high,*,0048-004A,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,0A:period_114_after_th_high,*,0048-004A,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,0B:period_228_after_th_high,*,0048-004A,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,0C:period_029_after_poll,*,0048-004A,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,0D:period_031_after_poll,*,0048-004A,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,0E:period_047_after_poll,*,0048-004A,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,0F:period_064_after_poll,*,0048-004A,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,10:period_097_after_poll,*,0048-004A,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,11:period_100_after_poll,*,0048-004A,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,12:period_101_after_poll,*,0048-004A,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,13:period_200_after_poll,*,0048-004A,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,14:period_114_after_poll,*,0048-004A,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,15:period_228_after_poll,*,0048-004A,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,16:dark_th_low_reads,*,0000,doc,SMS Power Light Phaser and MacDonald msvdp section 11
+light_phaser,17:lit_th_low_reads,*,0001-FFFF,doc,SMS Power Light Phaser and MacDonald msvdp section 11
+light_phaser,18:period_029_v_counter,*,0028-0039,doc,SMS Power Light Phaser and MacDonald msvdp section 11
+light_phaser,19:period_064_v_counter,*,0028-0039,doc,SMS Power Light Phaser and MacDonald msvdp section 11
+light_phaser,1A:th_bit_that_saw_light,port1,0040,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,1A:th_bit_that_saw_light,port2,0080,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,1B:line_after_th_high,*,0053-0055,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)
+light_phaser,1C:line_after_poll,*,0053-0055,doc,SMS Power Light Phaser and MacDonald msvdp section 11 and MAME lphaser.cpp and sms_m.cpp at 1d7a454ed79e (BSD-3)

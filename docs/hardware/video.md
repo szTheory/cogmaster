@@ -47,6 +47,16 @@ latches and emitted pixels participate in state. The frame interrupt completes
 the field and opens the next cursor. Native hashes serialize cropped RGB444
 words low byte first; host palette conversion cannot change that identity.
 
+A Light Phaser port reads emitted dots, so it may ask the renderer for them
+early. It asks for dots strictly before `tick / 2` of the current line, the
+bound every VDP write uses and never one dot more, which a status read would
+use. It does not ask once the beam is past the last picture row, because the
+field is final then and a call would flush it early, and it does not ask while
+the display is on in a mode the renderer rejects: the renderer's own schedule
+records the first fault there. Rendering earlier is idempotent and moves no
+pixel, no status flag and no fault, so the sensor's polling schedule cannot
+change a frame hash.
+
 Sources: preparation SMS-VDP sections 2, 3, 4.7, 6 and 9;
 [SMS Power tilemap](https://www.smspower.org/Development/Tilemap) and
 [registers](https://www.smspower.org/Development/VDPRegisters).

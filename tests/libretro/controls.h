@@ -219,12 +219,31 @@ static int16_t RETRO_CALLCONV dev_input(unsigned port, unsigned device, unsigned
     return 0;
 }
 
-/* mouse plus stick past a 20 percent dead zone times k over 32768 plus two counts for the D-pad,
-   held to the library's range. */
+/* The stick's counts rounded to the nearest: k at full deflection either way, found by counting
+   the half steps the deflection reaches (n counts once it is within half a count of n), not by
+   the adapter's division, so a one-sided cut shows. */
+static int32_t dev_stick_nearest(int32_t stick, int32_t k)
+{
+    int32_t mag = stick < 0 ? -stick : stick;
+    int32_t n = 0;
+    while (n < k && (int64_t)mag * k >= (2 * (int64_t)n + 1) * 16384) {
+        n++;
+    }
+    return stick < 0 ? -n : n;
+}
+
+/* mouse plus stick past a 20 percent dead zone (k over 32768, cut toward zero, or rounded when
+   nearest) plus two counts for the D-pad, held to the library's range. */
+static int32_t dev_sum_by(int32_t mouse, int32_t stick, int32_t dpad, int32_t k, int nearest)
+{
+    int32_t counts = nearest ? dev_stick_nearest(stick, k) : stick * k / 32768;
+    int32_t sum = mouse + (stick >= 6554 || stick <= -6554 ? counts : 0) + 2 * dpad;
+    return sum > 32767 ? 32767 : (sum < -32767 ? -32767 : sum);
+}
+
 static int32_t dev_sum(int32_t mouse, int32_t stick, int32_t dpad, int32_t k)
 {
-    int32_t sum = mouse + (stick >= 6554 || stick <= -6554 ? stick * k / 32768 : 0) + 2 * dpad;
-    return sum > 32767 ? 32767 : (sum < -32767 ? -32767 : sum);
+    return dev_sum_by(mouse, stick, dpad, k, 0);
 }
 
 /* The library input the frontend's state makes for a port that carries device. */

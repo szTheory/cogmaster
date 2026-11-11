@@ -50,6 +50,66 @@ foreach(case IN ITEMS rule control gate profiles nolag state)
     LABELS ports portable TIMEOUT 20)
 endforeach()
 
+# The Light Phaser on the internal API: the tick-to-H function against the formula it replaced, the
+# aim, the trigger pin and hostile aims, then the sensor against an independent oracle, its
+# neutrality and its bounds.
+add_executable(cogmaster-test-ports-gun ${CMAKE_CURRENT_LIST_DIR}/test_gun.c)
+target_include_directories(cogmaster-test-ports-gun PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-ports-gun PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-ports-gun PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-ports-gun)
+
+# Fault prevented: a refactor of the H-counter origin or of the latch site that moves a latch
+# position, so every light-gun, H-counter and pad game changes behaviour without a test noticing; a
+# hostile aim that overflows the disc arithmetic or aliases an edge pixel; an aim that is summed
+# instead of replaced; a trigger on the wrong pin or a gun that leaks the pad's reads; a sensor that
+# is unbounded under a hostile polling schedule, that renders early and changes a picture, a hash or
+# a fault record, that latches at the read instead of the edge, or that depends on the order of two
+# guns' edges; a delay or aim rule keyed on the header of the loaded image.
+foreach(case IN ITEMS latch_at aim pins hostile_aim model edge luma control order fault_neutral lag
+    seen_expiry peek noshot hammer walk th_toggle)
+  if(case STREQUAL "noshot")
+    # Timeout: 69 s; 2 x 34.46 s (be32), slowest of 1 run, run 43010180943. Four profiles of 160 frames on
+    # three instances; it took 124.50 s on the be32 lane at 600 frames.
+    set(gun_timeout 69)
+  elseif(case MATCHES "^(hostile_aim|model|hammer|walk|th_toggle)$")
+    # Timeout: 60 s floor; 2 x 13.83 s (hostile_aim), slowest of 2 runs, runs 43003041792 and
+    # 43003756603. The million-access cases keep 60 s: 1.15 s there, and they are the ones that
+    # cannot hang quietly.
+    set(gun_timeout 60)
+  else()
+    # Timeout: 20 s floor; 2 x 3.31 s (pins), slowest of 2 runs, runs 43003041792 and 43003756603.
+    set(gun_timeout 20)
+  endif()
+  cogmaster_add_test(NAME ports.gun.${case} COMMAND cogmaster-test-ports-gun ${case}
+    LABELS ports portable TIMEOUT ${gun_timeout})
+endforeach()
+
+# The owned fixture runs with the product code, the checksum and the region nibble of its header
+# flipped and the aim at the square's right edge (from the source's own defines): the mailbox and the
+# frame must not move. It catches a branch on the owned image only; the static check over the
+# sensor's files covers the rest.
+if(COGMASTER_FIXTURES)
+  file(STRINGS ${PROJECT_SOURCE_DIR}/tests/roms/src/light_phaser.asm gun_square
+    REGEX "^[.]DEFINE SQ_[XY] [0-9]+$")
+  foreach(define IN LISTS gun_square)
+    string(REGEX REPLACE "^[.]DEFINE (SQ_[XY]) ([0-9]+)$" "\\1" key "${define}")
+    string(REGEX REPLACE "^[.]DEFINE (SQ_[XY]) ([0-9]+)$" "\\2" value "${define}")
+    set(gun_${key} ${value})
+  endforeach()
+  if(NOT DEFINED gun_SQ_X OR NOT DEFINED gun_SQ_Y)
+    message(FATAL_ERROR "tests/roms/src/light_phaser.asm: no .DEFINE SQ_X or SQ_Y")
+  endif()
+  math(EXPR gun_aim_x "${gun_SQ_X} + 16")
+  math(EXPR gun_aim_y "${gun_SQ_Y} + 9")
+  # Timeout: 20 s floor; 2 x 2.39 s (be32), slowest of 9 runs, run 43015673654.
+  cogmaster_add_test(NAME ports.gun.identity
+    COMMAND cogmaster-test-ports-gun identity ${PROJECT_BINARY_DIR}/fixtures/light_phaser.sms
+      ${gun_aim_x} ${gun_aim_y}
+    LABELS ports portable TIMEOUT 20)
+endif()
+
 # The Sports Pad and the Paddle on the internal API: the read sequence at the tick limits, the walk
 # and its buttons, the clamps, the sum of pending motion, device changes, resets, profiles and
 # availability, a poll hammer, a state round trip and a replay of recorded motion. Its record mode is the
@@ -88,9 +148,16 @@ set_target_properties(cogmaster-test-ports-state PROPERTIES
 cogmaster_warnings(cogmaster-test-ports-state)
 
 # Fault prevented: a loader that accepts a device state no run produces, or refuses one a run does, so a
-# corrupt save drives the core outside its bounds or a valid save is lost.
-foreach(case IN ITEMS mutation outside sweep midsequence profile_device)
-  # Timeout: 80 s; 2 x 38.44 s, slowest of 1 run, run 42973268415 (mutation on the be32 lane, 4.7 s native).
+# corrupt save drives the core outside its bounds or a valid save is lost; a saved sensor cursor or aim
+# outside what a run makes, which would drive the scan off the picture.
+foreach(case IN ITEMS mutation outside sweep midsequence profile_device gun)
+  if(case STREQUAL "gun")
+    # Timeout: 20 s floor; 2 x 4.52 s (be32), slowest of 1 run, run 43010180943.
+    set(state_timeout 20)
+  else()
+    # Timeout: 80 s; 2 x 38.44 s, slowest of 1 run, run 42973268415 (mutation on the be32 lane, 4.7 s native).
+    set(state_timeout 80)
+  endif()
   cogmaster_add_test(NAME ports.state.${case} COMMAND cogmaster-test-ports-state ${case}
-    LABELS ports portable TIMEOUT 80)
+    LABELS ports portable TIMEOUT ${state_timeout})
 endforeach()

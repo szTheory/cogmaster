@@ -1,7 +1,7 @@
 # Controllers
 
-What a port can hold, how the core picks it, how the Sports Pad, the Paddle and the 3-D glasses behave, and how the
-runner and the libretro core drive them. The calls and structs are in [embedding.md](embedding.md), the runner's
+What a port can hold, how the core picks it, how the Sports Pad, the Paddle, the Light Phaser and the 3-D glasses
+behave, and how the runner and the libretro core drive them. The calls and structs are in [embedding.md](embedding.md), the runner's
 options in [runner.md](runner.md). Every timing below follows MAME and ares and is unverified on hardware.
 
 ## What each machine can hold
@@ -11,13 +11,14 @@ options in [runner.md](runner.md). Every timing below follows MAME and ares and 
 | Pad, or nothing | yes | yes | yes |
 | Sports Pad | yes | yes | no |
 | Paddle | no | yes | no |
+| Light Phaser | yes | yes | no |
 
-Either port can hold any controller its machine allows. The Game Gear has its own keys and no ports to attach to.
-The Light Phaser is not modelled.
+Either port can hold any controller its machine allows. The Game Gear has its own keys and no ports to attach to,
+so it holds no Light Phaser; the Mark III is not a profile.
 
 ## Which controller a port gets
 
-1. The hash table names a controller for some dumps (a pad, a Paddle or a Sports Pad per port). The library reports
+1. The hash table names a controller for some dumps (a pad, a Paddle, a Sports Pad or a Light Phaser per port). The library reports
    it with the loaded content and resolves it against the machine and region: a controller the profile cannot take
    becomes a pad, never an error.
 2. An option from the user wins over the table. The runner takes `--port1` and `--port2`, libretro takes the core
@@ -32,10 +33,11 @@ takes it. A row with a region keeps it, and an explicit `--region ntsc-u` wins a
 `--port1 paddle` on a title the table does not call a Paddle title needs `--region ntsc-j` as well. A Japanese
 profile turns the FM unit on by default, so those dumps play with FM.
 
-`--probe` prints `port1_default` and `port2_default` (`pad`, `paddle` or `sports`), and the execution line names
-the resolved controllers. A run with a pad only, or with no content, resolves to pads, so a pad run is unchanged
-by any of this. A frontend that offers only a joypad cannot force a pad over a table default: set the option to
-`pad`.
+`--probe` prints `port1_default` and `port2_default` (`pad`, `paddle`, `sports` or `lphaser`), and the execution
+line names the resolved controllers. A run with a pad only, or with no content, resolves to pads, so a pad run is
+unchanged by any of this. A bare run of a dump the table calls a gun title attaches the gun with nothing aimed or
+pressed, and `--port1 pad` restores the old run. A frontend that offers only a joypad cannot force a pad over a
+table default: set the option to `pad`. For a gun title it gets the cursor path and a crosshair (below).
 
 ## Input
 
@@ -45,12 +47,15 @@ refused whole. The host convention is +x right and +y down.
 
 Each call adds its axes to what is already waiting, clamped to the same range, so two calls before one frame equal
 one call with their sum while that sum is within range. Send each increment once; a host that repeats an absolute
-position would move the pad twice. Buttons and controller choices are last-wins. Changing a port's controller
+position would move the pad twice. The Light Phaser is the exception: its axes are an absolute aim and the last call
+wins, so a later call in the same frame with no axes, a tag-32 call or a 35-byte script line parks the aim. Buttons and
+controller choices are last-wins. Changing a port's controller
 drops that port's waiting motion, and axes for a controller that takes none are dropped. At the start of each frame
 the waiting motion is handed to the controller and cleared.
 
 A soft reset keeps the waiting axes, so motion sent just before a reset applies on the next frame; a load clears
-them. Both resets clear the controllers' own state and the 3-D eyes.
+them. Both resets clear the controllers' own state and the 3-D eyes. A Light Phaser's aim follows the same rule: a
+soft reset and a power reset keep it, as they keep a Sports Pad's waiting motion, and only a load parks it.
 
 A caller built against the 32-byte `cogmaster_input` of API versions 1 to 11 stays valid: the call copies the
 smaller of the caller's size and its own, whole fields only, and zeroes the rest.
@@ -112,9 +117,81 @@ line 88 on NTSC, which is not claimed.
 (frames whose eye differs from the last non-zero one) and the last eye. It only counts: `--hash`, `--png` and
 `--expect` stay the plain picture.
 
+## Light Phaser
+
+The gun rides either port of a Master System. It has a trigger and a light sensor and no other control.
+
+**Aim.** On a phaser port `x1 y1` (port 1) or `x2 y2` (port 2) are an absolute aim in 1-based field dots: `x` from 1 to
+256 and `y` from 1 to 240, the dot being `x - 1`, `y - 1`. `0 0` means no aim, so a zeroed input points nowhere. The
+call is last-wins, not summed. An axis outside -32767 to 32767 refuses the call whole, as for every device. A pair with
+either coordinate outside the field is stored as `0 0`: an aim that is not a field dot senses nothing and is never moved
+to an edge pixel. Changing the port's controller restarts its aim, a soft reset or a power reset keeps it, and a load
+parks it. One real aim is given up by the 1-based zero: the dot just left of the field, whose disc would still light
+the first six dots. The trigger is bit 4 of `p1` or `p2` and drives TL, low when pulled; D0 to D3 and TR are undriven
+high and the direction bits are ignored while the gun is on the port.
+
+**Runner.** On a phaser port the 75-byte script line's `x1 y1` or `x2 y2` are the aim and bit 4 of `p1` or `p2` is
+the trigger; the 35-byte form is no aim. The runner is stricter than the core: a negative axis, `x` above 256, `y` above
+240 or only one of the pair 0 is exit 2 before frame 1 naming the port and the controller. It draws no crosshair and
+maps nothing, because every machine that holds a gun shows its picture at 0,0, so a script aim is the field dot. A gun
+on a Game Gear is exit 77.
+
+**libretro.** The core option decides what is attached; the frontend's device for the port decides only where the aim
+comes from. With the Light Gun device, the pointer's screen position and off-screen flag give the aim through the
+rectangle of the last completed frame, and the trigger is the gun's trigger. With a joypad (the guaranteed path) a
+per-port cursor starts at the centre and moves by the mouse delta, the left stick past a 20 percent dead zone (4
+counts a frame at full deflection, rounded to the nearest count so it is 4 either way) and the D-pad (2 a frame), clamped to the picture and never off screen; the trigger
+is RetroPad B or A or the mouse's left button. The cursor resets at load, at reset and at unload. When port 0 is a
+gun, Pause and Reset read that port's Start and Select. A mode change from 192 to 224 lines moves the rectangle one
+frame late. The crosshair (`cogmaster_crosshair`, on by default, and `cogmaster_crosshair_colour`: white, red, green
+or yellow) is up to 17 points around the aim, drawn into the presented picture only while a phaser port has an aim.
+It is never in the hashed frame, the 3-D pictures or any recording.
+
+**Model.** The sensor reads the finished field pixel the VDP emitted, never the palette. It sees dots within
+`GUN_RADIUS` (6) of the aim dot, an integer disc of 113 dots clipped to the field. A dot is lit when
+`(77 r + 150 g + 29 b) >> 8` is at least `GUN_LUMA` (127), each colour nibble first widened to 8 bits as `n * 17`; 32
+of the 64 Master System colours are lit. The sensor sees a dot `GUN_DELAY_TICKS` (38 ticks, 19 dots) after the VDP
+emits it, on both edges. All three constants are unmeasured: each is MAME's value (`sms_ctrl/lphaser.cpp`) or the
+nearest whole number, and a real gun could change any of them. The disc is narrower than MAME's 133 dots, and every
+dot is tested where MAME samples every fourth.
+
+**TH.** TH reads low on `$DD` (bit 6 for port 1, bit 7 for port 2) while the sensor sees light, only while that
+port's TH is an input; an output TH wins. A lit run of 13 dots is 26 ticks, and the shortest poll loop is 75 ticks or
+more, so a purely geometric level would be missed on most lines, and a loop whose length divides the 228-cycle line
+would never see a narrow pulse. A sticky bit therefore keeps a pulse: it is set at each fall while TH is an input,
+shown as TH low on the next `$DD` read, cleared by that read and cleared at the wrap of every picture, so a pulse
+never outlives its picture. MAME has a bit for the same purpose, but it shows only while the VDP's latch is set and a
+`$7F` read clears it; here the bit is not gated by the latch and a `$7F` read does not clear it. Both differences are
+unmeasured. The latch and the edge rule use the geometric level only.
+
+**Latch.** The existing rising-edge latch applies: H is taken where the sensor releases TH. MAME and ares do the
+same. SMS Power says the latch is taken when TH goes low and MacDonald says either edge, so the true edge, the delay,
+the pulse width and the sticky bit are all unmeasured. With the release at dot `x_off` (the first dot after the lit
+run) H is `(x_off + 35) >> 1`. The edge is one predicate where the core calls the latch, so a different rule is a
+one-line change. MAME releases at the end of the aim disc's chord whatever the picture holds; this model releases at
+the first dot that is not lit. The two agree on a uniformly bright area, which is what games draw for a shot, and
+differ on a lit shape smaller than the disc, where this model releases up to 6 dots earlier.
+
+**No shot.** The sensor responds to light whether or not the trigger is held, so a gun aimed at a lit area changes
+what `$DD` and `$7F` read. The invariant that holds is the other one: with a gun attached, the trigger never pulled
+and no light in its view (no aim, or an aim over dark dots), the frame and audio hashes, the fault record and all
+machine state apart from the gun's own fields equal those of a pad with nothing pressed. The exception is a video mode
+the renderer rejects with the display on: the sensor then asks for no dots, leaving the renderer's own schedule to
+record the fault, and where a poll sees light there can depend on when the poll comes. No hash and no fault record
+depends on it.
+
+**Order and cost.** A sensor edge comes before a `$3F` write at the same tick. At one tick port 1 comes before port 2.
+With two guns the edges reach the single H latch in time order whatever the poll schedule. Work is bounded per picture:
+at most 113 sensed dots and 13 closing dots per gun, however often a program polls, and none at all when no gun is
+attached.
+
+**Tolerance.** The core is exact. The fixture that runs on a Z80 allows plus or minus one H count, one step of the
+counter (4 ticks, 2 dots), and every control it must reject is at least 3.5 counts away: an aim 16 dots off, a delay of
+16 ticks more, the leading edge, and a latch at the read, which is at least 16 counts late.
+
 ## The libretro core
 
-The core options are `cogmaster_port1`, `cogmaster_port2` (`auto`, `pad`, `paddle`, `sports`, `none`; reload content)
+The core options are `cogmaster_port1`, `cogmaster_port2` (`auto`, `pad`, `paddle`, `sports`, `lphaser`, `none`; reload content)
 and `cogmaster_3d_view` (`left`, `right`, `alternate`, `anaglyph`, `off`). Only the base device ids are polled; there
 are no controller subclasses. A port holding a Sports Pad or a Paddle sums its sources each frame and clamps each
 axis to 32767 before the call:
@@ -139,4 +216,6 @@ and no hash changes. The default is `left`.
 The timings follow MAME and ares and are unverified on hardware. The Sports Pad sign, the Paddle direction and
 clock, and the cut at line 96 are agreement between emulators, judged only by a run on a real cartridge and pad.
 The Japanese polled Sports Pad, a Paddle on the export console, the shutter's own transition lag and eye changes
-within a frame are not modelled.
+within a frame are not modelled. The Light Phaser has no per-title offset, no Game Gear or Mark III form and no
+`$7F`-read clear of the sticky bit, and no hosted RetroArch session drives it; the delay, the edge, the pulse width
+and the sticky bit are agreement between emulators and need a real gun to judge.

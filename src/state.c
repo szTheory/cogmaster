@@ -626,29 +626,44 @@ static void opll_io(struct cogmaster__sio *io, cogmaster *m, struct state_time t
 }
 
 /* The motion waiting for the next frame, and the two ports' device blocks, which follow the input
-   records because the cross-checks read the devices there. The pending axes belong to the device
-   they were sent for and are within the call's range; a frame takes them and zeroes both records,
-   so the input record's are 0. A port's block belongs to the device in force: a pad and nothing
-   hold none; a Sports Pad holds no position; a Paddle only its position. A block's edge is a past
-   tick and is otherwise free, because after a reset the first fall leaves edge 0 with step 1 and a
-   rise at tick 0 gives step 2 with edge 0. A val of 0 is the one a step 0 holds, acc is free there:
-   it gathers at frame start. */
+   records because the cross-checks read the devices there. A Sports Pad or Paddle's pending axes
+   are motion within the call's range; a frame takes them and zeroes both records, so those the
+   input record holds are 0. A Light Phaser's axes are a position instead: the pending pair of a
+   port whose next device is the phaser and the active pair of a port whose held device is the
+   phaser are each a canonical aim (0..256 by 0..240, both zero or both non-zero), and every other
+   port holds 0 0 in the active record and the existing rule in the pending one. A port's block
+   belongs to the device in force: a pad and nothing hold none; a Sports Pad holds no position; a
+   Paddle only its position; a phaser only its six gun fields, which are all zero while the device
+   is another one. A block's edge is a past tick and is otherwise free, because after a reset the
+   first fall leaves edge 0 with step 1 and a rise at tick 0 gives step 2 with edge 0. A val of 0
+   is the one a step 0 holds, acc is free there: it gathers at frame start. The gun's cursor is a
+   row below the picture height while a scan runs, with an aim snapshot, and is zero with the lit
+   bit clear while none runs; the seen bit is free, because a scan can end and the bit stay set
+   until the wrap. No rule ties the snapshot to the active pair: it is the previous picture's. */
 #define STATE_AXIS_MAX 32767
 #define STATE_ACC_MAX 1023
+#define STATE_AIM_X 256
+#define STATE_AIM_Y 240
+static int aim_ok(int32_t x, int32_t y)
+{
+    return (x == 0) == (y == 0) && x >= 0 && x <= STATE_AIM_X && y >= 0 && y <= STATE_AIM_Y;
+}
+
 static void ports_io(struct cogmaster__sio *io, cogmaster *m, struct state_time time,
-                     uint32_t device[2][2])
+                     uint32_t device[2][2], uint8_t height)
 {
     cogmaster_input *pi = &m->pending_input;
     cogmaster_input *ai = &m->input;
     int32_t pending[2][2];
+    int32_t active[2][2];
     pending[0][0] = cogmaster__sio_i32(io, "pending_x1", &pi->x1, -STATE_AXIS_MAX, STATE_AXIS_MAX);
     pending[0][1] = cogmaster__sio_i32(io, "pending_y1", &pi->y1, -STATE_AXIS_MAX, STATE_AXIS_MAX);
     pending[1][0] = cogmaster__sio_i32(io, "pending_x2", &pi->x2, -STATE_AXIS_MAX, STATE_AXIS_MAX);
     pending[1][1] = cogmaster__sio_i32(io, "pending_y2", &pi->y2, -STATE_AXIS_MAX, STATE_AXIS_MAX);
-    cogmaster__sio_i32(io, "active_x1", &ai->x1, 0, 0);
-    cogmaster__sio_i32(io, "active_y1", &ai->y1, 0, 0);
-    cogmaster__sio_i32(io, "active_x2", &ai->x2, 0, 0);
-    cogmaster__sio_i32(io, "active_y2", &ai->y2, 0, 0);
+    active[0][0] = cogmaster__sio_i32(io, "active_x1", &ai->x1, 0, STATE_AIM_X);
+    active[0][1] = cogmaster__sio_i32(io, "active_y1", &ai->y1, 0, STATE_AIM_Y);
+    active[1][0] = cogmaster__sio_i32(io, "active_x2", &ai->x2, 0, STATE_AIM_X);
+    active[1][1] = cogmaster__sio_i32(io, "active_y2", &ai->y2, 0, STATE_AIM_Y);
     for (uint32_t port = 0u; port < 2u; port++) {
         struct cogmaster__port *b = &m->ports[port];
         uint64_t edge = cogmaster__sio_u64(io, "port_edge", &b->edge, 0u, time.ticks);
@@ -660,19 +675,40 @@ static void ports_io(struct cogmaster__sio *io, cogmaster *m, struct state_time 
         int8_t val1 = cogmaster__sio_i8(io, "port_val", &b->val[1], -127, 127);
         uint8_t step = cogmaster__sio_u8(io, "port_step", &b->step, 0u, 4u);
         uint8_t pos = cogmaster__sio_u8(io, "port_pos", &b->pos, 0u, UINT8_MAX);
+        uint16_t gun_ax = cogmaster__sio_u16(io, "port_gun_ax", &b->g_ax, 0u, STATE_AIM_X);
+        uint16_t gun_dot = cogmaster__sio_u16(io, "port_gun_dot", &b->g_dot, 0u, STATE_AIM_X);
+        uint8_t gun_ay = cogmaster__sio_u8(io, "port_gun_ay", &b->g_ay, 0u, STATE_AIM_Y);
+        uint8_t gun_line = cogmaster__sio_u8(io, "port_gun_line", &b->g_line, 0u, STATE_AIM_Y - 1u);
+        uint8_t gun_sense = cogmaster__sio_u8(io, "port_gun_sense", &b->g_sense, 0u, 3u);
+        uint8_t gun_scan = cogmaster__sio_u8(io, "port_gun_scan", &b->g_scan, 0u, 1u);
         uint32_t held = device[1][port];
         uint32_t next = device[0][port];
         int none = held == COGMASTER_DEVICE_PAD || held == COGMASTER_DEVICE_NONE;
+        int gun = held == COGMASTER_DEVICE_LIGHT_PHASER;
+        int gun_zero = (gun_ax | gun_dot | gun_ay | gun_line | gun_sense | gun_scan) == 0u;
         cogmaster__sio_check(
             io, !none || (edge | (uint64_t)(acc0 | acc1 | val0 | val1) | step | pos) == 0u);
         cogmaster__sio_check(io, held != COGMASTER_DEVICE_SPORTS_PAD || pos == 0u);
         cogmaster__sio_check(io, held != COGMASTER_DEVICE_PADDLE ||
                                      (edge | (uint64_t)(acc0 | acc1 | val0 | val1) | step) == 0u);
+        cogmaster__sio_check(
+            io, !gun || (edge | (uint64_t)(acc0 | acc1 | val0 | val1) | step | pos) == 0u);
         cogmaster__sio_check(io, step != 0u || (val0 == 0 && val1 == 0));
         cogmaster__sio_check(io, cogmaster__device_ok(m, held) && cogmaster__device_ok(m, next));
         int takes_x = next == COGMASTER_DEVICE_SPORTS_PAD || next == COGMASTER_DEVICE_PADDLE;
-        cogmaster__sio_check(io, takes_x || pending[port][0] == 0);
-        cogmaster__sio_check(io, next == COGMASTER_DEVICE_SPORTS_PAD || pending[port][1] == 0);
+        cogmaster__sio_check(io, takes_x || next == COGMASTER_DEVICE_LIGHT_PHASER ||
+                                     pending[port][0] == 0);
+        cogmaster__sio_check(io, next == COGMASTER_DEVICE_SPORTS_PAD ||
+                                     next == COGMASTER_DEVICE_LIGHT_PHASER ||
+                                     pending[port][1] == 0);
+        cogmaster__sio_check(io, next != COGMASTER_DEVICE_LIGHT_PHASER ||
+                                     aim_ok(pending[port][0], pending[port][1]));
+        cogmaster__sio_check(io, gun ? aim_ok(active[port][0], active[port][1])
+                                     : (active[port][0] | active[port][1]) == 0);
+        cogmaster__sio_check(io, gun || gun_zero);
+        cogmaster__sio_check(io, (gun_ax == 0u) == (gun_ay == 0u));
+        cogmaster__sio_check(io, gun_scan != 0u || (gun_line | gun_dot | (gun_sense & 1u)) == 0u);
+        cogmaster__sio_check(io, gun_scan == 0u || (gun_ax != 0u && gun_line < height));
     }
 }
 
@@ -707,7 +743,7 @@ static void state_io(struct cogmaster__sio *io, cogmaster *m, uint32_t total)
         device[i][0] = cogmaster__sio_u32(io, "input_port1", &p->port1, 0u, COGMASTER__DEVICE_LAST);
         device[i][1] = cogmaster__sio_u32(io, "input_port2", &p->port2, 0u, COGMASTER__DEVICE_LAST);
     }
-    ports_io(io, m, time, device);
+    ports_io(io, m, time, device, height);
     cogmaster__sio_u8(io, "input_read", &m->input_read, 0u, 1u);
     uint32_t line =
         cogmaster__sio_u32(io, "render_line", &m->render_line, 0u, COGMASTER__FIELD_MAX_H);

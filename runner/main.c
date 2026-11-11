@@ -396,9 +396,12 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
                      ? cogmaster__input_validate(input, opt->frames, port1, port2, &bad_port)
                      : COGMASTER__EXIT_FAILURE;
         if (bad_port != 0) {
-            fprintf(stderr,
-                    "cogmaster-run: input file error: port %d is %s, which takes no motion\n",
-                    bad_port, cogmaster__device_name(bad_port == 1 ? port1 : port2));
+            uint32_t bad_device = bad_port == 1 ? port1 : port2;
+            fprintf(stderr, "cogmaster-run: input file error: port %d is %s, which takes %s\n",
+                    bad_port, cogmaster__device_name(bad_device),
+                    bad_device == COGMASTER_DEVICE_LIGHT_PHASER
+                        ? "an aim of x 1 to 256 and y 1 to 240, or 0 0"
+                        : "no motion");
         } else if (status != COGMASTER__EXIT_OK) {
             fprintf(stderr, "cogmaster-run: input file error (status %d)\n", status);
         }

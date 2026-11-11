@@ -39,7 +39,7 @@
    the fixed frame origin in bus.c stays where it is. */
 #define VDP_INT_TICK 607u
 #define VDP_LINE_INT_TICK 608u
-#define VDP_LATCH_TICK 600u
+#define VDP_LATCH_TICK COGMASTER__VDP_WRAP_TICK
 
 /* Status flags: bit 7 frame interrupt pending, 6 sprite overflow, 5 sprite
    collision. Bits 4-0 are undriven and read as 1s (SMS-VDP section 2.6,
@@ -191,6 +191,10 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t)
         m->vdp.hscroll = m->vdp.reg[8];
         m->vdp.display = (uint8_t)((m->vdp.reg[1] >> 6) & 1u);
         if (line + 1u == cogmaster__frame_lines(m)) {
+            /* Before the height update: the old picture's height ends its scan. */
+            if (cogmaster__gun_attached(m)) {
+                cogmaster__gun_finish(m);
+            }
             m->vdp.vscroll = m->vdp.reg[9];
             int rolling = vdp_rolling(m);
             m->vdp.height = (uint8_t)vdp_pending_height(m);
@@ -200,6 +204,10 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t)
             m->render_line = 0u;
             m->render_x = 0u;
             m->vdp.sprite_line = m->vdp.height;
+            /* After the height update, so the sensor arms for the height the new picture has. */
+            if (cogmaster__gun_attached(m)) {
+                cogmaster__gun_wrap(m);
+            }
         }
         uint32_t next = line + 1u == cogmaster__frame_lines(m) ? 0u : line + 1u;
         if (next < m->vdp.height) {
@@ -251,16 +259,31 @@ static uint8_t vdp_vcount(const cogmaster *m)
     return (uint8_t)(line > (height == 224u ? 234u : 218u) ? line - 6u : line);
 }
 
+/* The H counter at an in-line tick: a pure function of the tick, so a latch can
+   name the tick an edge happened at. The
+   machine is carried for a model that depends on the profile; this formula does
+   not read it. */
+uint8_t cogmaster__vdp_hcount_at(const cogmaster *m, uint32_t tick)
+{
+    (void)m;
+    uint32_t t = (tick + VDP_HCOUNT_ORIGIN) % VDP_LINE_TICKS;
+    return (uint8_t)((t >= VDP_HCOUNT_JUMP ? t + VDP_HCOUNT_SKIP : t) >> 2);
+}
+
 static uint8_t vdp_hcount(const cogmaster *m)
 {
-    uint32_t t = (m->bus.t + VDP_HCOUNT_ORIGIN) % VDP_LINE_TICKS;
-    return (uint8_t)((t >= VDP_HCOUNT_JUMP ? t + VDP_HCOUNT_SKIP : t) >> 2);
+    return cogmaster__vdp_hcount_at(m, m->bus.t);
+}
+
+void cogmaster__vdp_latch_h_at(cogmaster *m, uint32_t tick)
+{
+    m->vdp.hcounter = cogmaster__vdp_hcount_at(m, tick);
+    m->vdp.hheld = 1u;
 }
 
 void cogmaster__vdp_latch_h(cogmaster *m)
 {
-    m->vdp.hcounter = vdp_hcount(m);
-    m->vdp.hheld = 1u;
+    cogmaster__vdp_latch_h_at(m, m->bus.t);
 }
 
 /* A status read returns the flags with the low bits set, then clears the
@@ -356,6 +379,9 @@ uint8_t cogmaster__vdp_read(cogmaster *m, uint32_t port)
     case COGMASTER__VDP_VCOUNT:
         return vdp_vcount(m);
     case COGMASTER__VDP_HCOUNT:
+        if (cogmaster__gun_attached(m)) {
+            cogmaster__gun_sync(m);
+        }
         return m->vdp.hheld ? m->vdp.hcounter : vdp_hcount(m);
     case COGMASTER__VDP_DATA:
         return vdp_data_read(m);

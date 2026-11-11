@@ -11,10 +11,10 @@
 extern "C" {
 #endif
 
-#define COGMASTER_API_VERSION 12
+#define COGMASTER_API_VERSION 13
 #define COGMASTER_ABI_VERSION 1
-#define COGMASTER_BEHAVIOUR_REVISION 14
-#define COGMASTER_STATE_FORMAT_VERSION 14
+#define COGMASTER_BEHAVIOUR_REVISION 15
+#define COGMASTER_STATE_FORMAT_VERSION 15
 
 typedef uint32_t cogmaster_status;
 #define COGMASTER_STATUS_OK 0u
@@ -203,6 +203,7 @@ typedef struct cogmaster_run_result {
 #define COGMASTER_DEVICE_NONE 1u
 #define COGMASTER_DEVICE_PADDLE 2u
 #define COGMASTER_DEVICE_SPORTS_PAD 3u
+#define COGMASTER_DEVICE_LIGHT_PHASER 4u
 #define COGMASTER_GLASSES_NONE 0u
 #define COGMASTER_GLASSES_RIGHT 1u
 #define COGMASTER_GLASSES_LEFT 2u
@@ -211,7 +212,7 @@ typedef struct cogmaster_input {
     uint32_t p1, p2;
     uint32_t pause, reset, start;
     uint32_t port1, port2;
-    int32_t x1, y1, x2, y2; /* axis deltas of this call, per port */
+    int32_t x1, y1, x2, y2; /* axis deltas per port; a phaser port: absolute aim, 0 0 none */
 } cogmaster_input;
 
 typedef struct cogmaster_fault {

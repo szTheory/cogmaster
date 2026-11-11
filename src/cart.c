@@ -271,14 +271,18 @@ static cogmaster_status guess_board(const uint8_t *b, size_t body, cogmaster_car
     return COGMASTER_STATUS_OK;
 }
 
-/* The table's controller codes: 2 is a paddle and 3 a sports pad, which are the device numbers
-   of the same names. Codes 1 (light phaser) and 4 (graphic board) read as a plain pad until a
-   later release models them. */
+/* The table's controller codes: 1 is a light phaser, 2 a paddle and 3 a sports pad, which are the
+   device numbers of the same names. Code 4 (graphic board) and any other read as a plain pad until
+   a later release models them. A light phaser row names no region or machine of its own, so it
+   leaves region_guess and machine_guess alone. */
+#define CART_CTRL_LIGHT_PHASER 1u
 #define CART_CTRL_PADDLE 2u
 #define CART_CTRL_SPORTS_PAD 3u
 
 static uint32_t ctrl_device(uint8_t code)
 {
+    if (code == CART_CTRL_LIGHT_PHASER)
+        return COGMASTER_DEVICE_LIGHT_PHASER;
     if (code == CART_CTRL_PADDLE)
         return COGMASTER_DEVICE_PADDLE;
     if (code == CART_CTRL_SPORTS_PAD)

@@ -218,7 +218,7 @@ struct cogmaster__io {
 #define COGMASTER__GLASSES_CUT_TICKS(frame_lines) (((frame_lines) - 96u) * 684u - 607u)
 
 /* The highest device a port can hold; one constant for set_input and the saved-state bound. */
-#define COGMASTER__DEVICE_LAST COGMASTER_DEVICE_SPORTS_PAD
+#define COGMASTER__DEVICE_LAST COGMASTER_DEVICE_LIGHT_PHASER
 
 /* A Sports Pad abandons a read sequence when TH has been high for 512 Z80 cycles, which is 1,536
    ticks (MAME sms_ctrl/sports.cpp, BSD-3, timeout of the console clock over 3 over 512; the
@@ -232,20 +232,48 @@ struct cogmaster__io {
    than 299 cycles locks exactly to it. */
 #define PADDLE_HALF_TICKS 299u
 
+/* The Light Phaser's sensor model. None of these is measured on hardware: each is the value MAME's
+   sms_ctrl/lphaser.cpp (BSD-3, pin 1d7a454ed79e) uses or the nearest whole number to it, and a run
+   against a real gun could change any of them. The sensor sees a dot GUN_DELAY_TICKS after the
+   VDP emits it (MAME's default offset is 19 dots, the mode of its per-game values 9 to 22, and a
+   dot is 2 ticks). It sees the dots within GUN_RADIUS of the aim, a disc of 113 dots that is
+   narrower than MAME's, and a dot is lit when its weighted brightness reaches GUN_LUMA of 255
+   (MAME thresholds its own luma at the same level; the weights are the usual 77, 150 and 29 over
+   256). */
+#define GUN_DELAY_TICKS 38u
+#define GUN_RADIUS 6u
+#define GUN_LUMA 127u
+#define GUN_WEIGHT_R 77u
+#define GUN_WEIGHT_G 150u
+#define GUN_WEIGHT_B 29u
+/* The tick of the last line at which the VDP wraps to the next picture, which is where a
+   picture's sensor work is finished and the next one armed. */
+#define COGMASTER__VDP_WRAP_TICK 600u
+
 /* One port's device block, zero for no device and for a device just attached. A Sports Pad uses
    edge (tick of the last TH wire rise), acc (the motion not yet delivered, per axis), val (the
    negated byte latched for the sequence, per axis) and step (0 idle, 1 to 4 the nibble on offer);
-   a Paddle uses pos, its position XOR $80 so that zero is the centre. */
+   a Paddle uses pos, its position XOR $80 so that zero is the centre. A Light Phaser uses the last
+   six members: the aim of the picture being scanned (g_ax, g_ay, 1-based field dots, 0 for none),
+   the scan cursor (the row g_line and the next dot g_dot, 256 being the closing dot after the last
+   one, while g_scan is 1), and g_sense, whose b0 is the sensor seeing light and b1 a light pulse
+   seen since the last $DD read or the end of the picture. A zero block is parked. */
 struct cogmaster__port {
     uint64_t edge;
     int16_t acc[2];
     int8_t val[2];
     uint8_t step;
     uint8_t pos;
+    uint16_t g_ax;
+    uint16_t g_dot;
+    uint8_t g_ay;
+    uint8_t g_line;
+    uint8_t g_sense;
+    uint8_t g_scan;
 };
-_Static_assert(sizeof(struct cogmaster__port) == 16u, "port block size");
+_Static_assert(sizeof(struct cogmaster__port) == 24u, "port block size");
 _Static_assert(sizeof(uint64_t) + 2u * sizeof(int16_t) + 2u * sizeof(int8_t) +
-                       2u * sizeof(uint8_t) ==
+                       2u * sizeof(uint8_t) + 2u * sizeof(uint16_t) + 4u * sizeof(uint8_t) ==
                    sizeof(struct cogmaster__port),
                "port block has no padding");
 
@@ -334,6 +362,12 @@ struct cogmaster__psg {
     uint8_t latch;
 };
 
+/* The sensor's cost counters; never state and never read by behaviour. A sync is a call, a
+   sample one dot the sensor has looked at and an edge one change of the sensed state. */
+struct cogmaster__gun_stats {
+    uint32_t samples, syncs, edges;
+};
+
 struct cogmaster {
     cogmaster_allocator allocator; /* the caller's, copied at create */
     uint64_t frame;                /* frames run since load */
@@ -361,6 +395,7 @@ struct cogmaster {
     uint32_t render_x; /* next unrendered dot of render_line */
     cogmaster_input pending_input, input;
     uint8_t input_read;
+    struct cogmaster__gun_stats gun_stats; /* counters the cost tests read; never saved */
     /* The controllers the matched table row names, per port, as COGMASTER_DEVICE_* values. They
        are derived at load and are not saved; zero (a pad) when no row matched. */
     uint8_t table_device[2];
@@ -389,6 +424,14 @@ struct cogmaster {
 static inline int cogmaster__native_gg(const cogmaster *m)
 {
     return m->video_mode == COGMASTER_VIDEO_GG;
+}
+
+/* Whether a Light Phaser is in force on either port. Every call into the sensor is behind this,
+   so a console without one pays a compare at each site and nothing else. */
+static inline int cogmaster__gun_attached(const cogmaster *m)
+{
+    return m->input.port1 == COGMASTER_DEVICE_LIGHT_PHASER ||
+           m->input.port2 == COGMASTER_DEVICE_LIGHT_PHASER;
 }
 
 /* Shared revision facts: the 315-5124 masks VDP addresses and has no
@@ -642,9 +685,15 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t);
 uint8_t cogmaster__vdp_read(cogmaster *m, uint32_t port);
 void cogmaster__vdp_write(cogmaster *m, uint32_t port, uint8_t v);
 void cogmaster__vdp_latch_h(cogmaster *m);
+/* The H counter at an in-line tick, pure; and the latch of it at that tick. */
+uint8_t cogmaster__vdp_hcount_at(const cogmaster *m, uint32_t tick);
+void cogmaster__vdp_latch_h_at(cogmaster *m, uint32_t tick);
 void cogmaster__vdp_render_to(cogmaster *m, uint32_t end);
 void cogmaster__vdp_sprite_scan(cogmaster *m, uint32_t line);
 void cogmaster__vdp_render_until(cogmaster *m, uint32_t line, uint32_t x);
+/* Whether a render now would record an unsupported-mode fault: the display is on and the mode has
+   no renderer. The sensor leaves the renderer to its own schedule then. */
+int cogmaster__vdp_render_blocked(const cogmaster *m);
 #define COGMASTER__VDP_PRIORITY 32u
 uint32_t cogmaster__vdp_background(const cogmaster *m, uint32_t x, uint32_t y);
 uint32_t cogmaster__vdp_pattern_address(const cogmaster *m, uint32_t address);
@@ -722,6 +771,13 @@ void cogmaster__io_reset(cogmaster *m);
 void cogmaster__io_glasses_write(cogmaster *m, uint16_t addr, uint8_t v);
 /* Every $3F write: the latch of the H counter on a rising TH lives here. */
 void cogmaster__io_th_changed(cogmaster *m, uint8_t old_ctrl, uint8_t new_ctrl, uint64_t tick);
+/* The Light Phaser sensor: sync runs it up to the beam, finish ends the old picture's scan and wrap
+   arms the next picture (after the height changes). */
+void cogmaster__gun_sync(cogmaster *m);
+void cogmaster__gun_finish(cogmaster *m);
+void cogmaster__gun_wrap(cogmaster *m);
+/* The sensor of a port saw light (lit 1) or stopped seeing it (0) at an in-line tick. */
+void cogmaster__io_sensor_edge(cogmaster *m, uint32_t port, uint32_t lit, uint32_t tick);
 /* The six pins a port's device drives (b0-b3 D0-D3, b4 TL, b5 TR), 0 = low.
    Port is 0 or 1. Pure. */
 uint8_t cogmaster__ports_pins(const cogmaster *m, uint32_t port, uint64_t tick);

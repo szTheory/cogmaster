@@ -174,5 +174,19 @@ lessons_unique)
   [ -f "$DOC" ] || fail 'lessons_unique: DOC must name a file'
   awk '/^\| (XFER-[0-9]+|CM-[A-Z]+-[0-9]+) \|/ || /^Lesson (XFER|CM)-/ { n++; if(seen[$2]++ == 1) {print "lessons_unique: " $2 " appears twice"; bad=1} }
   END { if(!n) {print "lessons_unique: no lesson IDs in " ENVIRON["DOC"]; bad=1} else print "lessons_unique: " n " IDs"; exit bad }' "$DOC" ;;
+no_title_table)
+  # A signature table keyed on the loaded title, which a behaviour test on an owned fixture can never catch. Comments are
+  # stripped, string literals are kept whole (a // or /* inside one starts nothing), and a gun.c array initialised by braces or a string fails.
+  awk 'FNR==1 { blk=0 }
+  { s=$0; code=""
+    while(s != "") {
+      if(blk) { i=index(s,"*/"); if(!i) break; s=substr(s,i+2); blk=0; continue }
+      a=index(s,"/*"); b=index(s,"//"); q=index(s,"\"")
+      if(q && (!a || q<a) && (!b || q<b)) { if(!match(substr(s,q+1),/^(\\.|[^"\\])*"/)) { code=code s; break } code=code substr(s,1,q+RLENGTH); s=substr(s,q+RLENGTH+1); continue }
+      if(b && (!a || b<a)) { code=code substr(s,1,b-1); break }
+      if(!a) { code=code s; break }
+      code=code substr(s,1,a-1); s=substr(s,a+2); blk=1 }
+    if(code ~ /(->|[.])cart([^A-Za-z0-9_]|$)|cartdb|cart_fact|sha1|crc32|product|serial|title|checksum/ || (FILENAME ~ /gun\.c$/ && code ~ /\] *= *[{"]/)) { f=FILENAME; sub(/^.*\//,"",f); print "no_title_table: " f ":" FNR ": " $0; bad=1 } }
+  END { exit bad }' "$DIR/gun.c" "$DIR/ports.c" "$DIR/io.c" "$DIR/vdp.c" "$DIR/vdp_render.c" ;;
 *) fail "unknown repository check: $1" ;;
 esac

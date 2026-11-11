@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: The whole library
-current_phase: 9
-current_phase_name: Light Phaser
+current_phase: 10
+current_phase_name: BIOS boot
 status: planning
-stopped_at: Phase 8 complete, ready to plan Phase 9
-last_updated: "2026-11-11T07:47:44.313Z"
+stopped_at: Phase 9 complete, ready to plan Phase 10
+last_updated: "2026-11-11T12:26:56.048Z"
 last_activity: 2026-11-11
-last_activity_desc: Phase 8 complete, transitioned to Phase 9
-state_head: 9cad5281a4d4cbf35317bc9473e34a73d8adbd6e
+last_activity_desc: Phase 9 complete, transitioned to Phase 10
+state_head: aa4dc48eaa25e508ee374e2a7cbe346b0986eecd
 progress:
   total_phases: 8
-  completed_phases: 4
-  total_plans: 52
-  completed_plans: 52
-  percent: 50
+  completed_phases: 5
+  total_plans: 64
+  completed_plans: 64
+  percent: 63
 ---
 
 # Project State
@@ -29,17 +29,17 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 
 ## Current Position
 
-Phase: 9 — Light Phaser
+Phase: 10 — BIOS boot
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-11-11 — Phase 8 complete, transitioned to Phase 9
+Last activity: 2026-11-11 — Phase 9 complete, transitioned to Phase 10
 
-Progress: [█████░░░░░] 50% of v2.0
+Progress: [██████░░░░] 63% of v2.0
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 114
+- Total plans completed: 126
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -55,6 +55,7 @@ Progress: [█████░░░░░] 50% of v2.0
 | 6 | 11 | - | - |
 | 7 | 10 | - | - |
 | 8 | 17 | - | - |
+| 9 | 12 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -179,6 +180,18 @@ Progress: [█████░░░░░] 50% of v2.0
 | Phase 08 P15 | 70 min | 3 tasks | 6 files |
 | Phase 08 P16 | 14min | 2 tasks | 8 files |
 | Phase 8 P17 | 95min | 3 tasks | 13 files |
+| Phase 09 P01 | 15min | 2 tasks | 8 files |
+| Phase 09 P02 | 20min | 2 tasks | 9 files |
+| Phase 09 P03 | 45min | 3 tasks | 10 files |
+| Phase 09 P04 | 35min | 3 tasks | 10 files |
+| Phase 09 P05 | 75min | 3 tasks | 7 files |
+| Phase 09 P06 | 25min | 2 tasks | 10 files |
+| Phase 09 P07 | 95min | 3 tasks | 11 files |
+| Phase 09 P08 | 6min | 3 tasks | 7 files |
+| Phase 09 P09 | 5 min | 2 tasks | 7 files |
+| Phase 09 P10 | 45 min | 3 tasks | 6 files |
+| Phase 09 P11 | 25min | 3 tasks | 9 files |
+| Phase 9 P12 | 20 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -251,6 +264,18 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 08]: 08-15: glasses.sms draws nothing, so the stereo cases use two guests the test builds and a model of the rule built from the library's own eyes and pictures
 - [Phase 08]: 08-16: the ledger key device token is pad|none|paddle|sports in the normalizer, library lane, fixture lane and doc; changed-key ratchet cases are paired with adjacent-key cases because a rejecting grammar also answers exit 2
 - [Phase 8]: Phase 8 closes with the controller guide in docs/controllers.md as the one behaviour prose; the local library judge is carried to ship because the agent had no library location, and the cogmaster_3d_view default stays left
+- [Phase 09]: Phase 9 plan 1: COGMASTER__DEVICE_LAST stays SPORTS_PAD until the plan that teaches device_ok and the models about the phaser; v13.c pins no phaser answer
+- [Phase 09]: Phase 09 plan 2: the sensor mask on th_pins applies only to an input TH on a non-Game-Gear machine; th_edge takes the in-line tick as uint32_t and io_th_changed passes m->bus.t, keeping the absolute tick for ports_th
+- [Phase 09]: Phase 09 plan 3: a power reset keeps the pending aim like a soft reset and only a load zeroes it, because cogmaster_reset never touches pending_input; the docs say a load parks the aim
+- [Phase 09]: Phase 09 plan 4: gun_wrap runs after the height update so the next picture is armed for the height it has, and a sync renders ahead only when a due dot is not yet emitted, so a gun that finds nothing leaves the render cursor as an unplugged run does
+- [Phase 09]: Phase 09 plan 5: a fuzz frame brings the lazy sensor up to the beam before run_frame because a device change applied from a mid-window state drops dots a lazy sensor has not yet looked at (unreachable through the public API); the noshot case runs 160 frames per profile, past the last new poll-loop alignment, instead of 600
+- [Phase 09]: Plan 09-06: runner phaser aim is validated per device in input_motion_ok (0 0, or x 1 to 256 and y 1 to 240); no crosshair or mapping in the runner
+- [Phase 09]: Plan 09-07: the fixture's rows are derived by a CMake oracle from the image's .DEFINEs and judged on the port1 and port2 profile labels, the first part runs in frame 4 after a two-flag set-up wait, and ports.state.gun is settled at 20 s (4.52 s hosted) instead of its provisional 120 s
+- [Phase 09]: Plan 09-08: no_title_table strips comments then scans exactly five sensor files (a 12-line awk case, 735 of 922 counted lines), and ports.gun.identity flips the whole header identity of the owned fixture over four profiles and compares mailbox, frame and frame count against an unflipped and a parked run
+- [Phase 09]: Host aim cursor is a 1-based aim (centre x + w / 2 + 1); out-of-range pointers, empty rectangles and a NULL rectangle park as 0 0; an aim outside the rectangle draws no crosshair
+- [Phase 09]: Plan 09-10: the libretro Light Phaser aims by the frontend pointer through the last frame's rectangle or by a pad, stick and mouse cursor, a gun on a port whose option is not the phaser is ignored, and the crosshair is drawn after the conversion loop into the output buffer only in the native RGB444 colours (white 0x0FFF, red 0x000F, green 0x00F0, yellow 0x00FF)
+- [Phase 09]: Plan 09-11: table controller code 1 maps to the Light Phaser with no region or machine effect (a Game Gear degrades it through the availability rule), and the ledger token lphaser is accepted in every key grammar copy while only auto is refused
+- [Phase 9]: Soft reset and power reset keep a Light Phaser aim and only a load parks it; the three libretro gun cases run in their own loop at the 10 s floor
 
 ### Pending Todos
 
@@ -347,6 +372,18 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 8 plan 08-07 (gsd-execute-phase 08); table controller intent in cart_info and the profile-resolved default in info, paddle region rule (1 of 1658 rows moved), four cart.device cases with two local negative controls, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 8 plan 08-10 (gsd-execute-phase 08); sports_pad.asm with cycle-counted waits and the 511/512-cycle idle probe, 30 rows on two profiles recomputed from one delta list, dropped-delta and plain-pad controls, a device hash row (14 added lines), record mode and a three-region replay case with a control; 3 tasks, 3 commits, no push | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 8 plan 08-17 (gsd-execute-phase 08); controller guide, test family rows, README link, floors 548 and 511, PAD-04 and PAD-05 wording amended in REQUIREMENTS and ROADMAP, local judge, unchanged-proof, budgets and hosted dispatch 3 with the nightly | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 9 plan 09-01 (gsd-execute-phase 09); the phaser constant, versions 13, 15 and 15 with the layout and device ceiling unchanged, abi.api_v13 on three lanes, one negative control, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 9 plan 09-02 (gsd-execute-phase 09); pure hcount_at, the single th_edge latch site, a sensor mask wired at 0, an empty gun module and ports.gun.latch_at with an origin control, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 9 plan 09-03 (gsd-execute-phase 09); the phaser device with an absolute last-wins aim, the 24-byte port block and its state bounds, the two independent checkers moved with the ceiling, ports.gun.aim, pins and hostile_aim with controls, no push; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 9 plan 09-04 (gsd-execute-phase 09); the lazy Light Phaser sensor and its five guarded sync sites, 13 ports.gun cases with independent oracles and seven one-shot mutation controls, hosted dispatch 1 (runs 43003041792 failed on MSVC, 43003756603 green) and a fresh main run 43003064146, perf delta 0 basis points, timeouts settled; 3 tasks, 5 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 9 plan 09-05 (gsd-execute-phase 09); ports.state.gun with a 31-row just-outside table, the pad fuzz target drawing the phaser with a paint op, an unsupported-mode op and a polled twin that saves the same bytes at every frame, four phaser seeds, ports.gun.noshot cut from 600 to 160 frames per profile (be32 about 35 s from 124 s), three one-shot controls, no push; 2 tasks and the extra task, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 9 plan 09-06 (gsd-execute-phase 09); the runner's lphaser word, a strict per-device aim check beside input_motion_ok, the probe word, runner.gun.args and runner.gun.gg_refused with a one-shot control, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 9 plan 09-07 (gsd-execute-phase 09); the light_phaser fixture with an oracle derived in CMake, 29 rows judged on four profiles and port 2, three controls and two one-shot mutations, runner.gun.crop and runner.gun.noshot, one device hash row, hosted dispatch 2 (run 43010180943 green on every lane, ports.gun.noshot 34.46 s on be32), timeouts settled; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 9 plan 09-08 (gsd-execute-phase 09); the no_title_table case of repository.sh (12 counted lines, 735 of 922) with three self-tests, ports.gun.identity flipping the fixture's header over four profiles with a parked control, one-shot controls on src/gun.c and src/ports.c, the early-render paragraph of video.md, no push; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 9 plan 09-09 (gsd-execute-phase 09); host/aim helper (pointer to 1-based field aim through the crop rectangle in 32-bit arithmetic, clamped cursor, 17-dot crosshair) and host.aim with a crop-blind control, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 9 plan 09-10 (gsd-execute-phase 09); libretro LIGHTGUN type, lphaser option, pointer and cursor aim sources, Pause and Reset on a gun port 0, the crosshair after the conversion loop, tests/libretro/gun.h with three cases and six one-shot controls, no push; 3 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 9 plan 09-11 (gsd-execute-phase 09); table code 1 maps to the Light Phaser, lphaser in each ledger key grammar copy with 25-pair key and 6-token rejection cases and ratchet cases, eight testing-guide rows and the README line, two one-shot controls, no push; 3 tasks, 3 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 9 plan 09-12 (gsd-execute-phase 09); the Light Phaser section of the controller guide, GUN-02 and GUN-03 wording amended, GUN-01 to GUN-04 complete, floors 588 and 548, the SEED-010 hand-off, hosted dispatch 3 (run 43015673654 green on every lane, main base run 43015683127, nightly run 43015678841 with the fuzz lane green, perf delta 0 basis points) and the last timeouts settled, no ci.yml edit, local library judge deferred to the seed (no library path); 3 tasks, 3 commits |  Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -368,8 +405,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T07:28:55.559Z
-Stopped at: Phase 8 complete, ready to plan Phase 9
+Last session: 2026-11-11T12:01:38.694Z
+Stopped at: Phase 9 complete, ready to plan Phase 10
 Resume file: None
 
 ## Operator Next Steps

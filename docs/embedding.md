@@ -56,6 +56,7 @@ API version 10 appends the board constants `COGMASTER_BOARD_KOREAN`, `COGMASTER_
 `cogmaster_cart_info` fields from `board_source` to `unsupported_reason`, with behaviour revision 12 and state format 12; [Boards](boards.md) says what they mean.
 API version 11 appends the board constant `COGMASTER_BOARD_SEGA_EEPROM`, the Sega board with a 93C46 save chip, with behaviour revision 13 and state format 13, so older state bytes are refused; [Saves](saves.md) says what the chip and its window do.
 API version 12 appends the axis fields `x1`, `y1`, `x2` and `y2` to `cogmaster_input` (48 bytes), the devices `COGMASTER_DEVICE_PADDLE` and `COGMASTER_DEVICE_SPORTS_PAD`, the eye constants `COGMASTER_GLASSES_NONE`, `COGMASTER_GLASSES_RIGHT` and `COGMASTER_GLASSES_LEFT`, `glasses` in `cogmaster_run_result` and `default_port1` and `default_port2` in `cogmaster_info` and `cogmaster_cart_info`, with behaviour revision 14 and state format 14. Axis values are deltas per call. A caller built against the 32-byte input stays valid; a zeroed result or info means no eye and a pad. The controllers guide has the rest.
+API version 13 appends `COGMASTER_DEVICE_LIGHT_PHASER`, with behaviour revision 15 and state format 15, so older state bytes are refused. A phaser port reads its aim from `x1` `y1` (port 1) or `x2` `y2` (port 2) as 1-based field dots; the last call wins and `0 0` means no aim.
 
 ## Getting it
 

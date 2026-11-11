@@ -24,6 +24,7 @@
 #define NEXT_WAIT 429u     /* and between the other nibbles: about 40 microseconds */
 #define MAX_ITEMS 96u
 #define SEEN_MAX 2048u
+#define LINE_TICKS 684u /* the ticks of one line */
 
 static uint8_t image[IMAGE_SIZE];
 static uint8_t good[BUF];
@@ -180,7 +181,56 @@ static void prep_japan_pad(cogmaster *m)
     frame(m);
 }
 
+/* The beam, moved forward to (line, t) without running the CPU. */
+static void walk_to(cogmaster *m, uint32_t line, uint32_t t)
+{
+    uint32_t total = cogmaster__frame_lines(m) * LINE_TICKS;
+    uint32_t want = line * LINE_TICKS + t;
+    uint32_t cur = m->bus.line * LINE_TICKS + m->bus.t;
+    m->ticks += (want + total - cur) % total;
+    cogmaster__bus_sync(m);
+}
+
+/* Two Light Phasers aimed within a few dots of each other at a picture that is bright all over,
+   with both TH lines inputs, stopped inside the first chord of each disc: both ports hold a scan
+   in progress, the light on and the light seen, and an aim in every record. */
+static void prep_gun(cogmaster *m)
+{
+    struct cogmaster__vdp *v = &m->vdp;
+    v->reg[0] = 0x04u;
+    v->reg[1] = 0x40u;
+    v->reg[2] = 0x0Eu;
+    v->reg[5] = 0x7Eu;
+    v->reg[7] = 0u;
+    v->cram[15] = 0x3Fu;
+    for (uint32_t i = 0u; i < 32u; i++) {
+        v->vram[32u + i] = 0xFFu;
+    }
+    for (uint32_t i = 0u; i < 64u; i++) {
+        v->vram[0x3F00u + i] = 0xD0u;
+    }
+    for (uint32_t i = 0u; i < 24u * 32u; i++) {
+        v->vram[0x3800u + 2u * i] = 1u;
+    }
+    cogmaster__io_out(m, 0x3Fu, 0xFFu);
+    CHECK_EQ_U64(send(m, COGMASTER_DEVICE_LIGHT_PHASER, COGMASTER_DEVICE_LIGHT_PHASER, 0u, 0u, 100,
+                      100, 104, 100),
+                 COGMASTER_STATUS_OK);
+    frame(m);
+    walk_to(m, 99u, 240u);
+    cogmaster__gun_sync(m);
+    for (uint32_t p = 0u; p < 2u; p++) {
+        CHECK_EQ_U64(m->ports[p].g_scan, 1u);
+        CHECK_EQ_U64(m->ports[p].g_sense, 3u);
+        CHECK(m->ports[p].g_ax != 0u && m->ports[p].g_ay != 0u && m->ports[p].g_dot != 0u);
+        CHECK_EQ_U64(m->ports[p].g_line, 99u);
+    }
+}
+
 enum { SPORTS, PADDLE, GG, EYE_A, EYE_B, JAPAN_PAD, CFG_COUNT };
+
+static const struct cfg gun_cfg = {"phaser", COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT,
+                                   COGMASTER_TV_NTSC, prep_gun};
 
 static const struct cfg cfgs[CFG_COUNT] = {
     {"sports", COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT, COGMASTER_TV_NTSC, prep_sports},
@@ -252,11 +302,15 @@ static const struct {
     const char *name;
     int is_signed, fixed;
 } watched[] = {
-    {"machine", 0, 1},    {"region", 0, 1},           {"ticks", 0, 1},       {"pending_x1", 1, 0},
-    {"pending_y1", 1, 0}, {"pending_x2", 1, 0},       {"pending_y2", 1, 0},  {"active_x1", 1, 0},
-    {"active_y1", 1, 0},  {"active_x2", 1, 0},        {"active_y2", 1, 0},   {"port_edge", 0, 0},
-    {"port_acc", 1, 0},   {"port_val", 1, 0},         {"port_step", 0, 0},   {"port_pos", 0, 0},
-    {"io_glasses", 0, 0}, {"io_glasses_frame", 0, 0}, {"input_port1", 0, 0}, {"input_port2", 0, 0},
+    {"machine", 0, 1},        {"region", 0, 1},        {"ticks", 0, 1},
+    {"pending_x1", 1, 0},     {"pending_y1", 1, 0},    {"pending_x2", 1, 0},
+    {"pending_y2", 1, 0},     {"active_x1", 1, 0},     {"active_y1", 1, 0},
+    {"active_x2", 1, 0},      {"active_y2", 1, 0},     {"port_edge", 0, 0},
+    {"port_acc", 1, 0},       {"port_val", 1, 0},      {"port_step", 0, 0},
+    {"port_pos", 0, 0},       {"io_glasses", 0, 0},    {"io_glasses_frame", 0, 0},
+    {"input_port1", 0, 0},    {"input_port2", 0, 0},   {"port_gun_ax", 0, 0},
+    {"port_gun_dot", 0, 0},   {"port_gun_ay", 0, 0},   {"port_gun_line", 0, 0},
+    {"port_gun_sense", 0, 0}, {"port_gun_scan", 0, 0}, {"vdp_height", 0, 1},
 };
 #define WATCHED (sizeof watched / sizeof watched[0])
 
@@ -319,8 +373,12 @@ struct snap {
     uint64_t edge[2];
     int64_t acc[2][2], val[2][2];
     uint64_t step[2], pos[2];
+    uint64_t gun[2][6]; /* ax, dot, ay, line, sense, scan, per port */
+    uint64_t height;
     uint64_t eye, eye_frame;
 };
+
+enum { G_AX, G_DOT, G_AY, G_LINE, G_SENSE, G_SCAN };
 
 static void snap_from_buffer(struct snap *s, const struct layout *L, const uint8_t *b)
 {
@@ -329,6 +387,8 @@ static void snap_from_buffer(struct snap *s, const struct layout *L, const uint8
     static const char *const act_names[2][2] = {{"active_x1", "active_y1"},
                                                 {"active_x2", "active_y2"}};
     static const char *const dev_names[2] = {"input_port1", "input_port2"};
+    static const char *const gun_names[6] = {"port_gun_ax",   "port_gun_dot",   "port_gun_ay",
+                                             "port_gun_line", "port_gun_sense", "port_gun_scan"};
     memset(s, 0, sizeof *s);
     s->machine = rd(L, b, "machine", 0u);
     s->region = rd(L, b, "region", 0u);
@@ -345,7 +405,11 @@ static void snap_from_buffer(struct snap *s, const struct layout *L, const uint8
         s->edge[p] = rd(L, b, "port_edge", p);
         s->step[p] = rd(L, b, "port_step", p);
         s->pos[p] = rd(L, b, "port_pos", p);
+        for (uint32_t g = 0u; g < 6u; g++) {
+            s->gun[p][g] = rd(L, b, gun_names[g], p);
+        }
     }
+    s->height = rd(L, b, "vdp_height", 0u);
     s->eye = rd(L, b, "io_glasses", 0u);
     s->eye_frame = rd(L, b, "io_glasses_frame", 0u);
 }
@@ -375,11 +439,18 @@ static void snap_from_instance(struct snap *s, const cogmaster *m)
         s->edge[p] = m->ports[p].edge;
         s->step[p] = m->ports[p].step;
         s->pos[p] = m->ports[p].pos;
+        s->gun[p][G_AX] = m->ports[p].g_ax;
+        s->gun[p][G_DOT] = m->ports[p].g_dot;
+        s->gun[p][G_AY] = m->ports[p].g_ay;
+        s->gun[p][G_LINE] = m->ports[p].g_line;
+        s->gun[p][G_SENSE] = m->ports[p].g_sense;
+        s->gun[p][G_SCAN] = m->ports[p].g_scan;
         for (uint32_t a = 0u; a < 2u; a++) {
             s->acc[p][a] = m->ports[p].acc[a];
             s->val[p][a] = m->ports[p].val[a];
         }
     }
+    s->height = m->vdp.height;
     s->eye = m->io.glasses;
     s->eye_frame = m->io.glasses_frame;
 }
@@ -390,14 +461,15 @@ static int in_range(int64_t v, int64_t lo, int64_t hi)
 }
 
 /* A Game Gear has no ports to attach anything to but a pad; a Paddle exists only on a Japanese
-   console (SMS-CARTRIDGES-AND-PERIPHERALS section 3.4 and the two after it). */
+   console (SMS-CARTRIDGES-AND-PERIPHERALS section 3.4 and the two after it); a Light Phaser plugs
+   into either port of any Master System (section 3.3 there). */
 static int available(const struct snap *s, uint64_t device)
 {
     int gg = s->machine == COGMASTER_MACHINE_GG;
     if (device == COGMASTER_DEVICE_PAD || device == COGMASTER_DEVICE_NONE) {
         return 1;
     }
-    if (device == COGMASTER_DEVICE_SPORTS_PAD) {
+    if (device == COGMASTER_DEVICE_SPORTS_PAD || device == COGMASTER_DEVICE_LIGHT_PHASER) {
         return !gg;
     }
     if (device == COGMASTER_DEVICE_PADDLE) {
@@ -406,11 +478,28 @@ static int available(const struct snap *s, uint64_t device)
     return 0;
 }
 
+/* An aim is a field dot, 1 to 256 across and 1 to 240 down, and 0 0 is none; a half is no aim. */
+static int aim_model(int64_t x, int64_t y)
+{
+    return in_range(x, 0, 256) && in_range(y, 0, 240) && (x == 0) == (y == 0);
+}
+
 static int model_ok(const struct snap *s)
 {
     for (uint32_t p = 0u; p < 2u; p++) {
+        const uint64_t *g = s->gun[p];
         int ok = in_range(s->pend[p][0], -32767, 32767) && in_range(s->pend[p][1], -32767, 32767);
-        ok = ok && s->act[p][0] == 0 && s->act[p][1] == 0;
+        if (s->dev[p][1] == COGMASTER_DEVICE_LIGHT_PHASER) {
+            ok = ok && aim_model(s->act[p][0], s->act[p][1]);
+        } else {
+            ok = ok && s->act[p][0] == 0 && s->act[p][1] == 0;
+        }
+        ok = ok && g[G_AX] <= 256u && g[G_DOT] <= 256u && g[G_AY] <= 240u && g[G_LINE] <= 239u &&
+             g[G_SENSE] <= 3u && g[G_SCAN] <= 1u;
+        ok = ok && (g[G_AX] == 0u) == (g[G_AY] == 0u);
+        ok = ok &&
+             (g[G_SCAN] != 0u || (g[G_LINE] == 0u && g[G_DOT] == 0u && (g[G_SENSE] & 1u) == 0u));
+        ok = ok && (g[G_SCAN] == 0u || (g[G_AX] != 0u && g[G_LINE] < s->height));
         ok = ok && s->edge[p] <= s->ticks && s->step[p] <= 4u && s->pos[p] <= 255u;
         for (uint32_t a = 0u; a < 2u; a++) {
             ok = ok && in_range(s->acc[p][a], -1023, 1023) && in_range(s->val[p][a], -127, 127);
@@ -420,7 +509,11 @@ static int model_ok(const struct snap *s)
         ok = ok && available(s, next) && available(s, held);
         int block = s->edge[p] != 0u || s->acc[p][0] != 0 || s->acc[p][1] != 0 ||
                     s->val[p][0] != 0 || s->val[p][1] != 0 || s->step[p] != 0u;
-        if (held == COGMASTER_DEVICE_PAD || held == COGMASTER_DEVICE_NONE) {
+        int gun_any = g[G_AX] != 0u || g[G_DOT] != 0u || g[G_AY] != 0u || g[G_LINE] != 0u ||
+                      g[G_SENSE] != 0u || g[G_SCAN] != 0u;
+        ok = ok && (held == COGMASTER_DEVICE_LIGHT_PHASER || !gun_any);
+        if (held == COGMASTER_DEVICE_PAD || held == COGMASTER_DEVICE_NONE ||
+            held == COGMASTER_DEVICE_LIGHT_PHASER) {
             ok = ok && !block && s->pos[p] == 0u;
         } else if (held == COGMASTER_DEVICE_SPORTS_PAD) {
             ok = ok && s->pos[p] == 0u;
@@ -432,6 +525,8 @@ static int model_ok(const struct snap *s)
             ok = ok && s->pend[p][0] == 0 && s->pend[p][1] == 0;
         } else if (next == COGMASTER_DEVICE_PADDLE) {
             ok = ok && s->pend[p][1] == 0;
+        } else if (next == COGMASTER_DEVICE_LIGHT_PHASER) {
+            ok = ok && aim_model(s->pend[p][0], s->pend[p][1]);
         }
         if (!ok) {
             return 0;
@@ -527,6 +622,21 @@ static void pair_close(struct pair *pr)
 
 /* ---- mutation ---- */
 
+/* Every byte of the field set to each of six values, the patched state sealed and loaded. */
+static void mutate_item(const struct pair *pr, const struct item *it, struct counts *c)
+{
+    for (uint32_t b = 0u; b < it->width; b++) {
+        uint8_t was = good[it->off + b];
+        const uint8_t values[6] = {0x00u, 0x01u, 0x7Fu, 0x80u, 0xFFu, (uint8_t)~was};
+        for (uint32_t v = 0u; v < 6u; v++) {
+            memcpy(bad, good, pr->size);
+            bad[it->off + b] = values[v];
+            cogmaster__state_seal(bad, pr->size);
+            load_and_judge(it->name, pr->target, &pr->L, pr->size, c);
+        }
+    }
+}
+
 static void test_mutation(void)
 {
     struct counts total = {0u, 0u};
@@ -539,16 +649,7 @@ static void test_mutation(void)
             if (it->fixed) {
                 continue;
             }
-            for (uint32_t b = 0u; b < it->width; b++) {
-                uint8_t was = good[it->off + b];
-                const uint8_t values[6] = {0x00u, 0x01u, 0x7Fu, 0x80u, 0xFFu, (uint8_t)~was};
-                for (uint32_t v = 0u; v < 6u; v++) {
-                    memcpy(bad, good, pr.size);
-                    bad[it->off + b] = values[v];
-                    cogmaster__state_seal(bad, pr.size);
-                    load_and_judge(it->name, pr.target, &pr.L, pr.size, &c);
-                }
-            }
+            mutate_item(&pr, it, &c);
         }
         CHECK(c.accepted > 0u && c.refused > 0u);
         printf("%s: %u accepted, %u refused\n", cfgs[ci].name, c.accepted, c.refused);
@@ -570,7 +671,7 @@ struct patch {
     int64_t v;
 };
 
-#define MAX_PATCH 3u
+#define MAX_PATCH 14u
 
 struct outside {
     uint32_t cfg;
@@ -581,6 +682,7 @@ struct outside {
 
 #define D_SPORTS COGMASTER_DEVICE_SPORTS_PAD
 #define D_PADDLE COGMASTER_DEVICE_PADDLE
+#define D_PHASER COGMASTER_DEVICE_LIGHT_PHASER
 
 static const struct outside outside_table[] = {
     /* Each bound just outside its range, on both sides where the type has room. */
@@ -601,8 +703,8 @@ static const struct outside outside_table[] = {
     {SPORTS, "step 255", 1, {{"port_step", 1u, 255}}},
     {SPORTS, "step 4", 0, {{"port_step", 0u, 4}}},
     {SPORTS, "edge past the tick count", 1, {{"port_edge", 0u, PAST_TICKS}}},
-    {SPORTS, "device 4 pending", 1, {{"input_port1", 0u, 4}}},
-    {SPORTS, "device 4 in force", 1, {{"input_port2", 1u, 4}}},
+    {SPORTS, "device 5 pending", 1, {{"input_port1", 0u, 5}}},
+    {SPORTS, "device 5 in force", 1, {{"input_port2", 1u, 5}}},
     {EYE_A, "eye 3", 1, {{"io_glasses", 0u, 3}}},
     {EYE_A, "eye of the frame 3", 1, {{"io_glasses_frame", 0u, 3}}},
     {EYE_A, "eye of the frame 0", 0, {{"io_glasses_frame", 0u, 0}}},
@@ -634,6 +736,20 @@ static const struct outside outside_table[] = {
     {PADDLE, "a Sports Pad with a pos", 1, {{"port_pos", 1u, 5}}},
     {PADDLE, "a Paddle at its far end", 0, {{"port_pos", 0u, 255}}},
     {PADDLE, "a Paddle pending with an x", 0, {{"pending_x1", 0u, -32767}}},
+    {GG, "a phaser in force on a Game Gear", 1, {{"input_port1", 1u, D_PHASER}}},
+    {GG, "a gun field on a pad", 1, {{"port_gun_ax", 0u, 1}, {"port_gun_ay", 0u, 1}}},
+    {SPORTS,
+     "a phaser pending with an aim",
+     0,
+     {{"input_port1", 0u, D_PHASER}, {"pending_x1", 0u, 256}, {"pending_y1", 0u, 240}}},
+    {SPORTS,
+     "a phaser pending with half an aim",
+     1,
+     {{"input_port1", 0u, D_PHASER}, {"pending_x1", 0u, 5}, {"pending_y1", 0u, 0}}},
+    {SPORTS,
+     "a phaser pending off the field",
+     1,
+     {{"input_port1", 0u, D_PHASER}, {"pending_x1", 0u, 257}, {"pending_y1", 0u, 5}}},
     {EYE_B, "an eye of the frame with no eye", 1, {{"io_glasses", 0u, 0}}},
     {EYE_B, "the same eye twice", 0, {{"io_glasses_frame", 0u, 2}}},
     {EYE_B, "an eye with none of the frame", 0, {{"io_glasses_frame", 0u, 0}}},
@@ -652,6 +768,31 @@ static void patch_in(const struct pair *pr, const struct patch *p, uint8_t *buf)
     put_le(buf + it->off, it->is_signed ? flip(v, it->width) : (uint64_t)v, it->width);
 }
 
+/* One row of a table: the profile's saved state with the patches made, which the checker and the
+   loader must both judge as the row says. */
+static void judge_outside(struct pair *pr, const struct outside *o)
+{
+    /* good holds the last opened profile's bytes, so take this profile's again. */
+    size_t size = save(pr->src, good);
+    memcpy(bad, good, size);
+    for (uint32_t k = 0u; k < MAX_PATCH && o->p[k].name != NULL; k++) {
+        patch_in(pr, &o->p[k], bad);
+    }
+    cogmaster__state_seal(bad, size);
+    struct snap s;
+    snap_from_buffer(&s, &pr->L, bad);
+    if (model_ok(&s) == o->refused) {
+        fprintf(stderr, "%s: the checker says %s\n", o->what, o->refused ? "ok" : "refused");
+        check_failures++;
+    }
+    struct counts c = {0u, 0u};
+    load_and_judge(o->what, pr->target, &pr->L, size, &c);
+    if ((c.refused == 1u) != (o->refused != 0)) {
+        fprintf(stderr, "%s: the loader says %s\n", o->what, o->refused ? "ok" : "refused");
+        check_failures++;
+    }
+}
+
 static void test_outside(void)
 {
     struct pair pr[CFG_COUNT];
@@ -661,31 +802,158 @@ static void test_outside(void)
         if (pr[o->cfg].src == NULL) {
             pair_open(&pr[o->cfg], &cfgs[o->cfg]);
         }
-        /* good holds the last opened profile's bytes, so take this profile's again. */
-        size_t size = save(pr[o->cfg].src, good);
-        memcpy(bad, good, size);
-        for (uint32_t k = 0u; k < MAX_PATCH && o->p[k].name != NULL; k++) {
-            patch_in(&pr[o->cfg], &o->p[k], bad);
-        }
-        cogmaster__state_seal(bad, size);
-        struct snap s;
-        snap_from_buffer(&s, &pr[o->cfg].L, bad);
-        if (model_ok(&s) == o->refused) {
-            fprintf(stderr, "%s: the checker says %s\n", o->what, o->refused ? "ok" : "refused");
-            check_failures++;
-        }
-        struct counts c = {0u, 0u};
-        load_and_judge(o->what, pr[o->cfg].target, &pr[o->cfg].L, size, &c);
-        if ((c.refused == 1u) != (o->refused != 0)) {
-            fprintf(stderr, "%s: the loader says %s\n", o->what, o->refused ? "ok" : "refused");
-            check_failures++;
-        }
+        judge_outside(&pr[o->cfg], o);
     }
     for (uint32_t i = 0u; i < CFG_COUNT; i++) {
         if (pr[i].src != NULL) {
             pair_close(&pr[i]);
         }
     }
+}
+
+/* ---- gun ---- */
+
+/* The six gun fields of port 0 as a port with no phaser leaves them. */
+#define CLEAR_GUN_0                                                                                \
+    {"port_gun_ax", 0u, 0}, {"port_gun_dot", 0u, 0}, {"port_gun_ay", 0u, 0},                       \
+        {"port_gun_line", 0u, 0}, {"port_gun_sense", 0u, 0}, {"port_gun_scan", 0u, 0}
+/* Both ports scanning in the first chord of a disc, lit and seen, over a picture of 192 rows. Each
+   refused row violates one bound or one cross-check; the accepted row beside a group is the same
+   patch with that one rule satisfied, so the refusal is that rule and not the patch. */
+static const struct outside gun_table[] = {
+    {0, "g_ax 257", 1, {{"port_gun_ax", 0u, 257}}},
+    {0, "g_ax 256", 0, {{"port_gun_ax", 0u, 256}}},
+    {0, "g_ay 241", 1, {{"port_gun_ay", 0u, 241}}},
+    {0, "g_ay 240", 0, {{"port_gun_ay", 0u, 240}}},
+    {0, "g_line 240", 1, {{"port_gun_line", 1u, 240}}},
+    {0, "g_dot 257", 1, {{"port_gun_dot", 0u, 257}}},
+    {0, "g_sense 4", 1, {{"port_gun_sense", 1u, 4}}},
+    {0, "g_scan 2", 1, {{"port_gun_scan", 0u, 2}}},
+    {0, "a pending aim of 1 0", 1, {{"pending_x1", 0u, 1}, {"pending_y1", 0u, 0}}},
+    {0, "a pending aim of 0 1", 1, {{"pending_x2", 0u, 0}, {"pending_y2", 0u, 1}}},
+    {0, "a pending aim off the field", 1, {{"pending_x2", 0u, 257}}},
+    {0, "an in-force aim of 5 0", 1, {{"active_x2", 0u, 5}, {"active_y2", 0u, 0}}},
+    {0, "an in-force aim off the field", 1, {{"active_y1", 0u, 241}}},
+    {0, "a snapshot with an x and no y", 1, {{"port_gun_ay", 1u, 0}}},
+    {0, "a scan with no snapshot", 1, {{"port_gun_ax", 0u, 0}, {"port_gun_ay", 0u, 0}}},
+    {0, "a scan past the picture", 1, {{"port_gun_line", 0u, 192}}},
+    {0, "a scan at the last row", 0, {{"port_gun_line", 0u, 191}}},
+    {0,
+     "g_scan 0 with g_line 5",
+     1,
+     {{"port_gun_scan", 0u, 0},
+      {"port_gun_line", 0u, 5},
+      {"port_gun_dot", 0u, 0},
+      {"port_gun_sense", 0u, 2}}},
+    {0,
+     "g_scan 0 with g_dot 3",
+     1,
+     {{"port_gun_scan", 0u, 0},
+      {"port_gun_line", 0u, 0},
+      {"port_gun_dot", 0u, 3},
+      {"port_gun_sense", 0u, 2}}},
+    {0,
+     "g_scan 0 with the light on",
+     1,
+     {{"port_gun_scan", 0u, 0},
+      {"port_gun_line", 0u, 0},
+      {"port_gun_dot", 0u, 0},
+      {"port_gun_sense", 0u, 3}}},
+    {0,
+     "g_scan 0 with the light seen and off",
+     0,
+     {{"port_gun_scan", 0u, 0},
+      {"port_gun_line", 0u, 0},
+      {"port_gun_dot", 0u, 0},
+      {"port_gun_sense", 0u, 2}}},
+    {0, "a held phaser with step 1", 1, {{"port_step", 0u, 1}}},
+    {0, "a held phaser with an edge", 1, {{"port_edge", 1u, 1}}},
+    {0, "a held phaser with an acc", 1, {{"port_acc", 2u, 1}}},
+    {0, "a held phaser with a pos", 1, {{"port_pos", 0u, 1}}},
+    {0, "an aim pending on a pad port", 1, {{"input_port1", 0u, 0}}},
+    {0,
+     "a pad in force with an aim in force",
+     1,
+     {{"input_port1", 0u, 0},
+      {"input_port1", 1u, 0},
+      {"pending_x1", 0u, 0},
+      {"pending_y1", 0u, 0},
+      CLEAR_GUN_0}},
+    {0,
+     "a pad in force with a gun field",
+     1,
+     {{"input_port1", 0u, 0},
+      {"input_port1", 1u, 0},
+      {"pending_x1", 0u, 0},
+      {"pending_y1", 0u, 0},
+      {"active_x1", 0u, 0},
+      {"active_y1", 0u, 0}}},
+    {0,
+     "a pad on the port with nothing left",
+     0,
+     {{"input_port1", 0u, 0},
+      {"input_port1", 1u, 0},
+      {"pending_x1", 0u, 0},
+      {"pending_y1", 0u, 0},
+      {"active_x1", 0u, 0},
+      {"active_y1", 0u, 0},
+      CLEAR_GUN_0}},
+    {0,
+     "a pad in force with a non-zero block",
+     1,
+     {{"input_port1", 0u, 0},
+      {"input_port1", 1u, 0},
+      {"pending_x1", 0u, 0},
+      {"pending_y1", 0u, 0},
+      {"active_x1", 0u, 0},
+      {"active_y1", 0u, 0},
+      {"port_edge", 0u, 1},
+      CLEAR_GUN_0}},
+    {0,
+     "an aim at the far corner, lit, at the closing dot",
+     0,
+     {{"pending_x1", 0u, 256},
+      {"pending_y1", 0u, 240},
+      {"active_x1", 0u, 256},
+      {"active_y1", 0u, 240},
+      {"port_gun_ax", 0u, 256},
+      {"port_gun_ay", 0u, 240},
+      {"port_gun_dot", 0u, 256}}},
+};
+
+/* Both ports of a phaser mid-picture: every byte of every field of the aim, the cursor and the
+   sensor's bits changed in six ways, each bound just outside, each cross-check violated once and a
+   far corner that is a state a run makes. */
+static void test_gun(void)
+{
+    struct pair pr;
+    pair_open(&pr, &gun_cfg);
+    struct counts mine = {0u, 0u};
+    uint32_t bytes = 0u;
+    for (uint32_t i = 0u; i < pr.L.n; i++) {
+        const struct item *it = &pr.L.it[i];
+        int gun = strncmp(it->name, "port_gun_", 9u) == 0;
+        if (!gun && strncmp(it->name, "active_", 7u) != 0 &&
+            strncmp(it->name, "pending_", 8u) != 0) {
+            continue;
+        }
+        struct counts c = {0u, 0u};
+        mutate_item(&pr, it, &c);
+        if (gun) {
+            bytes += it->width;
+            mine.accepted += c.accepted;
+            mine.refused += c.refused;
+        }
+    }
+    /* Two ports of 2 + 2 + 1 + 1 + 1 + 1 bytes, six values each. */
+    CHECK_EQ_U64(bytes, 16u);
+    CHECK_EQ_U64(mine.accepted + mine.refused, 16u * 6u);
+    CHECK(mine.accepted > 0u && mine.refused > 0u);
+    printf("gun fields: %u accepted, %u refused\n", mine.accepted, mine.refused);
+    for (size_t i = 0u; i < sizeof gun_table / sizeof gun_table[0]; i++) {
+        judge_outside(&pr, &gun_table[i]);
+    }
+    pair_close(&pr);
 }
 
 /* ---- sweep ---- */
@@ -896,6 +1164,8 @@ int main(int argc, char **argv)
         test_mutation();
     } else if (strcmp(argv[1], "outside") == 0) {
         test_outside();
+    } else if (strcmp(argv[1], "gun") == 0) {
+        test_gun();
     } else if (strcmp(argv[1], "sweep") == 0) {
         test_sweep();
     } else if (strcmp(argv[1], "midsequence") == 0) {

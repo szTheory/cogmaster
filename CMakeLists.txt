@@ -57,6 +57,7 @@ add_library(cogmaster STATIC
   src/fault.c
   src/instance.c
   src/io.c
+  src/gun.c
   src/ports.c
   src/frame.c
   src/mapper.c
@@ -125,7 +126,7 @@ endif()
 # are outside the core's determinism boundary: nothing here is hashed. Built
 # position-independent and hidden, as the libretro module links them.
 if(COGMASTER_BUILD_RUNNER OR COGMASTER_BUILD_LIBRETRO)
-  add_library(cogmaster-host STATIC host/palette.c host/eyes.c)
+  add_library(cogmaster-host STATIC host/palette.c host/eyes.c host/aim.c)
   target_include_directories(cogmaster-host PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/host)
   set_target_properties(cogmaster-host PROPERTIES
     C_VISIBILITY_PRESET hidden
