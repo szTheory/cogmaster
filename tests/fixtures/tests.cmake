@@ -276,6 +276,8 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(NOT with_eyes MATCHES "(^|\n)frame ${FRAMES} sha256 ${plain_hash}\n" OR NOT with_eyes MATCHES "(^|\n)eyes frames=")
       message(FATAL_ERROR "eyes_hash: the hash ${plain_hash} changes with --eyes\n${with_eyes}")
     endif()
+  elseif(CASE STREQUAL "pin")
+    # The digest check above is the whole case: the image is not a cartridge, so nothing runs it.
   else()
     message(FATAL_ERROR "unknown CASE '${CASE}'")
   endif()
@@ -369,6 +371,28 @@ foreach(spec IN ITEMS korean:1 zemina:2 hes_4pak:3)
     WORKING_DIRECTORY ${fixtures_src}
     DEPENDS ${fixtures_src}/mapper_korean.asm ${fixtures_src}/mapper_korean.link
       ${fixtures_src}/mailbox.inc VERBATIM)
+  list(APPEND fixtures_images ${image})
+endforeach()
+# One source builds the BIOS-shaped test image, its probe cartridge and the two bad images:
+# name:extension:selector, as vdp_lines does. The image is not a cartridge and has no header.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${fixtures_src}/bios_shape.link)
+file(READ ${fixtures_src}/bios_shape.link bios_link)
+set(bios_images bios_probe bios_shape bios_shape_bad_ram bios_shape_bad_sp)
+foreach(spec IN ITEMS bios_probe:sms:PROBE=1 bios_shape:bin:FULL=1 bios_shape_bad_ram:bin:BAD_RAM=1
+    bios_shape_bad_sp:bin:BAD_SP=1)
+  string(REPLACE ":" ";" spec "${spec}")
+  list(GET spec 0 name)
+  list(GET spec 1 extension)
+  list(GET spec 2 define)
+  string(REPLACE "bios_shape.o" "${name}.o" link "${bios_link}")
+  set(image ${COGMASTER_FIXTURES_DIR}/${name}.${extension})
+  file(GENERATE OUTPUT ${COGMASTER_FIXTURES_DIR}/${name}.link CONTENT "${link}")
+  add_custom_command(OUTPUT ${image}
+    COMMAND ${COGMASTER_WLA_Z80} -q -D ${define} -o ${COGMASTER_FIXTURES_DIR}/${name}.o bios_shape.asm
+    COMMAND ${CMAKE_COMMAND} -E chdir ${COGMASTER_FIXTURES_DIR}
+      ${COGMASTER_WLALINK} -r ${name}.link ${image}
+    WORKING_DIRECTORY ${fixtures_src}
+    DEPENDS ${fixtures_src}/bios_shape.asm ${fixtures_src}/bios_shape.link VERBATIM)
   list(APPEND fixtures_images ${image})
 endforeach()
 add_custom_target(cogmaster-fixtures ALL DEPENDS ${fixtures_images})
@@ -506,6 +530,21 @@ cogmaster_add_test(NAME fixtures.hello
     -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt -DRUN=$<TARGET_FILE:cogmaster-run>
     "-DEMULATOR=${fixtures_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS fixtures portable TIMEOUT 10)
+
+# Fault prevented: a BIOS-shaped test image, its probe cartridge or one of the two bad images
+# whose bytes drift from their pin (another assembler, a changed source, CRLF line endings), so
+# the equivalence check would judge a different program than the one pinned.
+# Timeout: 20 s floor, provisional until the first hosted run times it.
+foreach(name IN LISTS bios_images)
+  set(extension bin)
+  if(name STREQUAL "bios_probe")
+    set(extension sms)
+  endif()
+  cogmaster_add_test(NAME fixtures.bios_shape.pin.${name}
+    COMMAND ${CMAKE_COMMAND} -DCASE=pin -DNAME=${name} -DIMAGE=${COGMASTER_FIXTURES_DIR}/${name}.${extension}
+      -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures portable TIMEOUT 20)
+endforeach()
 
 # Fault prevented: a fixture whose measurements are printed but never
 # compared, so a core that pages the wrong bank passes. The image's digest is

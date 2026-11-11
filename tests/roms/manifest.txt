@@ -14,3 +14,4 @@ tests/vectors/z80/sst-sample.bin	https://github.com/SingleStepTests/z80	ebe1875d
 # Owned paddle.sms is built only from MIT source; its digest lives in tests/built/expected.txt.
 # Owned glasses.sms is built only from MIT source; its digest lives in tests/built/expected.txt.
 # Owned light_phaser.sms is built only from MIT source; its digest lives in tests/built/expected.txt.
+# Owned bios_shape images (a BIOS-shaped test image, its probe cartridge and two bad variants) are built only from MIT source; their digests live in tests/built/expected.txt and they are never committed or packaged.

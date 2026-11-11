@@ -137,6 +137,10 @@ fault.not_faults	bus,portable
 fault.rom_write	bus,portable
 fault.unmapped_read	bus,portable
 fault.unmapped_write	bus,portable
+fixtures.bios_shape.pin.bios_probe	fixtures,portable
+fixtures.bios_shape.pin.bios_shape	fixtures,portable
+fixtures.bios_shape.pin.bios_shape_bad_ram	fixtures,portable
+fixtures.bios_shape.pin.bios_shape_bad_sp	fixtures,portable
 fixtures.boot_to_play	fixtures,portable
 fixtures.boot_to_play.both_pads	fixtures,portable
 fixtures.boot_to_play.gg.baseline	fixtures,portable
