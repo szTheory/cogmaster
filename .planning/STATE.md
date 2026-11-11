@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 10
 current_phase_name: BIOS boot
 status: planning
-stopped_at: Phase 9 complete, ready to plan Phase 10
-last_updated: "2026-11-11T12:26:56.048Z"
+stopped_at: Completed 10-01-PLAN.md
+last_updated: "2026-11-11T14:50:43.961Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 9 complete, transitioned to Phase 10
-state_head: aa4dc48eaa25e508ee374e2a7cbe346b0986eecd
+state_head: e09c9d9b50e08d932e9cee5e6b5d46bda1948c06
 progress:
   total_phases: 8
   completed_phases: 5
-  total_plans: 64
-  completed_plans: 64
+  total_plans: 75
+  completed_plans: 65
   percent: 63
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 10 — BIOS boot
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-11 — Phase 9 complete, transitioned to Phase 10
+Plan: 1 of 11 complete (10-01: digest table and release firmware scan)
+Status: Executing Phase 10
+Last activity: 2026-11-11 — Completed 10-01-PLAN.md
 
 Progress: [██████░░░░] 63% of v2.0
 
@@ -192,6 +192,7 @@ Progress: [██████░░░░] 63% of v2.0
 | Phase 09 P10 | 45 min | 3 tasks | 6 files |
 | Phase 09 P11 | 25min | 3 tasks | 9 files |
 | Phase 9 P12 | 20 min | 3 tasks | 9 files |
+| Phase 10 P01 | 55 min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -276,6 +277,8 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 09]: Plan 09-10: the libretro Light Phaser aims by the frontend pointer through the last frame's rectangle or by a pad, stick and mouse cursor, a gun on a port whose option is not the phaser is ignored, and the crosshair is drawn after the conversion loop into the output buffer only in the native RGB444 colours (white 0x0FFF, red 0x000F, green 0x00F0, yellow 0x00FF)
 - [Phase 09]: Plan 09-11: table controller code 1 maps to the Light Phaser with no region or machine effect (a Game Gear degrades it through the availability rule), and the ledger token lphaser is accepted in every key grammar copy while only auto is refused
 - [Phase 9]: Soft reset and power reset keep a Light Phaser aim and only a load parks it; the three libretro gun cases run in their own loop at the 10 s floor
+- [Phase 10]: Release scan scratch directory is DIR.extract, one per staging directory, so parallel controls cannot clobber each other
+- [Phase 10]: firmware_scan reads the two digest tables through cmake -E cat so a missing table is empty and fails vacuous; the tables themselves are not hashed as scanned files
 
 ### Pending Todos
 
@@ -385,6 +388,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 9 plan 09-11 (gsd-execute-phase 09); table code 1 maps to the Light Phaser, lphaser in each ledger key grammar copy with 25-pair key and 6-token rejection cases and ratchet cases, eight testing-guide rows and the README line, two one-shot controls, no push; 3 tasks, 3 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 9 plan 09-12 (gsd-execute-phase 09); the Light Phaser section of the controller guide, GUN-02 and GUN-03 wording amended, GUN-01 to GUN-04 complete, floors 588 and 548, the SEED-010 hand-off, hosted dispatch 3 (run 43015673654 green on every lane, main base run 43015683127, nightly run 43015678841 with the fuzz lane green, perf delta 0 basis points) and the last timeouts settled, no ci.yml edit, local library judge deferred to the seed (no library path); 3 tasks, 3 commits |  Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Plan phase 10 (gsd-plan-phase 10); research skipped (the discuss step did it), 11 plans of at most ten files, wave equals plan number, hosted dispatches D1, D2 and D3 inside the plans and D4 in the closing plan (no extra dispatch for the timeouts of plans 6 and 7: they are settled from D3's times, libretro in plan 10 and the rest in plan 11), the BIOS-01 scans first | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 10 plan 10-01 (gsd-execute-phase 10); host/bios_table.inc (13 digests converted from ASSET_POLICY), policy.bios_table both ways with two self-tests, policy.bios_dir_reads, release.firmware_scan on the leg's three zips with eleven owned-byte controls, the MAME BIOS digests notice, ASSET_POLICY sections 4 and 5 as built, counted check code 788 of 847, no code file touched, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -406,8 +410,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T12:01:38.694Z
-Stopped at: Phase 9 complete, ready to plan Phase 10
+Last session: 2026-11-11T14:50:43.604Z
+Stopped at: Completed 10-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
