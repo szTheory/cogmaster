@@ -571,6 +571,22 @@ foreach(height IN ITEMS 192 224 240)
       ${fixtures_src}/header.inc ${fixtures_src}/mailbox.inc VERBATIM)
   list(APPEND fixtures_images ${image})
 endforeach()
+# One source builds fm_sweep and its Japan header variant: FIXTURE_REGION_CODE=3 is Master System Japan, so
+# the library judge meets a cartridge whose header names Japan. The link file names the variant's object.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${fixtures_src}/fm_sweep.link)
+file(READ ${fixtures_src}/fm_sweep.link fm_link)
+string(REPLACE "fm_sweep.o" "fm_sweep_jp.o" link "${fm_link}")
+set(image ${COGMASTER_FIXTURES_DIR}/fm_sweep_jp.sms)
+file(GENERATE OUTPUT ${COGMASTER_FIXTURES_DIR}/fm_sweep_jp.link CONTENT "${link}")
+add_custom_command(OUTPUT ${image}
+  COMMAND ${COGMASTER_WLA_Z80} -q -D FIXTURE_REGION_CODE=3
+    -o ${COGMASTER_FIXTURES_DIR}/fm_sweep_jp.o fm_sweep.asm
+  COMMAND ${CMAKE_COMMAND} -E chdir ${COGMASTER_FIXTURES_DIR}
+    ${COGMASTER_WLALINK} -r fm_sweep_jp.link ${image}
+  WORKING_DIRECTORY ${fixtures_src}
+  DEPENDS ${fixtures_src}/fm_sweep.asm ${fixtures_src}/fm_sweep.link
+    ${fixtures_src}/header.inc ${fixtures_src}/mailbox.inc VERBATIM)
+list(APPEND fixtures_images ${image})
 # One source builds the V counter table images, as vdp_lines does: LINES_HEIGHT picks the
 # screen height and each image gets its own link file.
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${fixtures_src}/vdp_vtable.link)

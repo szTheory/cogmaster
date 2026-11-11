@@ -5,7 +5,8 @@
 
 ; A Game Gear fixture defines FIXTURE_GG for region code 6, Game Gear
 ; export (SMS-CARTRIDGES section 1.2); every other fixture gets code 4,
-; Master System export.
+; Master System export. FIXTURE_REGION_CODE sets another code, such as 3,
+; Master System Japan; the nibble sits in $7FFF, outside the checksum range.
 
 ; A fixture with another map defines FIXTURE_MAP and its own map first.
 .IFNDEF FIXTURE_MAP
@@ -24,10 +25,14 @@ BANKS 1
 .SMSHEADER
 PRODUCTCODE 0, 0, 0
 VERSION 0
+.IFDEF FIXTURE_REGION_CODE
+REGIONCODE FIXTURE_REGION_CODE
+.ELSE
 .IFDEF FIXTURE_GG
 REGIONCODE 6
 .ELSE
 REGIONCODE 4
+.ENDIF
 .ENDIF
 RESERVEDSPACE 0, 0
 ROMSIZE $C
