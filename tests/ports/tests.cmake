@@ -32,3 +32,20 @@ foreach(case IN ITEMS poison exact_malloc tags refusals range outputs)
   cogmaster_add_test(NAME ports.input.${case} COMMAND cogmaster-test-ports-input ${case}
     LABELS ports portable TIMEOUT 20)
 endforeach()
+
+# The 3-D glasses eye: the cut rule against an independent closed form, the end-of-window
+# snapshot it must not equal, the gate-free hook, every profile, the lag poll and the state bounds.
+add_executable(cogmaster-test-ports-glasses ${CMAKE_CURRENT_LIST_DIR}/test_glasses.c)
+target_include_directories(cogmaster-test-ports-glasses PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-ports-glasses PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-ports-glasses PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-ports-glasses)
+
+# Fault prevented: a 3-D eye reported in the wrong picture (inverted depth), gated by a bit no
+# source supports, or a frame hash that depends on the glasses.
+foreach(case IN ITEMS rule control gate profiles nolag state)
+  # Timeout: 20 s floor; provisional until a hosted run measures it.
+  cogmaster_add_test(NAME ports.glasses.${case} COMMAND cogmaster-test-ports-glasses ${case}
+    LABELS ports portable TIMEOUT 20)
+endforeach()
