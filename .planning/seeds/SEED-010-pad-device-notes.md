@@ -39,6 +39,21 @@ on the fall, MacDonald on either. A run of the 13 dumps can only move those cons
 change a hash of an existing run, because no pad-only, no-shot or committed-fixture run reads them. A disagreement on a
 bright frame points at the edge rule; one on a lit shape smaller than the disc points at the shape rule.
 
+## The BIOS local judge (hand-off, not a requirement)
+
+With the owner's BIOS directory variable and library path set, per dump: the runner's recognised label on stderr (or
+the printed SHA-1 fact); that `cogmaster-run <cartridge> --boot bios --bios <dump> --frames N` exits 0 for a dump the
+table runs and 77 with a Game Gear cartridge; and that the local window scan prints `K compared` and exits 0.
+
+What a real BIOS leaves that fast boot lacks, and a game can see: logo tiles in VRAM and CRAM, the VDP R1, R5, R6 and
+R0 values, BIOS routines and variables in work RAM above `$C000`, the Z80 registers and R, IM and IFF at hand-off, PSG
+attenuation after the jingle, the beam phase, and paging after a 64 KiB or larger checksum. The CI image writes the
+same constants fast boot sets, so it proves the mechanism and not this residue.
+
+Outcomes are predicates only: a pass or fail line and the SHA-1 fact. Never frames, RAM or states, never a committed
+log, `--png`, `--state-out` or `--expect` value. If a title needs the residue, the fast-boot table grows; the BIOS
+bytes are never copied. Batch it with the phase 11 and 12 library runs.
+
 ## A core sync at the start of `run_frame` (review leftover)
 
 The fuzz leg that cuts a frame into pieces had to bring the sensor up to the beam before each `run_frame`, because a
