@@ -7,26 +7,58 @@
    keeps its full decode and its pad, and decodes $3E and $3F as a full-decode
    Master System does. With the YM2413 unit attached, $F0 to $F2 are the unit's
    ports and answer ahead of the I/O chip. */
+#include <string.h>
+
 #include "internal.h"
+
+/* The input struct's first released size: every API version up to 11 had these
+   eight words and no more, and a caller built against one of them owns exactly
+   that many bytes. */
+#define FIRST_SIZE_INPUT 32u
+_Static_assert(FIRST_SIZE_INPUT == offsetof(cogmaster_input, x1), "first input size");
+
+/* The axis words are validated and, until the devices that read them exist,
+   dropped. */
+#define AXIS_MAX 32767
+
+static int axis_ok(int32_t v)
+{
+    return v >= -AXIS_MAX && v <= AXIS_MAX;
+}
 
 cogmaster_status cogmaster_set_input(cogmaster *m, const cogmaster_input *in)
 {
     if (m == NULL || in == NULL) {
         return COGMASTER_STATUS_ERR_ARGUMENT;
     }
-    cogmaster_status st = cogmaster__check_size(in, 32u, (uint32_t)sizeof *in);
+    cogmaster_status st = cogmaster__check_size(in, FIRST_SIZE_INPUT, (uint32_t)sizeof *in);
     if (st != COGMASTER_STATUS_OK) {
         return st;
     }
     if (!m->loaded) {
         return COGMASTER_STATUS_ERR_NO_CONTENT;
     }
-    if (in->p1 > 63u || in->p2 > 63u || in->pause > 1u || in->reset > 1u || in->start > 1u ||
-        in->port1 > COGMASTER_DEVICE_NONE || in->port2 > COGMASTER_DEVICE_NONE) {
+    /* Read only the whole fields the caller's tag covers: a caller built
+       against a smaller struct owns no more bytes than that, and the fields
+       it does not have stay 0. The assembled copy is checked, then stored. */
+    uint32_t tag = in->size;
+    uint32_t n = (tag < (uint32_t)sizeof *in ? tag : (uint32_t)sizeof *in) & ~3u;
+    cogmaster_input local;
+    memset(&local, 0, sizeof local);
+    const uint8_t *src = (const uint8_t *)in;
+    uint8_t *dst = (uint8_t *)&local;
+    for (uint32_t i = 0u; i < n; i++) {
+        dst[i] = src[i];
+    }
+    if (local.p1 > 63u || local.p2 > 63u || local.pause > 1u || local.reset > 1u ||
+        local.start > 1u || local.port1 > COGMASTER_DEVICE_NONE ||
+        local.port2 > COGMASTER_DEVICE_NONE || !axis_ok(local.x1) || !axis_ok(local.y1) ||
+        !axis_ok(local.x2) || !axis_ok(local.y2)) {
         return COGMASTER_STATUS_ERR_ARGUMENT;
     }
-    m->pending_input = *in;
-    m->pending_input.size = 0u;
+    local.size = 0u;
+    local.x1 = local.y1 = local.x2 = local.y2 = 0;
+    m->pending_input = local;
     return COGMASTER_STATUS_OK;
 }
 

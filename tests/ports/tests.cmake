@@ -15,3 +15,20 @@ foreach(case IN ITEMS latch latch_control pins)
   cogmaster_add_test(NAME ports.${case} COMMAND cogmaster-test-ports ${case}
     LABELS ports portable TIMEOUT 20)
 endforeach()
+
+# The size-tagged input against callers of every size: whole fields only, a poisoned tail, an
+# exact-size block, every refusal and every axis bound.
+add_executable(cogmaster-test-ports-input ${CMAKE_CURRENT_LIST_DIR}/test_input.c)
+target_include_directories(cogmaster-test-ports-input PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-ports-input PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-ports-input PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-ports-input)
+
+# Fault prevented: a caller built against the 32-byte struct is read past its end when the struct grows,
+# or a hostile axis escapes validation.
+foreach(case IN ITEMS poison exact_malloc tags refusals range outputs)
+  # Timeout: 20 s floor; provisional until a hosted run measures it.
+  cogmaster_add_test(NAME ports.input.${case} COMMAND cogmaster-test-ports-input ${case}
+    LABELS ports portable TIMEOUT 20)
+endforeach()
