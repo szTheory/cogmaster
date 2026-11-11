@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 9
 current_phase_name: Light Phaser
 status: planning
-stopped_at: Completed 09-02-PLAN.md
-last_updated: "2026-11-11T09:50:01.923Z"
+stopped_at: Completed 09-03-PLAN.md
+last_updated: "2026-11-11T10:00:32.185Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 8 complete, transitioned to Phase 9
-state_head: 3091b2bb465b51daf3516b016fbedd44e2bc32cf
+state_head: def1c887a6720ceacb0c1dc1dc05d96e74b25af1
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 64
-  completed_plans: 54
+  completed_plans: 55
   percent: 50
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 9 — Light Phaser
-Plan: 02 of 12 complete; next 03
+Plan: 03 of 12 complete; next 04
 Status: Executing
-Last activity: 2026-11-11 — Plan 09-02 complete (hcount_at, th_edge, empty gun module, ports.gun.latch_at)
+Last activity: 2026-11-11 — Plan 09-03 complete (phaser device, absolute aim, 24-byte port block, state bounds, ports.gun.aim, pins and hostile_aim)
 
 Progress: [█████░░░░░] 50% of v2.0
 
@@ -181,6 +181,7 @@ Progress: [█████░░░░░] 50% of v2.0
 | Phase 8 P17 | 95min | 3 tasks | 13 files |
 | Phase 09 P01 | 15min | 2 tasks | 8 files |
 | Phase 09 P02 | 20min | 2 tasks | 9 files |
+| Phase 09 P03 | 45min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -255,6 +256,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 8]: Phase 8 closes with the controller guide in docs/controllers.md as the one behaviour prose; the local library judge is carried to ship because the agent had no library location, and the cogmaster_3d_view default stays left
 - [Phase 09]: Phase 9 plan 1: COGMASTER__DEVICE_LAST stays SPORTS_PAD until the plan that teaches device_ok and the models about the phaser; v13.c pins no phaser answer
 - [Phase 09]: Phase 09 plan 2: the sensor mask on th_pins applies only to an input TH on a non-Game-Gear machine; th_edge takes the in-line tick as uint32_t and io_th_changed passes m->bus.t, keeping the absolute tick for ports_th
+- [Phase 09]: Phase 09 plan 3: a power reset keeps the pending aim like a soft reset and only a load zeroes it, because cogmaster_reset never touches pending_input; the docs say a load parks the aim
 
 ### Pending Todos
 
@@ -353,6 +355,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 8 plan 08-17 (gsd-execute-phase 08); controller guide, test family rows, README link, floors 548 and 511, PAD-04 and PAD-05 wording amended in REQUIREMENTS and ROADMAP, local judge, unchanged-proof, budgets and hosted dispatch 3 with the nightly | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 9 plan 09-01 (gsd-execute-phase 09); the phaser constant, versions 13, 15 and 15 with the layout and device ceiling unchanged, abi.api_v13 on three lanes, one negative control, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 9 plan 09-02 (gsd-execute-phase 09); pure hcount_at, the single th_edge latch site, a sensor mask wired at 0, an empty gun module and ports.gun.latch_at with an origin control, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 9 plan 09-03 (gsd-execute-phase 09); the phaser device with an absolute last-wins aim, the 24-byte port block and its state bounds, the two independent checkers moved with the ceiling, ports.gun.aim, pins and hostile_aim with controls, no push; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -374,8 +377,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T09:50:01.793Z
-Stopped at: Completed 09-02-PLAN.md
+Last session: 2026-11-11T10:00:32.065Z
+Stopped at: Completed 09-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
