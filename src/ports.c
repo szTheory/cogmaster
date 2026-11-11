@@ -67,8 +67,9 @@ uint8_t cogmaster__ports_pins(const cogmaster *m, uint32_t port, uint64_t tick)
     case COGMASTER_DEVICE_LIGHT_PHASER:
         /* The Light Phaser's trigger is TL, low while pulled; the other five pins are undriven
            and read high, and the sensor's own line is TH, which belongs to the console and is
-           not a port pin here (SMS Power, Light Phaser; SMS-CARTRIDGES-AND-PERIPHERALS section
-           3.3). Direction bits and every other held bit change nothing. */
+           not a port pin here (SMS Power, Light Phaser; the peripherals note,
+           SMS-CARTRIDGES-AND-PERIPHERALS section 3.3). Direction bits and every other held bit
+           change nothing. */
         return (uint8_t)(0x2Fu | (~held & PIN_TL));
     case COGMASTER_DEVICE_NONE:
     default:
