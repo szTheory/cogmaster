@@ -53,6 +53,10 @@ When the base has no ratchet, CI explicitly reports first introduction, validate
 results with the candidate judge, and establishes protected-baseline comparison after merge. This case does
 not claim that an absent baseline judge ran. To reproduce a protected comparison locally, use
 `sh scripts/compat-ratchet.sh BASE.csv HEAD.csv ALLOW.txt YYYY-MM-DD BASE_REV HEAD_REV RESULTS.csv`.
+While the base ledger has the format 1 header and the head has the format 2 header, the step reports a format
+migration and runs the head's judge, which reads both formats; once the headers match this never applies. A pull
+request runs its own ci.yml, so this adds no power beyond a ci.yml edit, which already forces the rehearsal and
+review.
 
 ## Lanes
 
