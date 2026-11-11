@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 9
 current_phase_name: Light Phaser
 status: planning
-stopped_at: Completed 09-10-PLAN.md
-last_updated: "2026-11-11T11:45:18.302Z"
+stopped_at: Completed 09-11-PLAN.md
+last_updated: "2026-11-11T11:49:13.691Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 8 complete, transitioned to Phase 9
-state_head: 1582bb66b655a277c98dc5591d83efbbc89203e9
+state_head: 4281c0b9cbd9a645229d6929acf593a089518a52
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 64
-  completed_plans: 62
+  completed_plans: 63
   percent: 50
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 9 — Light Phaser
-Plan: 10 of 12 complete; next 11
+Plan: 11 of 12 complete; next 12
 Status: Executing
-Last activity: 2026-11-11 — Plan 09-10 complete (libretro: LIGHTGUN type, pointer and cursor aim through the crop rectangle, Pause and Reset on a gun port 0, crosshair drawn into the output copy only; libretro.host.gun.aim, .cursor and .crosshair)
+Last activity: 2026-11-11 — Plan 09-11 complete (table code 1 defaults a flagged dump to the Light Phaser, degraded to a pad on a Game Gear; ledger token lphaser accepted in every key grammar copy; testing guide rows and README line)
 
 Progress: [█████░░░░░] 50% of v2.0
 
@@ -189,6 +189,7 @@ Progress: [█████░░░░░] 50% of v2.0
 | Phase 09 P08 | 6min | 3 tasks | 7 files |
 | Phase 09 P09 | 5 min | 2 tasks | 7 files |
 | Phase 09 P10 | 45 min | 3 tasks | 6 files |
+| Phase 09 P11 | 25min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -271,6 +272,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 09]: Plan 09-08: no_title_table strips comments then scans exactly five sensor files (a 12-line awk case, 735 of 922 counted lines), and ports.gun.identity flips the whole header identity of the owned fixture over four profiles and compares mailbox, frame and frame count against an unflipped and a parked run
 - [Phase 09]: Host aim cursor is a 1-based aim (centre x + w / 2 + 1); out-of-range pointers, empty rectangles and a NULL rectangle park as 0 0; an aim outside the rectangle draws no crosshair
 - [Phase 09]: Plan 09-10: the libretro Light Phaser aims by the frontend pointer through the last frame's rectangle or by a pad, stick and mouse cursor, a gun on a port whose option is not the phaser is ignored, and the crosshair is drawn after the conversion loop into the output buffer only in the native RGB444 colours (white 0x0FFF, red 0x000F, green 0x00F0, yellow 0x00FF)
+- [Phase 09]: Plan 09-11: table controller code 1 maps to the Light Phaser with no region or machine effect (a Game Gear degrades it through the availability rule), and the ledger token lphaser is accepted in every key grammar copy while only auto is refused
 
 ### Pending Todos
 
@@ -377,6 +379,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 9 plan 09-08 (gsd-execute-phase 09); the no_title_table case of repository.sh (12 counted lines, 735 of 922) with three self-tests, ports.gun.identity flipping the fixture's header over four profiles with a parked control, one-shot controls on src/gun.c and src/ports.c, the early-render paragraph of video.md, no push; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 9 plan 09-09 (gsd-execute-phase 09); host/aim helper (pointer to 1-based field aim through the crop rectangle in 32-bit arithmetic, clamped cursor, 17-dot crosshair) and host.aim with a crop-blind control, no push; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 9 plan 09-10 (gsd-execute-phase 09); libretro LIGHTGUN type, lphaser option, pointer and cursor aim sources, Pause and Reset on a gun port 0, the crosshair after the conversion loop, tests/libretro/gun.h with three cases and six one-shot controls, no push; 3 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 9 plan 09-11 (gsd-execute-phase 09); table code 1 maps to the Light Phaser, lphaser in each ledger key grammar copy with 25-pair key and 6-token rejection cases and ratchet cases, eight testing-guide rows and the README line, two one-shot controls, no push; 3 tasks, 3 code commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -398,8 +401,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T11:45:18.175Z
-Stopped at: Completed 09-10-PLAN.md
+Last session: 2026-11-11T11:49:13.563Z
+Stopped at: Completed 09-11-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
