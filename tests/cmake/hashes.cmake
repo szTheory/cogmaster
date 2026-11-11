@@ -88,7 +88,8 @@ if(MODE STREQUAL "write")
       foreach(row IN ITEMS "sports_pad.sms|sports|--port1 sports --input ${OUT}/tests/sports.input"
           "paddle.sms|paddle|--port1 paddle --input ${OUT}/tests/paddle.input"
           "glasses.sms|glasses|"
-          "light_phaser.sms|phaser|--port1 lphaser --input ${OUT}/tests/phaser.input")
+          "light_phaser.sms|phaser|--port1 lphaser --input ${OUT}/tests/phaser.input"
+          "bios_probe.sms|bios|--boot bios --bios ${FIXTURES}/bios_shape.bin")
         if(row MATCHES "^${filename}[|]([^|]*)[|](.*)$")
           separate_arguments(device_args UNIX_COMMAND "${CMAKE_MATCH_2}")
           file(STRINGS "${OUT}/tests/${CMAKE_MATCH_1}.input" device_script)

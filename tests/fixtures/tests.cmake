@@ -276,6 +276,65 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(NOT with_eyes MATCHES "(^|\n)frame ${FRAMES} sha256 ${plain_hash}\n" OR NOT with_eyes MATCHES "(^|\n)eyes frames=")
       message(FATAL_ERROR "eyes_hash: the hash ${plain_hash} changes with --eyes\n${with_eyes}")
     endif()
+  elseif(CASE STREQUAL "bios_boot")
+    # One frame (K = 1) is inside the BIOS phase of the owned image: it paints a visible backdrop and waits about
+    # two frames before its hand-off, so the picture differs from the black fast-boot frame. Frame N of a BIOS run
+    # is not frame N of a fast run; that is what is being shown here, not a fault.
+    set(K 1)
+    function(frame_hash hash_var err_var)
+      execute_process(COMMAND ${EMULATOR} ${RUN} ${IMAGE} ${ARGN}
+        RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+      if(NOT rc STREQUAL "0" OR NOT out MATCHES "^frame ${K} sha256 ([0-9a-f]+)\n$")
+        message(FATAL_ERROR "cogmaster-run ${ARGN}: expected exit 0 and one hash line, got exit ${rc}\n${out}${err}")
+      endif()
+      set(${hash_var} ${CMAKE_MATCH_1} PARENT_SCOPE)
+      set(${err_var} "${err}" PARENT_SCOPE)
+    endfunction()
+    # The digest the runner prints is the file's own SHA-1: CMake computes it independently of the core.
+    function(expect_note note path)
+      string(REPEAT "[0-9a-f]" 40 h40)
+      if(NOT note MATCHES "BIOS not recognised [(]sha1 (${h40})[)]")
+        message(FATAL_ERROR "the BIOS note is missing or malformed:\n${note}")
+      endif()
+      set(printed ${CMAKE_MATCH_1})
+      file(SHA1 "${path}" want)
+      if(NOT printed STREQUAL want)
+        message(FATAL_ERROR "the note's digest ${printed} is not the file's SHA-1 ${want}")
+      endif()
+      string(FIND "${note}" "${path}" at)
+      if(NOT at EQUAL -1)
+        message(FATAL_ERROR "the BIOS note holds the path of the file:\n${note}")
+      endif()
+      set(digest ${printed} PARENT_SCOPE)
+    endfunction()
+    frame_hash(fast_plain ignored --frames ${K} --hash)
+    frame_hash(fast_named ignored --frames ${K} --hash --boot fast)
+    frame_hash(bios_first first_note --frames ${K} --hash --boot bios --bios ${BIOS})
+    frame_hash(bios_again again_note --frames ${K} --hash --bios ${BIOS} --boot bios)
+    if(NOT bios_first STREQUAL bios_again)
+      message(FATAL_ERROR "two BIOS runs differ: ${bios_first} and ${bios_again}")
+    endif()
+    if(NOT fast_plain STREQUAL fast_named)
+      message(FATAL_ERROR "--boot fast changed the hash: ${fast_plain} and ${fast_named}")
+    endif()
+    if(bios_first STREQUAL fast_plain)
+      message(FATAL_ERROR "the BIOS run and the fast run hash alike at frame ${K}: ${bios_first}")
+    endif()
+    expect_note("${first_note}" "${BIOS}")
+    set(first_digest ${digest})
+    # A second owned file of 8192 bytes: the run prints its own digest, not a constant and not the first's.
+    string(REPEAT "b" 8191 body)
+    file(MAKE_DIRECTORY "${OUT}")
+    file(CONFIGURE OUTPUT "${OUT}/other.bin" CONTENT "${body}" NEWLINE_STYLE UNIX @ONLY)
+    file(SIZE "${OUT}/other.bin" size)
+    if(NOT size EQUAL 8192)
+      message(FATAL_ERROR "${OUT}/other.bin: wanted 8192 bytes, got ${size}")
+    endif()
+    frame_hash(ignored other_note --frames ${K} --hash --boot bios --bios ${OUT}/other.bin)
+    expect_note("${other_note}" "${OUT}/other.bin")
+    if(digest STREQUAL first_digest)
+      message(FATAL_ERROR "two different files print the same digest ${digest}")
+    endif()
   elseif(CASE STREQUAL "pin")
     # The digest check above is the whole case: the image is not a cartridge, so nothing runs it.
   else()
@@ -574,6 +633,18 @@ foreach(spec IN ITEMS bad_ram:ram bad_sp:z80_sp)
       -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
     LABELS bios fixtures portable TIMEOUT 20)
 endforeach()
+
+# Fault prevented: a BIOS boot whose first frame is the fast-boot frame (the BIOS never ran), a boot that differs
+# between two runs, a fast boot that changes when the flag is merely spelled, and a label line that prints a constant
+# or the digest of other bytes than the file's. Recognition of a known dump is proved by host.bios through the real
+# identify path with an injected table, because no real dump may exist in the tree.
+# Timeout: 20 s floor; no hosted run yet, so provisional.
+cogmaster_add_test(NAME runner.bios.boot
+  COMMAND ${CMAKE_COMMAND} -DCASE=bios_boot -DNAME=bios_probe -DIMAGE=${COGMASTER_FIXTURES_DIR}/bios_probe.sms
+    -DBIOS=${COGMASTER_FIXTURES_DIR}/bios_shape.bin -DOUT=${PROJECT_BINARY_DIR}/tests/bios-boot
+    -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt -DRUN=$<TARGET_FILE:cogmaster-run>
+    "-DEMULATOR=${fixtures_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 20)
 
 # Fault prevented: a fixture whose measurements are printed but never
 # compared, so a core that pages the wrong bank passes. The image's digest is
@@ -1116,6 +1187,14 @@ foreach(frame RANGE 1 ${glasses_count})
   list(APPEND glasses_frames 0,0,00)
 endforeach()
 device_script(${PROJECT_BINARY_DIR}/tests/glasses.input 0 0 glasses_frames)
+# The cross-lane frame hash of the BIOS run is its last frame's: two frames end inside the owned image's BIOS phase,
+# where the picture is not the blank frame a fast boot shows (from the third frame the probe cartridge has the
+# machine and both boots hash alike, so a longer run would compare nothing the BIOS phase did).
+set(bios_frames "")
+foreach(frame RANGE 1 2)
+  list(APPEND bios_frames 0,0,00)
+endforeach()
+device_script(${PROJECT_BINARY_DIR}/tests/bios.input 0 0 bios_frames)
 set(fixtures_eyes -DCASE=eyes -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
   -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${fixtures_emulator}"
   -DJUDGE=${PROJECT_SOURCE_DIR}/tests/cmake/mailbox.cmake -DNAME=glasses -DFRAMES=${glasses_count}

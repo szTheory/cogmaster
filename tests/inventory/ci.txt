@@ -449,6 +449,7 @@ release.single_version_source.self_test	policy
 runner.bench.bytes	bench,portable,runner
 runner.bench.format	bench,portable,runner
 runner.bench.percentile	bench,portable,runner
+runner.bios.boot	portable,runner
 runner.bios.grammar	portable,runner
 runner.bios.no_path_echo	portable,runner
 runner.bios.refusals	portable,runner
