@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 8
 current_phase_name: Sports Pad, Paddle and 3-D glasses
 status: planning
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-11-11T04:48:16.921Z"
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-11-11T04:51:47.544Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 7 complete, transitioned to Phase 8
-state_head: ecea8efadded52d665ba4b047d5f5fdd97cb4087
+state_head: 0202d706cf8c7e4d82d2afcd64ae10972294dbe9
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 52
-  completed_plans: 36
+  completed_plans: 37
   percent: 38
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 8 — Sports Pad, Paddle and 3-D glasses
-Plan: 1 of 17 complete (08-01 port layer); next 08-02
+Plan: 2 of 17 complete (08-01 port layer, 08-02 header delta); next 08-03
 Status: Executing
-Last activity: 2026-11-11 — Completed 08-01 (pin-level port layer, one TH write function)
+Last activity: 2026-11-11 — Completed 08-02 (header delta to API 12, shape-only pin relaxations, v12.c)
 
 Progress: [████░░░░░░] 38% of v2.0
 
@@ -162,6 +162,7 @@ Progress: [████░░░░░░] 38% of v2.0
 | Phase 7 P09 | 40min | 3 tasks | 7 files |
 | Phase 7 P10 | 35 min | 3 tasks | 6 files |
 | Phase 08 P01 | 25min | 2 tasks | 9 files |
+| Phase 08 P02 | 20 min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -211,6 +212,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 7]: 07-09: the kill test locates the kill with a --png file because a killed process loses unflushed stdout
 - [Phase 7]: 07-10: RetroArch writes saves to saves/cogmaster/<name>.srm; the hosted restart steps compare that file with the runner after each pass and the control asserts exit 1 with REGEX ^ because compare_files is silent
 - [Phase 08]: Port layer: cogmaster__ports_pins and cogmaster__io_th_changed take every pad pin and every TH write, pinned by a 65536-pair differential; no behaviour change
+- [Phase 08]: 08-02: relaxed shape pins landed before the header growth; header, asserts and v12.c in one commit; embedding paragraph 613 bytes, file 34,624
 
 ### Pending Todos
 
@@ -299,6 +301,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 7 plan 07-08 (gsd-execute-phase 07); --save-interval with usage, byte-equality and fail-at-once tests, EEPROM wrong-length refusal naming 128, five negative controls; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 7 plan 07-09 (gsd-execute-phase 07); load-time sweep, POSIX directory sync, kill test on every lane; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 7 plan 07-10 (gsd-execute-phase 07); RetroArch restart round trips for battery and EEPROM, SAVE-03 wording, floors 465 and 434, hosted runs 42944235132 (retroarch path fix) and 42945252988 green; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 8 plan 08-02 (gsd-execute-phase 08); shape-only pin relaxations, whole header delta to API 12, behaviour 14, state 14, layout asserts, v12.c; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -320,8 +323,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T04:48:16.800Z
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-11-11T04:51:47.460Z
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
