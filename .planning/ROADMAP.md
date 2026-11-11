@@ -38,7 +38,7 @@ pull request and one automated release.
 - [x] **Phase 7: Saves survive a restart** - 93C46 EEPROM and battery saves persist through the runner and RetroArch, with `.srm` interop only in measured layouts (completed 2026-11-10)
 - [x] **Phase 8: Sports Pad, Paddle and 3-D glasses** - Pin-level ports and a grown input struct make the pad-device and 3-D titles play, with replays matching (completed 2026-11-11)
 - [x] **Phase 9: Light Phaser** - Light Phaser titles hit where the player aims, sensed from the emitted pixel at the beam (completed 2026-11-11)
-- [ ] **Phase 10: BIOS boot** - A user boots from their own BIOS dump in the runner or RetroArch; fast boot stays the default
+- [x] **Phase 10: BIOS boot** - A user boots from their own BIOS dump in the runner or RetroArch; fast boot stays the default (completed 2026-11-11)
 - [ ] **Phase 11: PAL and Japanese FM** - PAL timing proven on every lane and the owner's PAL and FM carts judged under the right profile
 - [ ] **Phase 12: The whole list in the ledger** - Every SMS and Game Gear entry at the pin has an honest row, and `is_experimental` leaves the core
 
@@ -182,12 +182,12 @@ Plans:
 **Depends on**: Phase 8 (the proven `$3E` and bus paths); independent of Phase 9, so it may run first if the Light Phaser is blocked
 **Requirements**: BIOS-01, BIOS-02, BIOS-03, BIOS-04, BIOS-05
 **Success Criteria** (what must be TRUE):
-  1. The release firmware scan and the local firmware-window scan run in `ci`, each with a negative control that fails, and they land in a commit before any BIOS code (BIOS-01).
-  2. `cogmaster-run --boot bios --bios FILE` boots the image, a known dump is recognised by SHA-1, fast boot stays the default with every existing hash unchanged, and the runner exits 77 when a BIOS is required and absent (BIOS-02).
+  1. The release firmware scan runs in `ci` and the local firmware-window scan runs in the `library` preset and in the pre-commit and pre-push hooks; each has a negative control that fails and runs in CI (the release scan's in `ci`, the window scan's in the `hygiene` lane), and they land in a commit before any BIOS code (BIOS-01).
+  2. `cogmaster-run --boot bios --bios FILE` boots the image, the dump is named by SHA-1, fast boot stays the default with every existing hash unchanged, and the runner exits 77 when a BIOS is required and absent or not supported (BIOS-02).
   3. CI runs a self-authored BIOS-shaped image with no skip, and a check shows the fast-boot hand-off state equals the state that image reaches (BIOS-03).
-  4. The libretro `.info` declares the firmware as optional, and an in-process host test shows the adapter reads it from the system directory when the boot option asks for it (BIOS-04).
+  4. The libretro `.info` declares the firmware as optional (three Master System file names; the Game Gear BIOS is a seed), and an in-process host test shows the adapter reads it from the system directory when the boot option asks for it (BIOS-04).
   5. SMS-SYSTEM section 3 is checked against the code, and a test exercises each BIOS and cartridge enable combination under `$3E` with the documented result (BIOS-05).
-**Plans**: 10/11 plans executed
+**Plans**: 11/11 plans complete
 
 Plans:
 - [x] 10-01-PLAN.md — release firmware scan, the digest table checked both ways against ASSET_POLICY, the BIOS directory read check, the BSD-3 digest notice (BIOS-01)
@@ -200,7 +200,7 @@ Plans:
 - [x] 10-08-PLAN.md — the host BIOS helper: label-only recognition proved through the real identify path with an injected table, and the capped reader, provenance and environment text (BIOS-02)
 - [x] 10-09-PLAN.md — runner: --boot and --bios, the 77 refusals with no path echo, exit meanings, one device row (BIOS-02)
 - [x] 10-10-PLAN.md — libretro: the boot option, three optional firmware rows, the in-process test, docs/bios.md and the README sentence, hosted dispatch D3 with the libretro timeouts (BIOS-04, BIOS-05)
-- [ ] 10-11-PLAN.md — requirement and roadmap amendments, seeds, floors, last timeouts, local judgments, final hosted runs and ship list (BIOS-01, BIOS-02, BIOS-03, BIOS-04, BIOS-05)
+- [x] 10-11-PLAN.md — requirement and roadmap amendments, seeds, floors, last timeouts, local judgments, final hosted runs and ship list (BIOS-01, BIOS-02, BIOS-03, BIOS-04, BIOS-05)
 
 ### Phase 11: PAL and Japanese FM
 **Goal**: PAL timing is proven identical on every lane, FM rows are judged by their sound, and the owner's PAL and Japanese FM cartridges are judged under the right profile and merged into the ledger.
