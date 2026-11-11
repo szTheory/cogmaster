@@ -201,3 +201,10 @@ add_executable(cogmaster-test-api-v13 ${PROJECT_SOURCE_DIR}/tests/api/v13.c)
 target_link_libraries(cogmaster-test-api-v13 PRIVATE cogmaster::cogmaster)
 cogmaster_warnings(cogmaster-test-api-v13)
 cogmaster_add_test(NAME abi.api_v13 COMMAND cogmaster-test-api-v13 LABELS abi portable TIMEOUT 10)
+
+# Fault prevented: a version bump or appended field that nobody pinned, so the media layout moves
+# silently and a host built against the previous header passes a struct the core misreads.
+add_executable(cogmaster-test-api-v14 ${PROJECT_SOURCE_DIR}/tests/api/v14.c)
+target_link_libraries(cogmaster-test-api-v14 PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-api-v14)
+cogmaster_add_test(NAME abi.api_v14 COMMAND cogmaster-test-api-v14 LABELS abi portable TIMEOUT 10)
