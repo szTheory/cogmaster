@@ -187,3 +187,10 @@ add_executable(cogmaster-test-api-v11 ${PROJECT_SOURCE_DIR}/tests/api/v11.c)
 target_link_libraries(cogmaster-test-api-v11 PRIVATE cogmaster::cogmaster)
 cogmaster_warnings(cogmaster-test-api-v11)
 cogmaster_add_test(NAME abi.api_v11 COMMAND cogmaster-test-api-v11 LABELS abi portable TIMEOUT 10)
+
+# Fault prevented: a version bump or appended field that nobody pinned, so a host built against the
+# previous header misreads the structs.
+add_executable(cogmaster-test-api-v12 ${PROJECT_SOURCE_DIR}/tests/api/v12.c)
+target_link_libraries(cogmaster-test-api-v12 PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-api-v12)
+cogmaster_add_test(NAME abi.api_v12 COMMAND cogmaster-test-api-v12 LABELS abi portable TIMEOUT 10)
