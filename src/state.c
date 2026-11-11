@@ -324,9 +324,8 @@ static void eeprom_io(struct cogmaster__sio *io, struct cogmaster__eeprom *e)
     cogmaster__sio_check(io, (flags & 1u) == 0u || phase == 3u);
     cogmaster__sio_check(io, phase != 3u || op == 2u);
     cogmaster__sio_check(io, phase != 2u || op == 1u || ext == 1u);
-    cogmaster__sio_check(io, (flags & 0x10u) == 0u ||
-                                 (phase == 4u && (flags & 2u) != 0u && op != 2u && ext != 0u &&
-                                  ext != 3u));
+    cogmaster__sio_check(io, (flags & 0x10u) == 0u || (phase == 4u && (flags & 2u) != 0u &&
+                                                       op != 2u && ext != 0u && ext != 3u));
 }
 
 /* The board is the image's, so only its own value loads. Each bank is below
