@@ -44,6 +44,7 @@ fwin_repo(history commit)
 function(fwin_case name mode regex)
   string(REPLACE ";" "$<SEMICOLON>" cmd "${ARGN}")
   # Timeout: 20 s floor; 2 x 0.16 s, slowest of 30 runs, run 43049044281.
+  # The seven tree controls (nonascii to dir_empty) are provisional on the same floor: no hosted time yet, local slowest 0.43 s.
   if(mode MATCHES "^FAIL")
     set(code 1) # FAIL expects exit 1 (a window found), FAIL2 exit 2 (the scan could not finish)
     if(mode STREQUAL FAIL2)
