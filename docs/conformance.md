@@ -68,6 +68,11 @@ Format 2 replaced the single region column (`ntsc-u`, `ntsc-j`, `pal`, `any`) by
 means only that the run used the 313-line profile and the predicate was accepted, never that the title is a PAL
 release or runs at the right speed.
 
+An audio row pins the transition stream of a fixture under one stated profile (region, tv, fm). It is a regression
+lock over our own output, not a sound claim: only the `fm_sweep` and `psg_sweep` fixtures,
+`tests/audio/opll_lockstep.txt` and the OPLL oracle prove the sound. `compat.fixtures` compares the profile each
+row names with the profile the runner reports, and with the core's default when no `--fm` is given.
+
 Cartridge classification is covered by `cart.database` and `cart.generator`: known nonbattery, unknown,
 known battery and unsupported geometry are distinct from board allocation and ledger membership.
 `cart.fixture_identity` and `cart.fixture_hash` run the assembled battery fixture through production lookup,
