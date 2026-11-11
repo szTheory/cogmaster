@@ -236,7 +236,7 @@ set(COGMASTER_FIXTURES_DIR ${PROJECT_BINARY_DIR}/fixtures)
 set(fixtures_src ${PROJECT_SOURCE_DIR}/tests/roms/src)
 set(fixtures_images "")
 foreach(name IN ITEMS hello mapper_sega mapper_codemasters ports ports_gg boot_to_play boot_to_play_gg battery eeprom
-    psg_sweep psg_sweep_gg fm_sweep sports_pad)
+    psg_sweep psg_sweep_gg fm_sweep sports_pad paddle)
   set(extension sms)
   set(image_name ${name})
   if(name STREQUAL "boot_to_play_gg")
@@ -635,12 +635,12 @@ function(sports_axis out value)
   set(${out} "${sign}${zeros}${value}" PARENT_SCOPE)
 endfunction()
 
-# Writes the runner script for the list: MOTION 0 gives the same buttons with no motion, DROP the 1-based
-# frame whose x motion is left out.
-function(sports_script path motion drop)
+# Writes the runner script for the list FRAMES names: MOTION 0 gives the same buttons with no motion, DROP the
+# 1-based frame whose x motion is left out.
+function(device_script path motion drop frames)
   set(body "")
   set(frame 0)
-  foreach(entry IN LISTS sports_frames)
+  foreach(entry IN LISTS ${frames})
     math(EXPR frame "${frame} + 1")
     string(REPLACE "," ";" entry "${entry}")
     list(GET entry 0 x)
@@ -658,9 +658,9 @@ function(sports_script path motion drop)
   endforeach()
   file(WRITE ${path} "${body}")
 endfunction()
-sports_script(${PROJECT_BINARY_DIR}/tests/sports.input 1 0)
-sports_script(${PROJECT_BINARY_DIR}/tests/sports-dropped.input 1 1)
-sports_script(${PROJECT_BINARY_DIR}/tests/sports-still.input 0 0)
+device_script(${PROJECT_BINARY_DIR}/tests/sports.input 1 0 sports_frames)
+device_script(${PROJECT_BINARY_DIR}/tests/sports-dropped.input 1 1 sports_frames)
+device_script(${PROJECT_BINARY_DIR}/tests/sports-still.input 0 0 sports_frames)
 
 # One read of the pad: the byte of an axis is the negated motion clamped to 127, the rest stays.
 macro(sports_latch axis)
@@ -781,6 +781,56 @@ cogmaster_add_test(NAME fixtures.sports_pad.replay_control
   COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=differs[^a-zA-Z]+from[^a-zA-Z]+the[^a-zA-Z]+recording"
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
   LABELS fixtures portable TIMEOUT 10)
+
+# The paddle fixture reads the position once a frame for the first 14 frames and then runs its sweep, which
+# takes a few more, so the script's tail is motionless. This list is its oracle: x, y and the held pad byte of
+# port 1 a frame (a Paddle ignores y, and frames 2 and 8 send one; bit 4 of the byte is its button). The scripts
+# are written from it and the position of each frame is computed from it below: the position starts at 128 and
+# is clamped to 0 to 255 after every frame's motion, the way a pot stops at its ends (SMS-CARTRIDGES section 3.6).
+set(paddle_deltas 5,0,00 -3,9,00 100,0,00 100,0,10 -2,0,00 0,0,00 -300,0,00 4,-6,00 -9,0,00 1,0,00 120,0,10
+  0,0,00 -121,0,00 127,0,00)
+set(paddle_frames ${paddle_deltas} 0,0,00 0,0,00 0,0,00 0,0,00 0,0,00 0,0,00 0,0,00 0,0,00 0,0,00 0,0,00 0,0,00
+  0,0,00)
+list(LENGTH paddle_frames paddle_count)
+device_script(${PROJECT_BINARY_DIR}/tests/paddle.input 1 0 paddle_frames)
+device_script(${PROJECT_BINARY_DIR}/tests/paddle-dropped.input 1 1 paddle_frames)
+device_script(${PROJECT_BINARY_DIR}/tests/paddle-still.input 0 0 paddle_frames)
+
+set(paddle_at 128)
+set(paddle_want "")
+foreach(entry IN LISTS paddle_deltas)
+  string(REPLACE "," ";" entry "${entry}")
+  list(GET entry 0 x)
+  list(GET entry 2 held)
+  math(EXPR paddle_at "${paddle_at} + ${x}")
+  if(paddle_at LESS 0)
+    set(paddle_at 0)
+  elseif(paddle_at GREATER 255)
+    set(paddle_at 255)
+  endif()
+  math(EXPR value "${paddle_at} + (((0x${held} >> 4) & 1) << 8)")
+  list(APPEND paddle_want ${value})
+endforeach()
+file(STRINGS ${PROJECT_SOURCE_DIR}/tests/diag/expected.csv paddle_rows REGEX "^paddle,")
+list(LENGTH paddle_rows paddle_row_count)
+if(NOT paddle_row_count EQUAL 26)
+  message(FATAL_ERROR "tests/diag/expected.csv: ${paddle_row_count} paddle rows, expected 26")
+endif()
+foreach(row IN LISTS paddle_rows)
+  string(REPLACE "," ";" row "${row}")
+  list(GET row 1 test)
+  list(GET row 3 literal)
+  string(SUBSTRING "${test}" 0 2 id)
+  math(EXPR index "0x${id} - 0x0C")
+  if(index LESS 0)
+    continue()
+  endif()
+  math(EXPR literal "0x${literal}")
+  list(GET paddle_want ${index} want)
+  if(NOT literal EQUAL want)
+    message(FATAL_ERROR "tests/diag/expected.csv: paddle row ${test} is ${literal}, the delta list gives ${want}")
+  endif()
+endforeach()
 
 # Fault prevented: a judge that passes what it should fail. Each control
 # runs the mapper_sega fixture through the judge and must fail with exit 1

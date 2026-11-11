@@ -230,3 +230,29 @@ sports_pad,0C:idle_512_cycles_resets_phase,sms-japan,000F,doc,SMS-CARTRIDGES sec
 sports_pad,0D:button_1_only,sms-japan,0101,doc,SMS-CARTRIDGES section 3.5
 sports_pad,0E:button_2_only,sms-japan,0202,doc,SMS-CARTRIDGES section 3.5
 sports_pad,0F:both_buttons,sms-japan,0303,doc,SMS-CARTRIDGES section 3.5
+paddle,01:region_test,sms-japan,0001,doc,SMS-CARTRIDGES section 3.6 and SMS-SYSTEM section 5
+paddle,01:region_test,sms-export,0000,doc,SMS-CARTRIDGES section 3.6 and SMS-SYSTEM section 5
+paddle,02:ones_in_256_period_29,sms-japan,4D-B3,doc,SMS-CARTRIDGES section 3.6
+paddle,03:ones_in_256_period_31,sms-japan,4D-B3,doc,SMS-CARTRIDGES section 3.6
+paddle,04:ones_in_256_period_47,sms-japan,4D-B3,doc,SMS-CARTRIDGES section 3.6
+paddle,05:ones_in_256_period_64,sms-japan,4D-B3,doc,SMS-CARTRIDGES section 3.6
+paddle,06:ones_in_256_period_97,sms-japan,4D-B3,doc,SMS-CARTRIDGES section 3.6
+paddle,07:ones_in_256_period_100,sms-japan,4D-B3,doc,SMS-CARTRIDGES section 3.6
+paddle,08:ones_in_256_period_101,sms-japan,4D-B3,doc,SMS-CARTRIDGES section 3.6
+paddle,09:ones_in_256_period_200,sms-japan,4D-B3,doc,SMS-CARTRIDGES section 3.6
+paddle,0A:ones_in_256_period_199_near_lock,sms-japan,0000-0100,doc,SMS-CARTRIDGES section 3.6 and a documented near-lock length outside the criterion
+paddle,0B:ones_in_256_period_398_near_lock,sms-japan,0000-0100,doc,SMS-CARTRIDGES section 3.6 and a documented near-lock length outside the criterion
+paddle,0C:frame_01_position,sms-japan,0085,derived,SMS-CARTRIDGES section 3.6 and the scripted deltas with a saturating sum
+paddle,0D:frame_02_position,sms-japan,0082,derived,SMS-CARTRIDGES section 3.6 and the scripted deltas with a saturating sum
+paddle,0E:frame_03_position,sms-japan,00E6,derived,SMS-CARTRIDGES section 3.6 and the scripted deltas with a saturating sum
+paddle,0F:frame_04_position,sms-japan,01FF,derived,SMS-CARTRIDGES section 3.6 and the scripted deltas with a saturating sum
+paddle,10:frame_05_position,sms-japan,00FD,derived,SMS-CARTRIDGES section 3.6 and the scripted deltas with a saturating sum
+paddle,11:frame_06_position,sms-japan,00FD,derived,SMS-CARTRIDGES section 3.6 and the scripted deltas with a saturating sum
+paddle,12:frame_07_position,sms-japan,0000,derived,SMS-CARTRIDGES section 3.6 and the scripted deltas with a saturating sum
+paddle,13:frame_08_position,sms-japan,0004,derived,SMS-CARTRIDGES section 3.6 and the scripted deltas with a saturating sum
+paddle,14:frame_09_position,sms-japan,0000,derived,SMS-CARTRIDGES section 3.6 and the scripted deltas with a saturating sum
+paddle,15:frame_10_position,sms-japan,0001,derived,SMS-CARTRIDGES section 3.6 and the scripted deltas with a saturating sum
+paddle,16:frame_11_position,sms-japan,0179,derived,SMS-CARTRIDGES section 3.6 and the scripted deltas with a saturating sum
+paddle,17:frame_12_position,sms-japan,0079,derived,SMS-CARTRIDGES section 3.6 and the scripted deltas with a saturating sum
+paddle,18:frame_13_position,sms-japan,0000,derived,SMS-CARTRIDGES section 3.6 and the scripted deltas with a saturating sum
+paddle,19:frame_14_position,sms-japan,007F,derived,SMS-CARTRIDGES section 3.6 and the scripted deltas with a saturating sum
