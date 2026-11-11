@@ -642,6 +642,9 @@ void cogmaster__vdp_event(cogmaster *m, uint32_t line, uint32_t t);
 uint8_t cogmaster__vdp_read(cogmaster *m, uint32_t port);
 void cogmaster__vdp_write(cogmaster *m, uint32_t port, uint8_t v);
 void cogmaster__vdp_latch_h(cogmaster *m);
+/* The H counter at an in-line tick, pure; and the latch of it at that tick. */
+uint8_t cogmaster__vdp_hcount_at(const cogmaster *m, uint32_t tick);
+void cogmaster__vdp_latch_h_at(cogmaster *m, uint32_t tick);
 void cogmaster__vdp_render_to(cogmaster *m, uint32_t end);
 void cogmaster__vdp_sprite_scan(cogmaster *m, uint32_t line);
 void cogmaster__vdp_render_until(cogmaster *m, uint32_t line, uint32_t x);
@@ -722,6 +725,9 @@ void cogmaster__io_reset(cogmaster *m);
 void cogmaster__io_glasses_write(cogmaster *m, uint16_t addr, uint8_t v);
 /* Every $3F write: the latch of the H counter on a rising TH lives here. */
 void cogmaster__io_th_changed(cogmaster *m, uint8_t old_ctrl, uint8_t new_ctrl, uint64_t tick);
+/* The Light Phaser sensor: sync runs the sensor up to the beam, wrap closes a frame. */
+void cogmaster__gun_sync(cogmaster *m);
+void cogmaster__gun_wrap(cogmaster *m);
 /* The six pins a port's device drives (b0-b3 D0-D3, b4 TL, b5 TR), 0 = low.
    Port is 0 or 1. Pure. */
 uint8_t cogmaster__ports_pins(const cogmaster *m, uint32_t port, uint64_t tick);

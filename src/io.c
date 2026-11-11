@@ -220,8 +220,9 @@ static uint8_t port_dc(const cogmaster *m)
 
 /* Effective TH pins, shared by readback and the rising-edge H latch.
    Unconnected pad inputs pull high; Japanese output TH reads low; native
-   GG has no TH pins (SMS-SYSTEM section 4, PeripheralPorts). */
-static uint8_t th_pins(const cogmaster *m, uint8_t ctrl)
+   GG has no TH pins (SMS-SYSTEM section 4, PeripheralPorts). A device that drives TH low
+   on an input pin passes its bit in low_mask (b6 port 1, b7 port 2); no device does yet. */
+static uint8_t th_pins(const cogmaster *m, uint8_t ctrl, uint8_t low_mask)
 {
     uint8_t pins = 0xC0u;
     uint8_t echo = m->region == COGMASTER_REGION_JAPAN ? 0u : ctrl;
@@ -231,6 +232,12 @@ static uint8_t th_pins(const cogmaster *m, uint8_t ctrl)
         }
         if ((ctrl & 8u) == 0u) {
             pins = (uint8_t)((pins & ~0x80u) | (echo & 0x80u));
+        }
+        if ((ctrl & 2u) != 0u) {
+            pins = (uint8_t)(pins & ~(low_mask & 0x40u));
+        }
+        if ((ctrl & 8u) != 0u) {
+            pins = (uint8_t)(pins & ~(low_mask & 0x80u));
         }
     }
     return pins;
@@ -246,16 +253,24 @@ static uint32_t th_wire(uint8_t ctrl, uint32_t port)
     return (ctrl & dir) != 0u || (ctrl & level) != 0u ? 1u : 0u;
 }
 
+/* The single latch site: a rising effective TH on either port latches the H counter at the
+   in-line tick given. Every edge of the console's own $3F write comes through here with the
+   current tick, and a sensor edge will with the tick it happened at; ports_th is never called
+   for a sensor edge (SMS-SYSTEM section 4). */
+static void th_edge(cogmaster *m, uint8_t old_pins, uint8_t new_pins, uint32_t tick)
+{
+    if (((uint8_t)~old_pins & new_pins & 0xC0u) != 0u) {
+        cogmaster__vdp_latch_h_at(m, tick);
+    }
+}
+
 /* Every $3F write comes here with the level before and after it, and the
    tick it lands on. Low-to-high on either effective TH captures, including
    release to the input pull-up (SMS-SYSTEM section 4). A device that watches
    TH is told of each change of its port's wire, so its edges alternate. */
 void cogmaster__io_th_changed(cogmaster *m, uint8_t old_ctrl, uint8_t new_ctrl, uint64_t tick)
 {
-    uint8_t old = th_pins(m, old_ctrl);
-    if (((uint8_t)~old & th_pins(m, new_ctrl) & 0xC0u) != 0u) {
-        cogmaster__vdp_latch_h(m);
-    }
+    th_edge(m, th_pins(m, old_ctrl, 0u), th_pins(m, new_ctrl, 0u), m->bus.t);
     for (uint32_t port = 0u; port < 2u; port++) {
         uint32_t wire = th_wire(new_ctrl, port);
         if (th_wire(old_ctrl, port) != wire) {
@@ -286,7 +301,7 @@ static uint8_t port_dd(const cogmaster *m)
                          : 0u;
     uint8_t b = cogmaster__ports_pins(m, 1u, m->ticks);
     uint8_t v = tr_pin(m, (uint8_t)(~(reset << 4) & ((b >> 2) | 0xF0u)), 8u, 4u, 0x40u);
-    return (uint8_t)((v & 0x3Fu) | th_pins(m, m->io.io_ctrl));
+    return (uint8_t)((v & 0x3Fu) | th_pins(m, m->io.io_ctrl, 0u));
 }
 
 /* The YM2413 unit's ports: $F0 latches a register, $F1 writes it, $F2 is the audio control

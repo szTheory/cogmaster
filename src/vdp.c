@@ -251,16 +251,31 @@ static uint8_t vdp_vcount(const cogmaster *m)
     return (uint8_t)(line > (height == 224u ? 234u : 218u) ? line - 6u : line);
 }
 
+/* The H counter at an in-line tick: a pure function of the tick, so a latch can
+   name the tick an edge happened at. The
+   machine is carried for a model that depends on the profile; this formula does
+   not read it. */
+uint8_t cogmaster__vdp_hcount_at(const cogmaster *m, uint32_t tick)
+{
+    (void)m;
+    uint32_t t = (tick + VDP_HCOUNT_ORIGIN) % VDP_LINE_TICKS;
+    return (uint8_t)((t >= VDP_HCOUNT_JUMP ? t + VDP_HCOUNT_SKIP : t) >> 2);
+}
+
 static uint8_t vdp_hcount(const cogmaster *m)
 {
-    uint32_t t = (m->bus.t + VDP_HCOUNT_ORIGIN) % VDP_LINE_TICKS;
-    return (uint8_t)((t >= VDP_HCOUNT_JUMP ? t + VDP_HCOUNT_SKIP : t) >> 2);
+    return cogmaster__vdp_hcount_at(m, m->bus.t);
+}
+
+void cogmaster__vdp_latch_h_at(cogmaster *m, uint32_t tick)
+{
+    m->vdp.hcounter = cogmaster__vdp_hcount_at(m, tick);
+    m->vdp.hheld = 1u;
 }
 
 void cogmaster__vdp_latch_h(cogmaster *m)
 {
-    m->vdp.hcounter = vdp_hcount(m);
-    m->vdp.hheld = 1u;
+    cogmaster__vdp_latch_h_at(m, m->bus.t);
 }
 
 /* A status read returns the flags with the low bits set, then clears the
