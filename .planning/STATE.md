@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 11
 current_phase_name: PAL and Japanese FM
 status: planning
-stopped_at: Phase 10 complete, ready to plan Phase 11
-last_updated: "2026-11-11T19:14:50.371Z"
+stopped_at: Completed 11-01-PLAN.md
+last_updated: "2026-11-11T21:21:19.361Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 10 complete, transitioned to Phase 11
-state_head: bd09bb49d34cf25fcd2293770babf77ea81cdf80
+state_head: 34dc616a55af5373b570ab0abdc3d04be50da517
 progress:
   total_phases: 8
   completed_phases: 6
-  total_plans: 75
-  completed_plans: 75
+  total_plans: 84
+  completed_plans: 76
   percent: 75
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 11 — PAL and Japanese FM
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-11 — Phase 10 complete, transitioned to Phase 11
+Plan: 2 of 9
+Status: Ready to execute
+Last activity: 2026-11-11 — Completed 11-01-PLAN.md
 
 Progress: [████████░░] 75% of v2.0
 
@@ -204,6 +204,7 @@ Progress: [████████░░] 75% of v2.0
 | Phase 10 P09 | 60 min | 2 tasks | 10 files |
 | Phase 10 P10 | 75 min | 3 tasks | 10 files |
 | Phase 10 P11 | 60min | 3 tasks | 11 files |
+| Phase 11 P01 | 50min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -302,6 +303,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 10]: 10-09: the runner reads the BIOS after the cartridge and decides the Game Gear refusal first, an absent BIOS path is exit 77 while any other read error is 1, every BIOS text is fixed and never prints the path, and the cross-lane device row runs two frames because from the third a BIOS run of the probe hashes like a fast one
 - [Phase 10]: 10-10: the libretro BIOS option does nothing without content and logs one warning naming only the file on every other refusal, a Game Gear game never asks for the system folder, the region picks Japan then PAL then the export file with no fallback, and the two libretro timeouts take the 20 s floor from D3
 - [Phase 10]: 10-11: BIOS wording amended to what was built, BIOS-01..05 complete; every phase timeout settled at the 20 s floor from run 43074158512; final dispatch run 43076225840 and nightly 43076276567 green, perf delta -11 bp; real-BIOS residue stays an owner hand-off in SEED-010
+- [Phase 11]: Plan 01: the tree scan reads each file once into one temporary file (counted lines unchanged at 845) and the analyzer runs four processes at a time; local medians 27 to 21 s and 21 to 16 s
 
 ### Pending Todos
 
@@ -423,6 +425,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 10 plan 10-03 (gsd-execute-phase 10); cogmaster_media gains reserved3, bios and bios_size (72 / 40 bytes), versions API 14, behaviour 16, state 16, layout asserts only in src, size pins loosened to >= with every offset pin exact, tests/api/v14.c and abi.api_v14 on ci, wasm32 and nofp, order evidence for BIOS-01 recorded (scans precede the first code commit: exit 0 forward, 1 reversed), counted check code 833 of 847, no dispatch (runner DNS not re-observed; main still shows the failed dispatch); 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-04 (gsd-execute-phase 10); struct cogmaster__bios and the derived mem_slow flag, one shared decoder for the cold read path and peek, per-machine BIOS and cartridge arbitration (SMS1 cartridge wins, SMS2 ANDs, empty enabled slot without a fault when a BIOS is attached), bios.arbitration with 64 one-entry flips and three wrong-table controls, bios.slow_flag, three one-shot controls, SMS-SYSTEM section 3 and 9 amended and the fault row of embedding.md (+95 bytes), counted check code 833 of 847, no dispatch, no hot-path measurement yet (plan 05); 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Code review and verify phase 10 (autonomous run); core review 0 critical 2 warning, host review 2 critical (window scan false negatives) 7 warning, fix round 1 fixed 11, hygiene job and seven window controls settled from run 43082065462, verification passed 5 of 5, counted check code 845 of 940 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 11 plan 11-01 (gsd-execute-phase 11); controller and sound-hash prose moved to controllers.md and audio.md, MAME provenance row corrected, hygiene.sh reads each file once with header_offset control, analyzer parallel, CI speed section; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -444,8 +447,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T18:29:17.526Z
-Stopped at: Phase 10 complete, ready to plan Phase 11
+Last session: 2026-11-11T21:21:18.950Z
+Stopped at: Completed 11-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

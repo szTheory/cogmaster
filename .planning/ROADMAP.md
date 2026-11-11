@@ -211,7 +211,16 @@ Plans:
   2. PAL fixtures for the V-counter tables, Pause at line 311 and exact samples per frame give equal hashes on all eight lanes (REG-02).
   3. The `audio@F=H` predicate passes on a matching transition-stream hash and fails on its negative control, and `fm` is part of the row identity (REG-03).
   4. A local library run judges the owner's PAL and Japanese FM carts, `compat-update.sh` merges the rows and the ratchet passes, recorded as a command and exit status (REG-04).
-**Plans**: TBD
+**Plans**: 1/9 plans executed
+- [x] 11-01-PLAN.md
+- [ ] 11-02-PLAN.md
+- [ ] 11-03-PLAN.md
+- [ ] 11-04-PLAN.md
+- [ ] 11-05-PLAN.md
+- [ ] 11-06-PLAN.md
+- [ ] 11-07-PLAN.md
+- [ ] 11-08-PLAN.md
+- [ ] 11-09-PLAN.md
 
 ### Phase 12: The whole list in the ledger
 **Goal**: Every SMS and Game Gear entry at the MAME pin has a ledger row with an honest status, and the libretro core drops `is_experimental` when the command over the owner's judged rows passes.
@@ -240,5 +249,5 @@ Plans:
 | 8. Sports Pad, Paddle and 3-D glasses | v2.0 | 17/17 | Complete    | 2026-11-11 |
 | 9. Light Phaser | v2.0 | 12/12 | Complete    | 2026-11-11 |
 | 10. BIOS boot | v2.0 | 11/11 | Complete    | 2026-11-11 |
-| 11. PAL and Japanese FM | v2.0 | 0/TBD | Not started | - |
+| 11. PAL and Japanese FM | v2.0 | 1/9 | In Progress | - |
 | 12. The whole list in the ledger | v2.0 | 0/TBD | Not started | - |
