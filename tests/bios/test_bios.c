@@ -476,7 +476,7 @@ static void test_load_ownership(void)
     /* No BIOS in the next load: fast boot, the BIOS gone. */
     media = media_of(cart64, sizeof cart64, COGMASTER_MACHINE_SMS1, NULL, 0u);
     CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
-    static const uint8_t zero[COGMASTER__BIOS_SIZE];
+    static uint8_t zero[COGMASTER__BIOS_SIZE];
     CHECK_EQ_U64(m->bios.size, 0);
     CHECK_EQ_U64(m->bios.crc32, 0);
     CHECK(memcmp(m->bios.rom, zero, sizeof zero) == 0);
