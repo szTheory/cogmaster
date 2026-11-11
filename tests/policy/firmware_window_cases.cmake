@@ -37,6 +37,8 @@ function(fwin_repo name mode) # a throwaway repository with both scripts; staged
   fwin_sh([=[cd "$1" && git init -q && { [ "$2" = none ] || git add array.txt; } && { [ "$2" != commit ] || git -c commit.gpgsign=false commit -qm window; }]=] ${fwin}/${name} ${mode})
 endfunction()
 fwin_repo(unset none)
+fwin_repo(staged staged)
+fwin_repo(history commit)
 # Fault prevented: a control that passes on an unrelated error, or a scan that reports more than a target's name. The
 # failing controls match the whole output, so any extra byte, offset, window or dump path fails them.
 function(fwin_case name mode regex)
@@ -64,3 +66,8 @@ fwin_case(clean PASS "firmware window: 1 compared" ${fwin_scan} ${fwin}/dump ${f
 # throwaway repository with the variable removed.
 fwin_case(unset PASS "no dump configured, 0 compared" ${CMAKE_COMMAND} -E env --unset=${fwin_var} ${fwin_id}
   ${COGMASTER_SH} -c [=[cd "$1" && sh scripts/firmware-window.sh]=] sh ${fwin}/unset)
+# Fault prevented: the pre-commit and pre-push hooks not running the window scan. Each branch of hygiene.sh runs in a
+# throwaway repository whose array.txt holds a window, staged for the first and committed for the second.
+set(fwin_hygiene ${CMAKE_COMMAND} -E env ${fwin_id} ${fwin_var}=${fwin}/dump ${COGMASTER_SH} -c [=[cd "$1" && shift && sh scripts/hygiene.sh "$@"]=] sh)
+fwin_case(staged FAIL "${fwin_hook}" ${fwin_hygiene} ${fwin}/staged --staged)
+fwin_case(history FAIL "${fwin_hook}" ${fwin_hygiene} ${fwin}/history --history HEAD)

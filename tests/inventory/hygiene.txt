@@ -18,6 +18,9 @@ docs.budgets.ratio_below	hygiene,policy
 docs.budgets.ratio_equal	hygiene,policy
 docs.budgets.unclassified	hygiene,policy
 hygiene.analyzer	hygiene
+hygiene.byte_run.over	hygiene
+hygiene.byte_run.split	hygiene
+hygiene.byte_run.under	hygiene
 hygiene.format	hygiene
 hygiene.no_float	hygiene
 hygiene.no_float.self_test	hygiene
@@ -42,8 +45,10 @@ policy.e2e_budget.shared_helper	hygiene,policy
 policy.firmware_window.array	hygiene,policy
 policy.firmware_window.clean	hygiene,policy
 policy.firmware_window.end	hygiene,policy
+policy.firmware_window.history	hygiene,policy
 policy.firmware_window.hit	hygiene,policy
 policy.firmware_window.low_entropy	hygiene,policy
+policy.firmware_window.staged	hygiene,policy
 policy.firmware_window.unset	hygiene,policy
 policy.firmware_window.w31	hygiene,policy
 policy.firmware_window.w32	hygiene,policy
