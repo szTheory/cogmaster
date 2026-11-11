@@ -62,6 +62,12 @@ over frames 1 to F, for an owned fixture, no script; a regression lock, never a 
 them. Format 1 files (`ntsc-u|ntsc-j|pal|any`, no `tv`, no `fm`) are still read and always written as format 2;
 `cases` prints a row's fields for readers. The libretro core stays experimental through v2.0.
 
+Format 2 replaced the single region column (`ntsc-u`, `ntsc-j`, `pal`, `any`) by `region` and `tv` and added
+`fm` to the run configuration. A migrated row keeps its status, evidence and date and gains explicit values.
+`sh scripts/compat-common.sh normalize FILE` reads either format and prints format 2. A `pass` for a PAL row
+means only that the run used the 313-line profile and the predicate was accepted, never that the title is a PAL
+release or runs at the right speed.
+
 Cartridge classification is covered by `cart.database` and `cart.generator`: known nonbattery, unknown,
 known battery and unsupported geometry are distinct from board allocation and ledger membership.
 `cart.fixture_identity` and `cart.fixture_hash` run the assembled battery fixture through production lookup,

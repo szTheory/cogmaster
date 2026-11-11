@@ -41,6 +41,11 @@ In RetroArch: Main Menu → Load Core → **Sega - MS/GG (cogmaster)**, then Loa
 Core with no content shows the built-in test card instead; [docs/runner.md](docs/runner.md#test-card) explains
 what each part of it checks.
 
+A European game runs at NTSC speed until you ask for PAL: in RetroArch set **Region and timing (reload content)**
+to **Export PAL**; with the runner use `--region pal`. Japanese Master System games get the FM sound unit on their
+own; **FM sound unit (reload content)** or `--fm on` or `--fm off` overrides it. What is checked for each setting
+is in [docs/compatibility.md](docs/compatibility.md).
+
 With the runner, download `cogmaster-runner-<os>-<arch>.zip` from the same release, unzip it, and run 600 frames
 of your file:
 
