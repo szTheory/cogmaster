@@ -1,0 +1,8 @@
+entries_sms 653
+entries_gg 823
+entries_sg 214
+merged_sms_gg 13
+merged_sg 0
+compound_sms_gg 19
+compound_sg 2
+mame_no 6

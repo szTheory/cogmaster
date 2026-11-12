@@ -159,18 +159,17 @@ schedule other than one Monday cron, a missing `dry_run` input, an App token or 
 
 ## CI speed
 
-A pull request run takes about 10.6 minutes: the macOS builds, then the release rehearsal (5.5 minutes), are the
-critical path. The static analyzer and the tree scan cost runner minutes, not wall time.
+The macOS builds, then the release rehearsal, are the critical path of a pull request run. The static analyzer and the tree scan cost runner minutes, not wall time.
 
 Never run two macOS-using workflows at once (CI and Nightly).
+
+Whenever CI runs or finishes, look for a cheap speed-up that costs no quality; measured jobs and open items are in the whole-list follow-up seed under `.planning/seeds/`. The ledger and its exit command are in [conformance.md](conformance.md#whole-list-ledger).
 
 A job that fails at an `apt` step with "Temporary failure resolving" hit a runner DNS fault: `gh run rerun <id> --failed`
 reruns only the failed jobs and spends no macOS minutes.
 
 `sh scripts/ci-durations.sh tests <run-id>` lists each test with the lanes that passed it and its slowest seconds. Settle
-a timeout from two runs, never one. Measured: the hash file takes 4 s on Linux x64 and 53 s on be32; the sound
-expectations 4.6 and 57 s. When the weekly digest names a slowest job or a flaky one, rerun only the failed jobs and read
-the table before raising any timeout.
+a timeout from two runs, never one. When the weekly digest names a slow or flaky job, rerun only the failed jobs and read the table first.
 
 ## Repository settings
 
@@ -223,11 +222,11 @@ Cartridge metadata comes only from the three per-file CC0 MAME hash lists at
 rows with `scripts/fetch-pin.sh`, then, from the repository root, run
 
 ```
-cogmaster-cartdb --pin <commit> --catalog tests/compat/catalog.tsv sms.xml gamegear.xml sg1000.xml \
-  --fixture tests/cart/fixture_facts.txt > src/cartdb.inc
+cogmaster-cartdb --pin <commit> --catalog tests/compat/catalog.tsv --counts tests/compat/pin-counts.txt \
+  sms.xml gamegear.xml sg1000.xml --fixture tests/cart/fixture_facts.txt > src/cartdb.inc
 ```
 
-The run writes `src/cartdb.inc` to stdout and the catalog to the named file. `--pin` is required and is
+The run writes `src/cartdb.inc` to stdout, the catalog and counts to the named files, and prints the reconciliation. A pin bump regenerates all three in one run; the tests check them against each other, not the lists, so `cmp` them. `--pin` is required and is
 printed on the table's first line. The fixture input is a fixed owned fact, never the assembler output;
 assembly checks its SHA-1 after linking, and no core target depends on fixture assembly. The bounded C17
 converter never expands DTDs or external entities.
@@ -235,14 +234,11 @@ converter never expands DTDs or external entities.
 Every slot in the lists maps through the slot table in `tools/cartdb.c` to a board or to unsupported with a
 stated reason; that table is the one place that maps a slot to a board. A slot the table does not name fails
 the run, and `--list-slots` prints the names. Stderr prints one `cartdb: slot` line per slot with its seen and
-emitted counts. Compound or incomplete records are counted as seen and not emitted. The pinned conversion has
-1,673 candidates (the four owned fixtures included), 21 excluded records and 1,660 unique rows. Seen and emitted counts per slot:
-4pak 1/1, cardcatcher 1/0, castle 1/1, codemasters 22/21, dahjee_typea 11/11, dahjee_typeb 5/5, eeprom 7/7,
-hicom 9/9, janggun 1/1, korean 6/6, korean_188in1 1/1, korean_nb 5/5, level3 2/2, mgear 2/1, nemesis 1/1,
-othello 2/2, seojin 1/1, terebi 1/1, xterminator 2/2, zemina 8/8.
+emitted counts. Compound or incomplete records are counted as seen and not emitted: they get a catalog line, not a table row. The pinned
+conversion has 1,673 candidates (the four owned fixtures included) and 21 compound records.
 
 A row is a binary SHA-1 with fixed-width facts and no title. Titles live in `tests/compat/catalog.tsv`
-(five tab-separated fields ending in the title; public records only), which `scripts/compat-update.sh` reads. Identical
+(ten tab-separated fields, the title fifth; public records only), which `scripts/compat-update.sh` reads. Identical
 hardware facts with card/cart aliases coalesce. Conflicting board, size, persistence or video facts fail
 conversion. The table identifies content; membership makes no gameplay claim. Generator tests use authored
 XML, not commercial bytes, and the owned fixture rows stay out of the catalog. Their public-identity flag is zero.

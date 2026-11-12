@@ -26,7 +26,6 @@ C++ compiler. The workflow runs five steps:
 4. package the three release zips into `build/ci`;
 5. test the `release` label against those zips, writing `build/ci/junit-release.xml`.
 
-On a recent Mac a clean run takes a couple of seconds.
 
 **Reconfigure after committing.** Some checks read git's list of tracked files (the tree scan, the notices check,
 the single version source), and some copy a tracked file into the build tree when CMake configures (the `CI
@@ -55,9 +54,9 @@ not claim that an absent baseline judge ran. To reproduce a protected comparison
 `sh scripts/compat-ratchet.sh BASE.csv HEAD.csv ALLOW.txt YYYY-MM-DD BASE_REV HEAD_REV RESULTS.csv`.
 While the base ledger has the format 1 header and the head has the format 2 header, the step reports a format
 migration and runs the head's judge, which reads both formats; once the headers match this never applies. A pull
-request runs its own ci.yml, so this adds no power beyond a ci.yml edit, which already forces the rehearsal. The
-comparison guards against mistakes and regressions, not against an author who can edit ci.yml; the merge itself is the
-owner's.
+request runs its own ci.yml, so this adds no power beyond a ci.yml edit, which already forces the rehearsal, and the
+judge reads the catalog and reasons of the checkout it judges. The comparison guards against accidental or unreviewed
+flips, not against an author who can edit those or ci.yml; the merge itself is the owner's.
 
 ## Lanes
 
@@ -100,7 +99,7 @@ native GG and GG SMS mode run the two NTSC regions. The three line fixtures cove
 192/224/240-line output on those profiles. PAL Game Gear profiles remain refused.
 Every `.sms` and `.gg` fixture also contributes its image SHA-256. Hashes serialize
 the crop's RGB444 words little-endian; host aspect ratios and colour conversion do
-not enter them. Independent fixture oracles and wrong-pixel controls remain separate.
+not enter them.
 `core.no_alloc_after_load` uses loaded content across supported machine/TV/video
 profiles with input, VRAM/CRAM/register writes, interleaved instances, bounded sprite
 scans and state round trips. State-field refusal sweeps also exercise enabled,
@@ -211,6 +210,20 @@ matches the expected message; a crash or a missing file does not count as the ex
 | `policy.e2e_budget.self_test` | Two files totaling 301 lines under the RetroArch test budget. |
 | `policy.firmware_scan.*` | A zip holding a file with an injected SHA-1, a copier-headered member, a cartdb or manifest row, an empty directory and a zero-row table fail; a clean zip, a loose headered file and a misaligned `00` hex match pass. |
 | `policy.firmware_window.*`, `hygiene.byte_run.*` | A planted 32-byte window fails (also in a C array, a non-ASCII file name, a libretro module and a release zip), a 31-byte one passes; an unreadable target, a zip that will not open, an unusable or empty dump directory fail; 300 byte literals fail, 255 pass. |
+| `cart.generator.catalog` | A bidi, control-byte, leading `=` or invalid title, a pin without its licence, and a count that is only a claim. |
+| `compat.reasons` | A catalog reason the vocabulary lacks or has retired; a vocabulary that drifts from the slots with no board. |
+| `compat.whole_list.count` | One identity removed from the ledger, a typed count one low, an id the catalog lacks. |
+| `compat.whole_list.fresh` | A catalog line deleted, an `unknown` hand-flipped to `unsupported`, a stale derived field. |
+| `compat.whole_list.fresh.self_test` | The four faults above fed to the freshness check, which must name each. |
+| `compat.whole_list.reason` | An empty or unlisted reason, `unsupported` on a supported board, `pass` on a board with none, a catalog line unlike its fact, or a fact with no line. |
+| `compat.whole_list.runnable` | A seeded profile the core refuses (a Game Gear with a paddle exits 77). |
+| `compat.hardening` | A title that spoofs direction, hides characters or opens as a formula; a markdown title that becomes a link; 8,193 rows. |
+| `compat.page_bound` | A page bounded only because today's ledger is small. |
+| `compat.page_bound.self_test` | A copy with its caps raised, which must exceed the page budget. |
+| `compat.exit` | A ledger no parser reads, an `unsupported` row with no reason, a fixture `fail`, a floor that drops, a flag that stays or goes against the rows. |
+| `compat.exit.self_test` | A met verdict nobody has taken, a tie that passes both ways, 19 passes, 20 fixture or compound passes. |
+| `policy.claims_scoped` | A README saying experimental after the flag left, or an over-claim while the flag stays, `v2.0` in user text. |
+| `policy.claims_scoped.self_test` | One tree per fault above, beside a passing flag-absent tree. |
 | `docs.budgets.ratio_equal` | One physical check line against ten core lines, including unterminated final lines. |
 | `docs.budgets.unclassified` | A checker omitted from the responsibility inventory. |
 | `docs.budgets.helper` | An additional counted compatibility helper exceeds an otherwise passing ratio. |

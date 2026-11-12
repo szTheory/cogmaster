@@ -40,7 +40,7 @@ pull request and one automated release.
 - [x] **Phase 9: Light Phaser** - Light Phaser titles hit where the player aims, sensed from the emitted pixel at the beam (completed 2026-11-11)
 - [x] **Phase 10: BIOS boot** - A user boots from their own BIOS dump in the runner or RetroArch; fast boot stays the default (completed 2026-11-11)
 - [x] **Phase 11: PAL and Japanese FM** - PAL timing proven on every lane and the library judge able to add PAL and Japanese FM rows for catalog-identified carts (completed 2026-11-11)
-- [ ] **Phase 12: The whole list in the ledger** - Every SMS and Game Gear entry at the pin has an honest row, and `is_experimental` leaves the core
+- [x] **Phase 12: The whole list in the ledger** - Every SMS and Game Gear entry at the pin has an honest row, and `is_experimental` leaves the core (completed 2026-11-12)
 
 ## Phase Details
 
@@ -227,12 +227,22 @@ Plans:
 **Depends on**: Phases 6 to 11 (every board, device and profile built or named `unsupported`)
 **Requirements**: LEDG-01, LEDG-02, LEDG-03, LEDG-04, LEDG-05
 **Success Criteria** (what must be TRUE):
-  1. The ledger holds a row for every SMS and Game Gear entry at the pin, a test equates the row count with the generator's, and the generator prints the excluded SG-1000 count (LEDG-01).
-  2. Every `unsupported` row names its reason and the runner exits 77 for it, every MAME `supported="no"` entry is `skipped` with a reason, and a row without a reason fails the check (LEDG-02).
-  3. The ratchet lets an `unsupported` row become `pass` once its board or device exists, and its negative control fails (LEDG-03).
-  4. `docs/compatibility.md` holds aggregates plus evaluated rows and stays inside its byte budget (LEDG-04).
-  5. The exit command over the owner's judged rows passes, the libretro `.info` no longer carries `is_experimental`, and the count of unowned `unknown` rows is printed, including the PAL and Japanese FM rows of the run recorded in the seed (LEDG-05).
-**Plans**: TBD
+  1. The ledger holds one default-profile row for every SMS and Game Gear catalog identity at the pin (an image SHA-1, or for the 19 compound entries the SHA-1 of `mame/<list>/<name>`), the generator prints the SG-1000 count and the reconciliation 1,476 records = 1,444 images + 19 compound + 13 same-image aliases, and a test equates the ledger's identities with the printed counts (LEDG-01).
+  2. Every `unsupported` row carries a closed reason token and the slot table refuses its SHA-1 (exit 77), proven by a unit loop over every board-0 row and runner runs of synthetic images where a signature exists; every MAME `supported="no"` entry is `skipped` with the reason `mame_no`; a row without a valid token fails the parser (LEDG-02).
+  3. The ratchet lets an `unsupported` row become `pass` once its board or device exists (its token is `retired` and the catalog no longer says `unsupported`), its negative controls fail, and the pull request that adds the rule is judged by the previous rules (LEDG-03).
+  4. `docs/compatibility.md` holds aggregates plus the evaluated rows the budget allows (fixtures, every `unsupported` row, up to 40 `fail` rows, up to 40 others, a `+K more` line each) and stays inside its byte budget (LEDG-04).
+  5. A command over the ledger's judged rows (`compat.exit`) exists and is proven in CI on the public committed rows and the synthetic library's merged ledger; a test ties `is_experimental` to the committed ledger's judged-cart floors both ways (present while unmet, absent once met); every `unsupported` row names its reason; unowned rows stay `unknown` with the count printed, including the PAL and Japanese FM rows once the owner's run has added them (LEDG-05).
+**Plans**: 10/10 plans complete
+- [x] 12-01-PLAN.md — Generator catalog v2, Graphic Board slot (behaviour 17), amended requirement wording
+- [x] 12-02-PLAN.md — Reason rule, input hardening, flat-cost test stand-ins (no ledger change)
+- [x] 12-03-PLAN.md — Ratchet rules R1 to R3 and the update guard (LEDG-03)
+- [x] 12-04-PLAN.md — The bounded page and its bound test (LEDG-04)
+- [x] 12-05-PLAN.md — The whole-list ledger, the seed, whole-list tests, dispatch D1 (LEDG-01)
+- [x] 12-06-PLAN.md — Library judge: profile-level adoption, skipped and device controls, SEED-013
+- [x] 12-07-PLAN.md — The exit command and the flag/ledger tie (LEDG-05)
+- [x] 12-08-PLAN.md — Scoped wording and the claims test
+- [x] 12-09-PLAN.md — Docs and seeds
+- [x] 12-10-PLAN.md — Close: dispatch D2, timeouts, final proofs, floors, records
 
 ## Progress
 
@@ -250,4 +260,4 @@ Plans:
 | 9. Light Phaser | v2.0 | 12/12 | Complete    | 2026-11-11 |
 | 10. BIOS boot | v2.0 | 11/11 | Complete    | 2026-11-11 |
 | 11. PAL and Japanese FM | v2.0 | 9/9 | Complete    | 2026-11-11 |
-| 12. The whole list in the ledger | v2.0 | 0/TBD | Not started | - |
+| 12. The whole list in the ledger | v2.0 | 10/10 | Complete    | 2026-11-12 |

@@ -3,19 +3,18 @@ gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: The whole library
 current_phase: 12
-current_phase_name: The whole list in the ledger
-status: planning
-stopped_at: Phase 11 complete, ready to plan Phase 12
-last_updated: "2026-11-12T00:35:19.606Z"
-last_activity: 2026-11-11
-last_activity_desc: Phase 11 complete, transitioned to Phase 12
-state_head: f7dec5ca2cc31bb65468a8af5b5091548464fcb7
+status: completed
+stopped_at: Phase 12 complete — all phases complete
+last_updated: "2026-11-12T05:51:59.620Z"
+last_activity: 2026-11-12
+last_activity_desc: Phase 12 complete
+state_head: "0b33c35ba6490fd3ffc0b5c7c8db79a05ed87310"
 progress:
   total_phases: 8
-  completed_phases: 7
-  total_plans: 84
-  completed_plans: 84
-  percent: 88
+  completed_phases: 8
+  total_plans: 94
+  completed_plans: 94
+  percent: 100
 ---
 
 # Project State
@@ -29,17 +28,17 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 
 ## Current Position
 
-Phase: 12 — The whole list in the ledger
+Phase: 12
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-11 — Phase 11 complete, transitioned to Phase 12
+Status: All phases complete
+Last activity: 2026-11-12 — Phase 12 complete
 
-Progress: [█████████░] 88% of v2.0
+Progress: [██████████] 100% of v2.0
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 146
+- Total plans completed: 156
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -58,6 +57,7 @@ Progress: [█████████░] 88% of v2.0
 | 9 | 12 | - | - |
 | 10 | 11 | - | - |
 | 11 | 9 | - | - |
+| 12 | 10 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -214,6 +214,16 @@ Progress: [█████████░] 88% of v2.0
 | Phase 11 P07 | 35 min | 3 tasks | 15 files |
 | Phase 11 P08 | 55 min | 3 tasks | 13 files |
 | Phase 11 P09 | 100min | 3 tasks | 14 files |
+| Phase 12 P01 | 13 min | 3 tasks | 23 files |
+| Phase 12 P02 | 75min | 3 tasks | 12 files |
+| Phase 12 P03 | 50min | 3 tasks | 6 files |
+| Phase 12 P04 | 50min | 2 tasks | 7 files |
+| Phase 12 P05 | 55min | 3 tasks | 12 files |
+| Phase 12 P06 | 40min | 3 tasks | 4 files |
+| Phase 12 P07 | 55min | 3 tasks | 9 files |
+| Phase 12 P08 | 45min | 2 tasks | 8 files |
+| Phase 12 P09 | 20min | 2 tasks | 4 files |
+| Phase 12 P10 | 45min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -321,6 +331,21 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 11]: Plan 11-07: the Pause count band is [floor((C - 132) / 78), floor((C - 36) / 78)] derived from the listing (guarded 78-cycle body, 76-cycle frame handler), a one-shot core one line late fails it and moves V to 0000; dispatch D1 run 43111533403 is green on all eight lanes and draft pull request #31 ran the ledger bridge (run 43112269415, cleanup rerun for a read-after-delete race)
 - [Phase 11]: Plan 11-08: compat-update adopts a new key only for a catalog id with the catalog machine and mapper, boots@600 under the default config, pass or fail, on the judge's profile whitelist; the library judge derives profiles from the catalog and probe, and the merge is held unless the ratchet passes and the page stays under the docs cap; REG-04 is amended to the synthetic proof and the owner's own-library run is SEED-013
 - [Phase 11]: Timeouts are max(floor, 2 x the slowest hosted second) from raw seconds over five runs; the be32 job is 15 minutes by the mechanical rule; the rehearsal cleanup race stays a seed (SEED-014)
+- [Phase 12]: Plan 12-01: the Sega Graphic Board is slot 21 (graphic, board 0) set by the generator for any fact with controller code 4, so the table refuses its SHA-1 (runner exit 77); behaviour revision 17, API 14 and state 16 unchanged; src/state.c's 16 is a header offset and was left alone
+- [Phase 12]: Plan 12-01: catalog v2 is ten fields (status, reason, region, port1, port2 appended); the 19 compound entries are catalog lines with the SHA-1 of mame/<list>/<name> as id, machine from the list name; a same-SHA-1 group takes the worst status (any supported no is skipped mame_no); pin counts are measured and reconciled inside the generator (1463 = 1476 - 13)
+- [Phase 12]: A title may be a lone formula character (the library judge writes a lone dash as a fact title) but a formula character followed by any byte is refused
+- [Phase 12]: md() escapes in one pass over a lookup table so no numeric entity is escaped twice, identical on BWK, mawk and gawk awk
+- [Phase 12]: compat.reasons runs its controls in process and reuses its two live awk spawns
+- [Phase 12]: Open slot reasons in reasons.txt must equal the board-0 non-SG-1000 slot names, so retiring a token needs the slot table to change with it
+- [Phase 12]: Plan 12-03: an update candidate stating unsupported or skipped for an existing key is refused (discarded), not kept with a reason: the library judge observes pass and fail only and those two statuses are catalog facts the seed writes
+- [Phase 12]: Plan 12-03: the ratchet and the update load the catalog and reasons unconditionally and exit 2 on an unreadable file; one release predicate (a retired token and a catalog no longer unsupported for an unsupported row, a catalog no longer skipped for a skipped row) governs every way such a row may leave
+- [Phase 12]: Plan 12-04: the page is bounded by six caps in one BEGIN assignment and a per-section counter; fixtures, unsupported, fail and pass rows are capped sections, skipped and unknown rows appear only in the counts and tables; the 600-byte line check forced soft wrapping of the intro
+- [Phase 12]: Plan 12-05: the seed learns existing rows by zipping normalize and cases output, so the shared parser stays the only CSV reader; the whole-list legs are file-path functions that controls call in-process over stand-ins; the idempotence check seeds with 1970-01-01 so a re-dated row always differs
+- [Phase 12]: Plan 12-06: a derived profile is skipped only when the loop over ledger rows ran it for the same image (probe identity equal to the ledger id), so a seeded default row flips and the PAL row still arrives; a skipped id gets derived runs whose facts the update guard discards, a device id gets none; a probe wrapper proves the real-cart path without a ROM
+- [Phase 12]: Plan 12-07: the exit command is one function that returns a status, a message and lines, so the self test runs 22 controls in process and starts one cmake child; the tie accepts exactly unmet with the flag present or met with it absent, so the owner's rows force the removal in the same change; judged cartridge rows are image identities of the catalog, never a fixture or compound id
+- [Phase 12]: Plan 12-08: the claims check reads the flag from the template and judges README, description and page prose in both states; the page is read by its non-table lines because table rows print catalog titles; the README says cartridges for the SG-1000 so the digit rule stays free of false positives
+- [Phase 12]: Plan 12-09: the owner's standing CI instruction and the phase's measured hosted jobs live in SEED-015 and are pointed to from the CI speed section of docs/maintaining.md by directory, with no planning id; the bytes for the new sentences came from the generator-printed per-slot count list
+- [Phase 12]: Plan 12-10: a test timeout is max(floor, 2 x slowest hosted seconds) on raw seconds from two dispatches; over-half raises for compat.public_update, compat.fixtures and compat.csv; the build job limit follows the measured report (9 minutes) and is verified by the pull request run
 
 ### Pending Todos
 
@@ -452,6 +477,17 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 11 plan 11-08 (gsd-execute-phase 11); compat-update adopts only catalog boots@600 rows on the judge's profiles (five negative controls shown red), library judge derives profiles from the catalog and probe, count-only run with a merge held unless the ratchet passes and the page fits the cap, fm_sweep_jp Japan-header fixture, synthetic proof of four adopted rows and a held merge, REG-04 amended and the owner's own-library run recorded as SEED-013; counted check code 859, conformance.md 32,217 bytes, no dispatch; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 11 plan 11-09 (gsd-execute-phase 11); per-test hosted time report with a control, final head green on pull request run 43119601937 (bridge, protected comparison, perf and hash equality shown, cleanup race rerun), migration repeated on the final ledger, every timeout of the phase settled from five runs (compat.public_update raised after a Windows ARM64 timeout), be32 15 min, floors 654 and 612, REG-02 complete, SEED-012 and SEED-014, counted check code 859 of 906; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Code review and verify phase 11 (autonomous run); runner review 0 critical 2 warning, ledger review 0 critical 8 warning, fix round 1 fixed 15 (reset-script refusal removed, bounded re-read in the rehearsal delete, adopt-path and judge fixes), verification passed 4 of 4 with digest refreshed after the last timeout settlement, PR run 43126677381 green on its first attempt, counted check code 860 of 940 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Execute phase 12 plan 12-01 (gsd-execute-phase 12); Graphic Board slot and behaviour 17, catalog v2 with compound ids and pin counts, amended wording; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Execute phase 12 plan 12-02 (gsd-execute-phase 12); closed reason rule and vocabulary, title hardening, 8,192-row cap, one-pass markdown escaping, flat-cost test stand-ins; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Execute phase 12 plan 12-03 (gsd-execute-phase 12); ratchet rules R1 to R3 with a judge that fails closed on unreadable data, library.sh absolute data paths, the update guard (a library run never touches a skipped or unsupported id); 3 tasks, 3 commits, counted check code 876 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Execute phase 12 plan 12-04 (gsd-execute-phase 12); the page bounded by six caps (aggregates, group and reason tables, capped fixture, unsupported, fail and other sections with more-lines), compat.page_bound on a hostile 700-row ledger and its raised-cap control; 2 tasks, 2 commits, counted check code 879 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Execute phase 12 plan 12-05 (gsd-execute-phase 12); the whole-list ledger (1,472 rows) written by compat-seed.sh, five whole-list tests, the base-judge proof, dispatch D1 run 43153144670 green, build job timeout 8 min; 3 tasks, 4 commits, counted check code 879 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Execute phase 12 plan 12-06 (gsd-execute-phase 12); the library judge adopts by profile (a seeded row flips, the PAL row still arrives, a skipped fact is discarded, a device title gets no pad row), library.synthetic over a seeded stand-in, SEED-013 with the owner's batched run and the flag-removal text; 3 tasks, 3 commits, counted check code 879 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Execute phase 12 plan 12-07 (gsd-execute-phase 12); the exit command over the judged cartridge rows with six floors and the experimental flag tied to the verdict both ways (unmet today, the flag stays), compat.exit.self_test with the met branch and 22 controls, the exit block in library.sh; 3 tasks, 3 commits, counted check code 879 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Execute phase 12 plan 12-08 (gsd-execute-phase 12); the README status, the libretro description and the conformance sentences scoped to the experimental flag that stays (no planning label, no count), policy.claims_scoped with eleven fixture-tree controls and four recorded mutations; 2 tasks, 2 commits, counted check code 885 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Execute phase 12 plan 12-09 (gsd-execute-phase 12); the exit command, the new tests' faults and the pin-count workflow in the docs within their caps, SEED-015 with the deferred items and the CI-speed record (dispatch D1 run 43153144670), carried hand-off SEED-013 (the owner's own-library run, never a gate); 2 tasks, 2 commits, counted check code 885 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Execute phase 12 plan 12-10 (gsd-execute-phase 12); dispatch D2 run https://github.com/szTheory/cogmaster/actions/runs/43158408243 green on the complete code (D1 run 43153144670), every provisional timeout settled from the two runs (compat.public_update, compat.fixtures and compat.csv raised, build job 9 min), the old base judge and the new judge pass on the final ledger and flip nothing, pinned re-run and mawk page proxy equal, exit command exit 0 with judged_cart_floors=unmet flag=present, floors 669 and 627, LEDG-01 to LEDG-05 complete as amended, owner's own-library run carried as a hand-off and never a gate; 2 tasks, 3 commits, counted check code 885 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Code review and verify phase 12 (autonomous run); ledger review 0 critical 7 warning, core review 0 critical 10 warning, fix round 1 fixed 17 (R2 per key, shared flag reader, bounded page cells, NUL and bidi hardening, honest wording), verification passed 5 of 5 with the flag staying per the owner decision, dispatch D3 run 43163239085 green on the final head, counted check code 887 of 940 | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -473,8 +509,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T23:38:07.547Z
-Stopped at: Phase 11 complete, ready to plan Phase 12
+Last session: 2026-11-12T05:12:38.903Z
+Stopped at: Phase 12 complete — all phases complete
 Resume file: None
 Phase 11 ship pull request: #31, open as a draft since plan 07; ship reuses it (gh pr ready, title check, gh pr merge --auto --squash at ship only; no new gh pr create)
 

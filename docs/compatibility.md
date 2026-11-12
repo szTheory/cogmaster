@@ -1,41 +1,90 @@
 # Compatibility
 
-Generated from `tests/compat/ledger.csv`; regenerate with `sh scripts/compat-common.sh docs tests/compat/ledger.csv`.
+Generated from `tests/compat/ledger.csv` by `sh scripts/compat-common.sh docs tests/compat/ledger.csv`.
 
-Rows: 10. Evaluated coverage: 9. Own fixtures: 4.
+Experimental. A row marked unknown has no accepted check; that says nothing about whether the game works.
+Pass and fail describe accepted checks only (boots is a sampled display and first-fault smoke, audio a pinned hash of chip writes, never how it sounds), with no playable or completable claim. Unsupported means the runner refuses the dump with exit 77. Skipped means no check is run for the entry (MAME marks it not working or a bad dump, or its record is not one image this table can identify) and is never recorded as pass.
+A 40-hex id of a compound entry is derived from the text `mame/<list>/<name>` and is not an image hash. Experimental leaves only on the own-library evidence of the maintainer, never on a pass rate.
+A row names its setting: machine, region, tv, mapper, fm and the check with its frame; tv is a setting of the run, not a fact about the cartridge.
 
-Pass/fail describe accepted predicates only. Unknown has no accepted evaluation; unsupported names an unavailable capability; infrastructure_error describes a runner/judge failure. Metadata membership proves no support. No playable, completable or sound claim; boots is sampled display/distinct-frame/first-fault smoke and may reject static screens. HALT is not a rejection. Experimental through v2.0.
+Rows: 1472. Evaluated coverage: 9. Own fixtures: 4.
 
-Each row names its setting: machine, ntsc or pal, export or japan, and fm=on or off. TV is a setting of the run, not a fact about the cartridge. audio@F=HASH checks the stream of changes at the chips against a pinned hash, never how it sounds. Format 2: region was split into tv and region; fm joined the run configuration.
+- pass=9 fail=0 infrastructure_error=0
+- unevaluated: unknown=1434 unsupported=5 skipped=24
+- pal rows judged: 1; fm=on rows judged: 2
+- predicates: frame=1 ram=1 mailbox=1 boots=1464 audio=5
+- SG-1000 entries excluded: 214 (counted in the catalog; the ledger has no row for them)
 
-- pass: 9
-- fail: 0
-- unknown: 1
-- unsupported: 0
-- infrastructure_error: 0
-- skipped: 0
-
-- frame predicates: 1
-- ram predicates: 1
-- mailbox predicates: 1
-- boots predicates: 2
-- audio predicates: 5
-- pal rows judged: 1
+## Groups
 
 | Machine/mapper/status | Rows |
 |---|---:|
-| gg/sega/unknown | 1 |
+| gg/sega/unknown | 780 |
+| sms/none/unknown | 78 |
+| sms/sega/unknown | 511 |
+| sms/codemasters/unknown | 4 |
+| gg/none/unknown | 8 |
+| sms/codemasters/skipped | 1 |
+| gg/compound/skipped | 7 |
+| sms/korean/unknown | 6 |
+| sms/compound/skipped | 12 |
+| gg/sega_eeprom/unknown | 7 |
+| sms/korean_nb/unknown | 5 |
+| gg/codemasters/unknown | 16 |
+| sms/hes_4pak/unknown | 1 |
+| sms/unsupported/skipped | 1 |
+| gg/unsupported/skipped | 1 |
+| sms/zemina/unknown | 8 |
+| sms/hicom/unknown | 9 |
+| sms/unsupported/unsupported | 3 |
+| gg/sega/skipped | 1 |
+| gg/unsupported/unsupported | 2 |
+| sms/none/skipped | 1 |
+| sms/nemesis/unknown | 1 |
 | sms/none/pass | 9 |
 
-| ID | Title | Profile | Predicate | Status | Evidence | Date |
-|---|---|---|---|---|---|---|
-| 00cfce623709b8d9bc9e6bbb96feb9faf9a81f84 | Crazy Faces (Europe, prototype) | gg/export/ntsc/sega fm=off | cfg:video=gg;fm=off;port1=pad;port2=pad;script=none;sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/boots@600 | unknown | CC0 metadata only src/cartdb.inc | 2026-10-20 |
-| fixture/boot_to_play | boot_to_play | sms/export/ntsc/none fm=off | cfg:video=sms;fm=off;port1=pad;port2=pad;script=none;sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/frame@14=6d28fda91027e139c37717ca73ad48e1f120f1d42eb33b1e029b3fc09f5a50d5 | pass | independent coordinate oracle tests/fixtures/play.h | 2026-10-20 |
-| fixture/boot_to_play | boot_to_play | sms/export/ntsc/none fm=off | cfg:video=sms;fm=off;port1=pad;port2=pad;script=none;sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/mailbox@20 | pass | structural CRC completion only | 2026-10-20 |
-| fixture/boot_to_play | boot_to_play | sms/export/ntsc/none fm=off | cfg:video=sms;fm=off;port1=pad;port2=pad;script=none;sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/ram@14:$C200=00 | pass | input edge counter tests/fixtures/play.c | 2026-10-20 |
-| fixture/fm_sweep | fm_sweep | sms/export/ntsc/none fm=off | cfg:video=sms;fm=off;port1=pad;port2=pad;script=none;sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/audio@300=f2c7712fc71a52769e56e4a8a20bd2a9b840797bc25cb77455be0c52b3d5e13e | pass | regression pin over a transition stream, no sound claim | 2026-11-11 |
-| fixture/fm_sweep | fm_sweep | sms/japan/ntsc/none fm=on | cfg:video=sms;fm=on;port1=pad;port2=pad;script=none;sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/audio@300=add14027f0b06e7ea35755babfc83913080969ce69f91c10459c35978b6feb15 | pass | regression pin over a transition stream, no sound claim | 2026-11-11 |
-| fixture/psg_sweep | psg_sweep | sms/export/ntsc/none fm=off | cfg:video=sms;fm=off;port1=pad;port2=pad;script=none;sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/audio@300=d195b6d2e1de6850d92cb18b027d72af0f6017eb308bac917f9e8588060f6071 | pass | regression pin over a transition stream, no sound claim | 2026-11-11 |
-| fixture/psg_sweep | psg_sweep | sms/export/pal/none fm=off | cfg:video=sms;fm=off;port1=pad;port2=pad;script=none;sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/audio@300=7f0dec6a7065d9f3fc4b37f88480d32b470495b2db926111112cfb464929a064 | pass | regression pin over a transition stream, no sound claim | 2026-11-11 |
-| fixture/psg_sweep | psg_sweep | sms/japan/ntsc/none fm=on | cfg:video=sms;fm=on;port1=pad;port2=pad;script=none;sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/audio@300=55627b9fb8a0bfe8818e16c02f2683ae1fae910137baa9b3853c8988f87f7c03 | pass | regression pin over a transition stream, no sound claim | 2026-11-11 |
-| fixture/vdp_lines_192 | vdp_lines_192 | sms/export/ntsc/none fm=off | cfg:video=sms;fm=off;port1=pad;port2=pad;script=none;sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/boots@20 | pass | display distinct frames no first fault only | 2026-10-20 |
+## Reasons
+
+| token | status | rows |
+|---|---|---:|
+| mame_no | skipped | 6 |
+| short_dump | skipped | 3 |
+| multi_chip | skipped | 12 |
+| bad_dump | skipped | 2 |
+| seojin | unsupported | 1 |
+| janggun | unsupported | 1 |
+| xterminator | unsupported | 2 |
+| graphic | unsupported | 1 |
+| no_rom | skipped | 1 |
+
+## Fixtures
+
+| ID | Title | Profile | Status | Date |
+|---|---|---|---|---|
+| fixture/boot_to_play | boot&#95;to&#95;play | sms/export/ntsc/none fm=off frame@14 | pass | 2026-10-20 |
+| fixture/boot_to_play | boot&#95;to&#95;play | sms/export/ntsc/none fm=off mailbox@20 | pass | 2026-10-20 |
+| fixture/boot_to_play | boot&#95;to&#95;play | sms/export/ntsc/none fm=off ram@14 | pass | 2026-10-20 |
+| fixture/fm_sweep | fm&#95;sweep | sms/export/ntsc/none fm=off audio@300 | pass | 2026-11-11 |
+| fixture/fm_sweep | fm&#95;sweep | sms/japan/ntsc/none fm=on audio@300 | pass | 2026-11-11 |
+| fixture/psg_sweep | psg&#95;sweep | sms/export/ntsc/none fm=off audio@300 | pass | 2026-11-11 |
+| fixture/psg_sweep | psg&#95;sweep | sms/export/pal/none fm=off audio@300 | pass | 2026-11-11 |
+| fixture/psg_sweep | psg&#95;sweep | sms/japan/ntsc/none fm=on audio@300 | pass | 2026-11-11 |
+| fixture/vdp_lines_192 | vdp&#95;lines&#95;192 | sms/export/ntsc/none fm=off boots@20 | pass | 2026-10-20 |
+
+## Unsupported rows
+
+| ID | Title | Profile | Status | Date |
+|---|---|---|---|---|
+| 83d6f261471d | Super Game 11-in-1 &#40;Korea&#41; | sms/export/ntsc/unsupported fm=off boots@600 | unsupported | 2026-11-12 |
+| a290e41e0218 | Janggun ui Adeul &#40;Korea&#41; | sms/export/ntsc/unsupported fm=off boots@600 | unsupported | 2026-11-12 |
+| b6664c21a99a | X-Terminator v2.1 for Game Gear &#40;USA, Europe&#41; | gg/export/ntsc/unsupported fm=off boots@600 | unsupported | 2026-11-12 |
+| d04ea11e1f67 | Sega Graphic Board &#40;Japan, prototype v2.0&#41; | sms/export/ntsc/unsupported fm=off boots@600 | unsupported | 2026-11-12 |
+| ee2123cc2add | X-Terminator v2.1J for Game Gear &#40;Japan&#41; | gg/japan/ntsc/unsupported fm=off boots@600 | unsupported | 2026-11-12 |
+
+## Fail rows
+
+none
+
+## Other evaluated rows
+
+none

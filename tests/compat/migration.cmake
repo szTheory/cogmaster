@@ -2,6 +2,8 @@
 # legacy region to the wrong profile; and a parser that accepts a ledger it must refuse.
 # Both ledgers are embedded literals compared in memory, never produced by the code under test.
 file(MAKE_DIRECTORY "${OUT}")
+set(ENV{COMPAT_REASONS} "${ROOT}/tests/compat/reasons.txt")
+set(ENV{COMPAT_CATALOG} "${ROOT}/tests/compat/catalog.tsv")
 set(empty e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855)
 set(v1_header "id,title,machine,region,mapper,predicate,status,evidence,date\n")
 set(v2_header "id,title,machine,region,tv,mapper,predicate,status,evidence,date\n")
@@ -245,12 +247,16 @@ live_verdict("${live}" verdict)
 if(NOT verdict STREQUAL "")
   message(FATAL_ERROR "tests/compat/ledger.csv: ${verdict}")
 endif()
-string(REPLACE "${v2_header}" "${v1_header}" damaged "${live}")
+# Fault prevented: a damaged-copy control that copies and reparses the whole ledger, so its cost grows with the rows. The two
+# controls damage only the header and the first data row of the live text; the one live parse above is the whole cost.
+file(READ "${ROOT}/tests/compat/ledger.csv" live_head LIMIT 4096)
+string(REGEX MATCH "^[^\n]*\n[^\n]*\n" live_head "${live_head}")
+string(REPLACE "${v2_header}" "${v1_header}" damaged "${live_head}")
 live_verdict("${damaged}" verdict)
 if(verdict STREQUAL "")
   message(FATAL_ERROR "the live check accepts a ledger with the format 1 header")
 endif()
-string(REGEX REPLACE ",\"[^\"]*\",\"20" ",\"20" damaged "${live}")
+string(REGEX REPLACE ",\"[^\"]*\",\"20" ",\"20" damaged "${live_head}")
 live_verdict("${damaged}" verdict)
 if(verdict STREQUAL "")
   message(FATAL_ERROR "the live check accepts a row with a field missing")

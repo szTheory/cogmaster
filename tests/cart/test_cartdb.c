@@ -163,6 +163,41 @@ int main(int argc, char **argv)
         CHECK_EQ_U64(named_info.title[0], 0u);
         CHECK_EQ_U64(named_info.board_source, COGMASTER_BOARD_SOURCE_DB);
     }
+    /* Fault prevented: a Sega Master System or Game Gear row of board 0 that the loader would run,
+       so a boot result would be recorded for a cartridge the core refuses. Every public row of
+       board 0 refuses, names its own slot and reason, and the one row whose controller code is the
+       Graphic Board sits in the graphic slot. */
+    {
+        const struct cogmaster__cart_slot *graphic = cogmaster__cartdb_slot_named("graphic");
+        uint32_t refused = 0u, graphic_rows = 0u;
+        CHECK(graphic != NULL);
+        for (size_t i = 0;; i++) {
+            const struct cogmaster__cart_fact *row = cogmaster__cartdb_row(i);
+            if (row == NULL)
+                break;
+            if (graphic != NULL && (row->ctrl1 == 4u || row->ctrl2 == 4u)) {
+                graphic_rows++;
+                CHECK_EQ_U64(row->slot, graphic->id);
+                CHECK_EQ_U64(row->board, 0u);
+            }
+            if (!(row->flags & 1u) || row->machine == 0u || row->board != 0u)
+                continue;
+            const struct cogmaster__cart_slot *slot = cogmaster__cartdb_slot(row->slot);
+            CHECK(slot != NULL);
+            if (slot == NULL)
+                continue;
+            cogmaster_cart_info refusal = {0};
+            refusal.size = sizeof refusal;
+            CHECK_EQ_U64(cogmaster__cart_fact_to_info(row, &refusal),
+                         COGMASTER_STATUS_ERR_UNSUPPORTED_BOARD);
+            CHECK_EQ_U64(refusal.board, 0u);
+            CHECK_EQ_U64(refusal.unsupported_id, slot->id);
+            CHECK(strncmp(refusal.unsupported_reason, slot->name, strlen(slot->name)) == 0);
+            refused++;
+        }
+        CHECK_EQ_U64(graphic_rows, 1u);
+        CHECK(refused >= 7u);
+    }
     /* The first row of each Korean-family slot probes OK on its board, from the table. */
     static const char *const korean_slot[6] = {"korean", "korean_nb", "hicom",
                                                "zemina", "nemesis",   "4pak"};
@@ -205,13 +240,14 @@ int main(int argc, char **argv)
         }
     }
     /* A slot is a board or a reason, never both. */
-    for (uint32_t id = 1; id <= 20u; id++) {
+    for (uint32_t id = 1; id <= 21u; id++) {
         const struct cogmaster__cart_slot *slot = cogmaster__cartdb_slot(id);
         CHECK(slot != NULL);
         if (slot != NULL)
             CHECK_EQ_U64(slot->board == 0u, slot->reason[0] != 0);
     }
     CHECK(cogmaster__cartdb_slot(0) == NULL);
+    CHECK(cogmaster__cartdb_slot(22u) == NULL);
     CHECK(cogmaster__cartdb_slot_named("zz_new") == NULL);
     /* Every supported board owns at least one row, so a slot-to-board slip fails here. */
     static const uint8_t supported[10] = {COGMASTER_BOARD_ROM_ONLY,    COGMASTER_BOARD_SEGA,

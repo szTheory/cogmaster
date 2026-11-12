@@ -1,6 +1,9 @@
 # Fault prevented: quoted titles are split, reordered or silently accepted malformed.
 if(CMAKE_SCRIPT_MODE_FILE)
   file(MAKE_DIRECTORY "${OUT}")
+  # The shared parser reads its closed reasons and its catalog by absolute path, so no call depends on the working directory.
+  set(ENV{COMPAT_REASONS} "${ROOT}/tests/compat/reasons.txt")
+  set(ENV{COMPAT_CATALOG} "${ROOT}/tests/compat/catalog.tsv")
   function(common mode path)
     execute_process(COMMAND sh "${ROOT}/scripts/compat-common.sh" "${mode}" "${path}"
       RESULT_VARIABLE rc OUTPUT_VARIABLE text ERROR_VARIABLE err)
@@ -22,12 +25,25 @@ if(CMAKE_SCRIPT_MODE_FILE)
     endif()
     return()
   elseif(CASE STREQUAL "fixtures")
-    common(cases "${ROOT}/tests/compat/ledger.csv")
+    # Fault prevented: a case run that parses the whole ledger, so its cost grows with the rows, or an extract that silently misses a
+    # fixture row. The cases come from the fixture rows alone and their count is compared with an independent count of the live file.
+    file(STRINGS "${ROOT}/tests/compat/ledger.csv" fixture_rows REGEX "^(id,|\"fixture/)")
+    set(fixture_ledger "")
+    foreach(line IN LISTS fixture_rows)
+      string(APPEND fixture_ledger "${line}\n")
+    endforeach()
+    file(WRITE "${OUT}/fixture-ledger.csv" "${fixture_ledger}")
+    execute_process(COMMAND awk "/^\\042fixture\\// {n++} END {print n + 0}" "${ROOT}/tests/compat/ledger.csv"
+      RESULT_VARIABLE rc OUTPUT_VARIABLE live_fixtures OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
+    common(cases "${OUT}/fixture-ledger.csv")
     if(NOT rc STREQUAL "0")
       message(FATAL_ERROR "compat cases failed: ${err}")
     endif()
     file(WRITE "${OUT}/cases.cmake" "${text}")
     include("${OUT}/cases.cmake")
+    if(NOT compat_count EQUAL live_fixtures)
+      message(FATAL_ERROR "the fixture extract has ${compat_count} rows but the ledger holds ${live_fixtures} fixture lines")
+    endif()
     file(READ "${ROOT}/tests/built/expected.txt" admitted)
     # Raw values typed here, never derived from the awk or the runner: region export 1, japan 2; tv ntsc 1, pal 2; fm off 1, on 2.
     set(raw_export 1)
@@ -173,13 +189,334 @@ if(CMAKE_SCRIPT_MODE_FILE)
       endif()
       math(EXPR controls "${controls}+1")
     endforeach()
-    common(results "${ROOT}/tests/compat/ledger.csv")
+    common(results "${OUT}/fixture-ledger.csv")
     if(NOT rc STREQUAL "0")
       message(FATAL_ERROR "cannot serialize evaluated results: ${err}")
     endif()
     file(WRITE "${OUT}/results.csv" "${text}")
     message(STATUS "evaluated ${evaluated} admitted own-fixture predicates")
     message(STATUS "identity controls: ${controls}")
+    return()
+  elseif(CASE STREQUAL "reasons")
+    # Fault prevented: a reason the catalog uses that the vocabulary does not list or has retired, or a vocabulary that drifts from
+    # the slots of the cartridge table that have no board. Two live spawns; the controls reuse their answers on throwaway copies.
+    execute_process(COMMAND awk -F "\t" "$2 !~ /^sg$/ && $6 ~ /^(unsupported|skipped)$/ && !seen[$7]++ {print $7}" "${ROOT}/tests/compat/catalog.tsv"
+      RESULT_VARIABLE rc OUTPUT_VARIABLE catalog_tokens COMMAND_ERROR_IS_FATAL ANY)
+    execute_process(COMMAND awk "/^\\{[0-9]+u, 0u, / && !/SG-1000/ {split($0, q, /\\042/); print q[2]}" "${ROOT}/src/cartdb.inc"
+      RESULT_VARIABLE rc OUTPUT_VARIABLE slot_tokens COMMAND_ERROR_IS_FATAL ANY)
+    string(REGEX REPLACE "[ \t\r\n]+" ";" catalog_tokens "${catalog_tokens}")
+    string(REGEX REPLACE "[ \t\r\n]+" ";" slot_tokens "${slot_tokens}")
+    list(FILTER catalog_tokens EXCLUDE REGEX "^$")
+    list(FILTER slot_tokens EXCLUDE REGEX "^$")
+    list(SORT slot_tokens)
+    set(pins mame_no no_rom bad_dump multi_chip short_dump)
+    function(reasons_verdict path out)
+      file(STRINGS "${path}" lines REGEX "^[a-z0-9_]+ (open|retired)$")
+      set(listed "")
+      set(open "")
+      foreach(line IN LISTS lines)
+        string(REPLACE " " ";" parts "${line}")
+        list(GET parts 0 token)
+        list(GET parts 1 state)
+        list(APPEND listed "${token}")
+        if(state STREQUAL "open")
+          list(APPEND open "${token}")
+        endif()
+      endforeach()
+      set(${out} "" PARENT_SCOPE)
+      foreach(token IN LISTS catalog_tokens pins)
+        if(NOT token IN_LIST listed)
+          set(${out} "reason ${token} is not listed" PARENT_SCOPE)
+          return()
+        endif()
+      endforeach()
+      foreach(token IN LISTS catalog_tokens)
+        if(NOT token IN_LIST open)
+          set(${out} "reason ${token} is retired but the catalog still uses it" PARENT_SCOPE)
+          return()
+        endif()
+      endforeach()
+      list(REMOVE_ITEM open ${pins})
+      list(SORT open)
+      if(NOT "${open}" STREQUAL "${slot_tokens}")
+        set(${out} "open slot reasons [${open}] differ from the slots of the table [${slot_tokens}]" PARENT_SCOPE)
+      endif()
+    endfunction()
+    reasons_verdict("${ROOT}/tests/compat/reasons.txt" verdict)
+    if(NOT verdict STREQUAL "")
+      message(FATAL_ERROR "tests/compat/reasons.txt: ${verdict}")
+    endif()
+    list(LENGTH catalog_tokens used)
+    if(used LESS 9)
+      message(FATAL_ERROR "the catalog uses fewer reasons than expected: ${used}")
+    endif()
+    file(READ "${ROOT}/tests/compat/reasons.txt" text)
+    string(REPLACE "graphic open" "graphic retired" retired "${text}")
+    string(REPLACE "xterminator open\n" "" missing "${text}")
+    string(REPLACE "no_rom open\n" "" lost_pin "${text}")
+    foreach(control IN ITEMS "retired|graphic" "missing|xterminator" "lost_pin|no_rom")
+      string(REPLACE "|" ";" control "${control}")
+      list(GET control 0 name)
+      list(GET control 1 token)
+      if(${name} STREQUAL "${text}")
+        message(FATAL_ERROR "the ${name} control did not change the file")
+      endif()
+      file(WRITE "${OUT}/reasons-${name}.txt" "${${name}}")
+      reasons_verdict("${OUT}/reasons-${name}.txt" verdict)
+      if(NOT verdict MATCHES "${token}")
+        message(FATAL_ERROR "the ${name} control must be refused naming ${token}: ${verdict}")
+      endif()
+    endforeach()
+    message(STATUS "compat.reasons: ${used} reasons in use, 3 controls")
+    return()
+  elseif(CASE STREQUAL "page_bound")
+    # A hostile ledger of 700 rows, built once in this pass: long titles of markdown and multibyte characters, 100 mappers, 100 fail rows,
+    # 100 unsupported rows, 100 skipped and 170 unknown rows. Every expected overflow is counted here from the construction, never read back
+    # from the page, and with -DWRONG=ON the caps of a copy of the script are raised to show that the bound is the caps and not luck.
+    set(budget 36864)
+    set(empty e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855)
+    string(ASCII 195 169 e_acute)
+    string(ASCII 230 188 162 han)
+    string(ASCII 208 182 zhe)
+    string(REPEAT "|&<*${e_acute}${han}${zhe}" 23 hostile)
+    string(APPEND hostile ab)
+    string(LENGTH "${hostile}" hostile_bytes)
+    if(NOT hostile_bytes EQUAL 255)
+      message(FATAL_ERROR "the hostile title must be 255 bytes, not ${hostile_bytes}")
+    endif()
+    set(zeros 0000000000000000000000000000000000000000)
+    string(REGEX REPLACE "0$" "1" near_zero "${zeros}")
+    set(lphaser "cfg:video=sms;fm=off;port1=lphaser;port2=pad;script=none;sha256=${empty}/boots@600")
+    set(rows "id,title,machine,region,tv,mapper,predicate,status,evidence,date\n")
+    set(groups "")
+    set(reasons "")
+    set(count_pass 0)
+    set(count_fail 0)
+    set(count_unsupported 0)
+    set(n 0)
+    # Every free-width cell is hostile too: a 900-byte fixture id, 900-byte mappers, one 300-byte reason token and an 850-byte script token.
+    string(REPEAT x 880 long_id)
+    string(REPEAT a 900 long_pad)
+    string(REPEAT a 30 mapper_cut)
+    string(REPEAT s 850 long_script)
+    string(REPEAT s 17 script_cut)
+    string(REPEAT x 300 pad_39)
+    set(hostile_cfg "cfg:video=sms;fm=off;port1=lphaser;port2=sports;script=${long_script};sha256=${empty}/boots@20")
+    foreach(i RANGE 1 30)
+      string(APPEND rows "fixture/f${i}${long_id},\"${hostile}\",sms,export,ntsc,none,${hostile_cfg},pass,-,2026-10-20\n")
+    endforeach()
+    list(APPEND groups sms/none/pass)
+    foreach(entry IN ITEMS pass:200 fail:100 unsupported:100 skipped:100 unknown:170)
+      string(REPLACE ":" ";" parts "${entry}")
+      list(GET parts 0 status)
+      list(GET parts 1 total)
+      foreach(k RANGE 1 ${total})
+        math(EXPR n "${n}+1")
+        math(EXPR m "${n}%100")
+        math(EXPR t "(${k}-1)%39+1")
+        string(SHA1 id "cart${n}")
+        set(title "${hostile}")
+        set(predicate "boots@600")
+        set(evidence -)
+        if(status STREQUAL "pass" AND k EQUAL 1)
+          set(id "${near_zero}")
+          set(predicate "${lphaser}")
+        elseif(status STREQUAL "unsupported")
+          set(evidence "reason=t${t}${pad_${t}}")
+          list(APPEND reasons "t${t}${pad_${t}}|unsupported")
+          if(k EQUAL 1)
+            set(id "${zeros}")
+            set(title "Sega Graphic Board (Japan, prototype v2.0)")
+          endif()
+        elseif(status STREQUAL "skipped")
+          set(evidence reason=mame_no)
+          list(APPEND reasons "mame_no|skipped")
+        endif()
+        if(DEFINED count_${status})
+          math(EXPR count_${status} "${count_${status}}+1")
+        endif()
+        list(APPEND groups "sms/m${m}/${status}")
+        string(APPEND rows "${id},\"${title}\",sms,export,ntsc,m${m}${long_pad},${predicate},${status},${evidence},2026-10-20\n")
+      endforeach()
+    endforeach()
+    list(REMOVE_DUPLICATES groups)
+    list(REMOVE_DUPLICATES reasons)
+    list(LENGTH groups group_count)
+    list(LENGTH reasons reason_count)
+    file(WRITE "${OUT}/ledger.csv" "${rows}")
+    set(token_lines "mame_no open\n")
+    foreach(t RANGE 1 39)
+      string(APPEND token_lines "t${t}${pad_${t}} open\n")
+    endforeach()
+    file(WRITE "${OUT}/reasons.txt" "${token_lines}")
+    set(catalog "")
+    foreach(i RANGE 1 3)
+      string(SHA1 sg "sg${i}")
+      string(APPEND catalog "${sg}\tsg\tunsupported\t-\tSynthetic ${i}\texcluded\t-\texport\tpad\tpad\n")
+    endforeach()
+    file(WRITE "${OUT}/catalog.tsv" "${catalog}")
+    set(ENV{COMPAT_REASONS} "${OUT}/reasons.txt")
+    set(ENV{COMPAT_CATALOG} "${OUT}/catalog.tsv")
+    set(script "${ROOT}/scripts/compat-common.sh")
+    if(WRONG)
+      file(READ "${script}" original)
+      string(REGEX REPLACE "cap_([a-z]+)=[0-9]+" "cap_\\1=100000" raised "${original}")
+      if(raised STREQUAL original)
+        message(FATAL_ERROR "no cap assignment found in the script")
+      endif()
+      file(WRITE "${OUT}/raised.sh" "${raised}")
+      set(script "${OUT}/raised.sh")
+    endif()
+    execute_process(COMMAND sh "${script}" docs "${OUT}/ledger.csv" RESULT_VARIABLE rc OUTPUT_VARIABLE page ERROR_VARIABLE err)
+    string(LENGTH "${page}" size)
+    if(NOT rc STREQUAL "0")
+      message(FATAL_ERROR "the page of the hostile ledger failed: exit ${rc}: ${err}")
+    endif()
+    if(NOT size LESS budget)
+      message(FATAL_ERROR "page exceeds the page budget: ${size} bytes")
+    endif()
+    message(STATUS "page_bound: ${size} bytes of ${budget}")
+    # Each overflow line carries exactly the count the construction implies.
+    math(EXPR unsupported_more "${count_unsupported}-20")
+    math(EXPR fail_more "${count_fail}-40")
+    math(EXPR other_more "${count_pass}-40")
+    math(EXPR group_more "${group_count}-60")
+    math(EXPR reason_more "${reason_count}-32")
+    foreach(pair IN ITEMS "fixtures|6" "unsupported rows|${unsupported_more}" "fail rows|${fail_more}" "other evaluated rows|${other_more}" "groups|${group_more}" "reasons|${reason_more}")
+      string(REPLACE "|" ";" parts "${pair}")
+      list(GET parts 0 section)
+      list(GET parts 1 want)
+      if(NOT page MATCHES "\n\\+([0-9]+) more ${section}[;\n]" OR NOT CMAKE_MATCH_1 STREQUAL want)
+        message(FATAL_ERROR "the page must say +${want} more ${section}, not '${CMAKE_MATCH_1}'")
+      endif()
+    endforeach()
+    # 30 fixture and 200 cart passes plus 100 fails are 330 evaluated rows; the counts line says so.
+    if(NOT page MATCHES "Rows: 700\\. Evaluated coverage: 330\\. Own fixtures: 30\\." OR NOT page MATCHES "unevaluated: unknown=170 unsupported=100 skipped=100" OR NOT page MATCHES "SG-1000 entries excluded: 3 ")
+      message(FATAL_ERROR "the counts of the page differ from the construction")
+    endif()
+    if(page MATCHES "[^\n -~]")
+      message(FATAL_ERROR "the page holds a byte outside printable ASCII")
+    endif()
+    string(REPLACE ";" "," flat "${page}")
+    string(REPLACE "\n" ";" page_lines "${flat}")
+    foreach(line IN LISTS page_lines)
+      string(LENGTH "${line}" line_bytes)
+      if(line_bytes GREATER 600)
+        message(FATAL_ERROR "a page line is ${line_bytes} bytes")
+      endif()
+    endforeach()
+    # No title character reaches a table row raw, and a non-default profile prints only its differing tokens.
+    if(page MATCHES "\n\\|[^\n]*[<*]" OR NOT page MATCHES "&#124;&amp;&lt;&#42;")
+      message(FATAL_ERROR "a title reached a table row unescaped")
+    endif()
+    if(NOT page MATCHES "\n\\| 000000000000 \\| [^\n]* \\| sms/export/ntsc/m1${mapper_cut} fm=off boots@600 port1=lphaser \\| pass \\|")
+      message(FATAL_ERROR "a non-default profile must print its differing tokens only")
+    endif()
+    # Ids, mappers and script tokens are cut like titles: a fixture id at 40 bytes, a mapper at 32, a script token at 24.
+    string(REPEAT x 30 id_cut)
+    if(NOT page MATCHES "\n\\| fixture/f1${id_cut} \\| [^\n]* port1=lphaser port2=sports script=${script_cut} \\| pass \\|" OR page MATCHES "script=${script_cut}s" OR page MATCHES "x${id_cut}x")
+      message(FATAL_ERROR "a long id, mapper or script token reached the page uncut")
+    endif()
+    # The shape of three pinned titles: a catalog title holding the planning label prints in a table row, and the rule that keeps
+    # the label out of the page binds generated prose, which is every line that does not start with a vertical bar.
+    if(NOT page MATCHES "\n\\| 000000000000 \\| Sega Graphic Board &#40;Japan, prototype v2\\.0&#41; \\|" OR page MATCHES "\n[^|\n][^\n]*v2\\.0")
+      message(FATAL_ERROR "the title with the planning label must be in a table row and in no prose line")
+    endif()
+    return()
+  elseif(CASE STREQUAL "hardening")
+    # Fault prevented: a title that spoofs text direction, hides characters or becomes a spreadsheet formula, a markdown title that
+    # becomes a link or emphasis when the page is regenerated, and a ledger large enough to hold the runner's time hostage.
+    set(header "id,title,machine,region,tv,mapper,predicate,status,evidence,date\n")
+    function(titled name want bytes)
+      file(WRITE "${OUT}/${name}.csv" "${header}fixture/a,${bytes},sms,export,ntsc,sega,boots@20,unknown,-,2026-10-20\n")
+      common(normalize "${OUT}/${name}.csv")
+      if(NOT rc STREQUAL "${want}" OR (want STREQUAL 2 AND NOT err MATCHES "invalid ledger record"))
+        message(FATAL_ERROR "title ${name}: expected exit ${want}, got ${rc}: ${err}")
+      endif()
+    endfunction()
+    # Bytes of the format characters (UTF-8 of U+200B, U+202E, U+2066, U+FEFF) and of the characters just outside each range.
+    string(ASCII 226 128 139 zero_width)
+    string(ASCII 226 128 174 bidi_override)
+    string(ASCII 226 129 166 bidi_isolate)
+    string(ASCII 239 187 191 byte_order_mark)
+    string(ASCII 226 128 138 below_range)
+    string(ASCII 226 129 165 below_isolate)
+    string(ASCII 195 169 accent)
+    # Line separators, invisible operators, C1 controls (U+0080, U+0085, U+009F), the soft hyphen and the Arabic letter mark; U+2027, U+2065 and U+00A0 sit just outside.
+    string(ASCII 226 128 168 line_separator)
+    string(ASCII 226 128 169 paragraph_separator)
+    string(ASCII 226 129 160 word_joiner)
+    string(ASCII 226 129 164 invisible_plus)
+    string(ASCII 194 128 c1_first)
+    string(ASCII 194 133 next_line)
+    string(ASCII 194 159 c1_last)
+    string(ASCII 194 173 soft_hyphen)
+    string(ASCII 216 156 arabic_letter_mark)
+    string(ASCII 226 128 167 below_separator)
+    string(ASCII 194 160 no_break_space)
+    foreach(hostile IN ITEMS "line_separator|a${line_separator}b" "paragraph_separator|a${paragraph_separator}b" "word_joiner|a${word_joiner}b"
+        "invisible_plus|a${invisible_plus}b" "c1_first|a${c1_first}b" "next_line|a${next_line}b" "c1_last|a${c1_last}b" "soft_hyphen|a${soft_hyphen}b"
+        "arabic_letter_mark|a${arabic_letter_mark}b")
+      string(REPLACE "|" ";" parts "${hostile}")
+      list(GET parts 0 name)
+      list(GET parts 1 bytes)
+      titled("${name}" 2 "${bytes}")
+    endforeach()
+    titled(below_separator 0 "a${below_separator}b")
+    titled(no_break_space 0 "a${no_break_space}b")
+    foreach(hostile IN ITEMS "equals|=cmd" "plus|+1" "minus|-1" "at|@x" "zero_width|a${zero_width}b" "bidi_override|a${bidi_override}b"
+        "bidi_isolate|a${bidi_isolate}b" "byte_order_mark|${byte_order_mark}a")
+      string(REPLACE "|" ";" parts "${hostile}")
+      list(GET parts 0 name)
+      list(GET parts 1 bytes)
+      titled("${name}" 2 "${bytes}")
+    endforeach()
+    titled(plain 0 "Caf${accent} (x) a-b=c+d@e")
+    # The library judge writes a lone dash as the title of a fact (the catalog title replaces it), so it must parse.
+    titled(lone_dash 0 "-")
+    titled(plain_quoted 0 "\"Caf${accent} \"\"q\"\", (x)\"")
+    titled(below_range 0 "a${below_range}b")
+    titled(below_isolate 0 "a${below_isolate}b")
+    # The row cap is exactly 8,192 data rows: ids are zero padded, so the rows are already in key order and the parse stays linear.
+    set(rows "")
+    foreach(i RANGE 1 8192)
+      math(EXPR padded "100000+${i}")
+      string(APPEND rows "fixture/r${padded},t,sms,export,ntsc,sega,boots@20,unknown,-,2026-10-20\n")
+    endforeach()
+    file(WRITE "${OUT}/cap.csv" "${header}${rows}")
+    common(normalize "${OUT}/cap.csv")
+    if(NOT rc STREQUAL "0")
+      message(FATAL_ERROR "8192 rows must be accepted: exit ${rc}: ${err}")
+    endif()
+    file(WRITE "${OUT}/over.csv" "${header}${rows}fixture/r999999,t,sms,export,ntsc,sega,boots@20,unknown,-,2026-10-20\n")
+    common(normalize "${OUT}/over.csv")
+    if(NOT rc STREQUAL "2" OR NOT err MATCHES "invalid ledger record")
+      message(FATAL_ERROR "8193 rows must be refused with exit 2: exit ${rc}")
+    endif()
+    # Every active markdown character is written as a numeric entity exactly once: a title is data, never a link or emphasis.
+    # The page cuts a title at 64 bytes after escaping, so the active characters ride in three rows that each fit.
+    set(tail "sms,export,ntsc,sega,boots@20,pass,-,2026-10-20")
+    file(WRITE "${OUT}/md.csv" "${header}fixture/a,a#b [x](y) `t`,${tail}\nfixture/b,~~s~~ *b*,${tail}\nfixture/c,_i_ ! \\ & < > |,${tail}\n")
+    common(docs "${OUT}/md.csv")
+    set(found 0)
+    foreach(want IN ITEMS "| fixture/a | a&#35;b &#91;x&#93;&#40;y&#41; &#96;t&#96; | sms/" "| fixture/b | &#126;&#126;s&#126;&#126; &#42;b&#42; | sms/"
+        "| fixture/c | &#95;i&#95; &#33; &#92; &amp; &lt; &gt; &#124; | sms/")
+      string(FIND "${text}" "${want}" at)
+      if(at LESS 0)
+        set(found 1)
+      endif()
+    endforeach()
+    if(NOT rc STREQUAL "0" OR found OR text MATCHES "&amp;#")
+      message(FATAL_ERROR "the page must escape every active character once: exit ${rc}: ${text}${err}")
+    endif()
+    common(normalize "${ROOT}/tests/compat/ledger.csv")
+    if(NOT rc STREQUAL "0")
+      message(FATAL_ERROR "the committed ledger must be accepted: exit ${rc}: ${err}")
+    endif()
+    string(REGEX MATCHALL "\n" lines "${text}")
+    list(LENGTH lines live)
+    math(EXPR live "${live}-1")
+    message(STATUS "compat.hardening: live rows ${live} of 8192")
     return()
   elseif(CASE MATCHES "^device_(key|rejected)$")
     set(header "id,title,machine,region,mapper,predicate,status,evidence,date\n")
@@ -291,11 +628,6 @@ if(CMAKE_SCRIPT_MODE_FILE)
   reject("${header}${row}${row}")
   string(REPLACE "boots@20" "boots@00020" alias "${row}")
   reject("${header}${row}${alias}")
-  set(many "${header}")
-  foreach(i RANGE 1 4097)
-    string(APPEND many "fixture/f${i},title,sms,ntsc-u,sega,boots@20,unknown,-,2026-10-20\n")
-  endforeach()
-  reject("${many}")
   string(REPEAT x 4194305 large)
   file(WRITE "${OUT}/large.csv" "${large}")
   common(normalize "${OUT}/large.csv")
@@ -322,7 +654,11 @@ if(CMAKE_SCRIPT_MODE_FILE)
   set(ordered "${header}")
   set(reversed "")
   foreach(status IN ITEMS pass fail unknown unsupported infrastructure_error skipped)
-    set(next "fixture/${status},title,sms,ntsc-u,sega,boots@20,${status},-,2026-10-20\n")
+    set(evidence -)
+    if(status MATCHES "^(unsupported|skipped)$")
+      set(evidence reason=janggun)
+    endif()
+    set(next "fixture/${status},title,sms,ntsc-u,sega,boots@20,${status},${evidence},2026-10-20\n")
     string(APPEND ordered "${next}")
     string(PREPEND reversed "${next}")
   endforeach()
@@ -394,6 +730,30 @@ if(CMAKE_SCRIPT_MODE_FILE)
   endif()
   string(REPLACE "fixture/a," "built/a," bad "${row}")
   reject("${header}${bad}")
+  # Fault prevented: an unsupported or skipped row that names no reason, or free text instead of a listed token, entering the
+  # ledger in any mode; a pass row refused for its evidence; a ledger without those statuses that reads the reasons file.
+  foreach(status IN ITEMS unsupported skipped)
+    string(REPLACE ",unknown,-," ",${status},reason=janggun," good "${row}")
+    file(WRITE "${OUT}/reason.csv" "${header}${good}")
+    foreach(mode IN ITEMS normalize docs cases)
+      common(${mode} "${OUT}/reason.csv")
+      if(NOT rc STREQUAL "0")
+        message(FATAL_ERROR "a ${status} row with a listed reason must parse in ${mode}: ${err}")
+      endif()
+    endforeach()
+    foreach(evidence IN ITEMS janggun reason= reason=Janggun reason=unlisted_token "reason=jang gun" Reason=janggun "")
+      string(REPLACE ",unknown,-," ",${status},${evidence}," bad "${row}")
+      reject("${header}${bad}")
+    endforeach()
+  endforeach()
+  string(REPLACE ",unknown,-," ",pass,any free text at all," free "${row}")
+  file(WRITE "${OUT}/free.csv" "${header}${free}")
+  set(ENV{COMPAT_REASONS} "${OUT}/no-such-reasons.txt")
+  common(normalize "${OUT}/free.csv")
+  set(ENV{COMPAT_REASONS} "${ROOT}/tests/compat/reasons.txt")
+  if(NOT rc STREQUAL "0")
+    message(FATAL_ERROR "a ledger with no unsupported or skipped row must never read the reasons file: ${err}")
+  endif()
   message(STATUS "quoted CSV bounds, duplicate aliases, ordering, audio forms and zero coverage passed")
   return()
 endif()
@@ -401,10 +761,10 @@ set(compat_labels compat)
 if(COGMASTER_HYGIENE)
   list(APPEND compat_labels hygiene)
 endif()
-# Timeout: 98 s; 2 x 48.74 s, slowest of 4 runs since the parser last changed, run 43115877197.
+# Timeout: 142 s; 2 x 70.79 s (windows-arm64), slowest of 2 runs, run 43158408243.
 cogmaster_add_test(NAME compat.ratchet
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat-ratchet
-    -P ${CMAKE_CURRENT_LIST_DIR}/ratchet.cmake LABELS ${compat_labels} TIMEOUT 98)
+    -P ${CMAKE_CURRENT_LIST_DIR}/ratchet.cmake LABELS ${compat_labels} TIMEOUT 142)
 cogmaster_add_test(NAME compat.trusted_judge
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=trusted
     -DOUT=${PROJECT_BINARY_DIR}/tests/compat-trusted -P ${CMAKE_CURRENT_LIST_DIR}/ratchet.cmake
@@ -415,9 +775,10 @@ cogmaster_add_test(NAME compat.trusted_judge
 cogmaster_add_test(NAME compat.migration
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat-migration
     -P ${CMAKE_CURRENT_LIST_DIR}/migration.cmake LABELS ${compat_labels} TIMEOUT 60)
+# Timeout: 45 s; 2 x 22.21 s (windows-arm64), slowest of 2 runs, run 43153144670.
 cogmaster_add_test(NAME compat.csv
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat
-    -P ${CMAKE_CURRENT_LIST_FILE} LABELS ${compat_labels} TIMEOUT 30)
+    -P ${CMAKE_CURRENT_LIST_FILE} LABELS ${compat_labels} TIMEOUT 45)
 # Fault prevented: a ledger row for a Sports Pad or Paddle title that a pad run satisfies, or a device
 # token the key grammar silently accepts. Timeout: 30 s floor; 2 x 1.29 s, slowest of 1 run, run 42978311844.
 cogmaster_add_test(NAME compat.device_key
@@ -430,11 +791,50 @@ string(REPLACE ";" "$<SEMICOLON>" compat_device_rejected "${compat_device_reject
 cogmaster_add_test(NAME compat.device_rejected
   COMMAND ${CMAKE_COMMAND} "-DCMD=${compat_device_rejected}" -DCODE=1 "-DREGEX=device tokens refused: 10[^0-9]"
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake LABELS ${compat_labels} TIMEOUT 30)
-# Timeout: 91 s; 2 x 45.10 s (windows-arm64 lane), slowest of 3 runs, run 43117518796. Its body is three runs old: the first run
-# with it (43115877197) was killed at 30 s on windows-arm64 and gives no time.
+# Fault prevented: a claim of public support while no cartridge of the owner's library has reached the ledger, a ledger no parser
+# reads recorded as evidence, and an experimental flag that stays or goes with nobody checking it against the rows.
+# Timeout: 60 s floor; 2 x 5.06 s (macos-x64), slowest of 1 run, run 43158408243.
+cogmaster_add_test(NAME compat.exit
+  COMMAND ${CMAKE_COMMAND} -DCASE=assert -DLEDGER=${PROJECT_SOURCE_DIR}/tests/compat/ledger.csv
+    -DINFO=${PROJECT_SOURCE_DIR}/libretro/cogmaster_libretro.info.in -DOUT=${PROJECT_BINARY_DIR}/tests/compat-exit
+    -P ${CMAKE_CURRENT_LIST_DIR}/exit.cmake
+  LABELS ${compat_labels} TIMEOUT 60)
+# Fault prevented: a met branch nobody has ever taken, a tie that passes in both directions, and an integrity leg that cannot fail.
+# Timeout: 30 s floor; 2 x 4.10 s (windows-arm64), slowest of 1 run, run 43158408243.
+cogmaster_add_test(NAME compat.exit.self_test
+  COMMAND ${CMAKE_COMMAND} -DCASE=self_test -DOUT=${PROJECT_BINARY_DIR}/tests/compat-exit-self
+    -P ${CMAKE_CURRENT_LIST_DIR}/exit.cmake
+  LABELS ${compat_labels} TIMEOUT 30)
+# Fault prevented: a reason the catalog uses that the closed vocabulary does not list or has retired, or a vocabulary that
+# drifts from the slots of the cartridge table that have no board. Timeout: 30 s floor; 2 x 0.22 s (windows-arm64), slowest of 2 runs, run 43158408243.
+cogmaster_add_test(NAME compat.reasons
+  COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=reasons
+    -DOUT=${PROJECT_BINARY_DIR}/tests/compat-reasons -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS ${compat_labels} TIMEOUT 30)
+# Fault prevented: a title that spoofs text direction, hides characters or becomes a spreadsheet formula, a markdown title that
+# becomes a link or emphasis on a page regeneration, and a ledger large enough to hold the runner's time hostage.
+# Timeout: 90 s floor; 2 x 16.10 s (windows-arm64), slowest of 2 runs, run 43153144670.
+cogmaster_add_test(NAME compat.hardening
+  COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=hardening
+    -DOUT=${PROJECT_BINARY_DIR}/tests/compat-hardening -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS ${compat_labels} TIMEOUT 90)
+# Fault prevented: a page that is bounded only because today's ledger is small, and a cap that nobody notices being removed.
+# Timeout: 60 s floor; 2 x 1.86 s (macos-x64), slowest of 2 runs, run 43158408243.
+cogmaster_add_test(NAME compat.page_bound
+  COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=page_bound
+    -DOUT=${PROJECT_BINARY_DIR}/tests/compat-page-bound -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS ${compat_labels} TIMEOUT 60)
+set(compat_page_bound_wrong ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=page_bound -DWRONG=ON
+  -DOUT=${PROJECT_BINARY_DIR}/tests/compat-page-bound-wrong -P ${CMAKE_CURRENT_LIST_FILE})
+string(REPLACE ";" "$<SEMICOLON>" compat_page_bound_wrong "${compat_page_bound_wrong}")
+# Timeout: 60 s floor; 2 x 2.07 s (macos-x64), slowest of 2 runs, run 43158408243.
+cogmaster_add_test(NAME compat.page_bound.self_test
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${compat_page_bound_wrong}" -DCODE=1 "-DREGEX=exceeds the page budget"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake LABELS ${compat_labels} TIMEOUT 60)
+# Timeout: 104 s; 2 x 51.56 s (windows-arm64), slowest of 2 runs, run 43158408243.
 cogmaster_add_test(NAME compat.public_update
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat-update
-    -P ${CMAKE_CURRENT_LIST_DIR}/update.cmake LABELS ${compat_labels} TIMEOUT 91)
+    -P ${CMAKE_CURRENT_LIST_DIR}/update.cmake LABELS ${compat_labels} TIMEOUT 104)
 cogmaster_add_test(NAME policy.compat_doc_fresh
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=fresh -DOUT=${PROJECT_BINARY_DIR}/tests/compat-doc
     -P ${CMAKE_CURRENT_LIST_FILE} LABELS ${compat_labels} policy TIMEOUT 30)
@@ -444,12 +844,42 @@ string(REPLACE ";" "$<SEMICOLON>" compat_control "${compat_control}")
 cogmaster_add_test(NAME policy.compat_doc_fresh.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${compat_control}" -DCODE=1 "-DREGEX=compatibility doc differs"
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake LABELS ${compat_labels} policy TIMEOUT 30)
+# Fault prevented: a denominator that shrinks unnoticed, a ledger identity the pin does not list, a status that moves without a slot-table
+# change, a hand edit of the ledger, and a seeded profile the core refuses. The legs read whole files once; the controls run on stand-ins.
+# Timeout: 60 s floor; 2 x 2.24 s (windows-arm64), slowest of 2 runs, run 43153144670.
+cogmaster_add_test(NAME compat.whole_list.count
+  COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=count
+    -DOUT=${PROJECT_BINARY_DIR}/tests/compat-whole-count -P ${CMAKE_CURRENT_LIST_DIR}/whole_list.cmake
+  LABELS ${compat_labels} TIMEOUT 60)
+# Timeout: 90 s floor; 2 x 6.88 s (windows-arm64), slowest of 2 runs, run 43158408243.
+cogmaster_add_test(NAME compat.whole_list.fresh
+  COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=fresh
+    -DOUT=${PROJECT_BINARY_DIR}/tests/compat-whole-fresh -P ${CMAKE_CURRENT_LIST_DIR}/whole_list.cmake
+  LABELS ${compat_labels} TIMEOUT 90)
+set(compat_whole_wrong ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=fresh_wrong
+  -DOUT=${PROJECT_BINARY_DIR}/tests/compat-whole-wrong -P ${CMAKE_CURRENT_LIST_DIR}/whole_list.cmake)
+string(REPLACE ";" "$<SEMICOLON>" compat_whole_wrong "${compat_whole_wrong}")
+# Timeout: 90 s floor; 2 x 9.66 s (windows-arm64), slowest of 2 runs, run 43158408243.
+cogmaster_add_test(NAME compat.whole_list.fresh.self_test
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${compat_whole_wrong}" -DCODE=1 "-DREGEX=ledger is not whole \\(4 faults refused\\)"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake LABELS ${compat_labels} TIMEOUT 90)
+# Timeout: 60 s floor; 2 x 4.16 s (windows-arm64), slowest of 2 runs, run 43158408243.
+cogmaster_add_test(NAME compat.whole_list.reason
+  COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=reason
+    -DOUT=${PROJECT_BINARY_DIR}/tests/compat-whole-reason -P ${CMAKE_CURRENT_LIST_DIR}/whole_list.cmake
+  LABELS ${compat_labels} TIMEOUT 60)
 if(COGMASTER_FIXTURES AND NOT COGMASTER_HYGIENE)
   string(REPLACE ";" "$<SEMICOLON>" compat_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
-  # Timeout: 89 s; 2 x 44.30 s, slowest of 4 runs since the parser last changed, run 43119601937.
+  # Timeout: 90 s; 2 x 44.66 s (be32), slowest of 2 runs, run 43153144670.
   cogmaster_add_test(NAME compat.fixtures
     COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=fixtures
       -DOUT=${PROJECT_BINARY_DIR}/tests/compat-fixtures -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures
       -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${compat_emulator}"
-      -P ${CMAKE_CURRENT_LIST_FILE} LABELS compat portable TIMEOUT 89)
+      -P ${CMAKE_CURRENT_LIST_FILE} LABELS compat portable TIMEOUT 90)
+  # Fault prevented: a seeded default profile the core refuses. Timeout: 60 s floor; 2 x 3.09 s (macos-x64), slowest of 2 runs, run 43158408243.
+  cogmaster_add_test(NAME compat.whole_list.runnable
+    COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=runnable
+      -DOUT=${PROJECT_BINARY_DIR}/tests/compat-whole-runnable -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures
+      -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${compat_emulator}"
+      -P ${CMAKE_CURRENT_LIST_DIR}/whole_list.cmake LABELS compat TIMEOUT 60)
 endif()

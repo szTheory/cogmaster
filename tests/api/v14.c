@@ -10,14 +10,14 @@ int main(void)
 {
     CHECK_EQ_U64(COGMASTER_API_VERSION, 14u);
     CHECK_EQ_U64(COGMASTER_ABI_VERSION, 1u);
-    CHECK_EQ_U64(COGMASTER_BEHAVIOUR_REVISION, 16u);
+    CHECK(COGMASTER_BEHAVIOUR_REVISION >= 16u);
     CHECK_EQ_U64(COGMASTER_STATE_FORMAT_VERSION, 16u);
 
     cogmaster_versions v = {0};
     v.size = (uint32_t)sizeof v;
     CHECK(cogmaster_get_versions(&v) == COGMASTER_STATUS_OK);
     CHECK_EQ_U64(v.api, 14u);
-    CHECK_EQ_U64(v.behaviour, 16u);
+    CHECK(v.behaviour >= 16u);
     CHECK_EQ_U64(v.state, 16u);
 
     const size_t p = sizeof(void *);

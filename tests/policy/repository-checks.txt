@@ -5,6 +5,7 @@ check|tests/cmake/ci_required.cmake|Workflow required-job policy and its negativ
 check|tests/cmake/expect_fail.cmake|Shared exact exit status and tolerant diagnostic negative-control helper
 check|scripts/firmware-window.sh|Local firmware window scan: 32-byte windows of the owner dump against the tree, build outputs and release zips
 check|tests/cmake/firmware_scan.cmake|Release firmware scan: digests of firmware and ROMs and copier-headered firmware-class members, with vacuous guards
+check|tests/cmake/flag.awk|The one reader of the is_experimental flag shared by the exit command and the wording check
 behavior|tests/cmake/floor.cmake|Examines packaged deliverables for loader compatibility on supported operating systems
 check|tests/cmake/quality.cmake|Quality ceilings and floors read from quality.json with string(JSON)
 check|tests/cmake/readme.cmake|README play steps: the command runs, its printed line, ROM extensions and the no-BIOS sentence
@@ -34,16 +35,21 @@ behavior|tests/cmake/mailbox.cmake|Runs fixture and compares emulated RAM output
 behavior|tests/cmake/perf_compare.cmake|Compares measured executable performance observations
 behavior|tests/cmake/install_line.cmake|Executes the published installation command against packaged binaries
 behavior|tests/policy/budget_cases.cmake|Constructs synthetic checked trees and registers boundary and helper fixtures without implementing checker policy
+behavior|tests/policy/claims_cases.cmake|Builds fixture trees from the real files with one claim fault each and asserts the claims check refuses them; it implements no policy
 behavior|tests/policy/e2e_cases.cmake|Constructs hosted helper boundary fixtures and registers behavior assertions for CI and hygiene
 behavior|tests/policy/firmware_window_cases.cmake|Builds a self-authored dump, planted windows and throwaway repositories and registers the window scan controls without implementing scan policy
 behavior|tests/policy/firmware_release_cases.cmake|Constructs owned firmware-scan fixtures and registers controls without implementing scan policy
 behavior|tests/compat/tests.cmake|Executes quoted parser and runner predicate integrations and compares their observable outputs and generated documentation
 check|scripts/compat-common.sh|Shared bounded quoted ledger normalization and deterministic public documentation generation
+behavior|tests/compat/exit.cmake|Computes the exit verdict from the ledger, catalog, pin counts and quality floors and ties the libretro flag to it; it judges no compatibility itself
 behavior|tests/compat/migration.cmake|Executes the ledger migration on embedded literals and a synthetic legacy file and asserts byte-for-byte output and exit statuses
 behavior|tests/compat/ratchet.cmake|Constructs independent ledger mutations and asserts observable protected-judge decisions
 behavior|tests/compat/update.cmake|Executes explicit public updates against synthetic private records and compares filtered output
+behavior|tests/compat/whole_list.cmake|Reads the ledger, catalog, pin counts and the compiled table and compares them, and runs seeded profiles; asserts the whole list without implementing policy
+behavior|tests/compat/whole_list_common.cmake|Shared comparison legs of the whole-list tests and the exit command
 check|scripts/compat-ratchet.sh|Trusted compatibility judge entry point with adjacent parser dependency
 check|scripts/compat-update.sh|Explicit public ledger projection reuses the fully counted CSV parser and immutable CC0 identities
+operation|scripts/compat-seed.sh|Writes the ledger from the catalog through the shared parser and never judges, though it exits 1 on a stray id
 operation|scripts/library.sh|Enumerates private local files and orchestrates bounded executable observations without asserting repository content
 operation|scripts/library.cmake|Probes and executes each local image against accepted expectations and writes private local results
 operation|scripts/digest.sh|Formats remote run data for the weekly digest and reads workflow timeouts; never fails on repository content
