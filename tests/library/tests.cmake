@@ -25,7 +25,10 @@ if(CMAKE_SCRIPT_MODE_FILE)
   file(SHA1 "${FIXTURES}/vdp_lines_192.sms" lines_sha)
   file(SHA1 "${FIXTURES}/fm_sweep_jp.sms" japan_sha)
   file(SHA1 "${FIXTURES}/boot_to_play.gg" gg_sha)
+  file(SHA1 "${FIXTURES}/boot_to_play.sms" skipped_sha)
+  file(SHA1 "${FIXTURES}/psg_sweep.sms" device_sha)
   file(WRITE "${OUT}/catalog.tsv" "${lines_sha}\tsms\tnone\t-\tSynthetic lines\tunknown\t-\texport\tpad\tpad\n${japan_sha}\tsms\tnone\t-\tSynthetic japan\tunknown\t-\tjapan\tpad\tpad\n${gg_sha}\tgg\tnone\t-\tSynthetic gg\tunknown\t-\texport\tpad\tpad\n")
+  file(APPEND "${OUT}/catalog.tsv" "${skipped_sha}\tsms\tnone\t-\tSynthetic skipped\tskipped\tmame_no\texport\tpad\tpad\n${device_sha}\tsms\tnone\t-\tSynthetic device\tunknown\t-\texport\tlphaser\tpad\n")
   set(empty e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855)
   file(STRINGS "${ROOT}/tests/compat/ledger.csv" fixture_rows REGEX "^(id,|\"fixture/)")
   set(standin_fixtures "")
@@ -84,10 +87,11 @@ if(CMAKE_SCRIPT_MODE_FILE)
   file(COPY_FILE "${FIXTURES}/vdp_lines_192.sms" "${OUT}/judge-images/${home_path} lines.sms")
   file(COPY_FILE "${FIXTURES}/fm_sweep_jp.sms" "${OUT}/judge-images/${address} japan.gg")
   file(COPY_FILE "${FIXTURES}/boot_to_play.gg" "${OUT}/judge-images/${home_path} ${address}.sms")
-  file(COPY_FILE "${FIXTURES}/boot_to_play.sms" "${OUT}/judge-images/plain.sms")
+  file(COPY_FILE "${FIXTURES}/boot_to_play.sms" "${OUT}/judge-images/${home_path} skipped.sms")
+  file(COPY_FILE "${FIXTURES}/psg_sweep.sms" "${OUT}/judge-images/${address} device.sms")
   library("${OUT}/judge-images" "COGMASTER_CATALOG=${OUT}/catalog.tsv")
   set(applied "${text}")
-  if(NOT applied MATCHES "rows_added=1 ratchet=ok page_bytes=[0-9]+" OR NOT applied MATCHES "pal: carts=1 ran_pal=1 boots_pass=[01] boots_fail=[01]"
+  if(NOT applied MATCHES "rows_added=1 ratchet=ok page_bytes=[0-9]+" OR NOT applied MATCHES "pal: carts=2 ran_pal=2 boots_pass=[0-2] boots_fail=[0-2]"
       OR NOT applied MATCHES "fm: carts=1 boots_pass=[01] boots_fail=[01]" OR NOT applied MATCHES "library-judge 1")
     message(FATAL_ERROR "the synthetic catalog run must add the PAL row and print the count block: ${applied}")
   endif()
@@ -112,6 +116,20 @@ if(CMAKE_SCRIPT_MODE_FILE)
   expect_row("${lines_sha}" "Synthetic lines" sms export pal "${cfg_off}")
   expect_row("${japan_sha}" "Synthetic japan" sms japan ntsc "${cfg_on}")
   expect_row("${gg_sha}" "Synthetic gg" gg export ntsc "${cfg_gg}")
+  # Fault prevented: a library run turning a dump MAME marks as not working into pass (its runs happen and their facts are discarded by
+  # the update guard), and a title that needs a light phaser getting a pad row a pad run could satisfy (its image is never run as a pad).
+  string(REGEX MATCHALL "\n\"${skipped_sha}\"," skipped_rows "${merged}")
+  string(REGEX MATCHALL "\n\"${device_sha}\"," device_rows "${merged}")
+  list(LENGTH skipped_rows skipped_count)
+  list(LENGTH device_rows device_count)
+  file(READ "${OUT}/results/public-facts.csv" produced)
+  if(NOT merged MATCHES "\"${skipped_sha}\",\"Synthetic skipped\",\"sms\",\"export\",\"ntsc\",\"none\",\"[^\n]*\"skipped\",\"reason=mame_no\"" OR NOT skipped_count EQUAL 1
+      OR NOT produced MATCHES "${skipped_sha},-,sms,export,ntsc,none,[^\n]*,(pass|fail)," OR NOT produced MATCHES "${skipped_sha},-,sms,export,pal,none,")
+    message(FATAL_ERROR "a skipped row must keep its status and reason while its runs are produced and discarded")
+  endif()
+  if(NOT device_count EQUAL 1 OR NOT merged MATCHES "\"${device_sha}\",[^\n]*port1=lphaser;[^\n]*\"unknown\"" OR produced MATCHES "${device_sha}")
+    message(FATAL_ERROR "a device title must keep its one unknown row and be given no pad run")
+  endif()
   if(NOT added EQUAL 1)
     message(FATAL_ERROR "the merge must add exactly the PAL row, not ${added}")
   endif()
@@ -252,10 +270,10 @@ endif()
 endif()
 if(COGMASTER_FIXTURES)
   string(REPLACE ";" "$<SEMICOLON>" library_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
-  # Timeout: 120 s floor; 2 x 54.22 s, slowest of 4 runs, run 43119601937.
+  # Timeout: 180 s; 2 x 54.22 s measured before the key-based cases, provisional until a hosted run has them.
   cogmaster_add_test(NAME library.synthetic
     COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/library
       -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures -DRUN=$<TARGET_FILE:cogmaster-run>
       "-DEMULATOR=${library_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
-    LABELS library TIMEOUT 120)
+    LABELS library TIMEOUT 180)
 endif()
