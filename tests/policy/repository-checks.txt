@@ -42,6 +42,8 @@ check|scripts/compat-common.sh|Shared bounded quoted ledger normalization and de
 behavior|tests/compat/migration.cmake|Executes the ledger migration on embedded literals and a synthetic legacy file and asserts byte-for-byte output and exit statuses
 behavior|tests/compat/ratchet.cmake|Constructs independent ledger mutations and asserts observable protected-judge decisions
 behavior|tests/compat/update.cmake|Executes explicit public updates against synthetic private records and compares filtered output
+behavior|tests/compat/whole_list.cmake|Reads the ledger, catalog, pin counts and the compiled table and compares them, and runs seeded profiles; asserts the whole list without implementing policy
+behavior|tests/compat/whole_list_common.cmake|Shared comparison legs of the whole-list tests and the exit command
 check|scripts/compat-ratchet.sh|Trusted compatibility judge entry point with adjacent parser dependency
 check|scripts/compat-update.sh|Explicit public ledger projection reuses the fully counted CSV parser and immutable CC0 identities
 operation|scripts/compat-seed.sh|Writes the ledger from the catalog through the shared parser and never judges, though it exits 1 on a stray id

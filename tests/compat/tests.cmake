@@ -794,6 +794,30 @@ string(REPLACE ";" "$<SEMICOLON>" compat_control "${compat_control}")
 cogmaster_add_test(NAME policy.compat_doc_fresh.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${compat_control}" -DCODE=1 "-DREGEX=compatibility doc differs"
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake LABELS ${compat_labels} policy TIMEOUT 30)
+# Fault prevented: a denominator that shrinks unnoticed, a ledger identity the pin does not list, a status that moves without a slot-table
+# change, a hand edit of the ledger, and a seeded profile the core refuses. The legs read whole files once; the controls run on stand-ins.
+# Timeout: 60 s floor; 0.09 s slowest of 4 local runs, no hosted run yet, so provisional.
+cogmaster_add_test(NAME compat.whole_list.count
+  COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=count
+    -DOUT=${PROJECT_BINARY_DIR}/tests/compat-whole-count -P ${CMAKE_CURRENT_LIST_DIR}/whole_list.cmake
+  LABELS ${compat_labels} TIMEOUT 60)
+# Timeout: 90 s floor; 0.63 s slowest of 4 local runs, no hosted run yet, so provisional.
+cogmaster_add_test(NAME compat.whole_list.fresh
+  COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=fresh
+    -DOUT=${PROJECT_BINARY_DIR}/tests/compat-whole-fresh -P ${CMAKE_CURRENT_LIST_DIR}/whole_list.cmake
+  LABELS ${compat_labels} TIMEOUT 90)
+set(compat_whole_wrong ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=fresh_wrong
+  -DOUT=${PROJECT_BINARY_DIR}/tests/compat-whole-wrong -P ${CMAKE_CURRENT_LIST_DIR}/whole_list.cmake)
+string(REPLACE ";" "$<SEMICOLON>" compat_whole_wrong "${compat_whole_wrong}")
+# Timeout: 90 s floor; 0.26 s slowest of 4 local runs, no hosted run yet, so provisional.
+cogmaster_add_test(NAME compat.whole_list.fresh.self_test
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${compat_whole_wrong}" -DCODE=1 "-DREGEX=ledger is not whole \\(4 faults refused\\)"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake LABELS ${compat_labels} TIMEOUT 90)
+# Timeout: 60 s floor; 0.14 s slowest of 4 local runs, no hosted run yet, so provisional.
+cogmaster_add_test(NAME compat.whole_list.reason
+  COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=reason
+    -DOUT=${PROJECT_BINARY_DIR}/tests/compat-whole-reason -P ${CMAKE_CURRENT_LIST_DIR}/whole_list.cmake
+  LABELS ${compat_labels} TIMEOUT 60)
 if(COGMASTER_FIXTURES AND NOT COGMASTER_HYGIENE)
   string(REPLACE ";" "$<SEMICOLON>" compat_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
   # Timeout: 89 s; 2 x 44.30 s, slowest of 4 runs since the parser last changed, run 43119601937.
@@ -802,4 +826,10 @@ if(COGMASTER_FIXTURES AND NOT COGMASTER_HYGIENE)
       -DOUT=${PROJECT_BINARY_DIR}/tests/compat-fixtures -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures
       -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${compat_emulator}"
       -P ${CMAKE_CURRENT_LIST_FILE} LABELS compat portable TIMEOUT 89)
+  # Fault prevented: a seeded default profile the core refuses. Timeout: 60 s floor; 0.23 s slowest of 4 local runs, no hosted run yet, so provisional.
+  cogmaster_add_test(NAME compat.whole_list.runnable
+    COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=runnable
+      -DOUT=${PROJECT_BINARY_DIR}/tests/compat-whole-runnable -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures
+      -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${compat_emulator}"
+      -P ${CMAKE_CURRENT_LIST_DIR}/whole_list.cmake LABELS compat TIMEOUT 60)
 endif()
