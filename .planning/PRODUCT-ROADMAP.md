@@ -39,7 +39,7 @@ Shipped 2026-11-12 with 49 of 49 requirements, audit status tech_debt and no gap
 
 ## Immediate — none
 
-No milestone is in progress and no scope is owner-approved. **Preferred next step:** the owner's one batched own-library run, which can remove `is_experimental` (SEED-013), then a small tune-up from SEED-015 when the weekly digest names the drifted jobs. **Alternatives weighed:** v3.0 states and movies (the next horizon below), the browser build (SEED-008) and SG-1000/SC-3000 mode (SEED-006). Nothing moves into Immediate until the owner approves scope at `/gsd-new-milestone`.
+No milestone is in progress and no scope is owner-approved. **Preferred next step:** find out why 210 default-profile carts fail the boots check and fix the shared causes (SEED-016), with the CI timeout drift from SEED-015 as the small second item. **Alternatives weighed:** v3.0 states and movies (the next horizon below), the browser build (SEED-008) and SG-1000/SC-3000 mode (SEED-006). Nothing moves into Immediate until the owner approves scope at `/gsd-new-milestone`.
 
 ## Mid — v3.0 "States and movies" (SEED-002), v4.0 "Measured accuracy" (SEED-003)
 

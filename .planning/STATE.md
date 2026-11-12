@@ -3,7 +3,7 @@ gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: The whole library
 status: Awaiting next milestone
-stopped_at: Milestone v2.0 completed and archived; shipped as v0.12.0
+stopped_at: Milestone v2.0 closed; the library run shipped as v0.13.0 (experimental label removed)
 last_updated: "2026-11-12T06:42:06.407Z"
 last_activity: 2026-11-12
 last_activity_desc: Milestone v2.0 completed and archived
@@ -31,9 +31,9 @@ See: .planning/PROJECT.md (updated 2026-11-12)
 Phase: Milestone v2.0 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-11-12 — Milestone v2.0 completed and archived (shipped as v0.12.0)
+Last activity: 2026-11-12 — library run merged (#37), v0.13.0 released; next work scoped in SEED-016
 
-Next command: `/gsd-new-milestone`. The archive is in `.planning/milestones/` (v2.0-ROADMAP.md, v2.0-REQUIREMENTS.md, v2.0-MILESTONE-AUDIT.md, v2.0-PRODUCT-ROADMAP.md, v2.0-phases/).
+Next command: `/gsd-new-milestone` (suggested scope: SEED-016, the failing carts, plus the SEED-015 CI timeout drift). The archive is in `.planning/milestones/` (v2.0-ROADMAP.md, v2.0-REQUIREMENTS.md, v2.0-MILESTONE-AUDIT.md, v2.0-PRODUCT-ROADMAP.md, v2.0-phases/).
 
 ## Performance Metrics
 
@@ -385,7 +385,7 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 |----------|------|--------|-------------|-----------|
 | seeds | SEED-015: whole-list ledger, CI-speed and milestone audit follow-ups | dormant (next ledger or CI-speed work) | 2026-11-12 | v2.0 |
 | seeds | SEED-014: PAL and Japanese FM follow-ups | dormant | 2026-11-12 | v2.0 |
-| seeds | SEED-013: the owner's own-library run (`sh scripts/library.sh run`) and the `is_experimental` removal | carried owner hand-off, not a gate | 2026-11-12 | v2.0 |
+| seeds | SEED-013: the owner's own-library run (`sh scripts/library.sh run`) and the `is_experimental` removal | done 2026-11-12 (v0.13.0), no longer carried | 2026-11-12 | v2.0 |
 | seeds | SEED-012: hash-less audio predicate | dormant | 2026-11-12 | v2.0 |
 | seeds | SEED-011: BIOS follow-ups (Game Gear BIOS, built-in-game BIOSes, Mark III) | dormant | 2026-11-12 | v2.0 |
 | seeds | SEED-010: pad, Light Phaser and BIOS local judges (the owner's commands) | carried owner hand-off, not a gate | 2026-11-12 | v2.0 |
@@ -412,4 +412,4 @@ Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published wit
 ## Operator Next Steps
 
 - Start the next milestone, when the owner approves scope, with /gsd-new-milestone.
-- Owner hand-offs (batched, none is a gate): SEED-013 `sh scripts/library.sh run` and, only when it prints `judged_cart_floors=met`, the flag-removal pull request; SEED-010 pad, Light Phaser and BIOS judges; SEED-009 scan thresholds.
+- Owner hand-offs (batched, none is a gate): SEED-013 is done (v0.13.0); SEED-010 pad, Light Phaser and BIOS judges; SEED-009 scan thresholds.
