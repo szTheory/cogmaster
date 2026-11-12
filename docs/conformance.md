@@ -48,7 +48,7 @@ excuses that row alone. Neither core code nor this judge reads a clock.
 `sh scripts/compat-common.sh normalize tests/compat/ledger.csv` emits canonical quoted CSV;
 `docs` emits this ledger page and `cases` emits validated CMake execution facts without title interpolation.
 The shared parser accepts conventional doubled quotes and commas inside quoted fields, preserving
-semicolons as data. It bounds files to 4 MiB, records to 4096 bytes, fields to 1024 bytes and rows to 4096;
+semicolons as data. It bounds files to 4 MiB, records to 4096 bytes, fields to 1024 bytes and rows to 8192;
 embedded record newlines, empty records and duplicate normalized cases reject. Header-only means
 zero evaluated coverage. Output is deterministic under row permutation. `policy.compat_doc_fresh`
 regenerates the public page; its corruption control and parser controls run in CI and hygiene.
@@ -107,6 +107,14 @@ the Z80 vectors, the assembled fixtures and their mailbox, and fuzzing; testing 
 | `fuzz` | `ctest --test-dir build/ci -L fuzz` | Every seed replayed through the two fuzz entries |
 | `vectors-full` | `cmake --workflow --preset vectors-full` | Every vector, nightly; fetch the archive first |
 | `fuzz` preset | `cmake --workflow --preset fuzz` | 60 s of libFuzzer per entry, nightly, with clang-21 |
+
+## Whole-list ledger
+
+`tests/compat/ledger.csv` holds one default-profile row for every Master System and Game Gear catalog identity at the MAME pin, so a title nobody has run is listed `unknown`, not missing. SG-1000 entries are counted and have no row. Rows are public facts about catalog identities: a row says what this core did with a dump, never that a title works.
+
+`tests/compat/catalog.tsv` is the generator's output: `sha1`, `machine`, `board`, `slot`, `title`, `status`, `reason`, `region`, `port1`, `port2`. The status is `unknown`, `unsupported` or `skipped`. An entry whose board the slot table lacks is `unsupported` and the runner refuses its SHA-1 with exit 77; an entry MAME marks as not working, or whose record is not one image (several chips, a bad or short dump, no ROM), is `skipped`, which is the MAME verdict and never a pass. Those rows carry `reason=<token>` as evidence, and the token must be a line of `tests/compat/reasons.txt`; it is marked `retired` once its board or device exists. A compound entry has no image hash, so its id is the SHA-1 of the text `mame/<list>/<name>`. `tests/compat/pin-counts.txt` holds the pin's record counts: 1,476 records, 13 sharing an image, 1,463 identities.
+
+`sh scripts/compat-seed.sh LEDGER CATALOG DATE > NEW` writes the ledger. It copies fixture, `pass` and `fail` rows unchanged, regenerates every `unknown`, `unsupported` and `skipped` row from the catalog, and exits 1 on an id that is neither a fixture nor a catalog identity. `compat.whole_list.fresh` requires the committed ledger to be its own output. A pull request is judged by the base branch's ratchet: run `scripts/compat-ratchet.sh` and `scripts/compat-common.sh` from `git show origin/main:` against the new ledger before pushing; it must pass and flip nothing.
 
 ## Z80 vectors
 
