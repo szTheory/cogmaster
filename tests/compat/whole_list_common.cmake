@@ -68,27 +68,33 @@ END {
 }
 ]==])
 
-# The board and machine names are those of tools/cartdb.c (board_names, machines) and the COGMASTER_BOARD_* and COGMASTER_MACHINE_*
-# constants of include/cogmaster.h; they are typed here, never read from the generator, so a generator slip is a difference.
+# The board, machine, slot and port names are those of tools/cartdb.c (board_names, machines, ports, the slot table at the head of the
+# inc) and the COGMASTER_BOARD_* and COGMASTER_MACHINE_* constants of include/cogmaster.h; they are typed here, never read from the
+# generator, so a generator slip is a difference. Both directions: every catalog line has its fact and every public Master System or
+# Game Gear fact has its catalog line (an SG-1000 fact keeps its line in the catalog, not in the ledger).
 set(wl_table_awk [==[
 function bad(m) { if(++errs<=3) print "catalog differs from src/cartdb.inc: " m }
-BEGIN { split("unsupported none sega codemasters korean korean_nb hicom zemina nemesis hes_4pak sega_eeprom", x, " "); for(i=1;i<=11;i++) bn[i-1]=x[i]; mn[0]="sg"; mn[1]="sms"; mn[2]="gg"; mn[3]="sms" }
+function num(k) { return match($0, "\\." k " = [0-9]+u") ? substr($0,RSTART+length(k)+4,RLENGTH-length(k)-5)+0 : -1 }
+BEGIN { split("unsupported none sega codemasters korean korean_nb hicom zemina nemesis hes_4pak sega_eeprom", x, " "); for(i=1;i<=11;i++) bn[i-1]=x[i]; mn[0]="sg"; mn[1]="sms"; mn[2]="gg"; mn[3]="sms"; split("pad lphaser paddle sports pad", pn, " ") }
 FNR==1 { fi++ }
 fi==1 {
+  if(match($0,/^\{[0-9]+u, [0-9]+u, "/)) { split($0,q,"\""); sn[substr($0,2)+0]=q[2]; next }
   if(index($0,"{.sha1 = {")!=1) next
   s=substr($0,11); h=substr(s,1,index(s,"}")-1); gsub(/0x|,/,"",h)
-  if(length(h)!=40 || !match($0,/\.board = [0-9]+u/)) next
-  fb[h]=bn[substr($0,RSTART+9,RLENGTH-10)+0]
-  if(match($0,/\.machine = [0-9]+u/)) fm[h]=mn[substr($0,RSTART+11,RLENGTH-12)+0]
+  if(length(h)!=40 || num("board")<0) next
+  fb[h]=bn[num("board")]; fm[h]=mn[num("machine")]; fs[h]=(num("slot")?sn[num("slot")]:"-"); f1[h]=pn[num("ctrl1")+1]; f2[h]=pn[num("ctrl2")+1]
+  fr[h]=(num("region")==2 || num("ctrl1")==2 || num("ctrl2")==2 ? "japan" : "export")
+  if(num("flags")==1 && fm[h]!="sg") pub[h]=1
   nfact++; next
 }
 {
   split($0,t,"\t"); if((t[2]!="sms" && t[2]!="gg") || t[3]=="compound") next
-  nchecked++
+  nchecked++; seen[t[1]]=1
   if(!(t[1] in fb)) bad("identity " t[1] " has no fact")
   else if(t[2]!=fm[t[1]] || t[3]!=fb[t[1]]) bad("identity " t[1] " is " t[2] " on " t[3] " but its fact is " fm[t[1]] " on " fb[t[1]])
+  else if(t[4]!=fs[t[1]] || t[8]!=fr[t[1]] || t[9]!=f1[t[1]] || t[10]!=f2[t[1]]) bad("identity " t[1] " has slot " t[4] ", " t[8] ", ports " t[9] "/" t[10] " but its fact has " fs[t[1]] ", " fr[t[1]] ", " f1[t[1]] "/" f2[t[1]])
 }
-END { if(!nfact || !nchecked) bad("nothing was compared"); print "info facts=" nfact " compared=" nchecked }
+END { for(h in pub) if(!(h in seen)) bad("public fact " h " has no catalog line"); if(!nfact || !nchecked) bad("nothing was compared"); print "info facts=" nfact " compared=" nchecked }
 ]==])
 
 set(wl_compound_awk [==[
