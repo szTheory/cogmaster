@@ -82,10 +82,19 @@ BEGIN {
   devs = "none cpu cart ram mapper ctrl vdp unknown"
   wheres = "rom slot2 ram mapper port cpu vdp unknown none"
   tre = "^[A-Za-z0-9][A-Za-z0-9 ().,\047&:!+_-]*$"
+  split("input_mismatch fault_no_display fault_static fault_alive dark_no_fault static_no_fault", cn, " ")
 }
 { sub(/\r$/, "") }
 FILENAME == ARGV[1] {
   if (split($0, c, "\t") >= 5 && hex40(c[1]) && !(c[1] in title)) title[c[1]] = c[5]
+  next
+}
+# The ledger as compat-common.sh cases prints it: set(compat_N_field [[value]]); never split on commas.
+FILENAME == ARGV[2] {
+  if ($0 !~ /^set\(compat_[0-9]+_[a-z0-9_]+ \[\[.*\]\]\)$/) next
+  s = substr($0, 12); n = s; sub(/_.*/, "", n); s = substr(s, length(n) + 2); f = s; sub(/ .*/, "", f)
+  L[n + 0, f] = substr(s, length(f) + 4, length(s) - length(f) - 6)
+  if (n + 0 > ln) ln = n + 0
   next
 }
 NF == 0 { next }
@@ -114,8 +123,13 @@ $1 == "rec" {
       !(ps == "none" || ps ~ /^[0-4]$/) || !ok(wh, wheres) || !ok(ff, "0 1-9 10-99 100-599 600+ none") ||
       !ok(ord, "before after nopicture none") || !ok(mp, boards) || !ok(src, "none db header heuristic default")) { bad++; next }
   evaluated++
-  if (v == "pass") next
-  failed++
+  key = $2 SUBSEP $3 SUBSEP $4 SUBSEP $5 SUBSEP $6
+  if (v == "pass") {
+    runpass[key] = 1
+    hist[mp SUBSEP (fc == "none" ? 999999 : int((fc - 1) / 60) * 60 + 1)]++
+    next
+  }
+  failed++; runfail[key] = 1; rf[failed] = key
   hasf = (ff != "none" && ff != "600+"); hasd = (fd != "none" && fd + 0 <= 600); hasp = (d6 + 0 >= 2)
   # cls is the class precedence 1 to 6 and sp the split order; both are sort keys for the leaf order, with the kind and device codes.
   g = ""; cls = 0; sp = 0
@@ -136,6 +150,7 @@ $1 == "rec" {
   if (ps != "none") subs[g SUBSEP 1 SUBSEP ps]++
   if (wh != "none") subs[g SUBSEP 2 SUBSEP wh]++
   if (pc != "none") subs[g SUBSEP 3 SUBSEP pc]++
+  mc[mp SUBSEP cls]++; sl[src SUBSEP g]++
   t = title[$2]
   if (length(t) > 80 || t !~ tre) { t = "-"; withheld++ }
   printf "D diag: title=%s group=%s first_display=%s first_nonblank=%s distinct600=%s distinct1800=%s fault=%s dev=%s pc=%s mapper=%s first_change=%s fault_frame=%s order=%s where=%s ram=%s source=%s\n", t, g, fd, fnb, d6, d18, fk, dev, pc, mp, fc, ff, ord, wh, ram, src
@@ -153,15 +168,35 @@ END {
     if (a[2] == 3 && subs[k] < 5) continue
     printf "G %d %s %d %s diag-group: leaf=%s %s=%s rows=%d\n", groups[a[1]], leafkey[a[1]], a[2], (a[2] == 2 ? idx(a[3], wheres) : a[3]), a[1], label[a[2]], a[3], subs[k]
   }
+  # Cross-cuts and the pass histogram: counts only, tagged with sort keys (mapper, class, source, leaf keys, first frame of the bucket).
+  for (k in mc) { split(k, a, SUBSEP); printf "X %s %d diag-other: mapper=%s class=%s rows=%d\n", a[1], a[2], a[1], cn[a[2]], mc[k] }
+  for (k in sl) { split(k, a, SUBSEP); printf "S %s %s diag-other: source=%s leaf=%s rows=%d\n", a[1], leafkey[a[2]], a[1], a[2], sl[k] }
+  for (k in hist) {
+    split(k, a, SUBSEP)
+    printf "H %s %d diag-other: pass mapper=%s first_change=%s rows=%d\n", a[1], a[2], a[1], (a[2] == 999999 ? "none" : (a[2] "-" (a[2] + 59))), hist[k]
+  }
   printf "O diag-other: candidates=%d attempted=%d evaluated=%d malformed=%d malformed_io=%d uncatalogued=%d skipped_excluded=%d noprofile=%d unsupported=%d infrastructure_error=%d title_withheld=%d\n", candidates, attempted, evaluated, bad, mio, unc, excl, nop, unsup, infra, withheld
-  printf "O diag-other: judged=%d run_fail=%d groups_total=%d fail_total=%d\n", evaluated, failed, grouped, failed
+  # Ledger fail rows of the default profile, keyed like a record: id, machine, region, tv and fm.
+  for (n = 1; n <= ln; n++) {
+    if (L[n, "status"] != "fail" || L[n, "parameter"] != "boots@600" || L[n, "port1"] != "pad" || L[n, "port2"] != "pad" ||
+        L[n, "script"] != "none" || L[n, "tv"] != "ntsc" || !hex40(L[n, "id"])) continue
+    lf++; key = L[n, "id"] SUBSEP L[n, "machine"] SUBSEP L[n, "region"] SUBSEP L[n, "tv"] SUBSEP L[n, "fm"]; lfk[key] = 1
+    if (key in runfail) matched++
+    else if (key in runpass) nowpass++
+    else notin++
+  }
+  for (i = 1; i <= failed; i++) if (!(rf[i] in lfk)) rnl++
+  printf "O diag-other: judged=%d run_fail=%d ledger_fail=%d matched=%d ledger_fail_not_in_run=%d ledger_fail_now_pass=%d run_fail_not_in_ledger=%d groups_total=%d fail_total=%d\n", evaluated, failed, lf, matched, notin, nowpass, rnl, grouped, failed
   exit grouped != failed
-}' "$COGMASTER_CATALOG" "$tmp/records" > "$tmp/lines" 2>/dev/null; then rc=0; else rc=$?; fi
+}' "$COGMASTER_CATALOG" "$tmp/cases" "$tmp/records" > "$tmp/lines" 2>/dev/null; then rc=0; else rc=$?; fi
   [ "$rc" -le 1 ] || { echo 'library: diagnose could not read its records' >&2; exit 1; }
   {
     printf 'library-diagnose 1 core=%s behaviour=%s\n' "$core" "$behaviour"
     sed -n 's/^D //p' "$tmp/lines" | sort
     sed -n 's/^G //p' "$tmp/lines" | sort -k1,1nr -k2,2n -k3,3n -k4,4n -k5,5n -k6,6n -k7,7 | cut -d' ' -f8-
+    sed -n 's/^X //p' "$tmp/lines" | sort -k1,1 -k2,2n | cut -d' ' -f3-
+    sed -n 's/^S //p' "$tmp/lines" | sort -k1,1 -k2,2n -k3,3n -k4,4n -k5,5n | cut -d' ' -f6-
+    sed -n 's/^H //p' "$tmp/lines" | sort -k1,1 -k2,2n | cut -d' ' -f3-
     sed -n 's/^O //p' "$tmp/lines"
   } > "$tmp/out"
   cat "$tmp/out" > "$out/diagnose.txt"
