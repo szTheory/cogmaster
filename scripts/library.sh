@@ -88,6 +88,19 @@ FILENAME == ARGV[1] {
   next
 }
 NF == 0 { next }
+$1 == "other" {
+  if (NF != 2) { bad++; next }
+  if ($2 == "unsupported") unsup++
+  else if ($2 == "malformed_io") mio++
+  else if ($2 == "uncatalogued") unc++
+  else if ($2 == "excluded") excl++
+  else if ($2 == "noprofile") nop++
+  else if ($2 == "run_unsupported") { attempted++; unsup++ }
+  else if ($2 == "run_error") { attempted++; infra++ }
+  else if ($2 == "infrastructure_error") infra++
+  else bad++
+  next
+}
 $1 == "rec" {
   attempted++
   v = kv($10, "verdict600"); fd = kv($11, "first_display"); fnb = kv($12, "first_nonblank"); fc = kv($13, "first_change")
@@ -113,7 +126,7 @@ $1 == "rec" {
   if (g == "") next
   groups[g]++; grouped++
   t = title[$2]
-  if (length(t) > 80 || t !~ tre) t = "-"
+  if (length(t) > 80 || t !~ tre) { t = "-"; withheld++ }
   printf "D diag: title=%s group=%s first_display=%s first_nonblank=%s distinct600=%s distinct1800=%s fault=%s dev=%s pc=%s mapper=%s first_change=%s fault_frame=%s order=%s where=%s ram=%s source=%s\n", t, g, fd, fnb, d6, d18, fk, dev, pc, mp, fc, ff, ord, wh, ram, src
   next
 }
@@ -121,7 +134,7 @@ $1 == "rec" {
 END {
   for (g in groups) printf "G %d %s\n", groups[g], g
   if (!("input_mismatch" in groups)) print "G 0 input_mismatch"
-  printf "O diag-other: candidates=%d attempted=%d evaluated=%d malformed=%d\n", candidates, attempted, evaluated, bad
+  printf "O diag-other: candidates=%d attempted=%d evaluated=%d malformed=%d malformed_io=%d uncatalogued=%d skipped_excluded=%d noprofile=%d unsupported=%d infrastructure_error=%d title_withheld=%d\n", candidates, attempted, evaluated, bad, mio, unc, excl, nop, unsup, infra, withheld
   printf "O diag-other: judged=%d run_fail=%d groups_total=%d fail_total=%d\n", evaluated, failed, grouped, failed
   exit grouped != failed
 }' "$COGMASTER_CATALOG" "$tmp/records" > "$tmp/lines" 2>/dev/null; then rc=0; else rc=$?; fi

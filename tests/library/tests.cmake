@@ -300,7 +300,7 @@ if(COGMASTER_FIXTURES)
   set(diag ${CMAKE_CURRENT_LIST_DIR}/diagnose.cmake)
   set(diag_args -DROOT=${PROJECT_SOURCE_DIR} -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures -DSEEDS=${PROJECT_BINARY_DIR}/tests/seeds
     -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${library_emulator}" -P ${diag})
-  # Timeout: 120 s provisional; about 20 s on one arm64 macOS host, re-derived from the first hosted run.
+  # Timeout: 120 s provisional; about 15 s on one arm64 macOS host, re-derived from the first hosted run.
   cogmaster_add_test(NAME library.diagnose COMMAND ${CMAKE_COMMAND} -DCASE=main
     -DOUT=${PROJECT_BINARY_DIR}/tests/library-diagnose/main ${diag_args} LABELS library TIMEOUT 120)
 endif()
