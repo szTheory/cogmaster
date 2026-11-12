@@ -814,7 +814,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     expect_exit(2 "usage" --frames 1 --fm)
     expect_exit(2 "usage" --frames 1 --fm on --fm off)
     expect_exit(2 "usage" --probe ${SEEDS}/di-halt.sms --fm on)
-    expect_exit(77 "unsupported" --frames 1 --fm on --machine gg)
+    expect_exit(77 "unsupported: no such console [^\n]*FM" --frames 1 --fm on --machine gg)
     # No flag and auto are one run, whatever the region, so no existing hash moves.
     foreach(region IN ITEMS ntsc-u ntsc-j pal)
       foreach(mode IN ITEMS none auto)

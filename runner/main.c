@@ -266,8 +266,8 @@ static int load_status(cogmaster_status st, const uint8_t *image, size_t image_s
         }
         return COGMASTER__EXIT_REFUSED;
     case COGMASTER_STATUS_ERR_PROFILE_REJECTED:
-        fprintf(stderr, "cogmaster-run: unsupported: no such console was made for this machine "
-                        "and region\n");
+        fprintf(stderr, "cogmaster-run: unsupported: no such console was made for this machine, "
+                        "region and FM setting\n");
         return COGMASTER__EXIT_REFUSED;
     default:
         fprintf(stderr, "cogmaster-run: cogmaster_load failed with status %lu\n",

@@ -40,8 +40,9 @@ typedef struct cogmaster__audio {
     uint32_t peak;
     uint32_t clipped;
     uint32_t channels;
-    uint64_t rate_num; /* samples per frame as a fraction: 3,504,512 / 4,375, or on PAL */
-    uint64_t rate_den; /* 685,094,400 / 709,379 */
+    /* Samples per frame as a fraction: 3,504,512 / 4,375 on NTSC, 685,094,400 / 709,379 on PAL. */
+    uint64_t rate_num;
+    uint64_t rate_den;
 } cogmaster__audio;
 
 /* Allocates the buffers and starts both hashes. pal is 1 for a PAL instance.

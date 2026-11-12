@@ -149,7 +149,7 @@ The machine and console come from `--machine`, `--region` and `--video-mode` as 
   `floor(frames x 685,094,400 / 709,379)` on PAL. `peak` is the
   largest magnitude (32,768 for the lowest value) and `clipped` counts samples at the extreme values.
 
-The run exits 1 and prints nothing to standard output when frame f does not hold exactly
+The run exits 1 and prints no `audio-` line when frame f does not hold exactly
 `floor(f x N / D) - floor((f - 1) x N / D)` samples, N / D being the fraction above. NTSC frames hold 801 or
 802 samples and PAL frames 965 or 966, in a fixed pattern, PAL's first five being 965, 966, 966, 966 and 965. It also exits 1
 when the core dropped samples or log records, or when the core logs a source's changes out of time order. The

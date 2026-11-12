@@ -181,11 +181,12 @@ int cogmaster__expect_frame(cogmaster__expect *e, const cogmaster *m, uint32_t f
             continue;
         c->seen = 1u;
         if (c->kind == 4u) {
-            c->pass = (uint32_t)(audio_hex != NULL && strcmp(c->hash, audio_hex) == 0);
+            /* main passes the digest exactly on the frames that carry an audio case. */
+            c->pass = (uint32_t)(strcmp(c->hash, audio_hex) == 0);
             printf(
                 "predicate kind=4 frame=%lu address=0000 %s observed_audio=%s transitions=%llu\n",
-                (unsigned long)frame, c->pass ? "pass" : "fail",
-                audio_hex != NULL ? audio_hex : "none", (unsigned long long)transitions);
+                (unsigned long)frame, c->pass ? "pass" : "fail", audio_hex,
+                (unsigned long long)transitions);
             continue;
         }
         c->pass = c->kind == 0u ? (uint32_t)(strcmp(c->hash, hex) == 0)
