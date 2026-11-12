@@ -30,6 +30,11 @@ the wrong board.
 - Judge the Sega margin against the Sega games in the library: none may become a Korean-family board, and few
   should land in the doubt zone.
 
+## Whole-list ledger note (phase 12)
+
+The library command prints no `scan:` counts section in this milestone; the thresholds, the per-source counts above and
+the commands to record them stay here, for the owner's own-library sitting that SEED-013 batches.
+
 ## Breadcrumbs
 
 - `src/cart.c` `scan_board`, `src/cart_scan.c`, `docs/boards.md` (how a board is chosen).
