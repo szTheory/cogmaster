@@ -2,6 +2,19 @@
 #   cmake -DMODE=write -DRUN=<cogmaster-run> [-DEMULATOR=<list>] -DOUT=<dir>
 #     [-DFIXTURES=<dir>] -P hashes.cmake
 #   cmake -DMODE=compare -DFILES=<list> -DCOUNT=<n> -P hashes.cmake
+set(hashes_dir "${CMAKE_CURRENT_LIST_DIR}")
+# Judges the printed records of a mailbox run against tests/diag/expected.csv, so a lane cannot
+# agree with the others on a wrong answer. It runs in a function scope because mailbox.cmake reads
+# OUT as the runner's output file, and OUT here is the hash directory.
+function(hashes_judge file records rom profile)
+  file(CONFIGURE OUTPUT "${file}" NEWLINE_STYLE UNIX @ONLY CONTENT "${records}")
+  set(OUT "${file}")
+  set(CSV "${hashes_dir}/../diag/expected.csv")
+  set(ROM "${rom}")
+  set(PROFILE "${profile}")
+  include("${hashes_dir}/mailbox.cmake")
+endfunction()
+
 if(MODE STREQUAL "write")
   # Fault prevented: a lane's output silently not compared. Writes
   # <OUT>/hashes.txt with the frame 60 hash line of the Master System card
@@ -85,22 +98,60 @@ if(MODE STREQUAL "write")
       endif()
       # Fault prevented: a device frame that differs between lanes. A row is <file>|<script>|<arguments>;
       # the frames are the script's lines, since the runner takes one record per frame.
+      # A row may end in |<region> (default ntsc-j).
       foreach(row IN ITEMS "sports_pad.sms|sports|--port1 sports --input ${OUT}/tests/sports.input"
           "paddle.sms|paddle|--port1 paddle --input ${OUT}/tests/paddle.input"
           "glasses.sms|glasses|"
           "light_phaser.sms|phaser|--port1 lphaser --input ${OUT}/tests/phaser.input"
+          "pause_nmi_192.sms|pause|--input ${OUT}/tests/pause.input|pal"
+          "pause_nmi_224.sms|pause|--input ${OUT}/tests/pause.input|pal"
+          "pause_nmi_240.sms|pause|--input ${OUT}/tests/pause.input|pal"
           "bios_probe.sms|bios|--boot bios --bios ${FIXTURES}/bios_shape.bin")
-        if(row MATCHES "^${filename}[|]([^|]*)[|](.*)$")
+        if(row MATCHES "^${filename}[|]([^|]*)[|]([^|]*)([|](.*))?$")
+          set(device_region ntsc-j)
+          if(CMAKE_MATCH_4)
+            set(device_region ${CMAKE_MATCH_4})
+          endif()
           separate_arguments(device_args UNIX_COMMAND "${CMAKE_MATCH_2}")
           file(STRINGS "${OUT}/tests/${CMAKE_MATCH_1}.input" device_script)
           list(LENGTH device_script count)
-          execute_process(COMMAND ${EMULATOR} "${RUN}" "${image}" --machine sms --video-mode sms --region ntsc-j --frames ${count} --hash ${device_args} OUTPUT_VARIABLE frame ERROR_VARIABLE err RESULT_VARIABLE rc)
+          execute_process(COMMAND ${EMULATOR} "${RUN}" "${image}" --machine sms --video-mode sms --region ${device_region} --frames ${count} --hash ${device_args} OUTPUT_VARIABLE frame ERROR_VARIABLE err RESULT_VARIABLE rc)
           if(NOT rc STREQUAL "0" OR NOT frame MATCHES "^frame ${count} sha256 [0-9a-f]+\n")
             message(FATAL_ERROR "device ${filename}: exit ${rc}: ${frame}${err}")
           endif()
-          string(APPEND lines "playing ${filename} sms ntsc-j device ${frame}")
+          string(APPEND lines "playing ${filename} sms ${device_region} device ${frame}")
         endif()
       endforeach()
+      # Fault prevented: fixtures whose frame never changes (the V and Pause images paint nothing, so a
+      # frame hash would be trivial) giving no cross-lane evidence. The digest of the printed records is
+      # written for the PAL profile of every height and the NTSC profile of 192 and 224 (the NTSC 240
+      # counter rolls and is not judged), and the same bytes are judged against the literals in
+      # tests/diag/expected.csv, so the lanes agree with each other and with the table.
+      if(filename MATCHES "^(vdp_vtable|pause_nmi)_([0-9]+)[.]sms$")
+        set(mailbox_rom ${CMAKE_MATCH_1}_${CMAKE_MATCH_2})
+        set(mailbox_height ${CMAKE_MATCH_2})
+        set(mailbox_input "")
+        set(mailbox_frames 30)
+        if(CMAKE_MATCH_1 STREQUAL "pause_nmi")
+          set(mailbox_input --input "${OUT}/tests/pause.input")
+          set(mailbox_frames 40)
+        endif()
+        foreach(profile IN ITEMS ntsc pal)
+          set(region ntsc-u)
+          if(profile STREQUAL "pal")
+            set(region pal)
+          elseif(mailbox_height STREQUAL "240")
+            continue()
+          endif()
+          execute_process(COMMAND ${EMULATOR} "${RUN}" "${image}" --machine sms --video-mode sms --region ${region} --frames ${mailbox_frames} ${mailbox_input} --mailbox OUTPUT_VARIABLE records ERROR_VARIABLE err RESULT_VARIABLE rc)
+          if(NOT rc STREQUAL "0")
+            message(FATAL_ERROR "mailbox ${filename}/${profile}: exit ${rc}: ${records}${err}")
+          endif()
+          hashes_judge("${OUT}/mailbox.${mailbox_rom}.${profile}.txt" "${records}" ${mailbox_rom} ${profile})
+          string(SHA256 digest "${records}")
+          string(APPEND lines "mailbox ${filename} ${profile} ${region} sha256 ${digest}\n")
+        endforeach()
+      endif()
     endforeach()
     # Fault prevented: a sound that differs between lanes. The two hash lines of
     # each sound run, tagged "<file> <profile> <region> <variant>" after the
@@ -112,6 +163,7 @@ if(MODE STREQUAL "write")
         "psg_sweep.sms|gg-sms|gg|sms|ntsc-u|300|baseline|"
         "psg_sweep.gg|native|gg|gg|ntsc-u|300|baseline|"
         "fm_sweep.sms|sms|sms|sms|ntsc-j|300|baseline|" "fm_sweep.sms|sms|sms|sms|ntsc-u|300|baseline|"
+        "fm_sweep.sms|sms|sms|sms|pal|300|fm-on||on"
         "boot_to_play.sms|sms|sms|sms|ntsc-u|60|baseline|" "boot_to_play.sms|sms|sms|sms|ntsc-u|14|input|play"
         "boot_to_play.gg|native|gg|gg|ntsc-u|60|baseline|" "boot_to_play.gg|native|gg|gg|ntsc-u|14|input|play-gg")
       string(REPLACE "|" ";" row "${row}")
@@ -123,9 +175,18 @@ if(MODE STREQUAL "write")
       list(GET row 5 frames)
       list(GET row 6 variant)
       list(GET row 7 script)
+      # The optional ninth field is the FM unit setting (default: the runner's auto).
+      set(fm "")
+      list(LENGTH row row_fields)
+      if(row_fields GREATER 8)
+        list(GET row 8 fm)
+      endif()
       set(input "")
       if(script)
         set(input --input "${OUT}/tests/${script}.input")
+      endif()
+      if(fm)
+        list(APPEND input --fm ${fm})
       endif()
       execute_process(COMMAND ${EMULATOR} "${RUN}" "${FIXTURES}/${filename}" --machine ${machine}
         --video-mode ${video} --region ${region} --frames ${frames} --hash-audio ${input}

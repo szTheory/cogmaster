@@ -31,17 +31,17 @@ static int number(const char **p, uint32_t base, uint32_t max, uint32_t *out)
 
 static int parse(cogmaster__expect_case *c, const char *p, uint32_t frames)
 {
-    static const char *const kinds[] = {"frame@", "ram@", "mailbox@", "boots@"};
-    for (c->kind = 0u; c->kind < 4u; c->kind++) {
+    static const char *const kinds[] = {"frame@", "ram@", "mailbox@", "boots@", "audio@"};
+    for (c->kind = 0u; c->kind < 5u; c->kind++) {
         size_t n = strlen(kinds[c->kind]);
         if (strncmp(p, kinds[c->kind], n) == 0) {
             p += n;
             break;
         }
     }
-    if (c->kind == 4u || !number(&p, 10u, frames, &c->frame) || c->frame == 0u)
+    if (c->kind == 5u || !number(&p, 10u, frames, &c->frame) || c->frame == 0u)
         return 0;
-    if (c->kind == 0u) {
+    if (c->kind == 0u || c->kind == 4u) {
         if (*p++ != '=' || strlen(p) != 64u)
             return 0;
         for (uint32_t i = 0u; i < 64u; i++) {
@@ -119,8 +119,27 @@ static int mailbox(const cogmaster *m)
     return 1;
 }
 
+int cogmaster__expect_has_audio(const cogmaster__expect *e)
+{
+    for (uint32_t i = 0u; i < e->count; i++) {
+        if (e->cases[i].kind == 4u)
+            return 1;
+    }
+    return 0;
+}
+
+int cogmaster__expect_audio_at(const cogmaster__expect *e, uint32_t frame)
+{
+    for (uint32_t i = 0u; i < e->count; i++) {
+        if (e->cases[i].kind == 4u && e->cases[i].frame == frame)
+            return 1;
+    }
+    return 0;
+}
+
 int cogmaster__expect_frame(cogmaster__expect *e, const cogmaster *m, uint32_t frame,
-                            uint32_t display, uint16_t *pixels)
+                            uint32_t display, uint16_t *pixels, const char *audio_hex,
+                            uint64_t transitions)
 {
     cogmaster_info info = {0};
     info.size = sizeof info;
@@ -161,6 +180,15 @@ int cogmaster__expect_frame(cogmaster__expect *e, const cogmaster *m, uint32_t f
         if (c->frame != frame)
             continue;
         c->seen = 1u;
+        if (c->kind == 4u) {
+            /* main passes the digest exactly on the frames that carry an audio case. */
+            c->pass = (uint32_t)(strcmp(c->hash, audio_hex) == 0);
+            printf(
+                "predicate kind=4 frame=%lu address=0000 %s observed_audio=%s transitions=%llu\n",
+                (unsigned long)frame, c->pass ? "pass" : "fail", audio_hex,
+                (unsigned long long)transitions);
+            continue;
+        }
         c->pass = c->kind == 0u ? (uint32_t)(strcmp(c->hash, hex) == 0)
                   : c->kind == 1u
                       ? (uint32_t)(cogmaster_peek(m, COGMASTER_SPACE_BUS, c->address) == c->value)

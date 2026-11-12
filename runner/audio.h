@@ -40,7 +40,9 @@ typedef struct cogmaster__audio {
     uint32_t peak;
     uint32_t clipped;
     uint32_t channels;
-    uint32_t frame_samples; /* the shortest allowed frame: 801, or 965 on PAL */
+    /* Samples per frame as a fraction: 3,504,512 / 4,375 on NTSC, 685,094,400 / 709,379 on PAL. */
+    uint64_t rate_num;
+    uint64_t rate_den;
 } cogmaster__audio;
 
 /* Allocates the buffers and starts both hashes. pal is 1 for a PAL instance.
@@ -49,9 +51,13 @@ int cogmaster__audio_open(cogmaster__audio *a, int pal);
 
 /* Drains and hashes the frame just run. Returns the exit status: 1, after a
    line on standard error, when the log overflowed, a source's ticks went
-   backwards, the core dropped samples or the frame did not hold the expected
-   count. */
+   backwards, the core dropped samples or the frame did not hold exactly
+   floor(f x num / den) - floor((f - 1) x num / den) samples, f being its number. */
 int cogmaster__audio_frame(cogmaster__audio *a, cogmaster *m, uint64_t frame);
+
+/* Writes the SHA-256 of the transitions so far as 64 lowercase hex digits and a NUL. It finalises a
+   copy of the running hash, so the run keeps accumulating and may ask again at a later frame. */
+void cogmaster__audio_transitions_hex(const cogmaster__audio *a, char hex[65]);
 
 /* Prints the two result lines for the frames that ran. */
 void cogmaster__audio_print(cogmaster__audio *a, uint32_t frames);

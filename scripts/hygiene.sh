@@ -8,6 +8,7 @@ cd "$(git rev-parse --show-toplevel)"
 SELF=scripts/hygiene.sh
 MANIFEST=tests/roms/manifest.txt
 fail=0
+tmp=$(mktemp); trap 'rm -f "$tmp"' EXIT; trap 'exit 1' HUP INT TERM
 found() { printf 'hygiene: %s: %s\n' "$1" "$2" >&2; fail=1; }
 HOME_PATH='(/Users/|/home/)[A-Za-z0-9._-]+|[A-Za-z]:\\Users\\[A-Za-z0-9._-]+|-Users-[A-Za-z0-9._]+-'
 HOME_OK='(/Users/|/home/)runner'
@@ -32,15 +33,14 @@ check_text() {
 }
 check_file() {
   [ "$1" = "$SELF" ] && return 0
-  if ! $2 "$1" >/dev/null 2>&1; then found 'cannot read file' "$1"; return 0; fi
+  if ! $2 "$1" > "$tmp" 2>/dev/null; then found 'cannot read file' "$1"; return 0; fi
   if printf '%s\n' "$1" | grep -qiE "$ROM_NAME" && ! in_manifest "$1"; then found 'game or BIOS image by name' "$1"; fi
   for off in 32752 16368 8176; do
-    got=$($2 "$1" | dd bs=1 skip=$off count=8 2>/dev/null | od -An -tx1 | tr -d ' \n')
+    got=$(dd if="$tmp" bs=1 skip=$off count=8 2>/dev/null | od -An -tx1 | tr -d ' \n')
     if [ "$got" = 544d522053454741 ] && ! in_manifest "$1"; then found 'game image by content' "$1"; break; fi
   done
-  size=$($2 "$1" | head -c 1 | wc -c | tr -d ' ')
-  if [ "$size" != 0 ] && ! $2 "$1" | grep -Iq ''; then in_manifest "$1" || found 'binary file not in manifest' "$1"
-  else $2 "$1" | check_text "$1" "$1"; fi
+  if [ -s "$tmp" ] && ! grep -Iq '' "$tmp"; then in_manifest "$1" || found 'binary file not in manifest' "$1"
+  else check_text "$1" "$1" < "$tmp"; fi
 }
 check_files() {
   old_ifs=$IFS; IFS='

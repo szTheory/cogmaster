@@ -59,6 +59,25 @@ foreach(case manifest unlisted)
   endif()
 endforeach()
 
+# Fault prevented: a tree scan that misses a game image by content because the
+# read-once scan dropped an offset or read the wrong copy, and a pre-commit scan
+# that rereads every file six times. An untracked data.txt holds the Sega header
+# marker at byte 32,752 only (no ROM-like name, no manifest row).
+# Timeout: 20 s floor; 2 x 0.05 s (hygiene lane), slowest of 4 runs, run 43117518796.
+set(tree ${CMAKE_BINARY_DIR}/hygiene/header_offset)
+file(REMOVE_RECURSE ${tree})
+file(MAKE_DIRECTORY ${tree}/scripts)
+file(COPY ${CMAKE_SOURCE_DIR}/scripts/hygiene.sh DESTINATION ${tree}/scripts)
+execute_process(COMMAND ${GIT_EXECUTABLE} init -q ${tree} COMMAND_ERROR_IS_FATAL ANY)
+execute_process(COMMAND ${COGMASTER_SH} -c [=[dd if=/dev/zero of="$1" bs=32768 count=1 2>/dev/null && printf 'TMR SEGA' | dd of="$1" bs=1 seek=32752 conv=notrunc 2>/dev/null]=]
+  sh ${tree}/data.txt COMMAND_ERROR_IS_FATAL ANY)
+set(command ${COGMASTER_SH} -c "cd \"$1\" && sh scripts/hygiene.sh --tree" sh ${tree})
+string(REPLACE ";" "$<SEMICOLON>" command "${command}")
+cogmaster_add_test(NAME hygiene.tree.header_offset
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${command}" -DCODE=1 "-DREGEX=hygiene: game image by content"
+    -P ${hygiene_scripts}/expect_fail.cmake
+  LABELS hygiene TIMEOUT 20)
+
 # Fault prevented: firmware retyped into source as a byte array. 300 consecutive two-digit literals fail, 255 pass,
 # and 255 split by one prose line pass, so only a long unbroken run trips the tripwire.
 foreach(case over under split)
@@ -116,11 +135,12 @@ cogmaster_add_test(NAME hygiene.no_float.self_test
 # Fault prevented: a defect the clang static analyzer can see in the core.
 # The Annex K check is off: the core may call only the C memory functions
 # (abi.undefined), and the _s variants it asks for are optional in C11 and
-# absent from glibc.
+# absent from glibc. The run is parallel, nine files per process, four at a
+# time; a failing run makes xargs exit non-zero (123 with GNU xargs).
 cogmaster_add_test(NAME hygiene.analyzer
-  COMMAND ${COGMASTER_SH} -c "cd \"$1\" && \"$2\" -p \"$3\" --quiet \
+  COMMAND ${COGMASTER_SH} -c "cd \"$1\" && printf '%s\\n' src/*.c | xargs -n 9 -P 4 \"$2\" -p \"$3\" --quiet \
 -checks='-*,clang-analyzer-*,-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling' \
---warnings-as-errors='*' src/*.c" sh
+--warnings-as-errors='*'" sh
     ${CMAKE_SOURCE_DIR} ${COGMASTER_CLANG_TIDY} ${CMAKE_BINARY_DIR}
   LABELS hygiene TIMEOUT 120)
 
@@ -243,6 +263,33 @@ echo "ci.classify: $n lists"
 cogmaster_add_test(NAME ci.classify
   COMMAND ${COGMASTER_SH} -c "${hygiene_classify}" sh ${CMAKE_SOURCE_DIR}/scripts/classify-changes.sh
   LABELS hygiene TIMEOUT 30)
+
+# Fault prevented: a timeout guessed from one local run instead of twice the
+# slowest hosted time, and a duration report that counts a failed or timed-out
+# test as a measurement. The fixture log has a test on two lanes at different
+# times, one on a single lane, a Failed and a Timeout line, and the report must
+# list the first two slowest first and never name the others.
+set(hygiene_durations ${CMAKE_BINARY_DIR}/hygiene/durations_fixture)
+file(REMOVE_RECURSE ${hygiene_durations})
+file(CONFIGURE OUTPUT ${hygiene_durations}/log.txt NEWLINE_STYLE UNIX CONTENT [=[
+lane-a  Run ctest  2026-11-11T22:24:54.6Z  1/9 Test  #1: z_slow ........   Passed    0.50 sec
+lane-a  Run ctest  2026-11-11T22:24:55.1Z  2/9 Test  #2: a_fast ........   Passed    1.00 sec
+lane-a  Run ctest  2026-11-11T22:24:55.2Z  3/9 Test  #3: c_failed .....***Failed    0.30 sec
+lane-b  Run ctest  2026-11-11T22:25:01.0Z  1/9 Test  #1: z_slow ........   Passed    2.10 sec
+lane-b  Run ctest  2026-11-11T22:25:02.0Z  4/9 Test  #4: d_timeout ..***Timeout   20.00 sec
+]=])
+set(hygiene_durations_test [=[
+sh "$1" tests-summarise < "$2" > "$3" || exit 1
+want=$(printf 'test\tlanes\tslowest_s\nz_slow\t2\t2.10\na_fast\t1\t1.00\n')
+[ "$(cat "$3")" = "$want" ] || { echo "ci.durations_tests: unexpected table"; cat "$3"; exit 1; }
+sh "$1" tests abc > /dev/null 2>&1 && { echo "ci.durations_tests: a run id that is not a number was accepted"; exit 1; }
+echo "ci.durations_tests: two tests listed, the failed and the timed-out one left out"
+]=])
+# Timeout: 20 s floor; 2 x 0.01 s (hygiene lane), slowest of 1 run, run 43117518796.
+cogmaster_add_test(NAME ci.durations_tests
+  COMMAND ${COGMASTER_SH} -c "${hygiene_durations_test}" sh ${CMAKE_SOURCE_DIR}/scripts/ci-durations.sh
+    ${hygiene_durations}/log.txt ${hygiene_durations}/table.tsv
+  LABELS hygiene TIMEOUT 20)
 
 # Fault prevented: a release with a missing archive, or a SHA256SUMS whose
 # order differs from host to host. scripts/publish.sh prepare runs on 18
@@ -370,6 +417,54 @@ echo "policy.publish_signer: a release tag verifies as release.yml, a rehearsal 
 ]=])
 cogmaster_add_test(NAME policy.publish_signer
   COMMAND ${COGMASTER_SH} -c "${hygiene_signer_check}" sh ${CMAKE_SOURCE_DIR}/scripts/publish.sh ${hygiene_signer}
+  LABELS hygiene policy TIMEOUT 30)
+
+# Fault prevented: a required gate that fails because a deleted tag still reads back for a few seconds. With a
+# gh that keeps answering "exists" for LAG reads of the tag and a no-op sleep, rehearsal-delete must succeed for
+# a short lag, and for a tag that never goes must read exactly six times, name the tag and exit 1.
+# Timeout: 30 s floor; 2 x 0.20 s, slowest of 1 run, run 43126677381.
+set(hygiene_delete ${CMAKE_BINARY_DIR}/hygiene/publish_delete)
+file(REMOVE_RECURSE ${hygiene_delete})
+file(WRITE ${hygiene_delete}/bin/gh [=[
+#!/bin/sh
+case "$*" in
+  "api -X DELETE "* | "release delete "* | "api --paginate "*) exit 0 ;;
+  "api "*/git/ref/tags/*)
+    echo read >> "$STUB_DIR/reads"
+    [ "$(wc -l < "$STUB_DIR/reads")" -le "$LAG" ] ;;
+  *) exit 1 ;;
+esac
+]=])
+file(WRITE ${hygiene_delete}/bin/sleep "#!/bin/sh\nexit 0\n")
+file(CHMOD ${hygiene_delete}/bin/gh ${hygiene_delete}/bin/sleep
+  FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+set(hygiene_delete_check [=[
+script=$1
+export STUB_DIR=$2 PATH="$2/bin:$PATH" GITHUB_REPOSITORY=o/r
+for lag in 2 99
+do
+  : > "$STUB_DIR/reads"
+  rc=0
+  out=$(LAG=$lag sh "$script" rehearsal-delete rehearsal-1-1 42 2>&1) || rc=$?
+  reads=$(wc -l < "$STUB_DIR/reads" | tr -d ' ')
+  case $lag in
+    2) want_rc=0 want_reads=3 ;;
+    *) want_rc=1 want_reads=6 ;;
+  esac
+  if [ "$rc" -ne "$want_rc" ] || [ "$reads" -ne "$want_reads" ]
+  then
+    echo "policy.publish_delete: lag $lag exited $rc after $reads reads, want $want_rc after $want_reads: $out"
+    exit 1
+  fi
+done
+case $out in
+  *"tag rehearsal-1-1 still exists"*) ;;
+  *) echo "policy.publish_delete: a tag that never goes was not named: $out"; exit 1 ;;
+esac
+echo "policy.publish_delete: a lag of two reads passes, a tag that stays fails after six"
+]=])
+cogmaster_add_test(NAME policy.publish_delete
+  COMMAND ${COGMASTER_SH} -c "${hygiene_delete_check}" sh ${CMAKE_SOURCE_DIR}/scripts/publish.sh ${hygiene_delete}
   LABELS hygiene policy TIMEOUT 30)
 
 # Fault prevented: a CI required roll-up that passes a failed or wrongly

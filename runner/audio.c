@@ -33,7 +33,11 @@ int cogmaster__audio_open(cogmaster__audio *a, int pal)
     for (uint32_t s = 0; s < COGMASTER__AUDIO_SOURCES; s++) {
         a->last_level[s] = NO_LEVEL;
     }
-    a->frame_samples = pal ? 965u : 801u;
+    /* Samples per frame at 48 kHz: the Z80 cycles in a frame times 48,000 over the cycle rate. NTSC
+       is 59,736 x 176 / 13,125 and PAL 71,364 x 9,600 / 709,379 (the audio crystal is 53,203,425
+       Hz, the figure MAME uses; .planning/preparation SMS-SYSTEM section 1, SMS-AUDIO). */
+    a->rate_num = pal ? 685094400u : 3504512u;
+    a->rate_den = pal ? 709379u : 4375u;
     return COGMASTER__EXIT_OK;
 }
 
@@ -155,10 +159,11 @@ static int hash_pcm(cogmaster__audio *a, cogmaster *m, uint64_t frame)
                 (unsigned long)st);
         return COGMASTER__EXIT_FAILURE;
     }
-    if (io.written != a->frame_samples && io.written != a->frame_samples + 1u) {
-        fprintf(stderr, "cogmaster-run: frame %llu holds %lu samples, not %lu or %lu\n",
-                (unsigned long long)frame, (unsigned long)io.written,
-                (unsigned long)a->frame_samples, (unsigned long)(a->frame_samples + 1u));
+    /* The running total after f frames is floor(f x num / den); a frame holds the difference. */
+    uint64_t want = frame * a->rate_num / a->rate_den - (frame - 1u) * a->rate_num / a->rate_den;
+    if (io.written != want) {
+        fprintf(stderr, "cogmaster-run: frame %llu holds %lu samples, not %llu\n",
+                (unsigned long long)frame, (unsigned long)io.written, (unsigned long long)want);
         return COGMASTER__EXIT_FAILURE;
     }
     if (io.dropped > 0u) {
@@ -193,12 +198,19 @@ int cogmaster__audio_frame(cogmaster__audio *a, cogmaster *m, uint64_t frame)
     return status != COGMASTER__EXIT_OK ? status : hash_pcm(a, m, frame);
 }
 
+void cogmaster__audio_transitions_hex(const cogmaster__audio *a, char hex[65])
+{
+    cogmaster__sha256 copy = a->transitions_hash;
+    uint8_t digest[32];
+    cogmaster__sha256_final(&copy, digest);
+    cogmaster__sha256_hex(digest, hex);
+}
+
 void cogmaster__audio_print(cogmaster__audio *a, uint32_t frames)
 {
     uint8_t digest[32];
     char hex[65];
-    cogmaster__sha256_final(&a->transitions_hash, digest);
-    cogmaster__sha256_hex(digest, hex);
+    cogmaster__audio_transitions_hex(a, hex);
     printf("audio-transitions %lu count %llu sha256 %s\n", (unsigned long)frames,
            (unsigned long long)a->transitions, hex);
     cogmaster__sha256_final(&a->pcm_hash, digest);

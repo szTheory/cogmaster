@@ -91,9 +91,24 @@ if(CMAKE_SCRIPT_MODE_FILE)
         message(FATAL_ERROR "playing matrix missing ${row}")
       endif()
     endforeach()
-    # The playable fixture has all four sound rows, each with its two hashes.
+    # The V and Pause fixtures print and judge their records on both TVs, and the Pause images also run
+    # as device rows on PAL (one frame per line of the script).
+    foreach(row IN ITEMS "mailbox vdp_vtable_192.sms ntsc ntsc-u" "mailbox vdp_vtable_224.sms pal pal"
+        "mailbox pause_nmi_192.sms ntsc ntsc-u" "mailbox pause_nmi_240.sms pal pal")
+      if(NOT hashes MATCHES "(^|\n)${row} sha256 [0-9a-f]+\n")
+        message(FATAL_ERROR "mailbox matrix missing ${row}")
+      endif()
+    endforeach()
+    foreach(height IN ITEMS 192 224 240)
+      if(NOT hashes MATCHES "playing pause_nmi_${height}.sms sms pal device frame 40 sha256 [0-9a-f]+")
+        message(FATAL_ERROR "device matrix missing pause_nmi_${height}.sms on pal")
+      endif()
+    endforeach()
+    # The playable fixture has all four sound rows, each with its two hashes, and the FM sweep has the
+    # export console on PAL with the unit forced on.
     foreach(row IN ITEMS "boot_to_play.sms sms ntsc-u baseline 60" "boot_to_play.sms sms ntsc-u input 14"
-        "boot_to_play.gg native ntsc-u baseline 60" "boot_to_play.gg native ntsc-u input 14")
+        "boot_to_play.gg native ntsc-u baseline 60" "boot_to_play.gg native ntsc-u input 14"
+        "fm_sweep.sms sms pal fm-on 300")
       foreach(kind IN ITEMS transitions pcm)
         if(NOT hashes MATCHES "audio-${kind} ${row} ")
           message(FATAL_ERROR "sound matrix missing audio-${kind} ${row}")
@@ -771,12 +786,52 @@ if(CMAKE_SCRIPT_MODE_FILE)
   elseif(CASE STREQUAL "device_names")
     # The execution line names each device and keeps the prefix older checks match.
     write_bytes("${OUT}" UNIX "ram@2:$C200=00\n")
-    set(line "execution machine=[0-9]+ region=[0-9]+ tv=[0-9]+ video=[0-9]+ mapper=[0-9]+ port1=")
+    set(line "execution machine=[0-9]+ region=[0-9]+ tv=[0-9]+ fm=[0-9]+ video=[0-9]+ mapper=[0-9]+ port1=")
     expect_exit(0 "${line}pad port2=pad " --frames 2 --expect ${OUT})
     expect_exit(0 "${line}sports port2=none " --frames 2 --expect ${OUT}
       --port1 sports --port2 none)
     expect_exit(0 "${line}paddle port2=pad " --frames 2 --expect ${OUT}
       --port1 paddle --region ntsc-j)
+  elseif(CASE STREQUAL "fm_usage")
+    # The execution line names the FM state the run used: auto is on for a Japanese console and off elsewhere
+    # (raw values: off 1, on 2), a word is taken exactly once, and an impossible request is a refusal.
+    write_bytes("${OUT}" UNIX "ram@2:$C200=00\n")
+    expect_exit(0 "region=2 tv=1 fm=2 " --frames 2 --expect ${OUT} --region ntsc-j --fm on)
+    expect_exit(0 "region=2 tv=1 fm=1 " --frames 2 --expect ${OUT} --region ntsc-j --fm off)
+    expect_exit(0 "region=2 tv=1 fm=2 " --frames 2 --expect ${OUT} --region ntsc-j)
+    expect_exit(0 "region=1 tv=1 fm=1 " --frames 2 --expect ${OUT} --region ntsc-u)
+    expect_exit(0 "region=1 tv=2 fm=1 " --frames 2 --expect ${OUT} --region pal)
+    expect_exit(0 "region=1 tv=1 fm=2 " --frames 2 --expect ${OUT} --region ntsc-u --fm on)
+    expect_exit(0 "fm=1 " --frames 2 --expect ${OUT} --machine gg --fm off)
+    foreach(bad IN ITEMS sideways ON 1)
+      expect_exit(2 "usage" --frames 1 --fm ${bad})
+    endforeach()
+    # An empty word survives only a literal argument, not an expanded list.
+    execute_process(COMMAND ${EMULATOR} ${RUN} --frames 1 --fm "" RESULT_VARIABLE rc OUTPUT_QUIET ERROR_QUIET)
+    if(NOT rc STREQUAL "2")
+      message(FATAL_ERROR "--fm with an empty word: expected exit 2, got ${rc}")
+    endif()
+    expect_exit(2 "usage" --frames 1 --fm)
+    expect_exit(2 "usage" --frames 1 --fm on --fm off)
+    expect_exit(2 "usage" --probe ${SEEDS}/di-halt.sms --fm on)
+    expect_exit(77 "unsupported: no such console [^\n]*FM" --frames 1 --fm on --machine gg)
+    # No flag and auto are one run, whatever the region, so no existing hash moves.
+    foreach(region IN ITEMS ntsc-u ntsc-j pal)
+      foreach(mode IN ITEMS none auto)
+        set(fm_args "")
+        if(mode STREQUAL "auto")
+          set(fm_args --fm auto)
+        endif()
+        execute_process(COMMAND ${EMULATOR} ${RUN} --frames 3 --region ${region} ${fm_args} --hash
+          RESULT_VARIABLE rc OUTPUT_VARIABLE out_${mode})
+        if(NOT rc STREQUAL "0")
+          message(FATAL_ERROR "--region ${region} ${fm_args} --hash: exit ${rc}")
+        endif()
+      endforeach()
+      if(NOT out_none STREQUAL out_auto)
+        message(FATAL_ERROR "--fm auto moved the hash on ${region}:\n${out_none}${out_auto}")
+      endif()
+    endforeach()
   elseif(CASE STREQUAL "device_refused")
     expect_exit(77 "unsupported.*--region" --frames 1 --port1 paddle)
     expect_exit(77 "unsupported.*--region" --frames 1 --port2 paddle --region ntsc-u)
@@ -1192,8 +1247,167 @@ if(CMAKE_SCRIPT_MODE_FILE)
     # or 802: that is a failure, not a short hash.
     execute_process(COMMAND ${EMULATOR} ${SHORT} --frames 2 --hash-audio
       RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
-    if(NOT rc STREQUAL "1" OR NOT err MATCHES "frame 1 holds 800 samples" OR out MATCHES "audio-")
-      message(FATAL_ERROR "the 800 sample runner: expected exit 1 and no hash lines, got exit ${rc}\n${out}${err}")
+    if(NOT rc STREQUAL "1" OR NOT err MATCHES "frame 1 holds 800 samples, not 801" OR out MATCHES "audio-")
+      message(FATAL_ERROR "the 800 sample runner: expected exit 1, the expected count and no hash lines, got exit ${rc}\n${out}${err}")
+    endif()
+  elseif(CASE STREQUAL "audio_cadence")
+    # The card's sample total after F frames is floor(F x N / D) in integer math, N / D being the samples a
+    # frame holds: 3,504,512 / 4,375 on NTSC and 685,094,400 / 709,379 on PAL. Derived from the audio crystal
+    # (53,203,425 Hz, 12 x 4,433,618.75, the figure MAME uses; .planning/preparation SMS-SYSTEM section 1 and
+    # SMS-AUDIO) at 48,000 samples a second over 59,736 (NTSC) and 71,364 (PAL) Z80 cycles a frame; no code is
+    # pasted. NUDGE, 0 unless a control sets it, is added to every expected total, so the control is off by
+    # one on the first comparison and must fail.
+    if(NOT DEFINED NUDGE)
+      set(NUDGE 0)
+    endif()
+    # Literal totals, derived by hand from the closed form and independent of the CMake math below.
+    set(anchor_ntsc_60 48061)
+    set(anchor_pal_1 965)
+    set(anchor_pal_2 1931)
+    set(anchor_pal_3 2897)
+    set(anchor_pal_50 48288)
+    set(anchor_pal_60 57945)
+    foreach(tv IN ITEMS ntsc pal)
+      set(region_args "")
+      set(num 3504512)
+      set(den 4375)
+      if(tv STREQUAL "pal")
+        set(region_args --region pal)
+        set(num 685094400)
+        set(den 709379)
+      endif()
+      foreach(frames IN ITEMS 1 2 3 50 60)
+        execute_process(COMMAND ${EMULATOR} ${RUN} --frames ${frames} --hash-audio ${region_args}
+          RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+        if(NOT rc STREQUAL "0" OR NOT out MATCHES "(^|\n)audio-pcm ${frames} rate 48000 channels 1 samples ([0-9]+) ")
+          message(FATAL_ERROR "audio_cadence: ${tv} ${frames} frames: exit ${rc}\n${out}${err}")
+        endif()
+        set(got ${CMAKE_MATCH_2})
+        math(EXPR want "${frames} * ${num} / ${den} + ${NUDGE}")
+        if(NOT got STREQUAL want)
+          message(FATAL_ERROR "audio_cadence: ${tv} ${frames} frames: samples ${got}, closed form ${want}")
+        endif()
+        if(DEFINED anchor_${tv}_${frames})
+          math(EXPR literal "${anchor_${tv}_${frames}} + ${NUDGE}")
+          if(NOT got STREQUAL literal)
+            message(FATAL_ERROR "audio_cadence: ${tv} ${frames} frames: samples ${got}, derived ${literal}")
+          endif()
+        endif()
+      endforeach()
+    endforeach()
+  elseif(CASE STREQUAL "expect_audio")
+    # audio@F=H judges the merged transition stream of frames 1 to F. The pinned hashes are read out of the
+    # frozen files by pattern and the prefix hash comes from a run made here, so no digest is typed.
+    string(REPEAT "[0-9a-f]" 64 h64)
+    function(pin kind line_regex var)
+      file(READ "${PINS}/${kind}.txt" pins)
+      if(NOT pins MATCHES "(^|\n)audio-${kind} ${line_regex} sha256 (${h64})\n")
+        message(FATAL_ERROR "no ${kind} pin matching ${line_regex}")
+      endif()
+      set(${var} "${CMAKE_MATCH_2}" PARENT_SCOPE)
+    endfunction()
+    function(run_expect body)
+      write_bytes("${OUT}/case.expect" UNIX "${body}")
+      execute_process(COMMAND ${EMULATOR} ${RUN} --expect ${OUT}/case.expect ${ARGN}
+        RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+      set(rc "${rc}" PARENT_SCOPE)
+      set(out "${out}" PARENT_SCOPE)
+      set(err "${err}" PARENT_SCOPE)
+    endfunction()
+    function(expect_run code regex body)
+      run_expect("${body}" ${ARGN})
+      if(NOT rc STREQUAL code OR NOT "${out}${err}" MATCHES "${regex}")
+        message(FATAL_ERROR "audio expectation ${body}: expected exit ${code} and ${regex}, got ${rc}\n${out}${err}")
+      endif()
+      set(out "${out}" PARENT_SCOPE)
+    endfunction()
+    function(sound_hash frames var)
+      execute_process(COMMAND ${EMULATOR} ${RUN} --frames ${frames} --hash-audio ${ARGN}
+        RESULT_VARIABLE rc OUTPUT_VARIABLE got)
+      if(NOT rc STREQUAL "0" OR NOT got MATCHES "(^|\n)(audio-transitions ${frames} count [0-9]+ sha256 (${h64}))\n")
+        message(FATAL_ERROR "--frames ${frames} --hash-audio ${ARGN}: exit ${rc}\n${got}")
+      endif()
+      set(${var} "${CMAKE_MATCH_2}" PARENT_SCOPE)
+      set(${var}_hash "${CMAKE_MATCH_3}" PARENT_SCOPE)
+    endfunction()
+    file(MAKE_DIRECTORY "${OUT}")
+    set(fm ${FIXTURES}/fm_sweep.sms)
+    set(psg ${FIXTURES}/psg_sweep.sms)
+    pin(transitions "fm_sweep\\.sms sms ntsc-j baseline 300 count [0-9]+" fm_japan)
+    pin(pcm "fm_sweep\\.sms sms ntsc-j baseline 300 rate 48000 channels [12] samples [0-9]+ peak [0-9]+ clipped [0-9]+" pcm_japan)
+    pin(transitions "psg_sweep\\.sms sms pal baseline 300 count [0-9]+" psg_pal)
+    sound_hash(60 prefix ${fm} --region ntsc-j)
+    sound_hash(300 whole ${fm} --region ntsc-j)
+    if(NOT whole_hash STREQUAL fm_japan)
+      message(FATAL_ERROR "the standalone 300 frame line is not the pin ${fm_japan}:\n${whole}")
+    endif()
+    execute_process(COMMAND ${EMULATOR} ${RUN} ${fm} --region ntsc-j --frames 300 --hash
+      RESULT_VARIABLE rc OUTPUT_VARIABLE picture)
+    if(NOT rc STREQUAL "0" OR NOT picture MATCHES "^frame 300 sha256 (${h64})\n$")
+      message(FATAL_ERROR "--frames 300 --hash: exit ${rc}\n${picture}")
+    endif()
+    set(picture_hash ${CMAKE_MATCH_1})
+
+    # Two audio cases and a picture case pass together in one run, and the run holds one drain: with
+    # --hash-audio too, the printed line is the standalone line.
+    set(good "audio@60=${prefix_hash}\naudio@300=${fm_japan}\nframe@300=${picture_hash}\n")
+    run_expect("${good}" ${fm} --region ntsc-j --frames 300)
+    string(REGEX MATCHALL "predicate kind=4 frame=(60|300) address=0000 pass observed_audio=${h64} transitions=[0-9]+" hits "${out}")
+    list(LENGTH hits count)
+    if(NOT rc STREQUAL "0" OR NOT count EQUAL 2 OR NOT out MATCHES "predicate kind=0 frame=300 [^\n]* pass" OR out MATCHES "audio-")
+      message(FATAL_ERROR "audio and picture cases together: exit ${rc}, ${count} audio lines\n${out}${err}")
+    endif()
+    run_expect("${good}" ${fm} --region ntsc-j --frames 300 --hash-audio)
+    if(NOT rc STREQUAL "0" OR NOT out MATCHES "(^|\n)${whole}\n")
+      message(FATAL_ERROR "--hash-audio with audio cases did not print the standalone line:\n${out}${err}")
+    endif()
+
+    # A mismatch is exit 3 and names the observed hash; a case that cannot pass fails whatever its form.
+    string(LENGTH "${fm_japan}" n)
+    math(EXPR last "${n} - 1")
+    string(SUBSTRING "${fm_japan}" 0 ${last} lead)
+    string(SUBSTRING "${fm_japan}" ${last} 1 tail)
+    set(other 0)
+    if(tail STREQUAL "0")
+      set(other 1)
+    endif()
+    expect_run(3 "predicate kind=4 frame=300 [^\n]* fail observed_audio=${fm_japan}" "audio@300=${lead}${other}\n" ${fm} --region ntsc-j --frames 300)
+    expect_run(3 "predicate kind=4 frame=60 [^\n]* fail" "audio@60=${fm_japan}\n" ${fm} --region ntsc-j --frames 300)
+    expect_run(3 "predicate kind=4 frame=300 [^\n]* fail" "audio@300=${pcm_japan}\n" ${fm} --region ntsc-j --frames 300)
+    # The unit forced off is the export console's stream, 6,939 changes and not 86,278.
+    expect_run(3 "kind=4 frame=300 [^\n]* fail observed_audio=${h64} transitions=6939" "audio@300=${fm_japan}\n" ${fm} --region ntsc-j --fm off --frames 300)
+    # The hash carries no profile: the PAL stream is not the export NTSC stream of the same ROM.
+    expect_run(0 "kind=4 frame=300 [^\n]* pass" "audio@300=${psg_pal}\n" ${psg} --region pal --frames 300)
+    expect_run(3 "kind=4 frame=300 [^\n]* fail" "audio@300=${psg_pal}\n" ${psg} --region ntsc-u --frames 300)
+
+    # Malformed records are a usage error before any frame runs.
+    string(REPEAT "0" 63 short)
+    foreach(body IN ITEMS "audio@300\n" "audio@0=${fm_japan}\n" "audio@301=${fm_japan}\n" "audio@300=00\n"
+        "audio@1=00\n" "audio@300:$C200=00\n" "audio@300=${short}\n" "audio@300=${fm_japan}0\n"
+        "audio@-1=${fm_japan}\n" "audio@3x=${fm_japan}\n" "audio@300 =${fm_japan}\n")
+      expect_run(2 "expectation file error" "${body}" --frames 300)
+    endforeach()
+    string(TOUPPER "${fm_japan}" upper)
+    expect_run(2 "expectation file error" "audio@300=${upper}\n" --frames 300)
+
+    # A script's reset=1 is the first console's Reset button on port $DD: nothing restarts, so the
+    # sound of that run is judged like any other and equals its --hash-audio line.
+    string(REPEAT "p1=00 p2=00 pause=0 reset=0 start=0\n" 2 quiet)
+    write_bytes("${OUT}/quiet.input" UNIX "${quiet}")
+    set(held "p1=00 p2=00 pause=0 reset=0 start=0\np1=00 p2=00 pause=0 reset=1 start=0\np1=00 p2=00 pause=0 reset=1 start=0\n")
+    write_bytes("${OUT}/reset.input" UNIX "${held}")
+    set(sms1 ${psg} --machine sms1 --region ntsc-u --input ${OUT}/reset.input)
+    sound_hash(3 reset_line ${sms1})
+    expect_run(0 "predicate kind=4 frame=3 address=0000 pass observed_audio=${reset_line_hash}" "audio@3=${reset_line_hash}\n" ${sms1} --frames 3)
+    string(REPEAT "0" 64 zeros)
+    expect_run(3 "predicate kind=4 frame=2 [^\n]* fail" "audio@2=${zeros}\n" --frames 2 --input ${OUT}/quiet.input)
+
+    # A runner built to offer 800 samples a frame meets 801 or 802: exit 1, not a mismatch.
+    run_expect("audio@2=${zeros}\n" --frames 2)
+    execute_process(COMMAND ${EMULATOR} ${SHORT} --frames 2 --expect ${OUT}/case.expect
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "1" OR NOT err MATCHES "frame 1 holds 800 samples" OR out MATCHES "predicate")
+      message(FATAL_ERROR "the 800 sample runner with an audio case: expected exit 1, got ${rc}\n${out}${err}")
     endif()
   elseif(CASE STREQUAL "positional")
     # One file, positional or after --rom, runs; a second file, a file with
@@ -1388,14 +1602,13 @@ set(runner_fixtures "")
 if(COGMASTER_FIXTURES)
   set(runner_fixtures -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures)
 endif()
-# Timeout: 30 s floor; 2 x 2.3 s, slowest of 5 local runs with the sound rows (1.2 s alone to 2.3 s
-# inside the parallel ci workflow), no hosted run yet, so provisional until the be32 (x8) and wasm32 (x5) timings of the first hosted run are read.
+# Timeout: 107 s; 2 x 53.07 s (be32 lane), slowest of 6 runs, run 43115877197.
 cogmaster_add_test(NAME runner.hashes_file
   COMMAND ${CMAKE_COMMAND} -DCASE=hash_matrix -DRUN=$<TARGET_FILE:cogmaster-run>
     "-DEMULATOR=${runner_emulator}" -DOUT=${PROJECT_BINARY_DIR} ${runner_fixtures}
     -DHASHES=${runner_hashes} -DPINS=${PROJECT_SOURCE_DIR}/tests/audio
     -P ${CMAKE_CURRENT_LIST_FILE}
-  LABELS runner portable TIMEOUT 30)
+  LABELS runner portable TIMEOUT 107)
 
 # Fault prevented: a comparison that passes lanes which differ, or a lane
 # that silently drops out. Two files one hex digit apart must fail, and two
@@ -1804,6 +2017,15 @@ cogmaster_add_test(NAME runner.usage.save_interval
     -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS portable runner TIMEOUT 30)
 
+# Fault prevented: a runner that cannot name the FM state a ledger row used, so a row judged with the unit
+# off could pass for the unit on; a misspelt or repeated --fm taken as a word; a request the console never
+# had run instead of refused.
+# Timeout: 20 s floor; 2 x 1.27 s (be32 lane), slowest of 4 runs, run 43115877197.
+cogmaster_add_test(NAME runner.usage.fm
+  COMMAND ${runner_check} -DCASE=fm_usage -DOUT=${PROJECT_BINARY_DIR}/tests/fm-usage.expect
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 20)
+
 # Fault prevented: a hash that depends on the frame count for a card that
 # does not move, or a hash line that names the wrong frame.
 cogmaster_add_test(NAME runner.hash.repeat
@@ -1822,6 +2044,34 @@ cogmaster_add_test(NAME runner.hash_audio
   COMMAND ${runner_check} -DCASE=hash_audio -DSHORT=$<TARGET_FILE:cogmaster-test-run-audio-short>
     ${hash_audio_image} -DPINS=${PROJECT_SOURCE_DIR}/tests/audio -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS portable psg runner TIMEOUT 30)
+
+# Fault prevented: a PAL frame that carries one sample too many or too few passing as 965 or 966, so a
+# drifting audio clock would go unseen by the hashes. The control adds one to every expected total.
+# Timeout: 20 s floor; 2 x 1.37 s (be32 lane), slowest of 4 runs, run 43115877197.
+cogmaster_add_test(NAME runner.audio_cadence
+  COMMAND ${runner_check} -DCASE=audio_cadence -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 20)
+string(REPLACE ";" "\;" cadence_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
+set(cmd ${CMAKE_COMMAND} -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${cadence_emulator}"
+  -DCASE=audio_cadence -DNUDGE=1 -P ${CMAKE_CURRENT_LIST_FILE})
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+# Timeout: 20 s floor; 2 x 0.16 s (windows-arm64 lane), slowest of 4 runs, run 43115877197.
+cogmaster_add_test(NAME runner.audio_cadence.self_test
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=audio_cadence:.*samples"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+  LABELS portable runner TIMEOUT 20)
+
+# Fault prevented: a sound claim that is only a frame hash (the transition stream, which shows the chips'
+# writes, can differ while the picture stays equal), an audio expectation that reads an empty trace because
+# only --hash-audio enabled it, and two readers draining the log so one sees nothing.
+# Timeout: 114 s; 2 x 56.72 s (be32 lane), slowest of 6 runs, run 43115877197.
+if(COGMASTER_FIXTURES)
+  cogmaster_add_test(NAME runner.expect.audio
+    COMMAND ${runner_check} -DCASE=expect_audio -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures
+      -DSHORT=$<TARGET_FILE:cogmaster-test-run-audio-short> -DPINS=${PROJECT_SOURCE_DIR}/tests/audio
+      -DOUT=${PROJECT_BINARY_DIR}/tests/expect-audio -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fm portable runner TIMEOUT 114)
+endif()
 
 # Fault prevented: an FM unit whose sound differs between two runs, between lanes or from the
 # frozen lines, that stays silent on the Japanese console, or that sounds on the export console.

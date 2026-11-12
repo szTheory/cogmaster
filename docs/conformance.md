@@ -17,8 +17,11 @@ Stdout is a candidate ledger; review it before replacing `tests/compat/ledger.cs
 `docs/compatibility.md`. Only already seeded cases with a CC0 public identity and the exact accepted
 predicate, configuration and expectation can change. Titles come from `tests/compat/catalog.tsv`; filenames and
 local evidence are discarded. The update permits only the fixed predicate status, valid date and current
-core commit. Unknown IDs, new predicates or golden values, changed profiles, and fixture updates are
-discarded; extra columns and invalid dates reject. Owned fixtures stay managed by the reproducible CI
+core commit. Unknown IDs, other new predicates or golden values, other profiles, and fixture updates are
+discarded; extra columns and invalid dates reject. The library judge adds only boots@600 under the default
+configuration, in profiles it derives from the catalog and probe (export NTSC and PAL, Japan NTSC with FM, a
+Game Gear's region); `sh scripts/library.sh run` merges only if the ratchet passes and the page fits its cap.
+Owned fixtures stay managed by the reproducible CI
 fixture path. No screenshot, RAM/save dump, trace, path or newly observed hash is exported. A missing
 accepted expectation remains `unknown`, even if the image ran successfully. Metadata membership never
 guarantees support; `.info` stays experimental. The existing protected-base ratchet still judges a PR.
@@ -36,10 +39,11 @@ The adjacent shared parser normalizes ROM/profile/TV/board/video/devices/script 
 frame and RAM address before comparison; expected bytes and hashes stay outside identity. Duplicate aliases
 reject. A missing pass, changed value, script digest, device or profile requires one dated exception naming
 the unique old passing predicate. Unchanged statuses, unknown transitions and fail-to-pass are allowed.
-Exceptions in `tests/compat/allow.txt` use `YYYY-MM-DD <id> <old-predicate> <reason words>
+Exceptions in `tests/compat/allow.txt` use `YYYY-MM-DD <id> <old-predicate> [<region>/<tv>] <reason words>
 behaviour-rev=<new revision> expires=YYYY-MM-DD` on one line. The revision must exceed the base and equal
 the head; the date cannot be future. Expiry is inclusive and at most 60 days after the supplied judge date.
-An ambiguous predicate matching multiple profiles rejects. Neither core code nor this judge reads a clock.
+An ambiguous predicate matching multiple profiles rejects; name one with `<region>/<tv>`, for example `export/pal`, which
+excuses that row alone. Neither core code nor this judge reads a clock.
 
 `sh scripts/compat-common.sh normalize tests/compat/ledger.csv` emits canonical quoted CSV;
 `docs` emits this ledger page and `cases` emits validated CMake execution facts without title interpolation.
@@ -49,17 +53,29 @@ embedded record newlines, empty records and duplicate normalized cases reject. H
 zero evaluated coverage. Output is deterministic under row permutation. `policy.compat_doc_fresh`
 regenerates the public page; its corruption control and parser controls run in CI and hygiene.
 
-The nine columns are `id,title,machine,region,mapper,predicate,status,evidence,date`. Normalization
-resolves region `any` to `ntsc-u`, inserts default SMS/GG video and pad devices, and uses the empty
-SHA-256 for no script. A configuration prefix has the fixed grammar
-`cfg:video=sms;port1=pad;port2=pad;script=none;sha256=DIGEST/` before the runner predicate;
-video accepts `sms|gg`, devices accept `pad|none|paddle|sports|lphaser`, and script is a logical identifier plus
-its content SHA-256. A row for a device title names its device in its prefix, so a pad run never satisfies
-it; a row proves a boot or a frame hash and never that motion tracks. `auto` is
-not accepted. Frame numbers are decimal; RAM addresses and expected bytes normalize to uppercase hex.
-Expected hashes/bytes remain separate from identity, which includes the resolved profile, board,
-devices, script identity/content, predicate kind, frame and address. A boot cap is at most 1,000,000
-frames; sound predicates are unavailable. The libretro core stays experimental through v2.0.
+The header is `id,title,machine,region,tv,mapper,predicate,status,evidence,date`. `region` is `export` or
+`japan` and `tv` is `ntsc` or `pal`; no `any` or `auto`: a row names the setting a run used, not
+a fact about the cartridge. A prefix `cfg:video=sms;fm=off;port1=pad;port2=pad;script=none;sha256=DIGEST/` comes
+before the predicate: video `sms|gg`, `fm` `on|off`, devices `pad|none|paddle|sports|lphaser`, script a logical
+identifier plus its content SHA-256. An omitted prefix or `fm` takes the default (`fm` on only for a Japanese
+Master System) and normalization prints the long form. A row's identity is id, machine, region, tv, mapper, the
+whole prefix and the predicate kind, frame and address, so rows differing only in `fm` are separate. Predicates:
+`frame@F=HASH`, `ram@F:$ADDR=BYTE`, `mailbox@F`, `boots@F` and `audio@F=HASH` (the chips' stream of changes
+over frames 1 to F, for an owned fixture, no script; a regression lock, never a claim about sound), F up to
+1,000,000. `pal` with the Game Gear or `japan`, and `fm=on` with the Game Gear, are refused as the core refuses
+them. Format 1 files (`ntsc-u|ntsc-j|pal|any`, no `tv`, no `fm`) are still read and always written as format 2;
+`cases` prints a row's fields for readers. The libretro core stays experimental through v2.0.
+
+Format 2 replaced the single region column (`ntsc-u`, `ntsc-j`, `pal`, `any`) by `region` and `tv` and added
+`fm` to the run configuration. A migrated row keeps its status, evidence and date and gains explicit values.
+`sh scripts/compat-common.sh normalize FILE` reads either format and prints format 2. A `pass` for a PAL row
+means only that the run used the 313-line profile and the predicate was accepted, never that the title is a PAL
+release or runs at the right speed.
+
+An audio row pins the transition stream of a fixture under one stated profile (region, tv, fm). It is a regression
+lock over our own output, not a sound claim: only the `fm_sweep` and `psg_sweep` fixtures,
+`tests/audio/opll_lockstep.txt` and the OPLL oracle prove the sound. `compat.fixtures` compares the profile each
+row names with the profile the runner reports, and with the core's default when no `--fm` is given.
 
 Cartridge classification is covered by `cart.database` and `cart.generator`: known nonbattery, unknown,
 known battery and unsupported geometry are distinct from board allocation and ledger membership.
@@ -365,7 +381,7 @@ rows with profile `gg`. The records:
 - on the Game Gear, port `$00` (Start up, the region bit, the NTSC bit) and ports `$01`-`$06` at their power-on
   values.
 
-The H counter latch, the Pause NMI counter and the Pause movies need input and are not in this fixture yet.
+The H counter latch and the Pause movies are not in this fixture yet.
 
 ## Video geometry and timing fixture
 
@@ -390,6 +406,23 @@ pad-2 edge counters in the high and low bytes. Separate and overlapping pad sche
 press, hold, release and repeated press; the shared visible counter, CRAM colour and scroll still drive
 the independently checked picture. Setup frames 1–3 and mailbox-sealing frame 12 are lagged; every other
 frame executes a decoded controller read. The runner reports their sum with `--input`.
+
+## The V counter table fixture
+
+`vdp_vtable` (192, 224 and 240 lines, built only) reads `$7E` once per
+228-cycle line over a frame; the TV verdict gives 313 or 262 lines. Records:
+count, sum, sum of squares (both modulo 65,536), cyclic descents, maximum,
+minimum, and a drift check that fails if the loop is not one line long. The
+rows come from the documented jump intervals and `fixtures.vdp_vtable.closed_form`
+recomputes them. The first model runs the 192 rows. NTSC 240 rolls and is not
+judged. Controls: `judge.*` and `control.wrong_profile` (PAL image, NTSC run).
+
+## The Pause NMI fixture
+
+`pause_nmi` counts in a fixed loop from the frame interrupt and records the count and V at the Pause
+NMI, then the NMI count after a held press and a second one. The NMI follows the interrupt by
+(lines - 2 - height) x 684 + 4 ticks; `fixtures.pause_nmi.closed_form` computes the count band from the listing's
+cycles, and V reads `$FF`. PAL placement is derived, not captured; the Game Gear has none.
 
 ## Frontend play evidence
 

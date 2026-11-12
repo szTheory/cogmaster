@@ -68,6 +68,7 @@ cogmaster-run --help | --version
 | `FILE`, `--rom FILE` | The cartridge image to run: a Master System or Game Gear ROM from 1,024 bytes to 1 MiB, optionally after a 512-byte copier header; a body above 1 MiB is refused. Give one file. Without one, the test card shows. |
 | `--machine NAME` | `sms` selects SMS2, `sms1` selects SMS1, `gg` selects Game Gear. `auto` uses the public probe's hash metadata/header facts, then the `.gg` filename fallback. With no file, `auto` selects SMS2. |
 | `--region NAME` | Region and TV standard together: `ntsc-u` is export NTSC, `ntsc-j` Japanese NTSC and `pal` export PAL. `auto` uses probe metadata/header region when present, otherwise export NTSC. |
+| `--fm NAME` | `auto` (the default), `on` or `off`, given once, spelt exactly. `auto` turns the FM sound unit on for a Japanese Master System and off elsewhere. `on` with `--machine gg` exits 77, and a run option is a usage error with `--probe`. |
 | `--video-mode NAME` | `auto`, `sms` or `gg`; video selection is independent of the machine profile. |
 | `--boot NAME` | `fast` (the default) starts the cartridge as the BIOS would have left the console, with no BIOS. `bios` starts from the Master System BIOS named by `--bios`, runs it, and lets it start the cartridge. Give it once. It needs a cartridge file and is a usage error with `--probe` or `--expect`. A BIOS run starts with the BIOS's own time, so frame N of a BIOS run is not frame N of a fast run, and an `--input` script written for fast boot misaligns. Most real BIOS images check the cartridge's header, so a cartridge that runs under `fast` can lock up under `bios`. |
 | `--bios FILE` | The BIOS dump to start from: exactly 8,192 bytes, from a Master System. Give it once, only with `--boot bios` (with `--boot fast` or alone it is a usage error, so adding a path never changes a hash). The runner reads at most 8,193 bytes of it. It prints one line on standard error: `BIOS recognised: NAME` when the file's SHA-1 and size are a known dump, else `BIOS not recognised (sha1 DIGEST); running it as given`. A dump of the right size that is not recognised still runs, so a patched dump works. Recognition names the file; it selects no machine, region or FM sound. The path and the bytes are never printed. |
@@ -144,11 +145,14 @@ The machine and console come from `--machine`, `--region` and `--video-mode` as 
   levels count as changes at tick 0. A level is the chip's register state, not a volume in samples, so changing
   how loud a level sounds moves `audio-pcm` and leaves this line alone.
 - **`audio-pcm`** hashes every sample of the run as 16-bit values, low byte first, left then right on a Game Gear.
-  `samples` is the sample count per channel, which is `floor(frames x 3,504,512 / 4,375)` on NTSC. `peak` is the
+  `samples` is the sample count per channel, which is `floor(frames x 3,504,512 / 4,375)` on NTSC and
+  `floor(frames x 685,094,400 / 709,379)` on PAL. `peak` is the
   largest magnitude (32,768 for the lowest value) and `clipped` counts samples at the extreme values.
 
-The run exits 1 and prints nothing to standard output when any frame does not hold 801 or 802 samples (965 or 966 on
-PAL), when the core dropped samples or log records, or when the core logs a source's changes out of time order. The
+The run exits 1 and prints no `audio-` line when frame f does not hold exactly
+`floor(f x N / D) - floor((f - 1) x N / D)` samples, N / D being the fraction above. NTSC frames hold 801 or
+802 samples and PAL frames 965 or 966, in a fixed pattern, PAL's first five being 965, 966, 966, 966 and 965. It also exits 1
+when the core dropped samples or log records, or when the core logs a source's changes out of time order. The
 check is made after each frame, so a hostile ROM cannot make the runner hold more than one frame of sound.
 
 ## PNG output
@@ -369,6 +373,7 @@ frame@14=e14d77ce564f0b1498f703134e82e6c1fc718a27c94e49b5a35b95a981857ae7
 ram@14:$C200=02
 mailbox@20
 boots@20
+audio@300=<64 lowercase hex digits>
 ```
 
 The frame value is an accepted full lowercase SHA-256 of the completed native crop,
@@ -377,15 +382,23 @@ effects. Mailbox checks magic, protocol version, done status, bounded nonempty d
 records with valid/not-timed-out flags, and CRC; it does not validate record values.
 Use independent RAM/frame expectations or the diagnostic judge for numeric claims.
 
+`audio@F=H` judges the sound's changes of level. H is the SHA-256 of the merged transition stream of frames 1 to F,
+the digest of the `audio-transitions` line of `--frames F --hash-audio`; F is from 1 to N, and one run can hold
+several. The hash holds no machine, region or FM byte, so one judged under another profile fails. PCM is not a
+kind: the mix is provisional. The line reads `predicate kind=4 frame=F address=0000 pass
+observed_audio=<hash> transitions=<count>`. A mismatch exits 3, a malformed record 2, and a lost log record, a
+source going back in time or a frame of the wrong length 1. A script's `reset=1` is the first console's Reset button
+and restarts nothing, so an audio case judges that run like any other.
+
 `boots@F` is strict smoke: a display-enabled latch was observed after a run call, at
 least two distinct native crop hashes occurred by F, and no first fault was recorded.
 Distinct counting saturates at two. An interrupt-driven HALT loop is healthy and is
 never rejected for HALT. A static display may fail this heuristic. Neither pass nor
-fail establishes gameplay, completion or sound; sound has no predicate yet.
+fail establishes gameplay, completion or sound; an audio record only locks our own output and proves nothing about how it sounds.
 
 Each observation prints its frame, normalized kind/address and observed hash alongside
 display/distinct/fault facts. Expected values stay in the accepted file. The execution
-line reports resolved machine/region/TV/video/board, both devices by name (`port1=sports`), cap, behaviour revision
+line reports resolved machine/region/TV/FM (`fm=1` off, `fm=2` on)/video/board, both devices by name (`port1=sports`), cap, behaviour revision
 and SHA-256 of input bytes (the empty digest without a script). The first fault remains
 a diagnostic and does not stop the capped run. `--trace`, `--mailbox`, `--bench` and
 `--probe` conflict with `--expect`. A signal before an expected frame is infrastructure

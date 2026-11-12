@@ -76,6 +76,7 @@ compat.csv	compat
 compat.device_key	compat
 compat.device_rejected	compat
 compat.fixtures	compat,portable
+compat.migration	compat
 compat.public_update	compat
 compat.ratchet	compat
 compat.trusted_judge	compat
@@ -157,6 +158,7 @@ fixtures.boot_to_play.wrong_hash	fixtures,portable
 fixtures.fm_sweep.gg	fixtures,fm,portable
 fixtures.fm_sweep.sms-export	fixtures,fm,portable
 fixtures.fm_sweep.sms-japan	fixtures,fm,portable
+fixtures.fm_sweep_jp.pin	fixtures,portable
 fixtures.glasses.eyes.control	fixtures,portable
 fixtures.glasses.eyes.export	fixtures,portable
 fixtures.glasses.eyes.gg	fixtures,portable
@@ -190,6 +192,17 @@ fixtures.paddle.mailbox.export	fixtures,portable
 fixtures.paddle.mailbox.japan	fixtures,portable
 fixtures.paddle.replay	fixtures,portable
 fixtures.paddle.replay_control	fixtures,portable
+fixtures.pause_nmi.closed_form	fixtures,portable
+fixtures.pause_nmi.control.wrong_profile	fixtures,portable
+fixtures.pause_nmi.gg	fixtures,portable
+fixtures.pause_nmi.judge.hang	fixtures,portable
+fixtures.pause_nmi.judge.missing_row	fixtures,portable
+fixtures.pause_nmi.judge.wrong_value	fixtures,portable
+fixtures.pause_nmi.mailbox.ntsc.192	fixtures,portable
+fixtures.pause_nmi.mailbox.ntsc.224	fixtures,portable
+fixtures.pause_nmi.mailbox.pal.192	fixtures,portable
+fixtures.pause_nmi.mailbox.pal.224	fixtures,portable
+fixtures.pause_nmi.mailbox.pal.240	fixtures,portable
 fixtures.ports.gg	fixtures,portable
 fixtures.ports.sms-export	fixtures,portable
 fixtures.ports.sms-japan	fixtures,portable
@@ -218,6 +231,18 @@ fixtures.vdp_lines.pixels.ntsc.240	fixtures,portable
 fixtures.vdp_lines.pixels.pal.192	fixtures,portable
 fixtures.vdp_lines.pixels.pal.224	fixtures,portable
 fixtures.vdp_lines.pixels.pal.240	fixtures,portable
+fixtures.vdp_vtable.closed_form	fixtures,portable
+fixtures.vdp_vtable.control.wrong_profile	fixtures,portable
+fixtures.vdp_vtable.judge.hang	fixtures,portable
+fixtures.vdp_vtable.judge.missing_row	fixtures,portable
+fixtures.vdp_vtable.judge.wrong_value	fixtures,portable
+fixtures.vdp_vtable.mailbox.ntsc.192	fixtures,portable
+fixtures.vdp_vtable.mailbox.ntsc.224	fixtures,portable
+fixtures.vdp_vtable.mailbox.pal.192	fixtures,portable
+fixtures.vdp_vtable.mailbox.pal.224	fixtures,portable
+fixtures.vdp_vtable.mailbox.pal.240	fixtures,portable
+fixtures.vdp_vtable.sms1.ntsc	fixtures,portable
+fixtures.vdp_vtable.sms1.pal	fixtures,portable
 fixtures.wla_pin.self_test	fixtures
 fm.chip_off	fm,portable
 fm.cost	fm,portable
@@ -448,6 +473,8 @@ release.floor.self_test	release
 release.single_version_source	policy
 release.single_version_source.next	policy
 release.single_version_source.self_test	policy
+runner.audio_cadence	portable,runner
+runner.audio_cadence.self_test	portable,runner
 runner.bench.bytes	bench,portable,runner
 runner.bench.format	bench,portable,runner
 runner.bench.percentile	bench,portable,runner
@@ -464,6 +491,7 @@ runner.device.refused	portable,runner
 runner.device.usage	portable,runner
 runner.exit.failure	portable,runner
 runner.exit.table	runner
+runner.expect.audio	fm,portable,runner
 runner.expect.predicates	portable,runner
 runner.eyes.line	portable,runner
 runner.eyes.probe	portable,runner
@@ -532,6 +560,7 @@ runner.save.sweep	portable,runner
 runner.stop	portable,runner
 runner.trace.fault	portable,runner
 runner.trace.none	portable,runner
+runner.usage.fm	portable,runner
 runner.usage.frame_range	portable,runner
 runner.usage.no_args	portable,runner
 runner.usage.png_syntax	portable,runner

@@ -5,6 +5,163 @@
 #
 # Run as a script (cmake -DCASE=<case> ... -P tests.cmake), this file is one
 # fixture check; include()d by tests/tests.cmake, it builds and registers them.
+if(CMAKE_SCRIPT_MODE_FILE AND CASE STREQUAL "vtable_closed_form")
+  # The V counter values one per line over a frame, from the jump intervals of the V counter table
+  # (decimal forms of the hex intervals): PAL 192 $00-$F2 and $BA-$FF; PAL 224 $00-$FF, $00-$02 and
+  # $CA-$FF; PAL 240 $00-$FF, $00-$0A and $D2-$FF; NTSC 192 $00-$DA and $D5-$FF; NTSC 224 $00-$EA
+  # and $E5-$FF. Every constant is recomputed here and compared with the csv row.
+  set(vt_192_pal "0-242;186-255")
+  set(vt_224_pal "0-255;0-2;202-255")
+  set(vt_240_pal "0-255;0-10;210-255")
+  set(vt_192_ntsc "0-218;213-255")
+  set(vt_224_ntsc "0-234;229-255")
+  file(STRINGS "${CSV}" vt_rows)
+  set(vt_checked 0)
+  foreach(spec IN ITEMS 192:pal 224:pal 240:pal 192:ntsc 224:ntsc)
+    string(REPLACE ":" ";" spec "${spec}")
+    list(GET spec 0 height)
+    list(GET spec 1 tv)
+    set(samples "")
+    foreach(interval IN LISTS vt_${height}_${tv})
+      string(REPLACE "-" ";" ends "${interval}")
+      list(GET ends 0 low)
+      list(GET ends 1 high)
+      foreach(value RANGE ${low} ${high})
+        list(APPEND samples ${value})
+      endforeach()
+    endforeach()
+    list(LENGTH samples count)
+    set(sum 0)
+    set(squares 0)
+    set(descents 0)
+    set(max 0)
+    set(min 255)
+    math(EXPR last "${count} - 1")
+    foreach(index RANGE 0 ${last})
+      math(EXPR next "(${index} + 1) % ${count}")
+      list(GET samples ${index} value)
+      list(GET samples ${next} after)
+      math(EXPR sum "(${sum} + ${value}) % 65536")
+      math(EXPR squares "(${squares} + ${value} * ${value}) % 65536")
+      if(value GREATER after)
+        math(EXPR descents "${descents} + 1")
+      endif()
+      if(value GREATER max)
+        set(max ${value})
+      endif()
+      if(value LESS min)
+        set(min ${value})
+      endif()
+    endforeach()
+    set(want_01 ${count})
+    set(want_02 ${sum})
+    set(want_03 ${squares})
+    set(want_04 ${descents})
+    set(want_05 ${max})
+    set(want_06 ${min})
+    set(want_07 1)
+    # The first model has no 224 or 240 height and runs 192 lines, so its rows hold the 192 values.
+    set(pairs vdp_vtable_${height}:${tv})
+    if(height STREQUAL "192")
+      list(APPEND pairs vdp_vtable_224:${tv}-sms1)
+    endif()
+    foreach(pair IN LISTS pairs)
+      string(REPLACE ":" ";" pair "${pair}")
+      list(GET pair 0 rom)
+      list(GET pair 1 profile)
+      foreach(id IN ITEMS 01 02 03 04 05 06 07)
+        set(found "")
+        foreach(row IN LISTS vt_rows)
+          string(REPLACE "," ";" f "${row}")
+          list(GET f 0 row_rom)
+          list(GET f 1 row_test)
+          list(GET f 2 row_profile)
+          list(GET f 3 row_hex)
+          if(row_rom STREQUAL rom AND row_test MATCHES "^${id}:" AND
+              (row_profile STREQUAL profile OR row_profile STREQUAL "*"))
+            set(found ${row_hex})
+            break()
+          endif()
+        endforeach()
+        if(found STREQUAL "")
+          message(FATAL_ERROR "vtable closed form: ${rom} ${profile} ${id} has no csv row")
+        endif()
+        math(EXPR csv_value "0x${found}")
+        if(NOT csv_value EQUAL want_${id})
+          math(EXPR computed "${want_${id}}" OUTPUT_FORMAT HEXADECIMAL)
+          message(FATAL_ERROR "vtable closed form: ${rom} ${profile} ${id} csv 0x${found} computed ${computed}")
+        endif()
+        math(EXPR vt_checked "${vt_checked} + 1")
+      endforeach()
+    endforeach()
+  endforeach()
+  message(STATUS "vtable closed form: ${vt_checked} csv rows equal the recomputed values")
+  return()
+endif()
+if(CMAKE_SCRIPT_MODE_FILE AND CASE STREQUAL "pause_closed_form")
+  # The Pause NMI follows the frame interrupt by (lines - 2 - H) x 684 + 4 master ticks, H the screen
+  # height (the frame interrupt is tick 607 of line H, the NMI tick 611 of line lines - 2). The
+  # constants below are the cycle counts summed in the header of tests/roms/src/pause_nmi.asm; they
+  # are read from that listing and never from a run. The count n lies in
+  #   [floor((C - S_LO) / B), floor((C - S_HI) / B)], C = floor(ticks / 3).
+  set(pz_body 78)         # the main loop body, in cycles
+  set(pz_handler 76)      # the frame handler, from the end of the accept to its return
+  set(pz_accept 13)       # the IM 1 accept
+  set(pz_wait 59)         # the longest wait before the frame interrupt is taken (at most the body)
+  set(pz_first_min 42)    # the first increment ends this long after the resume at the body's start
+  set(pz_first_max 61)    # and this long after the resume after LD A,(nn)
+  set(pz_longest 16)      # the longest instruction an NMI can wait for
+  set(pz_round 1)         # one cycle of tick rounding
+  if(pz_wait GREATER pz_body)
+    message(FATAL_ERROR "pause closed form: the longest wait ${pz_wait} exceeds the body ${pz_body}")
+  endif()
+  math(EXPR pz_s_lo "(${pz_wait} + ${pz_round}) + ${pz_accept} + ${pz_handler} + ${pz_first_max} - ${pz_body}")
+  math(EXPR pz_s_hi "${pz_accept} + ${pz_handler} + ${pz_first_min} - (${pz_longest} + ${pz_round}) - ${pz_body}")
+  file(STRINGS "${CSV}" pz_rows)
+  set(pz_checked 0)
+  foreach(spec IN ITEMS ntsc:192:46516 ntsc:224:24628 pal:192:81400 pal:224:59512 pal:240:48568)
+    string(REPLACE ":" ";" spec "${spec}")
+    list(GET spec 0 tv)
+    list(GET spec 1 height)
+    list(GET spec 2 literal)
+    set(lines 262)
+    if(tv STREQUAL "pal")
+      set(lines 313)
+    endif()
+    math(EXPR ticks "(${lines} - 2 - ${height}) * 684 + 4")
+    if(NOT ticks EQUAL literal)
+      message(FATAL_ERROR "pause closed form: ${tv} ${height} ticks ${ticks}, expected ${literal}")
+    endif()
+    math(EXPR cycles "${ticks} / 3")
+    math(EXPR lo "(${cycles} - ${pz_s_lo}) / ${pz_body}")
+    math(EXPR hi "(${cycles} - ${pz_s_hi}) / ${pz_body}")
+    set(found "")
+    foreach(row IN LISTS pz_rows)
+      string(REPLACE "," ";" f "${row}")
+      list(GET f 0 row_rom)
+      list(GET f 1 row_test)
+      list(GET f 2 row_profile)
+      list(GET f 3 row_hex)
+      if(row_rom STREQUAL "pause_nmi_${height}" AND row_test MATCHES "^01:" AND row_profile STREQUAL tv)
+        set(found ${row_hex})
+      endif()
+    endforeach()
+    math(EXPR lo_hex "${lo}" OUTPUT_FORMAT HEXADECIMAL)
+    math(EXPR hi_hex "${hi}" OUTPUT_FORMAT HEXADECIMAL)
+    message(STATUS "pause closed form: ${tv} ${height}: ${ticks} ticks, ${cycles} cycles, n in ${lo}..${hi} (${lo_hex}..${hi_hex})")
+    if(NOT found MATCHES "^([0-9A-F]+)-([0-9A-F]+)$")
+      message(FATAL_ERROR "pause closed form: pause_nmi_${height} ${tv} 01 has no lo-hi csv row")
+    endif()
+    math(EXPR csv_lo "0x${CMAKE_MATCH_1}")
+    math(EXPR csv_hi "0x${CMAKE_MATCH_2}")
+    if(NOT csv_lo EQUAL lo OR NOT csv_hi EQUAL hi)
+      message(FATAL_ERROR "pause closed form: pause_nmi_${height} ${tv} 01 csv ${csv_lo}-${csv_hi} computed ${lo}-${hi}")
+    endif()
+    math(EXPR pz_checked "${pz_checked} + 1")
+  endforeach()
+  message(STATUS "pause closed form: ${pz_checked} csv rows equal the recomputed bands")
+  return()
+endif()
 if(CMAKE_SCRIPT_MODE_FILE)
   # The image's SHA-256 equals its line in tests/built/expected.txt.
   file(STRINGS "${EXPECTED}" want REGEX "^${NAME} ")
@@ -207,6 +364,9 @@ if(CMAKE_SCRIPT_MODE_FILE)
     endif()
     if(REGION)
       list(APPEND machine --region ${REGION})
+    endif()
+    if(VIDEO)
+      list(APPEND machine --video-mode ${VIDEO})
     endif()
     if(INPUT)
       list(APPEND machine --input ${INPUT})
@@ -411,6 +571,59 @@ foreach(height IN ITEMS 192 224 240)
       ${fixtures_src}/header.inc ${fixtures_src}/mailbox.inc VERBATIM)
   list(APPEND fixtures_images ${image})
 endforeach()
+# One source builds fm_sweep and its Japan header variant: FIXTURE_REGION_CODE=3 is Master System Japan, so
+# the library judge meets a cartridge whose header names Japan. The link file names the variant's object.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${fixtures_src}/fm_sweep.link)
+file(READ ${fixtures_src}/fm_sweep.link fm_link)
+string(REPLACE "fm_sweep.o" "fm_sweep_jp.o" link "${fm_link}")
+set(image ${COGMASTER_FIXTURES_DIR}/fm_sweep_jp.sms)
+file(GENERATE OUTPUT ${COGMASTER_FIXTURES_DIR}/fm_sweep_jp.link CONTENT "${link}")
+add_custom_command(OUTPUT ${image}
+  COMMAND ${COGMASTER_WLA_Z80} -q -D FIXTURE_REGION_CODE=3
+    -o ${COGMASTER_FIXTURES_DIR}/fm_sweep_jp.o fm_sweep.asm
+  COMMAND ${CMAKE_COMMAND} -E chdir ${COGMASTER_FIXTURES_DIR}
+    ${COGMASTER_WLALINK} -r fm_sweep_jp.link ${image}
+  WORKING_DIRECTORY ${fixtures_src}
+  DEPENDS ${fixtures_src}/fm_sweep.asm ${fixtures_src}/fm_sweep.link
+    ${fixtures_src}/header.inc ${fixtures_src}/mailbox.inc VERBATIM)
+list(APPEND fixtures_images ${image})
+# One source builds the V counter table images, as vdp_lines does: LINES_HEIGHT picks the
+# screen height and each image gets its own link file.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${fixtures_src}/vdp_vtable.link)
+file(READ ${fixtures_src}/vdp_vtable.link vtable_link)
+foreach(height IN ITEMS 192 224 240)
+  string(REPLACE "vdp_vtable.o" "vdp_vtable_${height}.o" link "${vtable_link}")
+  set(image ${COGMASTER_FIXTURES_DIR}/vdp_vtable_${height}.sms)
+  file(GENERATE OUTPUT ${COGMASTER_FIXTURES_DIR}/vdp_vtable_${height}.link
+    CONTENT "${link}")
+  add_custom_command(OUTPUT ${image}
+    COMMAND ${COGMASTER_WLA_Z80} -q -D LINES_HEIGHT=${height}
+      -o ${COGMASTER_FIXTURES_DIR}/vdp_vtable_${height}.o vdp_vtable.asm
+    COMMAND ${CMAKE_COMMAND} -E chdir ${COGMASTER_FIXTURES_DIR}
+      ${COGMASTER_WLALINK} -r vdp_vtable_${height}.link ${image}
+    WORKING_DIRECTORY ${fixtures_src}
+    DEPENDS ${fixtures_src}/vdp_vtable.asm ${fixtures_src}/vdp_vtable.link
+      ${fixtures_src}/header.inc ${fixtures_src}/mailbox.inc VERBATIM)
+  list(APPEND fixtures_images ${image})
+endforeach()
+# One source builds the Pause NMI images, as vdp_vtable does.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${fixtures_src}/pause_nmi.link)
+file(READ ${fixtures_src}/pause_nmi.link pause_link)
+foreach(height IN ITEMS 192 224 240)
+  string(REPLACE "pause_nmi.o" "pause_nmi_${height}.o" link "${pause_link}")
+  set(image ${COGMASTER_FIXTURES_DIR}/pause_nmi_${height}.sms)
+  file(GENERATE OUTPUT ${COGMASTER_FIXTURES_DIR}/pause_nmi_${height}.link
+    CONTENT "${link}")
+  add_custom_command(OUTPUT ${image}
+    COMMAND ${COGMASTER_WLA_Z80} -q -D LINES_HEIGHT=${height}
+      -o ${COGMASTER_FIXTURES_DIR}/pause_nmi_${height}.o pause_nmi.asm
+    COMMAND ${CMAKE_COMMAND} -E chdir ${COGMASTER_FIXTURES_DIR}
+      ${COGMASTER_WLALINK} -r pause_nmi_${height}.link ${image}
+    WORKING_DIRECTORY ${fixtures_src}
+    DEPENDS ${fixtures_src}/pause_nmi.asm ${fixtures_src}/pause_nmi.link
+      ${fixtures_src}/header.inc ${fixtures_src}/mailbox.inc VERBATIM)
+  list(APPEND fixtures_images ${image})
+endforeach()
 # One source builds the Korean, Zemina and 4 PAK images, as vdp_lines does: FIXTURE_BOARD picks
 # the board and each image gets its own link file.
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${fixtures_src}/mapper_korean.link)
@@ -520,6 +733,18 @@ foreach(frame RANGE 1 14)
   string(APPEND play_both "p1=${p1} p2=${p2} pause=0 reset=0 start=0\n")
 endforeach()
 file(WRITE ${PROJECT_BINARY_DIR}/tests/play-both.input "${play_both}")
+# The Pause script: 40 records, the button held on frames 3 to 7 (one edge, so one NMI) and again on
+# frame 20 (a second edge), as pause_nmi expects. Written with Unix line ends on every host.
+set(pause_input ${PROJECT_BINARY_DIR}/tests/pause.input)
+set(pause_body "")
+foreach(frame RANGE 1 40)
+  set(pause 0)
+  if((frame GREATER 2 AND frame LESS 8) OR frame EQUAL 20)
+    set(pause 1)
+  endif()
+  string(APPEND pause_body "p1=00 p2=00 pause=${pause} reset=0 start=0\n")
+endforeach()
+file(CONFIGURE OUTPUT ${pause_input} CONTENT "${pause_body}" NEWLINE_STYLE UNIX @ONLY)
 cogmaster_add_test(NAME fixtures.boot_to_play.both_pads
   COMMAND ${CMAKE_COMMAND} -DCASE=play -DNAME=boot_to_play -DBOTH=1
     -DINPUT=${PROJECT_BINARY_DIR}/tests/play-both.input
@@ -713,6 +938,13 @@ foreach(profile IN ITEMS sms-japan sms-export gg)
       -DOUT=${fixtures_out}/fm_sweep.${profile}.txt -P ${CMAKE_CURRENT_LIST_FILE}
     LABELS fixtures fm portable TIMEOUT 10)
 endforeach()
+# Fault prevented: the Japan header variant of fm_sweep assembled to other bytes than the pinned ones
+# (another assembler, a changed header.inc), which would leave the library judge's admitted image stale.
+# Timeout: 20 s floor; 2 x 0.06 s, slowest of 9 runs, run 43126677381.
+cogmaster_add_test(NAME fixtures.fm_sweep_jp.pin
+  COMMAND ${CMAKE_COMMAND} -DCASE=pin -DNAME=fm_sweep_jp -DIMAGE=${COGMASTER_FIXTURES_DIR}/fm_sweep_jp.sms
+    -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 20)
 # Fault prevented: a detection routine that is only proven through the runner's default unit
 # setting. The same built image runs on an export console with the unit switched on (it must find
 # it) and on a Japanese console with the unit switched off (it must not), reading the mailbox
@@ -784,6 +1016,76 @@ foreach(tv IN ITEMS ntsc pal)
       LABELS fixtures portable TIMEOUT 10)
   endforeach()
 endforeach()
+
+# Fault prevented: V counter records that are measured but never judged, an expectation table with a
+# transcription error that passes because the same error is in the fixture, and a PAL image that
+# passes on an NTSC run. The first model has no 224 or 240 height, so its two runs use the 224 image
+# and the rows of 192 lines.
+# Timeout: 20 s floor; 2 x 1.50 s (macos-x64 lane for closed_form), slowest of 4 runs, run 43111533403.
+foreach(tv IN ITEMS ntsc pal)
+  set(region ntsc-u)
+  set(heights 192 224)
+  if(tv STREQUAL "pal")
+    set(region pal)
+    set(heights 192 224 240)
+  endif()
+  foreach(height IN LISTS heights)
+    cogmaster_add_test(NAME fixtures.vdp_vtable.mailbox.${tv}.${height}
+      COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=vdp_vtable_${height}
+        -DREGION=${region} -DPROFILE=${tv}
+        -DIMAGE=${COGMASTER_FIXTURES_DIR}/vdp_vtable_${height}.sms -DFRAMES=30
+        -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+        -DOUT=${fixtures_out}/vdp_vtable.${tv}.${height}.txt -P ${CMAKE_CURRENT_LIST_FILE}
+      LABELS fixtures portable TIMEOUT 20)
+  endforeach()
+  cogmaster_add_test(NAME fixtures.vdp_vtable.sms1.${tv}
+    COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=vdp_vtable_224 -DMACHINE=sms1
+      -DREGION=${region} -DPROFILE=${tv}-sms1
+      -DIMAGE=${COGMASTER_FIXTURES_DIR}/vdp_vtable_224.sms -DFRAMES=30
+      -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+      -DOUT=${fixtures_out}/vdp_vtable.sms1.${tv}.txt -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures portable TIMEOUT 20)
+endforeach()
+cogmaster_add_test(NAME fixtures.vdp_vtable.closed_form
+  COMMAND ${CMAKE_COMMAND} -DCASE=vtable_closed_form -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 20)
+
+# Fault prevented: a Pause NMI on the wrong line or tick that no in-process test sees from a program,
+# and a band fitted to a run. Each image counts n between the frame interrupt and the NMI, reads V
+# in the handler and counts NMIs for a script that holds Pause for several frames and presses it
+# again later; the n band comes from the listing's cycle counts (closed_form), not from a run. The
+# Game Gear in its own mode has no Pause NMI, so its four records are 0. PAL placement is derived,
+# not measured: no logic-analyser capture of a PAL console exists.
+# Timeout: 20 s floor; 2 x 0.69 s (be32 lane for pal.240), slowest of 4 runs, run 43115877197.
+foreach(tv IN ITEMS ntsc pal)
+  set(region ntsc-u)
+  set(heights 192 224)
+  if(tv STREQUAL "pal")
+    set(region pal)
+    set(heights 192 224 240)
+  endif()
+  foreach(height IN LISTS heights)
+    cogmaster_add_test(NAME fixtures.pause_nmi.mailbox.${tv}.${height}
+      COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=pause_nmi_${height}
+        -DREGION=${region} -DPROFILE=${tv} -DINPUT=${pause_input}
+        -DIMAGE=${COGMASTER_FIXTURES_DIR}/pause_nmi_${height}.sms -DFRAMES=40
+        -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+        -DOUT=${fixtures_out}/pause_nmi.${tv}.${height}.txt -P ${CMAKE_CURRENT_LIST_FILE}
+      LABELS fixtures portable TIMEOUT 20)
+  endforeach()
+endforeach()
+cogmaster_add_test(NAME fixtures.pause_nmi.gg
+  COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=pause_nmi_192 -DMACHINE=gg -DVIDEO=gg
+    -DPROFILE=gg -DINPUT=${pause_input}
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/pause_nmi_192.sms -DFRAMES=40
+    -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+    -DOUT=${fixtures_out}/pause_nmi.gg.txt -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 20)
+cogmaster_add_test(NAME fixtures.pause_nmi.closed_form
+  COMMAND ${CMAKE_COMMAND} -DCASE=pause_closed_form -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+    -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS fixtures portable TIMEOUT 20)
 
 # The ports fixture once per profile: the I/O chip and the VDP answer by
 # machine, region and TV standard. The Game Gear runs ports_gg, the same
@@ -1511,19 +1813,35 @@ string(REGEX REPLACE "(\nmapper_sega,03:[^,]*,[^,]*,)5AF3," "\\15AF4," fixtures_
 string(REGEX REPLACE "\nmapper_sega,02:[^\n]*" "" fixtures_missing "${fixtures_csv}")
 string(REGEX REPLACE "(\nvdp_lines_192,01:[^,]*,[^,]*,)0006," "\\10005," fixtures_wrong "${fixtures_wrong}")
 string(REGEX REPLACE "\nvdp_lines_192,02:[^\n]*" "" fixtures_missing "${fixtures_missing}")
+string(REGEX REPLACE "(\nvdp_vtable_192,02:[^,]*,ntsc,)848D," "\\1848E," fixtures_wrong "${fixtures_wrong}")
+string(REGEX REPLACE "\nvdp_vtable_192,02:[^\n]*" "" fixtures_missing "${fixtures_missing}")
+string(REGEX REPLACE "(\npause_nmi_192,01:[^,]*,ntsc,)[0-9A-F]+-[0-9A-F]+," "\\10000-0001," fixtures_wrong "${fixtures_wrong}")
+string(REGEX REPLACE "\npause_nmi_192,02:[^\n]*" "" fixtures_missing "${fixtures_missing}")
 file(WRITE ${fixtures_out}/wrong_value.csv "${fixtures_wrong}")
 file(WRITE ${fixtures_out}/missing_row.csv "${fixtures_missing}")
 string(REPLACE ";" "\;" fixtures_inner_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
-foreach(rom IN ITEMS mapper_sega vdp_lines_192)
+foreach(rom IN ITEMS mapper_sega vdp_lines_192 vdp_vtable_192 pause_nmi_192)
   set(prefix fixtures.judge)
   set(profile sms-export)
+  set(script "")
   if(rom STREQUAL "vdp_lines_192")
     set(prefix fixtures.vdp_lines.judge)
+    set(profile ntsc)
+  elseif(rom STREQUAL "vdp_vtable_192")
+    set(prefix fixtures.vdp_vtable.judge)
+    set(profile ntsc)
+  elseif(rom STREQUAL "pause_nmi_192")
+    set(prefix fixtures.pause_nmi.judge)
     set(profile ntsc)
   endif()
   foreach(control IN ITEMS wrong_value missing_row hang)
     set(csv ${fixtures_out}/${control}.csv)
     set(frames 120)
+    if(rom STREQUAL "pause_nmi_192")
+      # The script holds exactly the frames of the run; the one-frame hang needs none.
+      set(frames 40)
+      set(script -DINPUT=${pause_input})
+    endif()
     if(control STREQUAL "wrong_value")
       set(regex "outside its row")
     elseif(control STREQUAL "missing_row")
@@ -1531,12 +1849,13 @@ foreach(rom IN ITEMS mapper_sega vdp_lines_192)
     else()
       set(csv ${PROJECT_SOURCE_DIR}/tests/diag/expected.csv)
       set(frames 1)
+      set(script "")
       set(regex "[(]hang[)]")
     endif()
     set(cmd ${CMAKE_COMMAND} -DCASE=mailbox -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
       -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${fixtures_inner_emulator}"
       -DJUDGE=${PROJECT_SOURCE_DIR}/tests/cmake/mailbox.cmake -DPROFILE=${profile}
-      -DNAME=${rom} -DIMAGE=${COGMASTER_FIXTURES_DIR}/${rom}.sms -DFRAMES=${frames}
+      -DNAME=${rom} -DIMAGE=${COGMASTER_FIXTURES_DIR}/${rom}.sms -DFRAMES=${frames} ${script}
       -DCSV=${csv} -DOUT=${fixtures_out}/${rom}.${control}.txt -P ${CMAKE_CURRENT_LIST_FILE})
     string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
     # Timeout: 10 s floor; 2 x 0.02 s, slowest of 2 runs, run 39376644025, provisional.
@@ -1546,6 +1865,37 @@ foreach(rom IN ITEMS mapper_sega vdp_lines_192)
       LABELS fixtures portable TIMEOUT 10)
   endforeach()
 endforeach()
+
+# Fault prevented: a PAL image that passes on an NTSC run. The 192-line image runs at --region ntsc-u
+# and is judged against the PAL rows: the line count reads 262 against 313 and the sum 33,933 against
+# 44,838, so the judge must fail.
+set(cmd ${CMAKE_COMMAND} -DCASE=mailbox -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+  -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${fixtures_inner_emulator}"
+  -DJUDGE=${PROJECT_SOURCE_DIR}/tests/cmake/mailbox.cmake -DPROFILE=pal -DREGION=ntsc-u
+  -DNAME=vdp_vtable_192 -DIMAGE=${COGMASTER_FIXTURES_DIR}/vdp_vtable_192.sms -DFRAMES=30
+  -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+  -DOUT=${fixtures_out}/vdp_vtable_192.wrong_profile.txt -P ${CMAKE_CURRENT_LIST_FILE})
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+# Timeout: 10 s floor; 2 x 0.16 s, slowest of 1 run (9 lanes), run 43117518796.
+cogmaster_add_test(NAME fixtures.vdp_vtable.control.wrong_profile
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=outside its row"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+  LABELS fixtures portable TIMEOUT 10)
+
+# Fault prevented: a PAL Pause image that passes on an NTSC run. The PAL image at --region ntsc-u is
+# judged against the PAL band: the NMI comes 34,884 ticks sooner, so n reads about 150 bodies short.
+set(cmd ${CMAKE_COMMAND} -DCASE=mailbox -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+  -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${fixtures_inner_emulator}"
+  -DJUDGE=${PROJECT_SOURCE_DIR}/tests/cmake/mailbox.cmake -DPROFILE=pal -DREGION=ntsc-u
+  -DNAME=pause_nmi_192 -DIMAGE=${COGMASTER_FIXTURES_DIR}/pause_nmi_192.sms -DFRAMES=40
+  -DINPUT=${pause_input} -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+  -DOUT=${fixtures_out}/pause_nmi_192.wrong_profile.txt -P ${CMAKE_CURRENT_LIST_FILE})
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+# Timeout: 20 s floor; 2 x 0.45 s, slowest of 1 run (9 lanes), run 43117518796.
+cogmaster_add_test(NAME fixtures.pause_nmi.control.wrong_profile
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=outside its row"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+  LABELS fixtures portable TIMEOUT 20)
 
 # Fault prevented: an assembler pin that accepts a tarball other than the
 # pinned one. A local tarball checked against the wla-dx row's digest must

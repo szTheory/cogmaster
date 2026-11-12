@@ -20,9 +20,15 @@ root_physical=$(cd "$root" && pwd -P)
 case $physical in "$root_physical"/build/*) ;; *) exit 2 ;; esac
 chmod 700 "$out"
 umask 077
-sh "$root/scripts/compat-common.sh" cases "$root/tests/compat/ledger.csv" > "$out/cases.cmake"
+# The tracked ledger, page and catalog are overridable so tests never touch tracked files.
+ledger=${COGMASTER_LEDGER:-$root/tests/compat/ledger.csv}
+page=${COGMASTER_PAGE:-$root/docs/compatibility.md}
+COGMASTER_CATALOG=${COGMASTER_CATALOG:-$root/tests/compat/catalog.tsv}
+export COGMASTER_CATALOG
+sh "$root/scripts/compat-common.sh" cases "$ledger" > "$out/cases.cmake"
+: > "$out/profiles.csv"
 printf 'candidate,status,evaluated,attempted\n' > "$out/results.csv"
-printf 'id,title,machine,region,mapper,predicate,status,evidence,date\n' > "$out/public-facts.csv"
+printf 'id,title,machine,region,tv,mapper,predicate,status,evidence,date\n' > "$out/public-facts.csv"
 COGMASTER_LIBRARY_DATE=$(date -u +%F)
 COGMASTER_LIBRARY_REV=$(git rev-parse HEAD)
 export COGMASTER_LIBRARY_DATE COGMASTER_LIBRARY_REV
@@ -37,3 +43,37 @@ for image in "$COGMASTER_ROM_DIR"/* "$COGMASTER_ROM_DIR"/.[!.]* "$COGMASTER_ROM_
     printf '%s,infrastructure_error,0,0\n' "$count" >> "$out/results.csv"
 done
 awk -F, 'NR>1 {c++; e+=($3>0); p+=$3; a+=$4; s[$2]++} END {printf "library: candidates=%d attempted=%d evaluated=%d coverage=%d predicates=%d\n",c,a,e,e,p; for(k in s) print "library: " k "=" s[k]}' "$out/results.csv" | sort
+# Counts only: no name, path, probe value or hash is printed. profiles.csv rows are kind,region,tv,fm,status.
+{
+  echo 'library-judge 1'
+  awk -F, '$1=="sms" && $2=="export" && $3=="ntsc" {c++} $3=="pal" {r++; p+=($5=="pass"); f+=($5=="fail")} END {if(c+r) printf "pal: carts=%d ran_pal=%d boots_pass=%d boots_fail=%d\n",c,r,p,f; else print "pal: skipped: not configured"}' "$out/profiles.csv"
+  awk -F, '$2=="japan" && $4=="on" {c++; p+=($5=="pass"); f+=($5=="fail")} END {if(c) printf "fm: carts=%d boots_pass=%d boots_fail=%d\n",c,p,f; else print "fm: skipped: not configured"}' "$out/profiles.csv"
+} > "$out/summary.txt"
+# Fault prevented: a run rewriting the tracked ledger and page when the page cannot hold the rows, or past the ratchet.
+cap=${COGMASTER_DOCS_CAP:-$(sed -n 's/.*"docs.max_bytes": *\([0-9][0-9]*\).*/\1/p' "$root/quality.json")}
+rev=$(awk '/^#define COGMASTER_BEHAVIOUR_REVISION / {print $3}' "$root/include/cogmaster.h")
+: > "$out/allow.txt"
+awk '!seen[$0]++' "$out/public-facts.csv" > "$out/facts.csv"
+merge=held
+if COMPAT_CATALOG=$COGMASTER_CATALOG COMPAT_REV=$COGMASTER_LIBRARY_REV sh "$root/scripts/compat-common.sh" update "$ledger" "$out/facts.csv" > "$out/next-ledger.csv" 2>/dev/null; then
+  added=$(($(wc -l < "$out/next-ledger.csv") - $(wc -l < "$ledger")))
+  if sh "$root/scripts/compat-ratchet.sh" "$ledger" "$out/next-ledger.csv" "$out/allow.txt" "$COGMASTER_LIBRARY_DATE" "$rev" "$rev" >/dev/null 2>&1; then
+    sh "$root/scripts/compat-common.sh" docs "$out/next-ledger.csv" > "$out/next-page.md"
+    bytes=$(($(wc -c < "$out/next-page.md")))
+    if [ "$bytes" -lt "$cap" ]; then
+      cmp -s "$ledger" "$out/next-ledger.csv" || cp "$out/next-ledger.csv" "$ledger"
+      cmp -s "$page" "$out/next-page.md" || cp "$out/next-page.md" "$page"
+      echo "merge: rows_added=$added ratchet=ok page_bytes=$bytes" >> "$out/summary.txt"
+    else
+      echo 'merge: held (page over the docs cap)' >> "$out/summary.txt"
+    fi
+  else
+    echo 'merge: held (ratchet refused)' >> "$out/summary.txt"
+    merge=refused
+  fi
+else
+  echo 'merge: held (update refused)' >> "$out/summary.txt"
+  merge=refused
+fi
+cat "$out/summary.txt"
+[ "$merge" != refused ] || exit 1

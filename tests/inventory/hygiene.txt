@@ -1,9 +1,11 @@
 # Every test the hygiene preset registers: name<TAB>labels.
 # Sorted; configure fails when this differs from what is registered.
 ci.classify	hygiene
+ci.durations_tests	hygiene
 compat.csv	compat,hygiene
 compat.device_key	compat,hygiene
 compat.device_rejected	compat,hygiene
+compat.migration	compat,hygiene
 compat.public_update	compat,hygiene
 compat.ratchet	compat,hygiene
 compat.trusted_judge	compat,hygiene
@@ -29,6 +31,7 @@ hygiene.timeout_comments.self_test	hygiene
 hygiene.tree	hygiene
 hygiene.tree.binary_manifest	hygiene
 hygiene.tree.binary_unlisted	hygiene
+hygiene.tree.header_offset	hygiene
 hygiene.tree.self_test	hygiene
 policy.action_pins	hygiene,policy
 policy.action_pins.self_test	hygiene,policy
@@ -64,6 +67,7 @@ policy.lessons_unique.empty	hygiene,policy
 policy.lessons_unique.self_test	hygiene,policy
 policy.pins	hygiene,policy
 policy.pins.self_test	hygiene,policy
+policy.publish_delete	hygiene,policy
 policy.publish_ref	hygiene,policy
 policy.publish_set	hygiene,policy
 policy.publish_set.self_test	hygiene,policy

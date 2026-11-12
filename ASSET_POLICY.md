@@ -20,6 +20,8 @@ this file covers data. Written on 2026-10-18, before any such file exists. `[AP.
   permissively licensed repositories and bytes retyped into source code.
 - Battery saves, EEPROM images, save states, movies, screenshots, recordings, traces or logs made while running a
   commercial game or a real BIOS.
+- A digest of a commercial title's emulated frame, RAM or sound is a derived fact of our own output and is never
+  committed; ledger rows for such titles carry `boots` predicates only, and compat-update never adds a digest.
 - Bulk tables from databases that state no licence (No-Intro DATs, emulator header databases, ROM-pack headers,
   SMS Power!'s game lists). MAME's CC0 `hash/sms.xml`, `hash/gamegear.xml` and `hash/sg1000.xml` are the allowed
   databases [AP.01].

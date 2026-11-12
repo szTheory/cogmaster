@@ -4,11 +4,14 @@
 # scripts/hygiene.sh rejects a binary or image file that is not listed here.
 tests/vectors/z80/sst-sample.bin	https://github.com/SingleStepTests/z80	ebe1875d48f374bcfd4b505d8eb8ee751568b5f7	MIT	189a33d4396f13b2cb93acbcc5da42fb7d5da0176f2558aaf09ae10d23f26bda	SingleStepTests z80 vectors
 # Owned vdp_lines_192/224/240 images are built only; digests live in tests/built/expected.txt.
+# Owned vdp_vtable_192/224/240 images are built only from MIT source; their digests live in tests/built/expected.txt.
+# Owned pause_nmi_192/224/240 images are built only from MIT source; their digests live in tests/built/expected.txt.
 # Owned boot_to_play.gg is built only from shared source with a GG header; its digest is in tests/built/expected.txt.
 # Owned battery.sms is built only from MIT source; SHA-256 is in tests/built/expected.txt and its production SHA-1 fact is in tests/cart/fixture_facts.txt.
 # Owned eeprom.gg is built only from MIT source; SHA-256 is in tests/built/expected.txt and its production SHA-1 fact is in tests/cart/fixture_facts.txt.
 # Owned psg_sweep images (.sms and .gg) are built only from MIT source; their digests live in tests/built/expected.txt.
 # Owned fm_sweep.sms is built only from MIT source; its digest lives in tests/built/expected.txt.
+# Owned fm_sweep_jp.sms is the same source built with a Master System Japan header code; its digest lives in tests/built/expected.txt.
 # Owned mapper_korean, mapper_zemina and mapper_hes_4pak images are built only from one MIT source with no ROM header; their digests live in tests/built/expected.txt and the scan finds each board.
 # Owned sports_pad.sms is built only from MIT source; its digest lives in tests/built/expected.txt.
 # Owned paddle.sms is built only from MIT source; its digest lives in tests/built/expected.txt.

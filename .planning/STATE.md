@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: The whole library
-current_phase: 11
-current_phase_name: PAL and Japanese FM
+current_phase: 12
+current_phase_name: The whole list in the ledger
 status: planning
-stopped_at: Phase 10 complete, ready to plan Phase 11
-last_updated: "2026-11-11T19:14:50.371Z"
+stopped_at: Phase 11 complete, ready to plan Phase 12
+last_updated: "2026-11-12T00:35:19.606Z"
 last_activity: 2026-11-11
-last_activity_desc: Phase 10 complete, transitioned to Phase 11
-state_head: bd09bb49d34cf25fcd2293770babf77ea81cdf80
+last_activity_desc: Phase 11 complete, transitioned to Phase 12
+state_head: f7dec5ca2cc31bb65468a8af5b5091548464fcb7
 progress:
   total_phases: 8
-  completed_phases: 6
-  total_plans: 75
-  completed_plans: 75
-  percent: 75
+  completed_phases: 7
+  total_plans: 84
+  completed_plans: 84
+  percent: 88
 ---
 
 # Project State
@@ -29,17 +29,17 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 
 ## Current Position
 
-Phase: 11 — PAL and Japanese FM
+Phase: 12 — The whole list in the ledger
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-11-11 — Phase 10 complete, transitioned to Phase 11
+Last activity: 2026-11-11 — Phase 11 complete, transitioned to Phase 12
 
-Progress: [████████░░] 75% of v2.0
+Progress: [█████████░] 88% of v2.0
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 137
+- Total plans completed: 146
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -57,6 +57,7 @@ Progress: [████████░░] 75% of v2.0
 | 8 | 17 | - | - |
 | 9 | 12 | - | - |
 | 10 | 11 | - | - |
+| 11 | 9 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -204,6 +205,15 @@ Progress: [████████░░] 75% of v2.0
 | Phase 10 P09 | 60 min | 2 tasks | 10 files |
 | Phase 10 P10 | 75 min | 3 tasks | 10 files |
 | Phase 10 P11 | 60min | 3 tasks | 11 files |
+| Phase 11 P01 | 50min | 3 tasks | 8 files |
+| Phase 11 P02 | 75min | 3 tasks | 14 files |
+| Phase 11 P03 | 25min | 3 tasks | 13 files |
+| Phase 11 P04 | 40min | 3 tasks | 10 files |
+| Phase 11 P05 | 25 min | 2 tasks | 7 files |
+| Phase 11 P06 | 40 min | 2 tasks | 9 files |
+| Phase 11 P07 | 35 min | 3 tasks | 15 files |
+| Phase 11 P08 | 55 min | 3 tasks | 13 files |
+| Phase 11 P09 | 100min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -302,6 +312,15 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 10]: 10-09: the runner reads the BIOS after the cartridge and decides the Game Gear refusal first, an absent BIOS path is exit 77 while any other read error is 1, every BIOS text is fixed and never prints the path, and the cross-lane device row runs two frames because from the third a BIOS run of the probe hashes like a fast one
 - [Phase 10]: 10-10: the libretro BIOS option does nothing without content and logs one warning naming only the file on every other refusal, a Game Gear game never asks for the system folder, the region picks Japan then PAL then the export file with no fallback, and the two libretro timeouts take the 20 s floor from D3
 - [Phase 10]: 10-11: BIOS wording amended to what was built, BIOS-01..05 complete; every phase timeout settled at the 20 s floor from run 43074158512; final dispatch run 43076225840 and nightly 43076276567 green, perf delta -11 bp; real-BIOS residue stays an owner hand-off in SEED-010
+- [Phase 11]: Plan 01: the tree scan reads each file once into one temporary file (counted lines unchanged at 845) and the analyzer runs four processes at a time; local medians 27 to 21 s and 21 to 16 s
+- [Phase 11]: Plan 02: --fm is strict and once and the core's profile refusal gives exit 77 for a Game Gear; audio@F=H copies the running transition hash so one drain serves several frames; an audio case with a reset script exits 2 at load; every frame holds exactly floor(f x N / D) minus floor((f - 1) x N / D) samples on both TVs
+- [Phase 11]: Ledger parser: a format 1 row is widened to ten slots at read time and the default fm is resolved once in predicate(); audio is accepted only for fixture or built ids with script none
+- [Phase 11]: Plan 04: the committed ledger is the normalize output (format 2, nothing moved); the ci.yml bridge triggers only on the exact format 1 to format 2 header literal pair compared as strings, so a quoted, CR-damaged or other header fails closed in the base judge; apt calls retry three times
+- [Phase 11]: Plan 05: audio rows copied by script from the transition pins; compat.fixtures compares region, tv and fm with the runner's execution line against literal tables and the core default with the awk default read through normalize on a ledger that omits fm
+- [Phase 11]: Plan 11-06: vdp_vtable expectations come from the literal V counter intervals and are recomputed in closed_form; a one-line core mutation was shown to fail the PAL 192 mailbox test (restored); NTSC 240 is built but not judged
+- [Phase 11]: Plan 11-07: the Pause count band is [floor((C - 132) / 78), floor((C - 36) / 78)] derived from the listing (guarded 78-cycle body, 76-cycle frame handler), a one-shot core one line late fails it and moves V to 0000; dispatch D1 run 43111533403 is green on all eight lanes and draft pull request #31 ran the ledger bridge (run 43112269415, cleanup rerun for a read-after-delete race)
+- [Phase 11]: Plan 11-08: compat-update adopts a new key only for a catalog id with the catalog machine and mapper, boots@600 under the default config, pass or fail, on the judge's profile whitelist; the library judge derives profiles from the catalog and probe, and the merge is held unless the ratchet passes and the page stays under the docs cap; REG-04 is amended to the synthetic proof and the owner's own-library run is SEED-013
+- [Phase 11]: Timeouts are max(floor, 2 x the slowest hosted second) from raw seconds over five runs; the be32 job is 15 minutes by the mechanical rule; the rehearsal cleanup race stays a seed (SEED-014)
 
 ### Pending Todos
 
@@ -423,6 +442,16 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 10 plan 10-03 (gsd-execute-phase 10); cogmaster_media gains reserved3, bios and bios_size (72 / 40 bytes), versions API 14, behaviour 16, state 16, layout asserts only in src, size pins loosened to >= with every offset pin exact, tests/api/v14.c and abi.api_v14 on ci, wasm32 and nofp, order evidence for BIOS-01 recorded (scans precede the first code commit: exit 0 forward, 1 reversed), counted check code 833 of 847, no dispatch (runner DNS not re-observed; main still shows the failed dispatch); 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 10 plan 10-04 (gsd-execute-phase 10); struct cogmaster__bios and the derived mem_slow flag, one shared decoder for the cold read path and peek, per-machine BIOS and cartridge arbitration (SMS1 cartridge wins, SMS2 ANDs, empty enabled slot without a fault when a BIOS is attached), bios.arbitration with 64 one-entry flips and three wrong-table controls, bios.slow_flag, three one-shot controls, SMS-SYSTEM section 3 and 9 amended and the fault row of embedding.md (+95 bytes), counted check code 833 of 847, no dispatch, no hot-path measurement yet (plan 05); 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Code review and verify phase 10 (autonomous run); core review 0 critical 2 warning, host review 2 critical (window scan false negatives) 7 warning, fix round 1 fixed 11, hygiene job and seven window controls settled from run 43082065462, verification passed 5 of 5, counted check code 845 of 940 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 11 plan 11-01 (gsd-execute-phase 11); controller and sound-hash prose moved to controllers.md and audio.md, MAME provenance row corrected, hygiene.sh reads each file once with header_offset control, analyzer parallel, CI speed section; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 11 plan 11-02 (gsd-execute-phase 11); runner --fm and the fm= execution field, audio@F=H over the transition stream with one drain and a reset refusal, exact samples per frame on NTSC and PAL, four new tests with negative controls; counted check code 845, docs/runner.md 34,054 bytes, no dispatch; 3 tasks, 3 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 11 plan 11-03 (gsd-execute-phase 11); one ledger parser reads format 1 or 2 and writes format 2 (tv column, export or japan, fm in the cfg with its default resolved once, audio kind, impossible profiles refused), cases fields read by the library judge and the fixtures check, compat.migration on literals with 26 controls, eight cross-format ratchet cases, grammar stated once in conformance.md (30,081 bytes); counted check code 852, no dispatch; 3 tasks, 3 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 11 plan 11-04 (gsd-execute-phase 11); committed ledger migrated to format 2 with nothing moved (real-file cmp exit 0), live assertions in compat.migration (28 controls), ratchet and update tests on format 2 with tv and fm pairs, ci.yml bridge for the exact header pair plus apt retries proved by seven recorded simulations, page intro, format note and README lines; counted check code 852, conformance.md 30,557 and testing.md 31,682 bytes, no dispatch; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 11 plan 11-05 (gsd-execute-phase 11); five own-fixture audio@300 rows copied by script from the transition pins, compat.fixtures judging nine rows with region, tv and fm compared with the runner's execution line (literal tables, three controls) and the core default compared with the awk default, six ratchet audio cases, page counts pal rows judged, commercial-digest sentence in ASSET_POLICY.md and regression-lock paragraph in conformance.md (30,977 bytes); counted check code 852, no dispatch; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 11 plan 11-06 (gsd-execute-phase 11); owned vdp_vtable fixture reads the V counter once per 228-cycle line at 192, 224 and 240 lines, 33 literal rows judged and recomputed in closed_form, controls shown able to fail including a one-line core mutation | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 11 plan 11-07 (gsd-execute-phase 11); owned pause_nmi fixture counts between the frame interrupt and the Pause NMI inside a band derived from its listing (one-shot core mutation, halved slack and a changed body each shown red), mailbox, PAL device and PAL FM rows in the lane hash file, hosted dispatch D1 run 43111533403 green on all eight lanes, draft pull request #31 with the ledger bridge proven on run 43112269415; counted check code 852; 3 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 11 plan 11-08 (gsd-execute-phase 11); compat-update adopts only catalog boots@600 rows on the judge's profiles (five negative controls shown red), library judge derives profiles from the catalog and probe, count-only run with a merge held unless the ratchet passes and the page fits the cap, fm_sweep_jp Japan-header fixture, synthetic proof of four adopted rows and a held merge, REG-04 amended and the owner's own-library run recorded as SEED-013; counted check code 859, conformance.md 32,217 bytes, no dispatch; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Execute phase 11 plan 11-09 (gsd-execute-phase 11); per-test hosted time report with a control, final head green on pull request run 43119601937 (bridge, protected comparison, perf and hash equality shown, cleanup race rerun), migration repeated on the final ledger, every timeout of the phase settled from five runs (compat.public_update raised after a Windows ARM64 timeout), be32 15 min, floors 654 and 612, REG-02 complete, SEED-012 and SEED-014, counted check code 859 of 906; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Code review and verify phase 11 (autonomous run); runner review 0 critical 2 warning, ledger review 0 critical 8 warning, fix round 1 fixed 15 (reset-script refusal removed, bounded re-read in the rehearsal delete, adopt-path and judge fixes), verification passed 4 of 4 with digest refreshed after the last timeout settlement, PR run 43126677381 green on its first attempt, counted check code 860 of 940 | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -444,9 +473,10 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T18:29:17.526Z
-Stopped at: Phase 10 complete, ready to plan Phase 11
+Last session: 2026-11-11T23:38:07.547Z
+Stopped at: Phase 11 complete, ready to plan Phase 12
 Resume file: None
+Phase 11 ship pull request: #31, open as a draft since plan 07; ship reuses it (gh pr ready, title check, gh pr merge --auto --squash at ship only; no new gh pr create)
 
 ## Operator Next Steps
 

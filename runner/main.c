@@ -266,8 +266,8 @@ static int load_status(cogmaster_status st, const uint8_t *image, size_t image_s
         }
         return COGMASTER__EXIT_REFUSED;
     case COGMASTER_STATUS_ERR_PROFILE_REJECTED:
-        fprintf(stderr, "cogmaster-run: unsupported: no such console was made for this machine "
-                        "and region\n");
+        fprintf(stderr, "cogmaster-run: unsupported: no such console was made for this machine, "
+                        "region and FM setting\n");
         return COGMASTER__EXIT_REFUSED;
     default:
         fprintf(stderr, "cogmaster-run: cogmaster_load failed with status %lu\n",
@@ -338,7 +338,11 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     cfg.size = (uint32_t)sizeof cfg;
     cfg.allocator.alloc = run_alloc;
     cfg.allocator.free = run_free;
-    if (opt->hash_audio) {
+    /* One reader drains the sound each frame: --hash-audio prints it and an audio expectation
+     * judges it. */
+    int want_audio =
+        opt->hash_audio || (opt->expect != NULL && cogmaster__expect_has_audio(&expectations));
+    if (want_audio) {
         cfg.trace_records = COGMASTER_RUN_TRACE_RECORDS;
     }
     cogmaster *m = NULL;
@@ -362,6 +366,7 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     }
     media.region = opt->region;
     media.tv = opt->tv;
+    media.fm = opt->fm;
     media.video_mode = opt->video_mode;
     media.bios = bios;
     media.bios_size = bios != NULL ? (size_t)COGMASTER_BIOS_SIZE : 0u;
@@ -383,7 +388,7 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
         }
     }
     cogmaster__audio audio = {0};
-    if (status == COGMASTER__EXIT_OK && opt->hash_audio) {
+    if (status == COGMASTER__EXIT_OK && want_audio) {
         cogmaster_info info = {0};
         info.size = sizeof info;
         status = cogmaster_get_info(m, &info) == COGMASTER_STATUS_OK
@@ -440,12 +445,13 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
         char hex[65];
         cogmaster__sha256_final(&hash, digest);
         cogmaster__sha256_hex(digest, hex);
-        printf("execution machine=%lu region=%lu tv=%lu video=%lu mapper=%lu port1=%s port2=%s "
-               "script_sha256=%s cap=%lu behaviour=%lu\n",
-               (unsigned long)info.machine, (unsigned long)info.region, (unsigned long)info.tv,
-               (unsigned long)info.video_mode, (unsigned long)cart.board,
-               cogmaster__device_name(port1), cogmaster__device_name(port2), hex,
-               (unsigned long)opt->frames, (unsigned long)versions.behaviour);
+        printf(
+            "execution machine=%lu region=%lu tv=%lu fm=%lu video=%lu mapper=%lu port1=%s port2=%s "
+            "script_sha256=%s cap=%lu behaviour=%lu\n",
+            (unsigned long)info.machine, (unsigned long)info.region, (unsigned long)info.tv,
+            (unsigned long)info.fm, (unsigned long)info.video_mode, (unsigned long)cart.board,
+            cogmaster__device_name(port1), cogmaster__device_name(port2), hex,
+            (unsigned long)opt->frames, (unsigned long)versions.behaviour);
     }
     cogmaster_fault fault;
     memset(&fault, 0, sizeof fault);
@@ -500,12 +506,18 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
                     (unsigned long)st);
             status = COGMASTER__EXIT_FAILURE;
         }
-        if (status == COGMASTER__EXIT_OK && opt->hash_audio) {
+        if (status == COGMASTER__EXIT_OK && want_audio) {
             status = cogmaster__audio_frame(&audio, m, n);
         }
-        if (status == COGMASTER__EXIT_OK && opt->expect != NULL)
+        if (status == COGMASTER__EXIT_OK && opt->expect != NULL) {
+            char audio_hex[65];
+            int audio_case = cogmaster__expect_audio_at(&expectations, (uint32_t)n);
+            if (audio_case)
+                cogmaster__audio_transitions_hex(&audio, audio_hex);
             status = cogmaster__expect_frame(&expectations, m, (uint32_t)n, result.display_enabled,
-                                             pixels);
+                                             pixels, audio_case ? audio_hex : NULL,
+                                             audio_case ? audio.transitions : 0u);
+        }
         for (uint32_t k = 0; k < opt->png_count && status == COGMASTER__EXIT_OK; k++) {
             if (opt->pngs[k].frame == n) {
                 status = write_png(m, opt->pngs[k].path, pixels);
