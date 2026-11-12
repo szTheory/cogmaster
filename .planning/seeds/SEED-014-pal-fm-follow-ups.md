@@ -59,3 +59,53 @@ or it adds ceremony for no recurring catch. None of them moves a hash today.
 - A real PAL Pause capture: the fixture's placement is derived from the interval, not measured on a console.
 - Whether the rule against running two macOS workflows at once guards a runner quota or contention for the same runners;
   no run has shown which.
+
+## Phase 11 review leftovers
+
+Left out of review fix round 1 on purpose; each is a seed, none moves a hash today.
+
+Owner decision (admin settings, not agent work):
+
+- The committed ruleset requires no approving review (`required_approving_review_count` is 0, no code owner review, no
+  CODEOWNERS file) and its one required check is a job of the `ci.yml` a pull request can edit. `docs/testing.md` now says
+  the protected comparison guards against mistakes and regressions, not against an author who can edit `ci.yml`. Whether to
+  add CODEOWNERS for `.github/workflows/**`, `scripts/compat-*.sh` and `tests/compat/**` with required code owner review is
+  the owner's call.
+
+Blind spots of the fixtures, by design:
+
+- `vdp_vtable` is rotation invariant: it sees the multiset, the descents, the maximum and the minimum of the V counter, so
+  a table that is correct but shifted against the frame passes. Only the Pause V record and the `vdp_lines` boundary rows
+  are phase evidence on PAL.
+- `pause_nmi` reads V about 350 ticks after the NMI, so a V step tick error smaller than that, a sub-120-cycle NMI tick
+  error, or which frame the NMI lands in are not seen.
+
+Runner and fixture half, informational:
+
+- The six `sms1` expectation rows in `tests/diag/expected.csv` cite the 224-line section for a 192-line fallback the core
+  selects; cite the model-selection section and say "selected fallback, not measured".
+- `--probe` rejects `--fm` but still accepts `--machine`, `--region`, `--video-mode`, `--port1` and `--port2`, which also
+  change nothing under `--probe`; extend the list in one pass with a control each, or document it.
+
+Ledger, library judge and CI half, informational:
+
+- `library.sh run` with no `COGMASTER_ROM_DIR` aborts with an unbound variable instead of printing "skipped: not configured",
+  and an empty value scans `/*`.
+- A candidate's date is kept for any valid day, including a future one; pass today's date in and refuse a later day.
+- `library.sh` copies the ledger and the page one after the other; copy both to temporaries and move them once both
+  writes succeeded, and skip the facts of an unchanged status so a no-change run does not dirty the tree.
+- The be32 job limit of 15 minutes rests on one apt stall; a `timeout-minutes: 3` on the apt step would fail a stall fast.
+- The ledger header literal lives in five places (`compat-common.sh`, `library.sh`, `ci.yml` twice, the tests) and the
+  `base_rev` line is duplicated between the bridge's two branches; delete the bridge in the first plan of the next phase.
+- `hygiene.tree.header_offset` plants its marker at one of the three offsets the scan reads, and `hygiene.analyzer` has no
+  control against a pipeline that swallows `xargs`'s status.
+- The ledger migration test and the `compat-common.sh` comment claim an equivalence for a `sg` machine row that no core
+  machine has; say it is inert.
+- `rehearsal_delete` counts any `gh api` failure (a 5xx, an expired token) as "gone"; accepting only an error text with
+  `HTTP 404` and retrying otherwise would close that.
+- The timeout of `compat.public_update` and `library.synthetic` is dominated by about 55 `execute_process(sh ...)` calls
+  that each run two `git rev-parse` and an awk; batching the single-row `update()` cases of `update.cmake` into the "all
+  together" call, and one `git rev-parse` per `compat-update.sh` call, would cut it.
+
+Closed in fix round 1 (recorded here because the seed above lists it): the rehearsal cleanup's read-after-delete race now
+reads up to six times and re-issues the delete (`gone` in `scripts/publish.sh`, `policy.publish_delete`).
