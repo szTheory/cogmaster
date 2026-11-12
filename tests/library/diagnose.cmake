@@ -127,7 +127,7 @@ case $1 in --probe) cat "$last.probe" ;; *) cat "$last.line" ;; esac
   set(l2 "diag-group: leaf=fault_static.rom_write.cart")
   diag_expect("${diag_out}" "${l1} rows=5\n${l1} pcslot=0 rows=5\n${l1} where=port rows=5\n${l1} pc=0002 rows=5\n"
     "${l2} rows=4\n${l2} pcslot=1 rows=4\n${l2} where=rom rows=4\ndiag-group: leaf=dark_no_fault.never_draws rows=2\n")
-  if(diag_out MATCHES "pc=0100")
+  if(diag_out MATCHES "diag-group: [^\n]*pc=0100")
     message(FATAL_ERROR "an exact pc shared by 4 rows must not print")
   endif()
   string(REGEX MATCHALL "diag-group: leaf=[a-z_.]+ rows=[0-9]+" leaves "${diag_out}")

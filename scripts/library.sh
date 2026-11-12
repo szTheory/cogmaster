@@ -72,6 +72,7 @@ function ok(s, list) { return index(" " list " ", " " s " ") > 0 }
 function kv(tok, key) { return index(tok, key "=") == 1 ? substr(tok, length(key) + 2) : "?" }
 function isnum(s) { return s ~ /^[0-9][0-9]?[0-9]?[0-9]?$/ }
 function isnn(s) { return s == "none" || isnum(s) }
+function idx(s, list,   n, a, i) { n = split(list, a, " "); for (i = 1; i <= n; i++) if (a[i] == s) return i - 1; return 0 }
 function hex40(s) { return length(s) == 40 && s ~ /^[0-9a-f]*$/ }
 BEGIN {
   # The board words are copied from the runner probe; the catalog word compound is not one of them, so a compound row given
@@ -116,15 +117,25 @@ $1 == "rec" {
   if (v == "pass") next
   failed++
   hasf = (ff != "none" && ff != "600+"); hasd = (fd != "none" && fd + 0 <= 600); hasp = (d6 + 0 >= 2)
-  g = ""
-  if (mp != $7) g = "input_mismatch"
-  else if (hasf && !hasd) g = "fault_no_display." fk "." dev
-  else if (hasf && !hasp) g = "fault_static." fk "." dev
-  else if (hasf) g = "fault_alive." fk "." dev
-  else if (!hasd) g = (fnb == "none") ? "dark_no_fault.never_draws" : ((fnb + 0 <= 600) ? "dark_no_fault.latch_miss" : "dark_no_fault.late")
-  else if (!hasp) g = (d18 + 0 >= 2) ? "static_no_fault.animates_late" : ((ram == "still") ? "static_no_fault.frozen" : "static_no_fault.alive_still")
+  # cls is the class precedence 1 to 6 and sp the split order; both are sort keys for the leaf order, with the kind and device codes.
+  g = ""; cls = 0; sp = 0
+  if (mp != $7) { g = "input_mismatch"; cls = 1 }
+  else if (hasf && !hasd) { g = "fault_no_display." fk "." dev; cls = 2 }
+  else if (hasf && !hasp) { g = "fault_static." fk "." dev; cls = 3 }
+  else if (hasf) { g = "fault_alive." fk "." dev; cls = 4 }
+  else if (!hasd) {
+    cls = 5; sp = (fnb == "none") ? 3 : ((fnb + 0 <= 600) ? 1 : 2)
+    g = "dark_no_fault." (sp == 3 ? "never_draws" : (sp == 1 ? "latch_miss" : "late"))
+  } else if (!hasp) {
+    cls = 6; sp = (d18 + 0 >= 2) ? 1 : ((ram == "still") ? 2 : 3)
+    g = "static_no_fault." (sp == 1 ? "animates_late" : (sp == 2 ? "frozen" : "alive_still"))
+  }
   if (g == "") next
   groups[g]++; grouped++
+  leafkey[g] = cls " " sp " " ((cls >= 2 && cls <= 4) ? idx(fk, kinds) " " idx(dev, devs) : "0 0")
+  if (ps != "none") subs[g SUBSEP 1 SUBSEP ps]++
+  if (wh != "none") subs[g SUBSEP 2 SUBSEP wh]++
+  if (pc != "none") subs[g SUBSEP 3 SUBSEP pc]++
   t = title[$2]
   if (length(t) > 80 || t !~ tre) { t = "-"; withheld++ }
   printf "D diag: title=%s group=%s first_display=%s first_nonblank=%s distinct600=%s distinct1800=%s fault=%s dev=%s pc=%s mapper=%s first_change=%s fault_frame=%s order=%s where=%s ram=%s source=%s\n", t, g, fd, fnb, d6, d18, fk, dev, pc, mp, fc, ff, ord, wh, ram, src
@@ -132,8 +143,16 @@ $1 == "rec" {
 }
 { bad++ }
 END {
-  for (g in groups) printf "G %d %s\n", groups[g], g
-  if (!("input_mismatch" in groups)) print "G 0 input_mismatch"
+  # Leaf lines and sub-rows carry numeric sort keys (rows, class, split, kind, device, line kind, sub-row key) that sh removes after sorting.
+  for (g in groups) printf "G %d %s 0 0 diag-group: leaf=%s rows=%d\n", groups[g], leafkey[g], g, groups[g]
+  if (!("input_mismatch" in groups)) print "G 0 1 0 0 0 0 0 diag-group: leaf=input_mismatch rows=0"
+  split("pcslot where pc", label, " ")
+  for (k in subs) {
+    split(k, a, SUBSEP)
+    # An exact pc is shown only when 5 or more rows share it.
+    if (a[2] == 3 && subs[k] < 5) continue
+    printf "G %d %s %d %s diag-group: leaf=%s %s=%s rows=%d\n", groups[a[1]], leafkey[a[1]], a[2], (a[2] == 2 ? idx(a[3], wheres) : a[3]), a[1], label[a[2]], a[3], subs[k]
+  }
   printf "O diag-other: candidates=%d attempted=%d evaluated=%d malformed=%d malformed_io=%d uncatalogued=%d skipped_excluded=%d noprofile=%d unsupported=%d infrastructure_error=%d title_withheld=%d\n", candidates, attempted, evaluated, bad, mio, unc, excl, nop, unsup, infra, withheld
   printf "O diag-other: judged=%d run_fail=%d groups_total=%d fail_total=%d\n", evaluated, failed, grouped, failed
   exit grouped != failed
@@ -142,7 +161,7 @@ END {
   {
     printf 'library-diagnose 1 core=%s behaviour=%s\n' "$core" "$behaviour"
     sed -n 's/^D //p' "$tmp/lines" | sort
-    sed -n 's/^G //p' "$tmp/lines" | sort -k1,1nr -k2,2 | sed 's/^\([0-9][0-9]*\) \(.*\)$/diag-group: leaf=\2 rows=\1/'
+    sed -n 's/^G //p' "$tmp/lines" | sort -k1,1nr -k2,2n -k3,3n -k4,4n -k5,5n -k6,6n -k7,7 | cut -d' ' -f8-
     sed -n 's/^O //p' "$tmp/lines"
   } > "$tmp/out"
   cat "$tmp/out" > "$out/diagnose.txt"
