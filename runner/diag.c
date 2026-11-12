@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "diag_class.h"
 #include "exit_status.h"
 #include "probe.h"
 
@@ -33,9 +34,23 @@ const char *cogmaster__fault_device_name(uint32_t device)
     return device < sizeof devices / sizeof devices[0] ? devices[device] : "unknown";
 }
 
+const char *cogmaster__board_source_name(uint32_t source)
+{
+    static const char *const sources[] = {"none", "db", "header", "heuristic", "default"};
+    return sources[source < sizeof sources / sizeof sources[0] ? source : 0u];
+}
+
 void cogmaster__diag_init(cogmaster__diag *d)
 {
     memset(d, 0, sizeof *d);
+}
+
+/* $C000-$DFFF is the 8 KB work RAM (.planning/preparation/SMS-SYSTEM.md section 3, row $C000).
+   A program that still runs changes it; a jammed or idle one does not. */
+static void ram_read(const cogmaster *m, uint8_t out[8192])
+{
+    for (uint32_t i = 0u; i < 8192u; i++)
+        out[i] = (uint8_t)(cogmaster_peek(m, COGMASTER_SPACE_BUS, 0xC000u + i) & 0xFFu);
 }
 
 int cogmaster__diag_frame(cogmaster__diag *d, const cogmaster *m, uint32_t call, uint32_t display,
@@ -58,6 +73,13 @@ int cogmaster__diag_frame(cogmaster__diag *d, const cogmaster *m, uint32_t call,
         known |= (uint32_t)(strcmp(d->seen[i], hex) == 0);
     if (!known && d->held < COGMASTER__DIAG_HELD)
         memcpy(d->seen[d->held++], hex, sizeof hex);
+    if (call == COGMASTER__DIAG_FRAMES - 60u)
+        ram_read(m, d->ram);
+    if (call == COGMASTER__DIAG_FRAMES) {
+        uint8_t now[sizeof d->ram];
+        ram_read(m, now);
+        d->live = (uint32_t)(memcmp(now, d->ram, sizeof now) != 0);
+    }
     if (call == 600u) {
         d->distinct600 = d->held;
         d->verdict600 = (uint32_t)cogmaster__expect_boots(&d->e);
@@ -93,14 +115,22 @@ int cogmaster__diag_print(const cogmaster__diag *d, const cogmaster *m, const ui
     number(nonblank, d->first_nonblank);
     number(change, d->first_change);
     char pc[5] = "none";
+    uint32_t slot = cogmaster__diag_pcslot(fault.pc);
     if (fault.present)
         snprintf(pc, sizeof pc, "%04X", (unsigned)fault.pc);
+    char slot_text[12] = "none";
+    if (fault.present)
+        snprintf(slot_text, sizeof slot_text, "%lu", (unsigned long)slot);
     printf("diagnose 1 verdict600=%s first_display=%s first_nonblank=%s first_change=%s "
-           "distinct600=%lu distinct1800=%lu fault=%s dev=%s pc=%s mapper=%s\n",
+           "distinct600=%lu distinct1800=%lu ram=%s fault=%s dev=%s pc=%s pcslot=%s where=%s "
+           "fault_frame=%s order=%s mapper=%s source=%s\n",
            d->verdict600 ? "pass" : "fail", display, nonblank, change,
-           (unsigned long)d->distinct600, (unsigned long)d->held,
+           (unsigned long)d->distinct600, (unsigned long)d->held, d->live ? "live" : "still",
            fault.present ? cogmaster__fault_kind_name(fault.kind) : "none",
-           fault.present ? cogmaster__fault_device_name(fault.device) : "none", pc,
-           cogmaster__board_name(cart.board));
+           fault.present ? cogmaster__fault_device_name(fault.device) : "none", pc, slot_text,
+           fault.present ? cogmaster__diag_where(fault.device, fault.addr) : "none",
+           fault.present ? cogmaster__diag_bucket((uint32_t)fault.frame) : "none",
+           cogmaster__diag_order(fault.present, (uint32_t)fault.frame, d->first_nonblank),
+           cogmaster__board_name(cart.board), cogmaster__board_source_name(cart.board_source));
     return COGMASTER__EXIT_OK;
 }

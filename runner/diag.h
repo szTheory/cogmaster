@@ -37,5 +37,7 @@ int cogmaster__diag_print(const cogmaster__diag *d, const cogmaster *m, const ui
 /* The words print_fault and the diagnose line share: "unknown" for a value outside the tables. */
 const char *cogmaster__fault_kind_name(uint32_t kind);
 const char *cogmaster__fault_device_name(uint32_t device);
+/* The word for a COGMASTER_BOARD_SOURCE_* value: none, db, header, heuristic or default. */
+const char *cogmaster__board_source_name(uint32_t source);
 
 #endif /* COGMASTER_RUNNER_DIAG_H */
