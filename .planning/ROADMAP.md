@@ -55,7 +55,7 @@ Full phase details: `.planning/milestones/v2.0-ROADMAP.md`. Requirements: `.plan
   2. A test over synthetic fixtures shows the diagnostic output holds no image bytes and no file names or paths, and a negative control that leaks one makes the same test fail
   3. A planning note records the failing rows grouped by cause with a count per group, counts only and no dump content, ordered by descending group size, so the next phase can cite it
   4. `cmake --workflow --preset ci` passes and the committed ledger and compatibility page are unchanged
-**Plans**: 2/5 plans executed
+**Plans**: 3/5 plans executed
 Plans:
 **Wave 1**
 - [x] 13-01-PLAN.md — Runner `--diagnose` mode: one closed line per cart, frame-600 verdict shared with `--expect boots@600`
@@ -64,7 +64,7 @@ Plans:
 - [x] 13-02-PLAN.md — `sh scripts/library.sh diagnose`: parse-and-reconstruct validator, fixed cause leaves, counter totals, ledger and page unchanged
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 13-03-PLAN.md — Diagnose output completed: sub-rows and group order, cross-cuts, pass histogram, ledger cross-check, canned-line leaf coverage
+- [x] 13-03-PLAN.md — Diagnose output completed: sub-rows and group order, cross-cuts, pass histogram, ledger cross-check, canned-line leaf coverage
 
 **Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 13-04-PLAN.md — Leak test: canary scan over every channel, negative controls, hostile inputs, docs

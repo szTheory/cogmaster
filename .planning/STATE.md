@@ -5,16 +5,16 @@ milestone_name: Fewer failing cartridges
 current_phase: 13
 current_phase_name: Why carts fail
 status: executing
-stopped_at: "Completed 13-02-PLAN.md (runtime: Claude Code, model: claude-sonnet-5-5)"
-last_updated: "2026-11-12T23:13:30.959Z"
+stopped_at: "Completed 13-03-PLAN.md (runtime: Claude Code, model: claude-sonnet-5-5)"
+last_updated: "2026-11-12T23:29:07.288Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 13 execution started
-state_head: f262494c53b1b628abf28fa02a6a4c78d6cb741e
+state_head: 2926a86912fc3b5db9fc72e802c501c23ca93003
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 5
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-12)
 ## Current Position
 
 Phase: 13 (Why carts fail) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-11-12 — Phase 13 execution started
 
@@ -225,6 +225,7 @@ Last activity: 2026-11-12 — Phase 13 execution started
 | Phase 12 P10 | 45min | 2 tasks | 9 files |
 | Phase 13 P01 | 9min | 3 tasks | 16 files |
 | Phase 13 P02 | 11 min | 2 tasks | 6 files |
+| Phase 13 P03 | 15min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -237,6 +238,8 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 13]: 13-01: --diagnose frame-600 verdict is cogmaster__expect_boots over the shared expect state; diag state heap-allocated for small wasm32 stacks
 - [Phase 13]: 13-02: diagnose runs only the first NTSC profile library.cmake derives (Japanese FM and Game Gear Japan included, PAL skipped) and only catalog rows with status unknown and pad/pad ports; other rows count as skipped_excluded
 - [Phase 13]: 13-02: core= is the first 7 characters of the commit id, +dirty only for tracked files outside .planning; retained output is COGMASTER_LIBRARY_OUT (default build/library/diag)
+- [Phase 13]: diagnose sub-rows print only existing facts (pcslot and where none are skipped); exact pc only at 5 or more rows, compared as a string
+- [Phase 13]: ledger cross-check keys a fail row as id, machine, region, tv, fm via compat-common.sh cases; matched wins over now-pass, remainder is not-in-run
 
 ### Pending Todos
 
@@ -413,8 +416,8 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 
 ## Session Continuity
 
-Last session: 2026-11-12T23:13:30.923Z
-Stopped at: Completed 13-02-PLAN.md (runtime: Claude Code, model: claude-sonnet-5-5)
+Last session: 2026-11-12T23:29:07.245Z
+Stopped at: Completed 13-03-PLAN.md (runtime: Claude Code, model: claude-sonnet-5-5)
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
