@@ -19,10 +19,12 @@ step; nothing waits for it.
 
 ## The request
 
-Run `sh scripts/library.sh run` once with your library and BIOS folders configured and paste the printed
-`library-judge` block and the `exit:` block. Why: only your carts and consoles can show real PAL, FM, pad, phaser and
-BIOS behaviour; the command prints counts only and changes only public ledger rows for catalog SHA-1s. Optionally run
-the commands that stay in SEED-010 and SEED-011 in the same sitting.
+Run `sh scripts/library.sh run` once with your library folder configured and paste the printed `library-judge` block
+and the `exit:` block. Why: only your carts and consoles can show real PAL and FM behaviour and flip the seeded rows; the
+command prints counts only and changes only public ledger rows for catalog SHA-1s. It exercises no BIOS: `library.sh run`
+and its CMake script never pass `--boot` or `--bios`, and only the window scan (`scripts/hygiene.sh`,
+`scripts/firmware-window.sh`) reads the BIOS folder. Optionally run the commands that stay in SEED-010 (pad, Light Phaser
+and BIOS judges) in the same sitting.
 
 ## What the run does and prints
 
@@ -52,10 +54,15 @@ remember it. The `exit:` block ends with a `judged_cart_floors=` verdict (20 jud
 Japanese FM row). When it says `judged_cart_floors=met`, the pull request that merges the run's rows must also:
 
 - delete `is_experimental = "true"` from the libretro `.info` template;
-- drop "Experimental. " from the `.info` description and from the generated page intro;
+- drop "Experimental. " from the `.info` description and from the generated page intro, and delete the page's second
+  sentence "Experimental leaves only on the own-library evidence ..." (both live in `scripts/compat-common.sh`;
+  regenerate `docs/compatibility.md` with `sh scripts/compat-common.sh docs tests/compat/ledger.csv`);
 - rewrite the README Status paragraph without "experimental" and without "most" (a title with no checked result is
   listed unknown);
-- delete the experimental sentences in `docs/conformance.md`, `docs/saves.md` and `docs/embedding.md`.
+- delete the experimental sentences in `docs/conformance.md` (the lines naming `is_experimental`, including the
+  exit-command paragraph), `docs/saves.md` and `docs/embedding.md`, and reword the `policy.claims_scoped` table row in
+  `docs/testing.md`, which also contains the word: in the flag-absent state the claims test reads the README, every
+  `docs/*.md`, the `.info` template and the page, and fails on any "experimental".
 
 Only then do the exit command and the claims test pass; the repository's exemption for the flag in the `.info` claims
 check is not edited. When the block says `unmet`, the flag stays and the block shows the short floor. A red exit
@@ -64,8 +71,8 @@ release hold.
 
 ## What stays elsewhere
 
-The pad and device measurements stay in SEED-010 and the BIOS follow-ups in SEED-011, each with its own command; they
-are not part of this command. The optional `scan:` counts of SEED-009 are not part of it either.
+The pad, Light Phaser and BIOS judges stay in SEED-010, which holds their commands; SEED-011 holds BIOS follow-ups, not
+commands. None of them is part of this command. The optional `scan:` counts of SEED-009 are not part of it either.
 
 ## What the agent reads
 

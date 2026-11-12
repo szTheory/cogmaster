@@ -77,7 +77,7 @@ Requirements for this milestone. Each maps to one roadmap phase. Scope decisions
 - [x] **LEDG-01**: The ledger holds one default-profile row for every SMS and Game Gear catalog identity at the pin (an image SHA-1, or for the 19 compound entries the SHA-1 of `mame/<list>/<name>`); the generator prints the excluded SG-1000 count and the reconciliation 1,476 records = 1,444 images + 19 compound + 13 same-image aliases, and a test equates the ledger's identities with the printed counts
 - [x] **LEDG-02**: Every `unsupported` row carries a closed reason token and the slot table refuses its SHA-1 (the runner exits 77), proven by a unit loop over every board-0 row and runner runs of synthetic images where a signature exists; every MAME `supported="no"` entry is `skipped` with the reason `mame_no`; a row without a valid token fails the parser
 - [x] **LEDG-03**: The ratchet allows an `unsupported` row to become `pass` once the board or device exists (its reason token is `retired` and the catalog no longer says `unsupported`), with failing negative controls; the pull request that adds the rule is judged by the previous rules
-- [x] **LEDG-04**: `docs/compatibility.md` is aggregates plus the evaluated rows the budget allows (fixtures, every `unsupported` row, up to 40 `fail` rows, up to 40 others, a `+K more` line each) and stays inside its byte budget
+- [x] **LEDG-04**: `docs/compatibility.md` is aggregates plus the evaluated rows the budget allows (fixtures, up to 20 `unsupported` rows, up to 40 `fail` rows, up to 40 others, a `+K more` line each past its cap) and stays inside its byte budget
 - [x] **LEDG-05**: A command over the ledger's judged rows (`compat.exit`) exists and is proven in CI on the public committed rows and the synthetic library's merged ledger; a test ties `is_experimental` to the committed ledger's judged-cart floors both ways (present while unmet, absent once met); every `unsupported` row names its reason; unowned rows stay `unknown` with the count printed, including the PAL and Japanese FM rows once the owner's run has added them
 
 ## v2.x Requirements
@@ -166,4 +166,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-11-10*
-*Last updated: 2026-11-10 after roadmap creation (phases 5 to 12)*
+*Last updated: 2026-11-12 after the v2.0 milestone audit (49 of 49 complete; LEDG-05 as amended)*

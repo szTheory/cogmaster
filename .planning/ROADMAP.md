@@ -40,7 +40,7 @@ pull request and one automated release.
 - [x] **Phase 9: Light Phaser** - Light Phaser titles hit where the player aims, sensed from the emitted pixel at the beam (completed 2026-11-11)
 - [x] **Phase 10: BIOS boot** - A user boots from their own BIOS dump in the runner or RetroArch; fast boot stays the default (completed 2026-11-11)
 - [x] **Phase 11: PAL and Japanese FM** - PAL timing proven on every lane and the library judge able to add PAL and Japanese FM rows for catalog-identified carts (completed 2026-11-11)
-- [x] **Phase 12: The whole list in the ledger** - Every SMS and Game Gear entry at the pin has an honest row, and `is_experimental` leaves the core (completed 2026-11-12)
+- [x] **Phase 12: The whole list in the ledger** - Every SMS and Game Gear entry at the pin has an honest row, and the exit command ties `is_experimental` to the owner's own-library run; the flag stays until that run (completed 2026-11-12)
 
 ## Phase Details
 
@@ -230,7 +230,7 @@ Plans:
   1. The ledger holds one default-profile row for every SMS and Game Gear catalog identity at the pin (an image SHA-1, or for the 19 compound entries the SHA-1 of `mame/<list>/<name>`), the generator prints the SG-1000 count and the reconciliation 1,476 records = 1,444 images + 19 compound + 13 same-image aliases, and a test equates the ledger's identities with the printed counts (LEDG-01).
   2. Every `unsupported` row carries a closed reason token and the slot table refuses its SHA-1 (exit 77), proven by a unit loop over every board-0 row and runner runs of synthetic images where a signature exists; every MAME `supported="no"` entry is `skipped` with the reason `mame_no`; a row without a valid token fails the parser (LEDG-02).
   3. The ratchet lets an `unsupported` row become `pass` once its board or device exists (its token is `retired` and the catalog no longer says `unsupported`), its negative controls fail, and the pull request that adds the rule is judged by the previous rules (LEDG-03).
-  4. `docs/compatibility.md` holds aggregates plus the evaluated rows the budget allows (fixtures, every `unsupported` row, up to 40 `fail` rows, up to 40 others, a `+K more` line each) and stays inside its byte budget (LEDG-04).
+  4. `docs/compatibility.md` holds aggregates plus the evaluated rows the budget allows (fixtures, up to 20 `unsupported` rows, up to 40 `fail` rows, up to 40 others, a `+K more` line each) and stays inside its byte budget (LEDG-04).
   5. A command over the ledger's judged rows (`compat.exit`) exists and is proven in CI on the public committed rows and the synthetic library's merged ledger; a test ties `is_experimental` to the committed ledger's judged-cart floors both ways (present while unmet, absent once met); every `unsupported` row names its reason; unowned rows stay `unknown` with the count printed, including the PAL and Japanese FM rows once the owner's run has added them (LEDG-05).
 **Plans**: 10/10 plans complete
 - [x] 12-01-PLAN.md — Generator catalog v2, Graphic Board slot (behaviour 17), amended requirement wording
@@ -249,7 +249,7 @@ Plans:
 | Milestone | Phases | Plans | Status | Shipped |
 |-----------|--------|-------|--------|---------|
 | v1.0 | 4/4 | 62/62 | Complete | 2026-11-09 |
-| v2.0 | 0/8 | 0/TBD | In progress | - |
+| v2.0 | 8/8 | 94/94 | Complete | 2026-11-12 |
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|

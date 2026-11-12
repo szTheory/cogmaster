@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-10)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 7 — Saves survive a restart
+**Current focus:** Milestone v2.0 audited (tech_debt, no gaps); next is /gsd-complete-milestone v2.0
 
 ## Current Position
 
-Phase: 12
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-11-12 — Phase 12 complete
+Phase: 12 of 12 (all eight v2.0 phases complete, releases v0.5.0 to v0.12.0 published)
+Plan: 94 of 94 complete
+Status: Milestone audit written (.planning/v2.0-MILESTONE-AUDIT.md): 49 of 49 requirements, tech_debt, no blockers
+Last activity: 2026-11-12 — Milestone v2.0 audit
 
 Progress: [██████████] 100% of v2.0
 
@@ -488,13 +488,21 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-12 | Execute phase 12 plan 12-09 (gsd-execute-phase 12); the exit command, the new tests' faults and the pin-count workflow in the docs within their caps, SEED-015 with the deferred items and the CI-speed record (dispatch D1 run 43153144670), carried hand-off SEED-013 (the owner's own-library run, never a gate); 2 tasks, 2 commits, counted check code 885 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Execute phase 12 plan 12-10 (gsd-execute-phase 12); dispatch D2 run https://github.com/szTheory/cogmaster/actions/runs/43158408243 green on the complete code (D1 run 43153144670), every provisional timeout settled from the two runs (compat.public_update, compat.fixtures and compat.csv raised, build job 9 min), the old base judge and the new judge pass on the final ledger and flip nothing, pinned re-run and mawk page proxy equal, exit command exit 0 with judged_cart_floors=unmet flag=present, floors 669 and 627, LEDG-01 to LEDG-05 complete as amended, owner's own-library run carried as a hand-off and never a gate; 2 tasks, 3 commits, counted check code 885 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Code review and verify phase 12 (autonomous run); ledger review 0 critical 7 warning, core review 0 critical 10 warning, fix round 1 fixed 17 (R2 per key, shared flag reader, bounded page cells, NUL and bidi hardening, honest wording), verification passed 5 of 5 with the flag staying per the owner decision, dispatch D3 run 43163239085 green on the final head, counted check code 887 of 940 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Milestone v2.0 audit (gsd-audit-milestone; integration check, audit report, documentation drift fixes in ROADMAP, REQUIREMENTS, SEED-013, SEED-015 and this file) | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
-Items acknowledged and deferred at milestone close, most recent first:
+Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-offs and follow-ups from the milestone audit; none is a gate):
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
+| seeds | SEED-015: whole-list ledger, CI-speed and milestone audit follow-ups | dormant (next ledger or CI-speed work) | 2026-11-12 | v2.0 |
+| seeds | SEED-014: PAL and Japanese FM follow-ups | dormant | 2026-11-12 | v2.0 |
+| seeds | SEED-013: the owner's own-library run (`sh scripts/library.sh run`) and the `is_experimental` removal | carried owner hand-off, not a gate | 2026-11-12 | v2.0 |
+| seeds | SEED-012: hash-less audio predicate | dormant | 2026-11-12 | v2.0 |
+| seeds | SEED-011: BIOS follow-ups (Game Gear BIOS, built-in-game BIOSes, Mark III) | dormant | 2026-11-12 | v2.0 |
+| seeds | SEED-010: pad, Light Phaser and BIOS local judges (the owner's commands) | carried owner hand-off, not a gate | 2026-11-12 | v2.0 |
+| seeds | SEED-009: scan thresholds on real Korean, Zemina and 4 PAK dumps | carried owner hand-off, not a gate | 2026-11-12 | v2.0 |
 | todos | post-merge-ci-follow-ups.md | (presence-only) | 2026-11-10 | v1.0 |
 | seeds | SEED-001 | dormant | 2026-11-10 | v1.0 |
 | seeds | SEED-002 | dormant | 2026-11-10 | v1.0 |
@@ -509,11 +517,12 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-12T05:12:38.903Z
-Stopped at: Phase 12 complete — all phases complete
+Last session: 2026-11-12
+Stopped at: Milestone v2.0 audit written — all phases complete and released
 Resume file: None
-Phase 11 ship pull request: #31, open as a draft since plan 07; ship reuses it (gh pr ready, title check, gh pr merge --auto --squash at ship only; no new gh pr create)
+Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
 ## Operator Next Steps
 
-- Phase 6 on branch `phase/06-korean-cartridges-play`: discuss (fan-out), plan, execute, verify, ship; owner authorised /gsd-autonomous for v2.0 on 2026-11-10 (overrides AGENTS rule 9)
+- Merge the audit and documentation fixes on a `milestone/v2.0-close` pull request, then run `/gsd-complete-milestone v2.0` in a fresh session (one GSD step per session).
+- Owner hand-offs (batched, none is a gate): SEED-013 `sh scripts/library.sh run` and, only when it prints `judged_cart_floors=met`, the flag-removal pull request; SEED-010 pad, Light Phaser and BIOS judges; SEED-009 scan thresholds.

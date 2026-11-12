@@ -114,7 +114,7 @@ coverage:
       kind: other
       ref: "test -n ${COGMASTER_ROM_DIR-} exit 1 in this session; the shell guard refused any read of .env.local; no dump was run"
       status: not_run
-    human_judgment: false
+    human_judgment: true
 
 duration: 95min
 completed: 2026-11-11
