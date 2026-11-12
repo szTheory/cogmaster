@@ -432,6 +432,8 @@ static void test_info(void)
     CHECK_EQ_U64(v.api, COGMASTER_API_VERSION);
     CHECK_EQ_U64(v.abi, COGMASTER_ABI_VERSION);
     CHECK_EQ_U64(v.behaviour, COGMASTER_BEHAVIOUR_REVISION);
+    /* Revision 17 is the Graphic Board refusal; the api pins say "at least", so a revert fails. */
+    CHECK_EQ_U64(v.behaviour, 17u);
     CHECK_EQ_U64(v.state, COGMASTER_STATE_FORMAT_VERSION);
 }
 
