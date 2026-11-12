@@ -2,9 +2,14 @@
 gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Fewer failing cartridges
+current_phase: 13
+current_phase_name: Why carts fail
 status: planning
-last_updated: "2026-11-12T20:40:21.239Z"
+stopped_at: Phase 13 context gathered
+last_updated: "2026-11-12T20:54:17.864Z"
 last_activity: 2026-11-12
+last_activity_desc: Roadmap created for milestone v2.1 (Phases 13 to 15)
+state_head: 4c7148932cb42f0bb1bccc9ce6ce9e183576bf2b
 progress:
   total_phases: 3
   completed_phases: 0
@@ -372,6 +377,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-12 | Complete milestone v2.0 (gsd-complete-milestone; override close with 7 seeds acknowledged, archive, PROJECT.md review, retrospective, no tag because release-please owns tags) | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | New milestone v2.1 started (gsd-new-milestone); scope SEED-016 plus SEED-015 CI timeouts | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Roadmap v2.1 (gsd-new-milestone); 3 phases, 10 requirements; roadmapper claude-opus-5-5 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Discuss phase 13 (gsd-discuss-phase 13); four advisor agents (plumbing, leak contract, cause taxonomy, run protocol) and an orchestrator adversarial pass; 25 decisions | Claude Code | claude-sonnet-5-5 (advisors claude-sonnet-5-5) |
 
 ## Deferred Items
 
@@ -400,8 +406,8 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 
 ## Session Continuity
 
-Last session: 2026-11-12
-Stopped at: Milestone v2.0 completed and archived; shipped as v0.12.0
+Last session: 2026-11-12T20:54:17.837Z
+Stopped at: Phase 13 context gathered
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
