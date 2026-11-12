@@ -19,12 +19,14 @@ predicate, configuration and expectation can change. Titles come from `tests/com
 local evidence are discarded. The update permits only the fixed predicate status, valid date and current
 core commit. Unknown IDs, other new predicates or golden values, other profiles, and fixture updates are
 discarded; extra columns and invalid dates reject. The library judge adds only boots@600 under the default
-configuration, in profiles it derives from the catalog and probe (export NTSC and PAL, Japan NTSC with FM, a
-Game Gear's region); `sh scripts/library.sh run` merges only if the ratchet passes and the page fits its cap.
+configuration, by (id, profile): a seeded default row of a catalog cart flips to pass or fail, and a missing PAL or Japanese FM profile is added; device, skipped and
+unsupported rows keep their own configuration and are never overwritten, and a fact for a skipped identity is
+discarded. `sh scripts/library.sh run` merges only if the ratchet passes and the page fits its cap.
 Owned fixtures stay managed by the reproducible CI
 fixture path. No screenshot, RAM/save dump, trace, path or newly observed hash is exported. A missing
 accepted expectation remains `unknown`, even if the image ran successfully. Metadata membership never
-guarantees support; `.info` stays experimental. The existing protected-base ratchet still judges a PR.
+guarantees support; the `.info` keeps `is_experimental` until the judged-cart floors are met (`compat.exit`
+enforces it both ways). The existing protected-base ratchet still judges a PR.
 
 The [compatibility ledger](compatibility.md) reports accepted predicates, never general support.
 `runner.expect.predicates` exercises independent frame/RAM values, mismatch/usage/refusal/I/O
@@ -64,7 +66,7 @@ whole prefix and the predicate kind, frame and address, so rows differing only i
 over frames 1 to F, for an owned fixture, no script; a regression lock, never a claim about sound), F up to
 1,000,000. `pal` with the Game Gear or `japan`, and `fm=on` with the Game Gear, are refused as the core refuses
 them. Format 1 files (`ntsc-u|ntsc-j|pal|any`, no `tv`, no `fm`) are still read and always written as format 2;
-`cases` prints a row's fields for readers. The libretro core stays experimental through v2.0.
+`cases` prints a row's fields for readers.
 
 Format 2 replaced the single region column (`ntsc-u`, `ntsc-j`, `pal`, `any`) by `region` and `tv` and added
 `fm` to the run configuration. A migrated row keeps its status, evidence and date and gains explicit values.
