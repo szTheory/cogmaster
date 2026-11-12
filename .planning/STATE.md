@@ -5,16 +5,16 @@ milestone_name: Fewer failing cartridges
 current_phase: 13
 current_phase_name: Why carts fail
 status: executing
-stopped_at: "Completed 13-01-PLAN.md (runtime: Claude Code, model: claude-sonnet-5-5)"
-last_updated: "2026-11-12T23:00:15.054Z"
+stopped_at: "Completed 13-02-PLAN.md (runtime: Claude Code, model: claude-sonnet-5-5)"
+last_updated: "2026-11-12T23:13:30.959Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 13 execution started
-state_head: fa9fe8be9839687e50991cf346278aec7de14c24
+state_head: f262494c53b1b628abf28fa02a6a4c78d6cb741e
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 5
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-12)
 ## Current Position
 
 Phase: 13 (Why carts fail) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-11-12 — Phase 13 execution started
 
@@ -224,6 +224,7 @@ Last activity: 2026-11-12 — Phase 13 execution started
 | Phase 12 P09 | 20min | 2 tasks | 4 files |
 | Phase 12 P10 | 45min | 2 tasks | 9 files |
 | Phase 13 P01 | 9min | 3 tasks | 16 files |
+| Phase 13 P02 | 11 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -234,6 +235,8 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 `.planning/milestones/v1.0-phases/` and `.planning/milestones/v2.0-phases/`.
 - [Phase 13]: 13-01: phase branch cut from milestone-branch tip (milestone docs are not on origin/main); owner may override
 - [Phase 13]: 13-01: --diagnose frame-600 verdict is cogmaster__expect_boots over the shared expect state; diag state heap-allocated for small wasm32 stacks
+- [Phase 13]: 13-02: diagnose runs only the first NTSC profile library.cmake derives (Japanese FM and Game Gear Japan included, PAL skipped) and only catalog rows with status unknown and pad/pad ports; other rows count as skipped_excluded
+- [Phase 13]: 13-02: core= is the first 7 characters of the commit id, +dirty only for tracked files outside .planning; retained output is COGMASTER_LIBRARY_OUT (default build/library/diag)
 
 ### Pending Todos
 
@@ -410,8 +413,8 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 
 ## Session Continuity
 
-Last session: 2026-11-12T23:00:15.024Z
-Stopped at: Completed 13-01-PLAN.md (runtime: Claude Code, model: claude-sonnet-5-5)
+Last session: 2026-11-12T23:13:30.923Z
+Stopped at: Completed 13-02-PLAN.md (runtime: Claude Code, model: claude-sonnet-5-5)
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
