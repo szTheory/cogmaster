@@ -52,7 +52,7 @@ if(CASE STREQUAL main)
     "|diag: title=[^\n]* group=[a-z_.]+ first_display=([0-9]+|none) first_nonblank=([0-9]+|none) distinct600=[1-8] distinct1800=[1-8] fault=[a-z_]+"
     " dev=[a-z]+ pc=(none|[0-9A-F]+) mapper=[a-z0-9_]+ first_change=([0-9]+|none) fault_frame=(0|1-9|10-99|100-599|600\\+|none)"
     " order=(before|after|nopicture|none) where=[a-z0-9]+ ram=(live|still) source=[a-z]+"
-    "|diag-group: leaf=[a-z_.]+ rows=[0-9]+|diag-other: [a-z_0-9]+=[0-9]+( [a-z_0-9]+=[0-9]+)*)$")
+    "|diag-group: leaf=[a-z_.]+ (pcslot=[0-4] |where=[a-z0-9]+ |pc=[0-9A-F]+ )?rows=[0-9]+|diag-other: [a-z_0-9]+=[0-9]+( [a-z_0-9]+=[0-9]+)*)$")
   string(REGEX MATCHALL "[^\n]+" lines "${diag_out}")
   list(FILTER lines EXCLUDE REGEX "${shape}")
   if(lines)
@@ -62,6 +62,7 @@ if(CASE STREQUAL main)
     "diag: title=Synthetic port fault group=fault_no_display.unmapped_read.ctrl " "diag: title=Synthetic static group=static_no_fault.frozen "
     "diag-group: leaf=dark_no_fault.never_draws rows=1" "diag-group: leaf=fault_no_display.unmapped_read.ctrl rows=1"
     "diag-group: leaf=static_no_fault.frozen rows=1" "diag-group: leaf=input_mismatch rows=0"
+    "leaf=fault_no_display.unmapped_read.ctrl pcslot=0 rows=1" "leaf=fault_no_display.unmapped_read.ctrl where=port rows=1"
     "candidates=6 attempted=4 evaluated=4 malformed=0 malformed_io=0 uncatalogued=1 skipped_excluded=1 noprofile=0 unsupported=0 infrastructure_error=0 title_withheld=0"
     "judged=4 run_fail=3 " "groups_total=3 fail_total=3")
   if(diag_out MATCHES "Synthetic (pass|skipped)")
@@ -83,5 +84,58 @@ if(CASE STREQUAL main)
   file(SHA256 "${OUT}/standin/page.md" page2)
   if(NOT rc STREQUAL "0" OR (ledger2 STREQUAL ledger0 AND page2 STREQUAL page0))
     message(FATAL_ERROR "the control run must change the stand-in ledger or page: ${rc}")
+  endif()
+elseif(CASE STREQUAL taxonomy)  # canned runner lines through the real library.sh and library.cmake: no emulation
+  file(REMOVE_RECURSE "${OUT}")
+  file(MAKE_DIRECTORY "${OUT}/standin")
+  file(WRITE "${OUT}/wrapper.sh" [[for a do last=$a; done
+case $1 in --probe) cat "$last.probe" ;; *) cat "$last.line" ;; esac
+]])
+  file(WRITE "${OUT}/standin/ledger.csv" "id,title,machine,region,tv,mapper,predicate,status,evidence,date\n")
+  set(f1 "first_display=none first_nonblank=none first_change=none distinct600=1 distinct1800=1 ram=live")
+  set(f2 "first_display=100 first_nonblank=100 first_change=100")
+  set(rows  # sub dir|rows|id digit|catalog board|title|canned line
+    "main|5|1|none|Shared title|diagnose 1 verdict600=fail ${f1} fault=unmapped_read dev=ctrl pc=0002 pcslot=0 where=port fault_frame=1-9 order=nopicture mapper=none source=db"
+    "main|4|2|none|T2|diagnose 1 verdict600=fail ${f2} distinct600=1 distinct1800=1 ram=live fault=rom_write dev=cart pc=0100 pcslot=1 where=rom fault_frame=10-99 order=after mapper=none source=db"
+    "main|1|3|none|T3|diagnose 1 verdict600=fail ${f2} distinct600=3 distinct1800=3 ram=live fault=mapper_range dev=mapper pc=FFFC pcslot=4 where=mapper fault_frame=100-599 order=after mapper=none source=default"
+    "main|1|4|none|T4|diagnose 1 verdict600=fail first_display=none first_nonblank=300 first_change=300 distinct600=1 distinct1800=1 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=heuristic"
+    "main|1|5|none|T5|diagnose 1 verdict600=fail first_display=none first_nonblank=900 first_change=900 distinct600=1 distinct1800=1 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db"
+    "main|1|6|none|T6|diagnose 1 verdict600=fail ${f1} fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db"
+    "main|1|7|none|T7|diagnose 1 verdict600=fail ${f1} fault=unmapped_write dev=ram pc=none pcslot=none where=none fault_frame=600+ order=after mapper=none source=db"
+    "main|1|8|none|T8|diagnose 1 verdict600=fail ${f2} distinct600=1 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db"
+    "main|1|9|none|T9|diagnose 1 verdict600=fail ${f2} distinct600=1 distinct1800=1 ram=still fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db"
+    "main|1|a|none|Ta|diagnose 1 verdict600=fail ${f2} distinct600=1 distinct1800=1 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db"
+    "main|1|b|sega|Tb|diagnose 1 verdict600=fail ${f2} distinct600=2 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db"
+    "main|1|c|none|Tc|diagnose 1 verdict600=pass first_display=100 first_nonblank=100 first_change=75 distinct600=2 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db")
+  foreach(row IN LISTS rows)
+    string(REPLACE "|" ";" row "${row}")
+    list(POP_FRONT row sub n digit board title line)
+    string(REPEAT ${digit} 39 prefix)
+    file(MAKE_DIRECTORY "${OUT}/${sub}")
+    foreach(i RANGE 1 ${n})
+      file(WRITE "${OUT}/${sub}/${digit}${i}.sms" "x")
+      file(WRITE "${OUT}/${sub}/${digit}${i}.sms.probe" "identity_sha1=${prefix}${i}\nregion_guess=ntsc-u\n")
+      file(WRITE "${OUT}/${sub}/${digit}${i}.sms.line" "${line}\n")
+      file(APPEND "${OUT}/catalog.tsv" "${prefix}${i}\tsms\t${board}\t-\t${title}\tunknown\t-\texport\tpad\tpad\n")
+    endforeach()
+  endforeach()
+  diag_call("${OUT}/main" "COGMASTER_LIBRARY_RUN=${OUT}/wrapper.sh" COGMASTER_LIBRARY_EMULATOR=sh)
+  if(NOT diag_rc STREQUAL "0")
+    message(FATAL_ERROR "canned lines must group completely: ${diag_rc}\n${diag_out}${diag_err}")
+  endif()
+  set(l1 "diag-group: leaf=fault_no_display.unmapped_read.ctrl")
+  set(l2 "diag-group: leaf=fault_static.rom_write.cart")
+  diag_expect("${diag_out}" "${l1} rows=5\n${l1} pcslot=0 rows=5\n${l1} where=port rows=5\n${l1} pc=0002 rows=5\n"
+    "${l2} rows=4\n${l2} pcslot=1 rows=4\n${l2} where=rom rows=4\ndiag-group: leaf=dark_no_fault.never_draws rows=2\n")
+  if(diag_out MATCHES "pc=0100")
+    message(FATAL_ERROR "an exact pc shared by 4 rows must not print")
+  endif()
+  string(REGEX MATCHALL "diag-group: leaf=[a-z_.]+ rows=[0-9]+" leaves "${diag_out}")
+  list(TRANSFORM leaves REPLACE "^diag-group: leaf=([a-z_.]+) rows=.*$" "\\1")
+  set(order fault_no_display.unmapped_read.ctrl fault_static.rom_write.cart dark_no_fault.never_draws input_mismatch
+    fault_alive.mapper_range.mapper dark_no_fault.latch_miss dark_no_fault.late static_no_fault.animates_late static_no_fault.frozen
+    static_no_fault.alive_still)
+  if(NOT leaves STREQUAL order)
+    message(FATAL_ERROR "leaf order: ${leaves}")
   endif()
 endif()

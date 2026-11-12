@@ -303,4 +303,7 @@ if(COGMASTER_FIXTURES)
   # Timeout: 120 s provisional; about 15 s on one arm64 macOS host, re-derived from the first hosted run.
   cogmaster_add_test(NAME library.diagnose COMMAND ${CMAKE_COMMAND} -DCASE=main
     -DOUT=${PROJECT_BINARY_DIR}/tests/library-diagnose/main ${diag_args} LABELS library TIMEOUT 120)
+  # Timeout: 60 s provisional; about N s on one arm64 macOS host, re-derived from the first hosted run.
+  cogmaster_add_test(NAME library.diagnose.taxonomy COMMAND ${CMAKE_COMMAND} -DCASE=taxonomy
+    -DOUT=${PROJECT_BINARY_DIR}/tests/library-diagnose/taxonomy ${diag_args} LABELS library TIMEOUT 60)
 endif()
