@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 12
 current_phase_name: The whole list in the ledger
 status: executing
-stopped_at: Completed 12-07-PLAN.md
-last_updated: "2026-11-12T04:48:08.311Z"
+stopped_at: Completed 12-08-PLAN.md
+last_updated: "2026-11-12T04:54:12.435Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 11 complete, transitioned to Phase 12
-state_head: 1d58f83ca3c63097cc6227cee8a041334f945baf
+state_head: 3da1a0c0da0eac118c99bdd88310c2f06fd8e4cc
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 94
-  completed_plans: 91
+  completed_plans: 92
   percent: 88
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 12 — The whole list in the ledger
-Plan: 8 of 10
+Plan: 9 of 10
 Status: Ready to execute
-Last activity: 2026-11-12 — Completed 12-07 (exit command with six floors, the flag tied to the verdict both ways, met branch on a stand-in, library exit block)
+Last activity: 2026-11-12 — Completed 12-08 (README, description and conformance wording scoped to the experimental flag that stays; claims_scoped ties the wording to the flag both ways)
 
 Progress: [█████████░] 88% of v2.0
 
@@ -221,6 +221,7 @@ Progress: [█████████░] 88% of v2.0
 | Phase 12 P05 | 55min | 3 tasks | 12 files |
 | Phase 12 P06 | 40min | 3 tasks | 4 files |
 | Phase 12 P07 | 55min | 3 tasks | 9 files |
+| Phase 12 P08 | 45min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -340,6 +341,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 12]: Plan 12-05: the seed learns existing rows by zipping normalize and cases output, so the shared parser stays the only CSV reader; the whole-list legs are file-path functions that controls call in-process over stand-ins; the idempotence check seeds with 1970-01-01 so a re-dated row always differs
 - [Phase 12]: Plan 12-06: a derived profile is skipped only when the loop over ledger rows ran it for the same image (probe identity equal to the ledger id), so a seeded default row flips and the PAL row still arrives; a skipped id gets derived runs whose facts the update guard discards, a device id gets none; a probe wrapper proves the real-cart path without a ROM
 - [Phase 12]: Plan 12-07: the exit command is one function that returns a status, a message and lines, so the self test runs 22 controls in process and starts one cmake child; the tie accepts exactly unmet with the flag present or met with it absent, so the owner's rows force the removal in the same change; judged cartridge rows are image identities of the catalog, never a fixture or compound id
+- [Phase 12]: Plan 12-08: the claims check reads the flag from the template and judges README, description and page prose in both states; the page is read by its non-table lines because table rows print catalog titles; the README says cartridges for the SG-1000 so the digit rule stays free of false positives
 
 ### Pending Todos
 
@@ -478,6 +480,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-12 | Execute phase 12 plan 12-05 (gsd-execute-phase 12); the whole-list ledger (1,472 rows) written by compat-seed.sh, five whole-list tests, the base-judge proof, dispatch D1 run 43153144670 green, build job timeout 8 min; 3 tasks, 4 commits, counted check code 879 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Execute phase 12 plan 12-06 (gsd-execute-phase 12); the library judge adopts by profile (a seeded row flips, the PAL row still arrives, a skipped fact is discarded, a device title gets no pad row), library.synthetic over a seeded stand-in, SEED-013 with the owner's batched run and the flag-removal text; 3 tasks, 3 commits, counted check code 879 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Execute phase 12 plan 12-07 (gsd-execute-phase 12); the exit command over the judged cartridge rows with six floors and the experimental flag tied to the verdict both ways (unmet today, the flag stays), compat.exit.self_test with the met branch and 22 controls, the exit block in library.sh; 3 tasks, 3 commits, counted check code 879 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Execute phase 12 plan 12-08 (gsd-execute-phase 12); the README status, the libretro description and the conformance sentences scoped to the experimental flag that stays (no planning label, no count), policy.claims_scoped with eleven fixture-tree controls and four recorded mutations; 2 tasks, 2 commits, counted check code 885 | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -499,8 +502,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-12T04:48:07.955Z
-Stopped at: Completed 12-07-PLAN.md
+Last session: 2026-11-12T04:54:12.138Z
+Stopped at: Completed 12-08-PLAN.md
 Resume file: None
 Phase 11 ship pull request: #31, open as a draft since plan 07; ship reuses it (gh pr ready, title check, gh pr merge --auto --squash at ship only; no new gh pr create)
 
