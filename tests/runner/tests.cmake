@@ -1,6 +1,7 @@
 # cogmaster-run tests.
 if(NOT CMAKE_SCRIPT_MODE_FILE)
   include(${CMAKE_CURRENT_LIST_DIR}/expect.cmake)
+  include(${CMAKE_CURRENT_LIST_DIR}/diagnose.cmake)
 endif()
 #
 # Run as a script (cmake -DCASE=<case> ... -P tests.cmake), this file is one
@@ -1130,6 +1131,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     # ends after that frame, still prints what was asked, and exits 0.
     unit(stop)
     set(RUN ${HOOKED})
+    expect_exit(1 "^[^\n]*stopped before its last frame[^\n]*\n$" --diagnose ${SEEDS}/di-halt.sms)
     expect_exit(0 "^frame 3 sha256 ${EXPECTED}\n$" --frames 60 --hash)
     expect_exit(0 "^frames 3\n.*max_rss_kib [0-9]+\n$" --bench 60)
     string(REPEAT "p1=00 p2=00 pause=0 reset=0 start=0\n" 60 body)
@@ -1934,6 +1936,14 @@ if(COGMASTER_FIXTURES)
 endif()
 
 set(bench_check ${runner_check} -DUNIT=$<TARGET_FILE:cogmaster-test-bench>)
+
+# Fault prevented: a fault frame of 599 or 600 put in the wrong bucket, a fault the frame before the
+# first picture read as after it, or a PC or device given the wrong slot or class, so the library
+# groups a cart under the wrong cause.
+# Timeout: 10 s floor; pure computation, no emulation.
+cogmaster_add_test(NAME runner.diagnose.class
+  COMMAND cogmaster-test-bench diag_class
+  LABELS portable runner TIMEOUT 10)
 
 # Fault prevented: a mailbox CRC that differs from the ROM's CRC-16 CCITT,
 # so every fixture reports crc=bad, or a wrong one that agrees with a wrong

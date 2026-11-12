@@ -503,6 +503,8 @@ runner.device.paddle_export_refused	portable,runner
 runner.device.probe_default	portable,runner
 runner.device.refused	portable,runner
 runner.device.usage	portable,runner
+runner.diagnose	portable,runner
+runner.diagnose.class	portable,runner
 runner.exit.failure	portable,runner
 runner.exit.table	runner
 runner.expect.audio	fm,portable,runner

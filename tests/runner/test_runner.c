@@ -1,11 +1,12 @@
-/* The runner's bench statistics, stop flag, probe digests and mailbox
-   CRC, one case per argv[1]: percentile, bytes, format, stop, digests or
-   mailbox_crc. */
+/* The runner's bench statistics, stop flag, probe digests, mailbox CRC and
+   the --diagnose word helpers, one case per argv[1]: percentile, bytes,
+   format, stop, digests, mailbox_crc, mailbox_stop or diag_class. */
 #include <signal.h>
 #include <stdint.h>
 #include <string.h>
 
 #include "../../runner/bench.h"
+#include "../../runner/diag_class.h"
 #include "../../runner/mailbox.h"
 #include "../../runner/md5.h"
 #include "../../runner/sha1.h"
@@ -221,12 +222,45 @@ static void mailbox_stop(void)
     CHECK_EQ_U64(cogmaster__mailbox_stop(&seen, magic), 0);
 }
 
+/* The four words the --diagnose line derives from a fault, at both ends of every range. A fault
+   recorded at 0-based frame 599 happened within the first 600 run calls; one at 600 did not. */
+static void diag_class(void)
+{
+    static const struct {
+        uint32_t frame;
+        const char *bucket;
+    } buckets[] = {{0u, "0"},           {1u, "1-9"},        {9u, "1-9"},
+                   {10u, "10-99"},      {99u, "10-99"},     {100u, "100-599"},
+                   {599u, "100-599"},   {600u, "600+"},     {4294967295u, "600+"}};
+    for (size_t i = 0; i < sizeof buckets / sizeof buckets[0]; i++)
+        CHECK(strcmp(cogmaster__diag_bucket(buckets[i].frame), buckets[i].bucket) == 0);
+    CHECK(strcmp(cogmaster__diag_order(0u, 0u, 5u), "none") == 0);
+    CHECK(strcmp(cogmaster__diag_order(1u, 0u, 0u), "nopicture") == 0);
+    CHECK(strcmp(cogmaster__diag_order(1u, 4u, 5u), "before") == 0);
+    CHECK(strcmp(cogmaster__diag_order(1u, 5u, 5u), "after") == 0);
+    CHECK(strcmp(cogmaster__diag_order(1u, 4294967295u, 5u), "after") == 0);
+    static const uint32_t slots[][2] = {{0x0000u, 0u}, {0x00FFu, 0u}, {0x0100u, 1u}, {0x3FFFu, 1u},
+                                        {0x4000u, 2u}, {0x7FFFu, 2u}, {0x8000u, 3u}, {0xBFFFu, 3u},
+                                        {0xC000u, 4u}, {0xFFFFu, 4u}};
+    for (size_t i = 0; i < sizeof slots / sizeof slots[0]; i++)
+        CHECK_EQ_U64(cogmaster__diag_pcslot(slots[i][0]), slots[i][1]);
+    CHECK(strcmp(cogmaster__diag_where(COGMASTER_FAULT_DEVICE_CART, 0x7FFFu), "rom") == 0);
+    CHECK(strcmp(cogmaster__diag_where(COGMASTER_FAULT_DEVICE_CART, 0x8000u), "slot2") == 0);
+    CHECK(strcmp(cogmaster__diag_where(COGMASTER_FAULT_DEVICE_RAM, 0xC000u), "ram") == 0);
+    CHECK(strcmp(cogmaster__diag_where(COGMASTER_FAULT_DEVICE_MAPPER, 0xFFFFu), "mapper") == 0);
+    CHECK(strcmp(cogmaster__diag_where(COGMASTER_FAULT_DEVICE_CTRL, 0x00u), "port") == 0);
+    CHECK(strcmp(cogmaster__diag_where(COGMASTER_FAULT_DEVICE_NONE, 0x00u), "port") == 0);
+    CHECK(strcmp(cogmaster__diag_where(COGMASTER_FAULT_DEVICE_CPU, 0x0000u), "cpu") == 0);
+    CHECK(strcmp(cogmaster__diag_where(COGMASTER_FAULT_DEVICE_VDP, 0xBFu), "vdp") == 0);
+    CHECK(strcmp(cogmaster__diag_where(7u, 0x00u), "unknown") == 0);
+}
+
 int main(int argc, char **argv)
 {
     if (argc != 2) {
         fprintf(stderr,
                 "usage: cogmaster-test-bench percentile|bytes|format|stop|digests|mailbox_crc|"
-                "mailbox_stop\n");
+                "mailbox_stop|diag_class\n");
         return 2;
     }
     if (strcmp(argv[1], "percentile") == 0) {
@@ -243,6 +277,8 @@ int main(int argc, char **argv)
         mailbox_crc();
     } else if (strcmp(argv[1], "mailbox_stop") == 0) {
         mailbox_stop();
+    } else if (strcmp(argv[1], "diag_class") == 0) {
+        diag_class();
     } else {
         fprintf(stderr, "unknown case %s\n", argv[1]);
         return 2;
