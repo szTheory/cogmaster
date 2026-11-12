@@ -232,9 +232,9 @@ Plans:
   3. The ratchet lets an `unsupported` row become `pass` once its board or device exists (its token is `retired` and the catalog no longer says `unsupported`), its negative controls fail, and the pull request that adds the rule is judged by the previous rules (LEDG-03).
   4. `docs/compatibility.md` holds aggregates plus the evaluated rows the budget allows (fixtures, every `unsupported` row, up to 40 `fail` rows, up to 40 others, a `+K more` line each) and stays inside its byte budget (LEDG-04).
   5. A command over the ledger's judged rows (`compat.exit`) exists and is proven in CI on the public committed rows and the synthetic library's merged ledger; a test ties `is_experimental` to the committed ledger's judged-cart floors both ways (present while unmet, absent once met); every `unsupported` row names its reason; unowned rows stay `unknown` with the count printed, including the PAL and Japanese FM rows once the owner's run has added them (LEDG-05).
-**Plans**: 1/10 plans executed
+**Plans**: 2/10 plans executed
 - [x] 12-01-PLAN.md — Generator catalog v2, Graphic Board slot (behaviour 17), amended requirement wording
-- [ ] 12-02-PLAN.md — Reason rule, input hardening, flat-cost test stand-ins (no ledger change)
+- [x] 12-02-PLAN.md — Reason rule, input hardening, flat-cost test stand-ins (no ledger change)
 - [ ] 12-03-PLAN.md — Ratchet rules R1 to R3 and the update guard (LEDG-03)
 - [ ] 12-04-PLAN.md — The bounded page and its bound test (LEDG-04)
 - [ ] 12-05-PLAN.md — The whole-list ledger, the seed, whole-list tests, dispatch D1 (LEDG-01)
@@ -260,4 +260,4 @@ Plans:
 | 9. Light Phaser | v2.0 | 12/12 | Complete    | 2026-11-11 |
 | 10. BIOS boot | v2.0 | 11/11 | Complete    | 2026-11-11 |
 | 11. PAL and Japanese FM | v2.0 | 9/9 | Complete    | 2026-11-11 |
-| 12. The whole list in the ledger | v2.0 | 1/10 | In Progress | - |
+| 12. The whole list in the ledger | v2.0 | 2/10 | In Progress | - |

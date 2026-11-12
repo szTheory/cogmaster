@@ -4,17 +4,17 @@ milestone: v2.0
 milestone_name: The whole library
 current_phase: 12
 current_phase_name: The whole list in the ledger
-status: planning
-stopped_at: Phase 11 complete, ready to plan Phase 12
-last_updated: "2026-11-12T03:09:40.886Z"
+status: executing
+stopped_at: Completed 12-02-PLAN.md
+last_updated: "2026-11-12T03:31:05.059Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 11 complete, transitioned to Phase 12
-state_head: 8acbc452330b6170e9a001f2ea584dbe6c9f0b40
+state_head: 9320b59badb694f53e8b00a9e07d9b30d7aee6ee
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 94
-  completed_plans: 85
+  completed_plans: 86
   percent: 88
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 12 — The whole list in the ledger
-Plan: 2 of 10
-Status: Executing
-Last activity: 2026-11-12 — Completed 12-01 (catalog v2, Graphic Board slot, amended wording)
+Plan: 3 of 10
+Status: Ready to execute
+Last activity: 2026-11-12 — Completed 12-02 (reason rule, hardening, flat-cost test plumbing)
 
 Progress: [█████████░] 88% of v2.0
 
@@ -215,6 +215,7 @@ Progress: [█████████░] 88% of v2.0
 | Phase 11 P08 | 55 min | 3 tasks | 13 files |
 | Phase 11 P09 | 100min | 3 tasks | 14 files |
 | Phase 12 P01 | 13 min | 3 tasks | 23 files |
+| Phase 12 P02 | 75min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -324,6 +325,10 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 11]: Timeouts are max(floor, 2 x the slowest hosted second) from raw seconds over five runs; the be32 job is 15 minutes by the mechanical rule; the rehearsal cleanup race stays a seed (SEED-014)
 - [Phase 12]: Plan 12-01: the Sega Graphic Board is slot 21 (graphic, board 0) set by the generator for any fact with controller code 4, so the table refuses its SHA-1 (runner exit 77); behaviour revision 17, API 14 and state 16 unchanged; src/state.c's 16 is a header offset and was left alone
 - [Phase 12]: Plan 12-01: catalog v2 is ten fields (status, reason, region, port1, port2 appended); the 19 compound entries are catalog lines with the SHA-1 of mame/<list>/<name> as id, machine from the list name; a same-SHA-1 group takes the worst status (any supported no is skipped mame_no); pin counts are measured and reconciled inside the generator (1463 = 1476 - 13)
+- [Phase 12]: A title may be a lone formula character (the library judge writes a lone dash as a fact title) but a formula character followed by any byte is refused
+- [Phase 12]: md() escapes in one pass over a lookup table so no numeric entity is escaped twice, identical on BWK, mawk and gawk awk
+- [Phase 12]: compat.reasons runs its controls in process and reuses its two live awk spawns
+- [Phase 12]: Open slot reasons in reasons.txt must equal the board-0 non-SG-1000 slot names, so retiring a token needs the slot table to change with it
 
 ### Pending Todos
 
@@ -456,6 +461,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 11 plan 11-09 (gsd-execute-phase 11); per-test hosted time report with a control, final head green on pull request run 43119601937 (bridge, protected comparison, perf and hash equality shown, cleanup race rerun), migration repeated on the final ledger, every timeout of the phase settled from five runs (compat.public_update raised after a Windows ARM64 timeout), be32 15 min, floors 654 and 612, REG-02 complete, SEED-012 and SEED-014, counted check code 859 of 906; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Code review and verify phase 11 (autonomous run); runner review 0 critical 2 warning, ledger review 0 critical 8 warning, fix round 1 fixed 15 (reset-script refusal removed, bounded re-read in the rehearsal delete, adopt-path and judge fixes), verification passed 4 of 4 with digest refreshed after the last timeout settlement, PR run 43126677381 green on its first attempt, counted check code 860 of 940 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Execute phase 12 plan 12-01 (gsd-execute-phase 12); Graphic Board slot and behaviour 17, catalog v2 with compound ids and pin counts, amended wording; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Execute phase 12 plan 12-02 (gsd-execute-phase 12); closed reason rule and vocabulary, title hardening, 8,192-row cap, one-pass markdown escaping, flat-cost test stand-ins; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -477,8 +483,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-12T03:09:40.280Z
-Stopped at: Completed 12-01-PLAN.md
+Last session: 2026-11-12T03:31:04.584Z
+Stopped at: Completed 12-02-PLAN.md
 Resume file: None
 Phase 11 ship pull request: #31, open as a draft since plan 07; ship reuses it (gh pr ready, title check, gh pr merge --auto --squash at ship only; no new gh pr create)
 
