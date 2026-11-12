@@ -13,6 +13,17 @@ workflow; an exported variable takes precedence. Direct `cmake --workflow --pres
 variable already exported. CI runs `library.synthetic` with owned temporary images, never `library.local`.
 No library build directory is uploaded. Local per-file results stay in ignored `build/library/results/`.
 
+`sh scripts/library.sh diagnose` groups the failing carts by cause (see [conformance.md](conformance.md)). It reads
+`COGMASTER_ROM_DIR` as above, writes only `build/library/diag/diagnose.txt` (`COGMASTER_LIBRARY_OUT` moves that
+directory, but only inside `build/`) and keeps its scratch files in one directory that an EXIT trap removes; a
+`SIGKILL` skips the trap and leaves that directory behind. CI runs the `library.diagnose` tests over owned or generated
+images: `library.diagnose` plants a name, a path fragment, a directory and tail bytes into synthetic images and scans
+stdout, stderr and every kept file for them, for the image digests, and for any byte, slash or hex run the closed
+grammar does not allow; `library.diagnose.taxonomy` pins every group, threshold and order over hand-written runner
+lines; `library.diagnose.leak_name`, `.leak_path`, `.leak_bytes`, `.leak_digest` and `.leak_title` plant each kind of
+leak and must fail the scan with its own message; `library.diagnose.hostile` gives carts a markup title and an escape
+and right-to-left title (withheld, and excluded before it is read) and a runner that prints a path and image bytes, and expects only `malformed` to change.
+
 ```sh
 cmake --workflow --preset ci
 ```
