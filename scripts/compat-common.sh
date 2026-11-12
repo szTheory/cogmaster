@@ -33,6 +33,7 @@ function predicate(s, machine, region, p,n,a,b,t,frame,address,value,cfg,fm) {
   return cfg "/" parameter (value!=""?"=" value:"")
 }
 function reasons(r) { if(!loaded++) while((r=(getline line < ENVIRON["COMPAT_REASONS"]))!=0) { if(r<0) bad(); if(line !~ /^#/ && line!="") { split(line,rs," "); ok[rs[1]]=rs[2] } } }
+function rel(k, s) { s=statuses[1,k]; return (s=="unsupported" && ok[substr(evid[1,k],8)]=="retired" && cs[ids[k]]!="unsupported") || (s=="skipped" && cs[ids[k]]!="skipped") }
 function emit(k, j,line) { line=""; for(j=1;j<=10;j++) line=line (j>1?",":"") quote(r[k,j]); print line }
 BEGIN { header1="id,title,machine,region,mapper,predicate,status,evidence,date"; header="id,title,machine,region,tv,mapper,predicate,status,evidence,date"; empty="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"; if(mode!="normalize" && mode!="cases" && mode!="docs" && mode!="ratchet" && mode!="results" && mode!="update") bad();
   # Fault prevented: a protected comparison or an update that quietly skips the catalog rules because it could not read the data, so a pass on a board that does not exist is accepted.
@@ -95,9 +96,12 @@ END {
     for(key in ids) {
       old=statuses[1,key]; now=statuses[2,key];
       if(seen[1,key] && old=="pass" && (!seen[2,key] || now!="pass" || values[1,key]!=values[2,key]) && !allowed[key]) bad();
-      if(seen[1,key] && seen[2,key] && old!=now && old!="unknown" && !(old=="fail" && now=="pass") && !allowed[key]) bad();
+      if(seen[1,key] && seen[2,key] && old!=now && old!="unknown" && !(old=="fail" && now=="pass") && !rel(key) && !allowed[key]) bad();
       # Fault prevented: a head pass or fail for an id whose catalog still says unsupported or skipped, so a board that does not exist is credited.
       if(seen[2,key] && now ~ /^(pass|fail)$/ && cs[ids[key]] ~ /^(unsupported|skipped)$/) bad();
+      # Fault prevented: hiding a failure by deleting its row, calling an unsupported row passing with no board behind it, and a pin bump that deadlocks on the base judge (rel releases a row only on a retired token and a catalog change).
+      if(seen[1,key] && old ~ /^(fail|unsupported|skipped)$/ && !hid[2,ids[key]] && !rel(key)) bad();
+      if(seen[1,key] && old ~ /^(unsupported|skipped)$/ && now!=old && !rel(key)) bad();
       if(stage==3 && ids[key] ~ /^fixture\// && ((seen[2,key] && now ~ /^(pass|fail)$/) || seen[3,key]) && (!seen[2,key] || !seen[3,key] || now!=statuses[3,key] || values[2,key]!=values[3,key])) bad();
     }
     print "compat: protected comparison passed"; exit 0
