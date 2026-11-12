@@ -8,10 +8,14 @@ if [ -z "${COGMASTER_ROM_DIR-}" ] && [ -f "$root/.env.local" ]; then
   COGMASTER_ROM_DIR=$(sed -n 's/^COGMASTER_ROM_DIR=//p' "$root/.env.local")
   export COGMASTER_ROM_DIR
 fi
-if [ "${1-}" != run ]; then
-  exec cmake --workflow --preset library
+case ${1-} in run | diagnose) ;; *) exec cmake --workflow --preset library ;; esac
+# Fault prevented: a diagnose call that reads the owner's local settings or an absent directory and reports an empty library as zero failures.
+if [ "$1" = diagnose ]; then
+  { [ -n "${COGMASTER_ROM_DIR-}" ] && [ -d "$COGMASTER_ROM_DIR" ]; } ||
+    { echo 'library: diagnose needs COGMASTER_ROM_DIR to name an existing directory' >&2; exit 2; }
 fi
 out=${COGMASTER_LIBRARY_OUT:-$root/build/library/results}
+[ "$1" != diagnose ] || out=${COGMASTER_LIBRARY_OUT:-$root/build/library/diag}
 case $out in "$root"/build/*) ;; *) echo 'library: results must stay inside ignored build output' >&2; exit 2 ;; esac
 export COGMASTER_LIBRARY_OUT=$out
 mkdir -p "$out"
@@ -27,6 +31,111 @@ COGMASTER_CATALOG=${COGMASTER_CATALOG:-$root/tests/compat/catalog.tsv}
 # Fault prevented: a judge that reads its catalog and reasons from the working directory, which the owner may run from anywhere.
 export COGMASTER_CATALOG
 export COMPAT_CATALOG=$COGMASTER_CATALOG COMPAT_REASONS=$root/tests/compat/reasons.txt
+if [ "$1" = diagnose ]; then
+  # Fault prevented: counts from a runner that does not match HEAD. The runner is rebuilt unless a test names one; build output is
+  # discarded because configure prints the build directory.
+  if [ -z "${COGMASTER_LIBRARY_RUN-}" ] && ! (cd "$root" && cmake --preset library && cmake --build --preset library) >/dev/null 2>&1; then
+    echo 'library: diagnose could not build the runner' >&2
+    exit 1
+  fi
+  # All scratch lives in one private directory that is removed on exit; a killed process can skip the trap.
+  mkdir -p "$root/build/library"
+  tmp=$(mktemp -d "$root/build/library/diag.XXXXXX")
+  trap 'rm -rf "$tmp"' EXIT
+  # core is the first 7 characters of the commit id; dirty means a tracked file outside .planning differs from HEAD.
+  core=$(git -C "$root" rev-parse HEAD | cut -c1-7)
+  git -C "$root" diff --quiet HEAD -- . ':(exclude).planning' || core=$core+dirty
+  behaviour=$(awk '/^#define COGMASTER_BEHAVIOUR_REVISION / {print $3}' "$root/include/cogmaster.h")
+  # Fault prevented: totals computed from a ledger split on commas inside titles, or from no ledger at all. The ledger is read only
+  # through its own parser.
+  if ! sh "$root/scripts/compat-common.sh" cases "$ledger" > "$tmp/cases" 2>/dev/null || ! grep -q '^set(compat_count ' "$tmp/cases"; then
+    echo 'library: diagnose could not read the ledger' >&2
+    exit 1
+  fi
+  records=$tmp/records
+  if command -v cygpath >/dev/null 2>&1; then records=$(cygpath -m "$records"); fi
+  : > "$tmp/records"
+  count=0
+  for image in "$COGMASTER_ROM_DIR"/* "$COGMASTER_ROM_DIR"/.[!.]* "$COGMASTER_ROM_DIR"/..?*; do
+    [ -f "$image" ] && [ ! -L "$image" ] || continue
+    case $image in *.[sS][mM][sS]|*.[gG][gG]|*.[bB][iI][nN]|*.[rR][oO][mM]) ;; *) continue ;; esac
+    if command -v cygpath >/dev/null 2>&1; then image=$(cygpath -m "$image"); fi
+    count=$((count+1))
+    COGMASTER_IMAGE=$image COGMASTER_DIAGNOSE=$records cmake -P "$root/scripts/library.cmake" >/dev/null 2>&1 ||
+      printf 'other infrastructure_error\n' >> "$tmp/records"
+  done
+  # Fault prevented: a fail row with no cause group passing as a complete grouping. The reducer prints everything, then exits 1 when
+  # the group total differs from the fail total. A record is accepted only when every field matches a closed pattern, and the output
+  # is printed from the validated fields, never from the record.
+  if awk -v candidates="$count" '
+function ok(s, list) { return index(" " list " ", " " s " ") > 0 }
+function kv(tok, key) { return index(tok, key "=") == 1 ? substr(tok, length(key) + 2) : "?" }
+function isnum(s) { return s ~ /^[0-9][0-9]?[0-9]?[0-9]?$/ }
+function isnn(s) { return s == "none" || isnum(s) }
+function hex40(s) { return length(s) == 40 && s ~ /^[0-9a-f]*$/ }
+BEGIN {
+  # The board words are copied from the runner probe; the catalog word compound is not one of them, so a compound row given
+  # status unknown would count as malformed.
+  boards = "unsupported none sega codemasters korean korean_nb hicom zemina nemesis hes_4pak sega_eeprom"
+  kinds = "none unmapped_read unmapped_write rom_write mapper_range ed_undefined unsupported_video_mode unknown"
+  devs = "none cpu cart ram mapper ctrl vdp unknown"
+  wheres = "rom slot2 ram mapper port cpu vdp unknown none"
+  tre = "^[A-Za-z0-9][A-Za-z0-9 ().,\047&:!+_-]*$"
+}
+{ sub(/\r$/, "") }
+FILENAME == ARGV[1] {
+  if (split($0, c, "\t") >= 5 && hex40(c[1]) && !(c[1] in title)) title[c[1]] = c[5]
+  next
+}
+NF == 0 { next }
+$1 == "rec" {
+  attempted++
+  v = kv($10, "verdict600"); fd = kv($11, "first_display"); fnb = kv($12, "first_nonblank"); fc = kv($13, "first_change")
+  d6 = kv($14, "distinct600"); d18 = kv($15, "distinct1800"); ram = kv($16, "ram"); fk = kv($17, "fault"); dev = kv($18, "dev")
+  pc = kv($19, "pc"); ps = kv($20, "pcslot"); wh = kv($21, "where"); ff = kv($22, "fault_frame"); ord = kv($23, "order")
+  mp = kv($24, "mapper"); src = kv($25, "source")
+  if (NF != 25 || !hex40($2) || !ok($3, "sms sms1 gg") || !ok($4, "export japan") || $5 != "ntsc" || !ok($6, "on off") || !ok($7, boards) ||
+      $8 != "diagnose" || $9 != "1" || !ok(v, "pass fail") || !isnn(fd) || !isnn(fnb) || !isnn(fc) || d6 !~ /^[1-8]$/ || d18 !~ /^[1-8]$/ ||
+      !ok(ram, "live still") || !ok(fk, kinds) || !ok(dev, devs) || !(pc == "none" || pc ~ /^[0-9A-F][0-9A-F][0-9A-F][0-9A-F]$/) ||
+      !(ps == "none" || ps ~ /^[0-4]$/) || !ok(wh, wheres) || !ok(ff, "0 1-9 10-99 100-599 600+ none") ||
+      !ok(ord, "before after nopicture none") || !ok(mp, boards) || !ok(src, "none db header heuristic default")) { bad++; next }
+  evaluated++
+  if (v == "pass") next
+  failed++
+  hasf = (ff != "none" && ff != "600+"); hasd = (fd != "none" && fd + 0 <= 600); hasp = (d6 + 0 >= 2)
+  g = ""
+  if (mp != $7) g = "input_mismatch"
+  else if (hasf && !hasd) g = "fault_no_display." fk "." dev
+  else if (hasf && !hasp) g = "fault_static." fk "." dev
+  else if (hasf) g = "fault_alive." fk "." dev
+  else if (!hasd) g = (fnb == "none") ? "dark_no_fault.never_draws" : ((fnb + 0 <= 600) ? "dark_no_fault.latch_miss" : "dark_no_fault.late")
+  else if (!hasp) g = (d18 + 0 >= 2) ? "static_no_fault.animates_late" : ((ram == "still") ? "static_no_fault.frozen" : "static_no_fault.alive_still")
+  if (g == "") next
+  groups[g]++; grouped++
+  t = title[$2]
+  if (length(t) > 80 || t !~ tre) t = "-"
+  printf "D diag: title=%s group=%s first_display=%s first_nonblank=%s distinct600=%s distinct1800=%s fault=%s dev=%s pc=%s mapper=%s first_change=%s fault_frame=%s order=%s where=%s ram=%s source=%s\n", t, g, fd, fnb, d6, d18, fk, dev, pc, mp, fc, ff, ord, wh, ram, src
+  next
+}
+{ bad++ }
+END {
+  for (g in groups) printf "G %d %s\n", groups[g], g
+  if (!("input_mismatch" in groups)) print "G 0 input_mismatch"
+  printf "O diag-other: candidates=%d attempted=%d evaluated=%d malformed=%d\n", candidates, attempted, evaluated, bad
+  printf "O diag-other: judged=%d run_fail=%d groups_total=%d fail_total=%d\n", evaluated, failed, grouped, failed
+  exit grouped != failed
+}' "$COGMASTER_CATALOG" "$tmp/records" > "$tmp/lines" 2>/dev/null; then rc=0; else rc=$?; fi
+  [ "$rc" -le 1 ] || { echo 'library: diagnose could not read its records' >&2; exit 1; }
+  {
+    printf 'library-diagnose 1 core=%s behaviour=%s\n' "$core" "$behaviour"
+    sed -n 's/^D //p' "$tmp/lines" | sort
+    sed -n 's/^G //p' "$tmp/lines" | sort -k1,1nr -k2,2 | sed 's/^\([0-9][0-9]*\) \(.*\)$/diag-group: leaf=\2 rows=\1/'
+    sed -n 's/^O //p' "$tmp/lines"
+  } > "$tmp/out"
+  cat "$tmp/out" > "$out/diagnose.txt"
+  cat "$tmp/out"
+  exit "$rc"
+fi
 sh "$root/scripts/compat-common.sh" cases "$ledger" > "$out/cases.cmake"
 : > "$out/profiles.csv"
 printf 'candidate,status,evaluated,attempted\n' > "$out/results.csv"
