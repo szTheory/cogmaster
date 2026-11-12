@@ -4,17 +4,17 @@ milestone: v2.1
 milestone_name: Fewer failing cartridges
 current_phase: 13
 current_phase_name: Why carts fail
-status: planning
-stopped_at: Phase 13 planned (5 plans, 5 waves)
-last_updated: "2026-11-12T22:45:00.800Z"
+status: executing
+stopped_at: "Completed 13-01-PLAN.md (runtime: Claude Code, model: claude-sonnet-5-5)"
+last_updated: "2026-11-12T23:00:15.054Z"
 last_activity: 2026-11-12
-last_activity_desc: Roadmap created for milestone v2.1 (Phases 13 to 15)
-state_head: 987b01133e8120dbda4a23b56ac20ace35990c37
+last_activity_desc: Phase 13 execution started
+state_head: fa9fe8be9839687e50991cf346278aec7de14c24
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 5
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-12)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Milestone v2.1: why a third of the checked cartridges fail the boots check (SEED-016), plus the CI timeout drift (SEED-015)
+**Current focus:** Phase 13 — Why carts fail
 
 ## Current Position
 
-Phase: 13 (Why carts fail) — READY TO EXECUTE
-Plan: —
-Status: Phase 13 planned (5 plans in 5 waves); ready to execute
-Last activity: 2026-11-12 — Roadmap created for milestone v2.1 (Phases 13 to 15)
+Phase: 13 (Why carts fail) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-11-12 — Phase 13 execution started
 
 ## Performance Metrics
 
@@ -223,6 +223,7 @@ Last activity: 2026-11-12 — Roadmap created for milestone v2.1 (Phases 13 to 1
 | Phase 12 P08 | 45min | 2 tasks | 8 files |
 | Phase 12 P09 | 20min | 2 tasks | 4 files |
 | Phase 12 P10 | 45min | 2 tasks | 9 files |
+| Phase 13 P01 | 9min | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -231,6 +232,8 @@ Last activity: 2026-11-12 — Roadmap created for milestone v2.1 (Phases 13 to 1
 The v1.0 and v2.0 decision logs are in PROJECT.md Key Decisions (outcomes filled at milestone close); the full list with
 sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the archived summaries under
 `.planning/milestones/v1.0-phases/` and `.planning/milestones/v2.0-phases/`.
+- [Phase 13]: 13-01: phase branch cut from milestone-branch tip (milestone docs are not on origin/main); owner may override
+- [Phase 13]: 13-01: --diagnose frame-600 verdict is cogmaster__expect_boots over the shared expect state; diag state heap-allocated for small wasm32 stacks
 
 ### Pending Todos
 
@@ -407,8 +410,8 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 
 ## Session Continuity
 
-Last session: 2026-11-12T20:54:17.837Z
-Stopped at: Phase 13 context gathered
+Last session: 2026-11-12T23:00:15.024Z
+Stopped at: Completed 13-01-PLAN.md (runtime: Claude Code, model: claude-sonnet-5-5)
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
