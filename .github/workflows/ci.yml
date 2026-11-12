@@ -118,7 +118,7 @@ jobs:
     if: needs.changes.outputs.heavy == 'true'
     name: build (${{ matrix.os }}-${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 6  # 2 x 178 s (worst lane), slowest of 37 runs, run 42741490263
+    timeout-minutes: 8  # 2 x 214 s, slowest of 40 runs, run 43153144670
     strategy:
       fail-fast: false
       matrix:
