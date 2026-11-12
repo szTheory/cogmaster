@@ -221,8 +221,9 @@ static uint32_t number(const char *s)
 }
 
 /* Fault prevented: a title that a ledger, a page or a spreadsheet would act on instead of show: a
-   control byte, bytes that are not UTF-8, a zero-width or bidirectional format character, or a
-   first character a spreadsheet reads as a formula. */
+   control byte (C0 or C1), bytes that are not UTF-8, a zero-width, line-breaking (U+0085, U+2028,
+   U+2029), invisible or bidirectional format character (including U+061C and the soft hyphen), or a
+   first character a spreadsheet reads as a formula. The ledger parser refuses the same set. */
 static void check_title(const unsigned char *s)
 {
     if (*s == '=' || *s == '+' || *s == '-' || *s == '@')
@@ -244,8 +245,9 @@ static void check_title(const unsigned char *s)
         if ((n == 3u && cp < 0x800u) || (n == 4u && (cp < 0x10000u || cp > 0x10ffffu)) ||
             (cp >= 0xd800u && cp <= 0xdfffu))
             fail("title is not valid UTF-8");
-        if ((cp >= 0x200bu && cp <= 0x200fu) || (cp >= 0x202au && cp <= 0x202eu) ||
-            (cp >= 0x2066u && cp <= 0x2069u) || cp == 0xfeffu)
+        if ((cp >= 0x80u && cp <= 0x9fu) || cp == 0xadu || cp == 0x61cu ||
+            (cp >= 0x200bu && cp <= 0x200fu) || (cp >= 0x2028u && cp <= 0x202eu) ||
+            (cp >= 0x2060u && cp <= 0x2064u) || (cp >= 0x2066u && cp <= 0x2069u) || cp == 0xfeffu)
             fail("title holds a format character");
         s += n - 1u;
     }
@@ -703,6 +705,8 @@ int main(int argc, char **argv)
             fail("input too large or unreadable");
         fclose(file);
         input[n] = 0;
+        if (strlen(input) != n)
+            fail("input holds a NUL byte");
         if (!strstr(input, "license:CC0-1.0"))
             fail("missing per-file CC0 license");
         parse(input);
