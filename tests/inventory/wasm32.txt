@@ -70,6 +70,7 @@ cart.fixture_wrong_hash	cart,portable
 cart.fixture_wrong_hash.paddle	cart,portable
 cart.fixture_wrong_hash.sports	cart,portable
 cart.generator	cart,portable
+cart.generator.catalog	cart
 cart.probe.branches	cart,portable
 cart.probe.pure	cart,portable
 cart.probe.scan	cart,portable

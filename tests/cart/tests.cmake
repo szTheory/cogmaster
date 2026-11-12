@@ -6,9 +6,9 @@ cogmaster_add_test(NAME cart.database COMMAND cogmaster-test-cartdb LABELS cart 
 cogmaster_add_test(NAME cart.fixture_identity COMMAND cogmaster-test-cartdb
   ${PROJECT_BINARY_DIR}/fixtures/battery.sms LABELS cart portable TIMEOUT 10)
 target_include_directories(cogmaster-test-cartdb PRIVATE ${PROJECT_SOURCE_DIR}/src)
-add_executable(cogmaster-cartdb ${PROJECT_SOURCE_DIR}/tools/cartdb.c)
+add_executable(cogmaster-cartdb ${PROJECT_SOURCE_DIR}/tools/cartdb.c ${PROJECT_SOURCE_DIR}/src/sha1.c)
 cogmaster_warnings(cogmaster-cartdb)
-target_include_directories(cogmaster-cartdb PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR}/generated)
+target_include_directories(cogmaster-cartdb PRIVATE ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/generated)
 string(REPLACE ";" "$<SEMICOLON>" cartdb_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
 # Fault prevented: filename classification and a changed assembler output losing battery metadata.
 cogmaster_add_test(NAME cart.fixture_hash COMMAND ${CMAKE_COMMAND}
@@ -49,6 +49,14 @@ cogmaster_add_test(NAME cart.generator COMMAND ${CMAKE_COMMAND}
   -DPINS=${PROJECT_SOURCE_DIR}/pins.txt -DTABLE=${PROJECT_SOURCE_DIR}/src/cartdb.inc
   "-DEMULATOR=${cartdb_emulator}" -P ${CMAKE_CURRENT_LIST_DIR}/generator.cmake
   LABELS cart portable TIMEOUT 10)
+# Fault prevented: a ledger identity, status or reason computed anywhere but the generator, a hostile
+# title reaching a ledger, a page or a spreadsheet, and a count that is only a claim. Host only: the
+# slow lanes run cart.generator, which proves the compound identity against a typed literal.
+# Timeout: 60 s floor; 0.40 s slowest local run, no hosted run yet, so provisional.
+cogmaster_add_test(NAME cart.generator.catalog COMMAND ${CMAKE_COMMAND}
+  -DGEN=$<TARGET_FILE:cogmaster-cartdb> -DOUT=${PROJECT_BINARY_DIR}/tests/cartdb-catalog
+  "-DEMULATOR=${cartdb_emulator}" -P ${CMAKE_CURRENT_LIST_DIR}/catalog.cmake
+  LABELS cart TIMEOUT 60)
 add_executable(cogmaster-test-cart ${CMAKE_CURRENT_LIST_DIR}/test_cart.c)
 target_link_libraries(cogmaster-test-cart PRIVATE cogmaster::cogmaster)
 set_target_properties(cogmaster-test-cart PROPERTIES

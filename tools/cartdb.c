@@ -8,15 +8,21 @@
 #include <string.h>
 
 #include "cogmaster.h"
+#include "sha1.h"
 
 #define CAP 4096u
+/* Why a record the table cannot hold still names a catalog identity: the closed reason tokens. */
+enum { KIND_NONE, KIND_NO_ROM, KIND_BAD_DUMP, KIND_MULTI_CHIP, KIND_SHORT_DUMP };
 struct fact {
-    char sha[41], title[256];
+    char sha[41], title[256], list[16], name[64];
     uint32_t bytes, board, machine, region, video, persistence, declared, geometry;
-    uint32_t public_identity, slot, ctrl1, ctrl2;
+    uint32_t public_identity, slot, ctrl1, ctrl2, no, kind;
 };
 static struct fact facts[CAP];
 static size_t count, compound;
+/* Software records per list (sms, gamegear, sg1000) and same-image merges, for the reconciliation.
+ */
+static uint32_t entries_sms, entries_gg, entries_sg, merged_sms_gg, merged_sg;
 static char input[4194305];
 
 /* Every MAME slot value in the pinned lists, with a stable id that is never
@@ -214,6 +220,37 @@ static uint32_t number(const char *s)
     return (uint32_t)n;
 }
 
+/* Fault prevented: a title that a ledger, a page or a spreadsheet would act on instead of show: a
+   control byte, bytes that are not UTF-8, a zero-width or bidirectional format character, or a
+   first character a spreadsheet reads as a formula. */
+static void check_title(const unsigned char *s)
+{
+    if (*s == '=' || *s == '+' || *s == '-' || *s == '@')
+        fail("title starts with a formula character");
+    for (; *s; s++) {
+        if (*s < 0x20u || *s == 0x7fu)
+            fail("title holds a control byte");
+        if (*s < 0x80u)
+            continue;
+        size_t n = *s >= 0xf0u ? 4u : *s >= 0xe0u ? 3u : 2u;
+        uint32_t cp = *s >= 0xf0u ? *s & 7u : *s >= 0xe0u ? *s & 15u : *s & 31u;
+        if (*s < 0xc2u || *s > 0xf4u)
+            fail("title is not valid UTF-8");
+        for (size_t k = 1; k < n; k++) {
+            if ((s[k] & 0xc0u) != 0x80u)
+                fail("title is not valid UTF-8");
+            cp = cp << 6 | (s[k] & 0x3fu);
+        }
+        if ((n == 3u && cp < 0x800u) || (n == 4u && (cp < 0x10000u || cp > 0x10ffffu)) ||
+            (cp >= 0xd800u && cp <= 0xdfffu))
+            fail("title is not valid UTF-8");
+        if ((cp >= 0x200bu && cp <= 0x200fu) || (cp >= 0x202au && cp <= 0x202eu) ||
+            (cp >= 0x2066u && cp <= 0x2069u) || cp == 0xfeffu)
+            fail("title holds a format character");
+        s += n - 1u;
+    }
+}
+
 static void title(char *out, const char *p, size_t n)
 {
     size_t used = 0;
@@ -239,6 +276,7 @@ static void title(char *out, const char *p, size_t n)
         out[used++] = c;
     }
     out[used] = 0;
+    check_title((const unsigned char *)out);
 }
 
 static int compare(const void *a, const void *b)
@@ -252,9 +290,57 @@ static int compare(const void *a, const void *b)
     return strcmp(x->title, y->title);
 }
 
+/* A record the table cannot hold (several parts or ROM chips, a bad or short dump, no ROM) still
+   names a catalog identity, the SHA-1 of the text "mame/<list>/<name>": no image has that digest,
+   and it is reproducible from the pinned list alone. Fault prevented: a record with no image hash
+   missing from the catalog, or one named by a free-form string a parser would have to trust. */
+static void add_compound(struct fact *f, const char *record, const char *list)
+{
+    static const char digits[] = "0123456789abcdef";
+    char text[128], value[256];
+    uint32_t roms = 0, bad = 0;
+    uint8_t digest[20];
+    cogmaster__sha1 sha;
+    if (!*list)
+        fail("compound record under an unnamed softwarelist");
+    if (strcmp(list, "sms") && strcmp(list, "gamegear") && strcmp(list, "sg1000"))
+        fail("compound record under an unknown softwarelist");
+    if (!*f->name || strspn(f->name, "abcdefghijklmnopqrstuvwxyz0123456789_") != strlen(f->name))
+        fail("compound record with an unusable software name");
+    for (const char *r = record; (r = strstr(r, "<rom ")) != NULL; r++) {
+        roms++;
+        if (attr(r, "status", value, sizeof value) && !strcmp(value, "baddump"))
+            bad = 1u;
+    }
+    f->kind = !roms       ? KIND_NO_ROM
+              : bad       ? KIND_BAD_DUMP
+              : roms > 1u ? KIND_MULTI_CHIP
+                          : KIND_SHORT_DUMP;
+    f->machine = !strcmp(list, "gamegear") ? 2u : !strcmp(list, "sg1000") ? 0u : 1u;
+    f->board = f->slot = 0u;
+    strcpy(f->list, list);
+    (void)snprintf(text, sizeof text, "mame/%s/%s", list, f->name);
+    cogmaster__sha1_init(&sha);
+    cogmaster__sha1_update(&sha, text, strlen(text));
+    cogmaster__sha1_final(&sha, digest);
+    for (size_t i = 0; i < 20u; i++) {
+        f->sha[2u * i] = digits[digest[i] >> 4];
+        f->sha[2u * i + 1u] = digits[digest[i] & 15u];
+    }
+    f->sha[40] = 0;
+    if (count == CAP)
+        fail("too many facts");
+    facts[count++] = *f;
+    compound++;
+    fprintf(stderr, "cartdb: compound record kept as a catalog line: %s\n", f->title);
+}
+
 static void parse(char *s)
 {
-    char *p = s;
+    char *p = s, list[16] = "";
+    char *root = strstr(s, "<softwarelist");
+    if (root)
+        (void)attr(root, "name", list, sizeof list);
     while ((p = strstr(p, "<software ")) != NULL) {
         char *end = strstr(p, "</software>");
         if (!end)
@@ -262,15 +348,25 @@ static void parse(char *s)
         *end = 0;
         struct fact f = {0};
         f.public_identity = 1u;
+        if (!strcmp(list, "gamegear"))
+            entries_gg++;
+        else if (!strcmp(list, "sg1000"))
+            entries_sg++;
+        else
+            entries_sms++;
+        char supported[16];
+        (void)attr(p, "name", f.name, sizeof f.name);
+        (void)attr(p, "supported", supported, sizeof supported);
+        f.no = !strcmp(supported, "no");
         char *desc = strstr(p, "<description>"), *de = desc ? strstr(desc, "</description>") : NULL;
         if (!desc || !de)
             fail("missing description");
         title(f.title, desc + 13, (size_t)(de - desc - 13));
+        f.region = strstr(f.title, "(Japan)") ? 2u : 0u;
         scan_features(p, &f.ctrl1, &f.ctrl2);
         char *part = strstr(p, "<part ");
         if (!part || strstr(part + 1, "<part ")) {
-            compound++;
-            fprintf(stderr, "cartdb: excluded multipart record: %s\n", f.title);
+            add_compound(&f, p, list);
             p = end + 11;
             continue;
         }
@@ -279,7 +375,6 @@ static void parse(char *s)
         f.machine = !strcmp(value, "gamegear_cart")                              ? 2u
                     : (!strcmp(value, "sms_cart") || !strcmp(value, "sms_card")) ? 1u
                                                                                  : 0u;
-        f.region = strstr(f.title, "(Japan)") ? 2u : 0u;
         f.video = f.machine == 2u ? 2u : 1u;
         f.persistence = 1u;
         uint32_t areas = 0, roms = 0, romsize = 0, offset = 0;
@@ -335,8 +430,7 @@ static void parse(char *s)
             }
         }
         if (areas != 1u || roms != 1u || romsize != f.bytes || offset || strlen(f.sha) != 40u) {
-            compound++;
-            fprintf(stderr, "cartdb: excluded compound/incomplete record: %s\n", f.title);
+            add_compound(&f, p, list);
             p = end + 11;
             continue;
         }
@@ -389,6 +483,8 @@ static int is_hex40(const char *s)
    A controller named on one alias and not the other keeps the device. */
 static void coalesce(struct fact *a, const struct fact *b)
 {
+    if (a->kind || b->kind)
+        fail("duplicate compound identity");
     if (a->bytes != b->bytes || a->board != b->board || a->region != b->region ||
         a->video != b->video || a->persistence != b->persistence || a->declared != b->declared ||
         a->geometry != b->geometry || a->public_identity != b->public_identity ||
@@ -402,6 +498,13 @@ static void coalesce(struct fact *a, const struct fact *b)
         a->ctrl1 = b->ctrl1;
     if (!a->ctrl2)
         a->ctrl2 = b->ctrl2;
+    a->no |= b->no;
+    if (a->public_identity & 1u) {
+        if (a->machine)
+            merged_sms_gg++;
+        else
+            merged_sg++;
+    }
 }
 
 static void print_slots(void)
@@ -419,23 +522,101 @@ static void print_slots(void)
     }
 }
 
+/* The status and closed reason of one catalog identity, the first match winning: any record of
+   the SHA-1 that MAME marks as not working is skipped as mame_no; a record the table cannot hold
+   is skipped with its kind; board 0 is unsupported, named by its slot; the rest is unknown. SG-1000
+   lines are excluded. Fault prevented: an identity, status or reason computed anywhere but here. */
+static const char *status_of(const struct fact *f, const char **reason)
+{
+    static const char *const kinds[] = {"-", "no_rom", "bad_dump", "multi_chip", "short_dump"};
+    *reason = "-";
+    if (!f->machine)
+        return "excluded";
+    if (f->no) {
+        *reason = "mame_no";
+        return "skipped";
+    }
+    if (f->kind) {
+        *reason = kinds[f->kind];
+        return "skipped";
+    }
+    if (f->board)
+        return "unknown";
+    if (!f->slot)
+        fail("a Master System or Game Gear record has board 0 and no slot");
+    *reason = slots[f->slot - 1u].name;
+    return "unsupported";
+}
+
 static void write_catalog(const char *path)
 {
     static const char *const machines[] = {"sg", "sms", "gg"};
+    static const char *const ports[] = {"pad", "lphaser", "paddle", "sports", "pad"};
     FILE *out = fopen(path, "wb");
     if (!out)
         fail("cannot open catalog");
     for (size_t i = 0; i < count; i++) {
         const struct fact *f = &facts[i];
+        const char *reason;
         if (!(f->public_identity & 1u))
             continue;
         if (strpbrk(f->title, "\t\r\n"))
             fail("title holds a tab or newline");
-        fprintf(out, "%s\t%s\t%s\t%s\t%s\n", f->sha, machines[f->machine], board_names[f->board],
-                f->slot ? slots[f->slot - 1u].name : "-", f->title);
+        const char *status = status_of(f, &reason);
+        char list_name[sizeof f->list + sizeof f->name];
+        (void)snprintf(list_name, sizeof list_name, "%s/%s", f->list, f->name);
+        int japan = f->region == 2u || f->ctrl1 == 2u || f->ctrl2 == 2u;
+        fprintf(out, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", f->sha, machines[f->machine],
+                f->kind ? "compound" : board_names[f->board],
+                f->kind   ? list_name
+                : f->slot ? slots[f->slot - 1u].name
+                          : "-",
+                f->title, status, reason, japan ? "japan" : "export", ports[f->ctrl1],
+                ports[f->ctrl2]);
     }
     if (ferror(out) || fclose(out))
         fail("cannot write catalog");
+}
+
+/* The pin counts as measured, checked against the arithmetic the ledger relies on: every software
+   record is one catalog identity, except the ones that share an image with another. */
+static void write_counts(const char *path)
+{
+    uint32_t images = 0, comps = 0, sg_images = 0, sg_comps = 0, mame_no = 0;
+    for (size_t i = 0; i < count; i++) {
+        const struct fact *f = &facts[i];
+        const char *reason;
+        if (!(f->public_identity & 1u))
+            continue;
+        (void)status_of(f, &reason);
+        mame_no += f->machine && !strcmp(reason, "mame_no");
+        if (f->machine)
+            f->kind ? comps++ : images++;
+        else
+            f->kind ? sg_comps++ : sg_images++;
+    }
+    uint32_t entries = entries_sms + entries_gg;
+    if (entries - merged_sms_gg != images + comps || entries_sg - merged_sg != sg_images + sg_comps)
+        fail("the record counts do not reconcile with the catalog identities");
+    fprintf(stderr,
+            "cartdb: ledger identities %" PRIu32 " = %" PRIu32 " entries - %" PRIu32
+            " same-image aliases (%" PRIu32 " images + %" PRIu32
+            " compound); SG-1000 excluded %" PRIu32 " entries (%" PRIu32 " images + %" PRIu32
+            " compound)\n",
+            images + comps, entries, merged_sms_gg, images, comps, entries_sg, sg_images, sg_comps);
+    if (!path)
+        return;
+    FILE *out = fopen(path, "wb");
+    if (!out)
+        fail("cannot open counts file");
+    fprintf(out,
+            "entries_sms %" PRIu32 "\nentries_gg %" PRIu32 "\nentries_sg %" PRIu32
+            "\nmerged_sms_gg %" PRIu32 "\nmerged_sg %" PRIu32 "\ncompound_sms_gg %" PRIu32
+            "\ncompound_sg %" PRIu32 "\nmame_no %" PRIu32 "\n",
+            entries_sms, entries_gg, entries_sg, merged_sms_gg, merged_sg, comps, sg_comps,
+            mame_no);
+    if (ferror(out) || fclose(out))
+        fail("cannot write counts file");
 }
 
 /* The four owned fixtures, each with its own shape: the Sega battery image (64 KiB, 32 KiB of
@@ -459,7 +640,7 @@ static int owned_fixture(const struct fact *f)
 
 int main(int argc, char **argv)
 {
-    const char *pin = NULL, *catalog = NULL;
+    const char *pin = NULL, *catalog = NULL, *counts = NULL;
     check_table();
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--list-slots")) {
@@ -473,8 +654,11 @@ int main(int argc, char **argv)
     if (argc < 2)
         fail("supply CC0 XML files");
     for (int i = 1; i < argc; i++) {
-        if (!strcmp(argv[i], "--pin") || !strcmp(argv[i], "--catalog")) {
-            const char **dest = argv[i][2] == 'p' ? &pin : &catalog;
+        if (!strcmp(argv[i], "--pin") || !strcmp(argv[i], "--catalog") ||
+            !strcmp(argv[i], "--counts")) {
+            const char **dest = argv[i][2] == 'p'                        ? &pin
+                                : argv[i][2] == 'c' && argv[i][3] == 'a' ? &catalog
+                                                                         : &counts;
             if (++i == argc)
                 fail("missing option value");
             *dest = argv[i];
@@ -526,7 +710,7 @@ int main(int argc, char **argv)
     if (!pin || !is_hex40(pin))
         fail("--pin needs the 40 hex digit MAME commit");
     qsort(facts, count, sizeof facts[0], compare);
-    size_t candidates = count, kept = 0;
+    size_t candidates = count - compound, kept = 0;
     for (size_t i = 0; i < count; i++) {
         if (kept && !strcmp(facts[kept - 1u].sha, facts[i].sha))
             coalesce(&facts[kept - 1u], &facts[i]);
@@ -545,6 +729,8 @@ int main(int argc, char **argv)
     puts("static const struct cogmaster__cart_fact cartdb_facts[] = {");
     for (size_t i = 0; i < count; i++) {
         const struct fact *f = &facts[i];
+        if (f->kind)
+            continue;
         fputs("{.sha1 = {", stdout);
         for (size_t b = 0; b < 20u; b++) {
             unsigned int v;
@@ -563,6 +749,7 @@ int main(int argc, char **argv)
     puts("};");
     if (catalog)
         write_catalog(catalog);
+    write_counts(counts);
     print_slots();
     fprintf(stderr, "cartdb: %zu candidate facts; %zu compound/incomplete records excluded\n",
             candidates, compound);
