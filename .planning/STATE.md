@@ -5,15 +5,15 @@ milestone_name: Fewer failing cartridges
 current_phase: 13
 current_phase_name: Why carts fail
 status: planning
-stopped_at: Phase 13 context gathered
-last_updated: "2026-11-12T20:54:17.864Z"
+stopped_at: Phase 13 planned (5 plans, 5 waves)
+last_updated: "2026-11-12T22:45:00.800Z"
 last_activity: 2026-11-12
 last_activity_desc: Roadmap created for milestone v2.1 (Phases 13 to 15)
-state_head: 4c7148932cb42f0bb1bccc9ce6ce9e183576bf2b
+state_head: 987b01133e8120dbda4a23b56ac20ace35990c37
 progress:
   total_phases: 3
   completed_phases: 0
-  total_plans: 0
+  total_plans: 5
   completed_plans: 0
   percent: 0
 ---
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-11-12)
 
 ## Current Position
 
-Phase: 13 of 15 (Why carts fail), not started
+Phase: 13 (Why carts fail) — READY TO EXECUTE
 Plan: —
-Status: Roadmap created; ready to discuss Phase 13
+Status: Phase 13 planned (5 plans in 5 waves); ready to execute
 Last activity: 2026-11-12 — Roadmap created for milestone v2.1 (Phases 13 to 15)
 
 ## Performance Metrics
@@ -378,6 +378,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-12 | New milestone v2.1 started (gsd-new-milestone); scope SEED-016 plus SEED-015 CI timeouts | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Roadmap v2.1 (gsd-new-milestone); 3 phases, 10 requirements; roadmapper claude-opus-5-5 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Discuss phase 13 (gsd-discuss-phase 13); four advisor agents (plumbing, leak contract, cause taxonomy, run protocol) and an orchestrator adversarial pass; 25 decisions | Claude Code | claude-sonnet-5-5 (advisors claude-sonnet-5-5) |
+| 2026-11-12 | Plan phase 13 (gsd-plan-phase 13); researcher, planner and checker agents, 3 checker rounds then one owner-approved narrow retry; 5 plans in 5 waves; decision coverage 25 of 25; the phase branch phase/13-why-carts-fail is cut from the milestone branch tip by the first execute task (rule 10 deviation, owner may override) | Claude Code | claude-sonnet-5-5 (researcher claude-sonnet-5-5, planner claude-opus-5-5, checker claude-haiku-5-5) |
 
 ## Deferred Items
 
