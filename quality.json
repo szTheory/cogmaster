@@ -28,7 +28,7 @@
     },
     {
       "key": "compat.cart_pass",
-      "reason": "Twenty judged cartridge pass rows show that a real library run reached the ledger; they are not a pass rate. Twenty is about 1.4 percent of 1,444 images and over twice the nine fixture passes, so fixtures plus a token run cannot reach it; agents cannot see the library's size, so any other number would be a guess, and the floor is one reviewed reasons edit away from a change."
+      "reason": "Twenty distinct cartridge images with a judged pass row show that a real library run reached the ledger; one image with a default and a PAL pass row counts once, and they are not a pass rate. Twenty is about 1.4 percent of 1,444 images and over twice the nine fixture passes, so fixtures plus a token run cannot reach it; agents cannot see the library's size, so any other number would be a guess, and the floor is one reviewed reasons edit away from a change."
     },
     {
       "key": "compat.fm_judged",

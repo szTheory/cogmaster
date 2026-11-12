@@ -146,7 +146,9 @@ function(compat_exit_check ledger catalog counts reasons quality info work inmem
       endif()
       # A judged cartridge row is a pass or fail row of an image identity of the catalog, nothing a fixture or a compound id can be.
       if(judged AND DEFINED exit_img_${id})
-        if(st STREQUAL "pass")
+        # An export cartridge carries a default row and a PAL row, so the pass floor counts distinct images, the profile floors rows.
+        if(st STREQUAL "pass" AND NOT DEFINED exit_passed_${id})
+          set(exit_passed_${id} 1)
           math(EXPR cart_pass "${cart_pass}+1")
         endif()
         if(tv STREQUAL "pal")
@@ -529,6 +531,11 @@ if(CASE STREQUAL "self_test")
   set(c_counts none)
   control(twenty_compound_passes "${compound_rows}" "${present}" 0 "cart_pass=0/20 cart_pal_judged=0/1 cart_fm_judged=0/1 judged_cart_floors=unmet flag=present")
   defaults()
+  # Two pass rows of one image (default and PAL) are one cart: twenty rows over nineteen images stay unmet.
+  cart_row(row "${cid_3}" "Cart 3" pal off pass "-")
+  set(twin "${nineteen}")
+  list(APPEND twin "${row}")
+  control(twin_rows_one_cart "${twin}" "${present}" 0 "cart_pass=19/20 .*judged_cart_floors=unmet flag=present")
   # Cart fail rows never block: twenty passes and extra fails stay met, and the flag must be gone.
   cart_row(row "${cid_3}" "Cart 3" pal off fail "-")
   set(failing "${met}")
