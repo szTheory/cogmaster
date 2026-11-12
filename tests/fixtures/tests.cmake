@@ -1877,6 +1877,7 @@ set(cmd ${CMAKE_COMMAND} -DCASE=mailbox -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/b
   -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
   -DOUT=${fixtures_out}/vdp_vtable_192.wrong_profile.txt -P ${CMAKE_CURRENT_LIST_FILE})
 string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+# Timeout: 10 s floor; 2 x 0.16 s, slowest of 1 run (9 lanes), run 43117518796.
 cogmaster_add_test(NAME fixtures.vdp_vtable.control.wrong_profile
   COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=outside its row"
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
@@ -1891,6 +1892,7 @@ set(cmd ${CMAKE_COMMAND} -DCASE=mailbox -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/b
   -DINPUT=${pause_input} -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
   -DOUT=${fixtures_out}/pause_nmi_192.wrong_profile.txt -P ${CMAKE_CURRENT_LIST_FILE})
 string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+# Timeout: 20 s floor; 2 x 0.45 s, slowest of 1 run (9 lanes), run 43117518796.
 cogmaster_add_test(NAME fixtures.pause_nmi.control.wrong_profile
   COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=outside its row"
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
