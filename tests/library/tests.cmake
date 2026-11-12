@@ -40,7 +40,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
   set(crazy "\"00cfce623709b8d9bc9e6bbb96feb9faf9a81f84\",\"Crazy Faces (Europe, prototype)\",\"gg\",\"export\",\"ntsc\",\"sega\",\"cfg:video=gg;fm=off;port1=pad;port2=pad;script=none;sha256=${empty}/boots@600\",\"unknown\",\"CC0 metadata only src/cartdb.inc\",\"2026-10-20\"\n")
   set(standin_ledger "${standin_head}${crazy}${standin_fixtures}")
   file(WRITE "${OUT}/standin-initial.csv" "${standin_ledger}")
-  execute_process(COMMAND "${CMAKE_COMMAND}" -E env "COMPAT_CATALOG=${OUT}/catalog.tsv" sh "${ROOT}/scripts/compat-common.sh" docs "${OUT}/standin-initial.csv"
+  execute_process(COMMAND "${CMAKE_COMMAND}" -E env "COMPAT_CATALOG=${OUT}/catalog.tsv" "COMPAT_REASONS=${ROOT}/tests/compat/reasons.txt" sh "${ROOT}/scripts/compat-common.sh" docs "${OUT}/standin-initial.csv"
     RESULT_VARIABLE rc OUTPUT_VARIABLE standin_page COMMAND_ERROR_IS_FATAL ANY)
   set(library_directory "${ROOT}")
   function(library directory)
@@ -116,7 +116,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
   if(NOT added EQUAL 4)
     message(FATAL_ERROR "the merge must add exactly four rows, not ${added}")
   endif()
-  execute_process(COMMAND "${CMAKE_COMMAND}" -E env "COMPAT_CATALOG=${OUT}/catalog.tsv" sh "${ROOT}/scripts/compat-common.sh" docs "${OUT}/standin/ledger.csv"
+  execute_process(COMMAND "${CMAKE_COMMAND}" -E env "COMPAT_CATALOG=${OUT}/catalog.tsv" "COMPAT_REASONS=${ROOT}/tests/compat/reasons.txt" sh "${ROOT}/scripts/compat-common.sh" docs "${OUT}/standin/ledger.csv"
     RESULT_VARIABLE rc OUTPUT_VARIABLE fresh_page COMMAND_ERROR_IS_FATAL ANY)
   file(READ "${OUT}/standin/page.md" merged_page)
   file(SIZE "${OUT}/standin/page.md" page_size)
