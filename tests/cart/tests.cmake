@@ -52,7 +52,7 @@ cogmaster_add_test(NAME cart.generator COMMAND ${CMAKE_COMMAND}
 # Fault prevented: a ledger identity, status or reason computed anywhere but the generator, a hostile
 # title reaching a ledger, a page or a spreadsheet, and a count that is only a claim. Host only: the
 # slow lanes run cart.generator, which proves the compound identity against a typed literal.
-# Timeout: 60 s floor; 0.40 s slowest local run, no hosted run yet, so provisional.
+# Timeout: 60 s floor; 0.13 s slowest local run, no hosted run yet, so provisional.
 cogmaster_add_test(NAME cart.generator.catalog COMMAND ${CMAKE_COMMAND}
   -DGEN=$<TARGET_FILE:cogmaster-cartdb> -DOUT=${PROJECT_BINARY_DIR}/tests/cartdb-catalog
   "-DEMULATOR=${cartdb_emulator}" -P ${CMAKE_CURRENT_LIST_DIR}/catalog.cmake
