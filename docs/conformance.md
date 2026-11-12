@@ -118,6 +118,8 @@ the Z80 vectors, the assembled fixtures and their mailbox, and fuzzing; testing 
 
 `sh scripts/compat-seed.sh LEDGER CATALOG DATE > NEW` writes the ledger. It copies fixture, `pass` and `fail` rows unchanged, regenerates every `unknown`, `unsupported` and `skipped` row from the catalog, and exits 1 on an id that is neither a fixture nor a catalog identity. `compat.whole_list.fresh` requires the committed ledger to be its own output. A pull request is judged by the base branch's ratchet: run `scripts/compat-ratchet.sh` and `scripts/compat-common.sh` from `git show origin/main:` against the new ledger before pushing; it must pass and flip nothing.
 
+`cmake -DLEDGER=tests/compat/ledger.csv -DINFO=libretro/cogmaster_libretro.info.in -P tests/compat/exit.cmake` (or `ctest --preset ci -R compat.exit -V`) is the exit command. It refuses a ledger no parser reads, a reasonless `unsupported` or `skipped` row, a fixture `fail` and a count that drifts from the pin. It then judges three floors in `quality.json`: 20 judged cart passes, one PAL row and one Japanese FM row. They show a real library run reached the ledger and are not a pass rate. A cart `fail` row prints and never blocks. Floors met means `is_experimental` must be absent from the `.info`; unmet means it must be present, so the pull request that merges the library rows must also remove it. The flag leaves on the owner's evidence, never on a pass rate.
+
 ## Z80 vectors
 
 ### The sample
