@@ -6,15 +6,15 @@ current_phase: 12
 current_phase_name: The whole list in the ledger
 status: planning
 stopped_at: Phase 11 complete, ready to plan Phase 12
-last_updated: "2026-11-12T00:35:19.606Z"
-last_activity: 2026-11-11
+last_updated: "2026-11-12T03:09:40.886Z"
+last_activity: 2026-11-12
 last_activity_desc: Phase 11 complete, transitioned to Phase 12
-state_head: f7dec5ca2cc31bb65468a8af5b5091548464fcb7
+state_head: 8acbc452330b6170e9a001f2ea584dbe6c9f0b40
 progress:
   total_phases: 8
   completed_phases: 7
-  total_plans: 84
-  completed_plans: 84
+  total_plans: 94
+  completed_plans: 85
   percent: 88
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 12 — The whole list in the ledger
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-11 — Phase 11 complete, transitioned to Phase 12
+Plan: 2 of 10
+Status: Executing
+Last activity: 2026-11-12 — Completed 12-01 (catalog v2, Graphic Board slot, amended wording)
 
 Progress: [█████████░] 88% of v2.0
 
@@ -214,6 +214,7 @@ Progress: [█████████░] 88% of v2.0
 | Phase 11 P07 | 35 min | 3 tasks | 15 files |
 | Phase 11 P08 | 55 min | 3 tasks | 13 files |
 | Phase 11 P09 | 100min | 3 tasks | 14 files |
+| Phase 12 P01 | 13 min | 3 tasks | 23 files |
 
 ## Accumulated Context
 
@@ -321,6 +322,8 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 11]: Plan 11-07: the Pause count band is [floor((C - 132) / 78), floor((C - 36) / 78)] derived from the listing (guarded 78-cycle body, 76-cycle frame handler), a one-shot core one line late fails it and moves V to 0000; dispatch D1 run 43111533403 is green on all eight lanes and draft pull request #31 ran the ledger bridge (run 43112269415, cleanup rerun for a read-after-delete race)
 - [Phase 11]: Plan 11-08: compat-update adopts a new key only for a catalog id with the catalog machine and mapper, boots@600 under the default config, pass or fail, on the judge's profile whitelist; the library judge derives profiles from the catalog and probe, and the merge is held unless the ratchet passes and the page stays under the docs cap; REG-04 is amended to the synthetic proof and the owner's own-library run is SEED-013
 - [Phase 11]: Timeouts are max(floor, 2 x the slowest hosted second) from raw seconds over five runs; the be32 job is 15 minutes by the mechanical rule; the rehearsal cleanup race stays a seed (SEED-014)
+- [Phase 12]: Plan 12-01: the Sega Graphic Board is slot 21 (graphic, board 0) set by the generator for any fact with controller code 4, so the table refuses its SHA-1 (runner exit 77); behaviour revision 17, API 14 and state 16 unchanged; src/state.c's 16 is a header offset and was left alone
+- [Phase 12]: Plan 12-01: catalog v2 is ten fields (status, reason, region, port1, port2 appended); the 19 compound entries are catalog lines with the SHA-1 of mame/<list>/<name> as id, machine from the list name; a same-SHA-1 group takes the worst status (any supported no is skipped mame_no); pin counts are measured and reconciled inside the generator (1463 = 1476 - 13)
 
 ### Pending Todos
 
@@ -452,6 +455,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 11 plan 11-08 (gsd-execute-phase 11); compat-update adopts only catalog boots@600 rows on the judge's profiles (five negative controls shown red), library judge derives profiles from the catalog and probe, count-only run with a merge held unless the ratchet passes and the page fits the cap, fm_sweep_jp Japan-header fixture, synthetic proof of four adopted rows and a held merge, REG-04 amended and the owner's own-library run recorded as SEED-013; counted check code 859, conformance.md 32,217 bytes, no dispatch; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 11 plan 11-09 (gsd-execute-phase 11); per-test hosted time report with a control, final head green on pull request run 43119601937 (bridge, protected comparison, perf and hash equality shown, cleanup race rerun), migration repeated on the final ledger, every timeout of the phase settled from five runs (compat.public_update raised after a Windows ARM64 timeout), be32 15 min, floors 654 and 612, REG-02 complete, SEED-012 and SEED-014, counted check code 859 of 906; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Code review and verify phase 11 (autonomous run); runner review 0 critical 2 warning, ledger review 0 critical 8 warning, fix round 1 fixed 15 (reset-script refusal removed, bounded re-read in the rehearsal delete, adopt-path and judge fixes), verification passed 4 of 4 with digest refreshed after the last timeout settlement, PR run 43126677381 green on its first attempt, counted check code 860 of 940 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Execute phase 12 plan 12-01 (gsd-execute-phase 12); Graphic Board slot and behaviour 17, catalog v2 with compound ids and pin counts, amended wording; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -473,8 +477,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T23:38:07.547Z
-Stopped at: Phase 11 complete, ready to plan Phase 12
+Last session: 2026-11-12T03:09:40.280Z
+Stopped at: Completed 12-01-PLAN.md
 Resume file: None
 Phase 11 ship pull request: #31, open as a draft since plan 07; ship reuses it (gh pr ready, title check, gh pr merge --auto --squash at ship only; no new gh pr create)
 
