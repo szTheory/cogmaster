@@ -153,16 +153,33 @@ rehearsal_create() {
   echo "$id"
 }
 
-# The release goes before its tag, which an immutable release protects.
+# A delete can read back as still there for a short while: read up to six times, five seconds
+# apart, and report whether the last read still found it.
+gone() {
+  gone_i=0
+  while :; do
+    "$@" || return 0
+    gone_i=$((gone_i + 1))
+    [ "$gone_i" -lt 6 ] || return 1
+    sleep 5
+  done
+}
+has_release() { [ -n "$(release_id "$1")" ]; }
+
+# The release goes before its tag, which an immutable release protects. A failure re-issues the
+# delete once, without hiding its error, so the log names why the object is still there.
 rehearsal_delete() {
   if [ -n "${2:-}" ]; then
     gh api -X DELETE "repos/$REPO/releases/$2" > /dev/null 2>&1 || true
-    if gh api "repos/$REPO/releases/$2" > /dev/null 2>&1; then fail "release $2 still exists"; fi
+    gone gh api "repos/$REPO/releases/$2" > /dev/null 2>&1 ||
+      { gh api -X DELETE "repos/$REPO/releases/$2" || true; fail "release $2 still exists"; }
   fi
   gh release delete "$1" --repo "$REPO" --yes > /dev/null 2>&1 || true
-  if [ -n "$(release_id "$1")" ]; then fail "$1 still has a release"; fi
+  gone has_release "$1" ||
+    { gh release delete "$1" --repo "$REPO" --yes || true; fail "$1 still has a release"; }
   gh api -X DELETE "repos/$REPO/git/refs/tags/$1" > /dev/null 2>&1 || true
-  if gh api "repos/$REPO/git/ref/tags/$1" > /dev/null 2>&1; then fail "tag $1 still exists"; fi
+  gone gh api "repos/$REPO/git/ref/tags/$1" > /dev/null 2>&1 ||
+    { gh api -X DELETE "repos/$REPO/git/refs/tags/$1" || true; fail "tag $1 still exists"; }
   echo "publish: $1 and its release are gone"
 }
 

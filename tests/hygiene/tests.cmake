@@ -419,6 +419,54 @@ cogmaster_add_test(NAME policy.publish_signer
   COMMAND ${COGMASTER_SH} -c "${hygiene_signer_check}" sh ${CMAKE_SOURCE_DIR}/scripts/publish.sh ${hygiene_signer}
   LABELS hygiene policy TIMEOUT 30)
 
+# Fault prevented: a required gate that fails because a deleted tag still reads back for a few seconds. With a
+# gh that keeps answering "exists" for LAG reads of the tag and a no-op sleep, rehearsal-delete must succeed for
+# a short lag, and for a tag that never goes must read exactly six times, name the tag and exit 1.
+# Timeout: 30 s floor; the same shell-only body as policy.publish_signer, no hosted time yet, so provisional.
+set(hygiene_delete ${CMAKE_BINARY_DIR}/hygiene/publish_delete)
+file(REMOVE_RECURSE ${hygiene_delete})
+file(WRITE ${hygiene_delete}/bin/gh [=[
+#!/bin/sh
+case "$*" in
+  "api -X DELETE "* | "release delete "* | "api --paginate "*) exit 0 ;;
+  "api "*/git/ref/tags/*)
+    echo read >> "$STUB_DIR/reads"
+    [ "$(wc -l < "$STUB_DIR/reads")" -le "$LAG" ] ;;
+  *) exit 1 ;;
+esac
+]=])
+file(WRITE ${hygiene_delete}/bin/sleep "#!/bin/sh\nexit 0\n")
+file(CHMOD ${hygiene_delete}/bin/gh ${hygiene_delete}/bin/sleep
+  FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+set(hygiene_delete_check [=[
+script=$1
+export STUB_DIR=$2 PATH="$2/bin:$PATH" GITHUB_REPOSITORY=o/r
+for lag in 2 99
+do
+  : > "$STUB_DIR/reads"
+  rc=0
+  out=$(LAG=$lag sh "$script" rehearsal-delete rehearsal-1-1 42 2>&1) || rc=$?
+  reads=$(wc -l < "$STUB_DIR/reads" | tr -d ' ')
+  case $lag in
+    2) want_rc=0 want_reads=3 ;;
+    *) want_rc=1 want_reads=6 ;;
+  esac
+  if [ "$rc" -ne "$want_rc" ] || [ "$reads" -ne "$want_reads" ]
+  then
+    echo "policy.publish_delete: lag $lag exited $rc after $reads reads, want $want_rc after $want_reads: $out"
+    exit 1
+  fi
+done
+case $out in
+  *"tag rehearsal-1-1 still exists"*) ;;
+  *) echo "policy.publish_delete: a tag that never goes was not named: $out"; exit 1 ;;
+esac
+echo "policy.publish_delete: a lag of two reads passes, a tag that stays fails after six"
+]=])
+cogmaster_add_test(NAME policy.publish_delete
+  COMMAND ${COGMASTER_SH} -c "${hygiene_delete_check}" sh ${CMAKE_SOURCE_DIR}/scripts/publish.sh ${hygiene_delete}
+  LABELS hygiene policy TIMEOUT 30)
+
 # Fault prevented: a CI required roll-up that passes a failed or wrongly
 # skipped job, or a job missing from its needs. The self test runs it on a
 # copy of ci.yml whose program ignores heavy, which must let a skipped build

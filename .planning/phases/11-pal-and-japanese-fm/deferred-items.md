@@ -16,3 +16,10 @@ the last two such runs both failed it (43112269415 and 43117518796) after nine t
 `rehearsal-*` tag or release afterwards, and `gh run rerun <id> --failed` (the cleanup job and the roll-up only) turned
 the run green. The plan does not allow a change to the release path, so the retry stays a seed (SEED-014) and a push that
 runs the rehearsal may need one failed-job rerun.
+
+Update (review fix round 1): `rehearsal_delete` now reads each of the three things it deleted (the release by id, the
+release list, the tag) up to six times five seconds apart through `gone`, and issues the delete again, with its error
+shown, before it fails. `rehearsal-delete` is called only by the `cleanup` job of `ci.yml`, so the change touches a
+rehearsal-tag-only path and not the release path; `policy.publish_delete` (hygiene lane, fake `gh` and `sleep` on
+`PATH`) passes for a lag of two reads, which the old function failed, and for a tag that stays it fails after exactly
+six reads.
