@@ -39,10 +39,11 @@ The adjacent shared parser normalizes ROM/profile/TV/board/video/devices/script 
 frame and RAM address before comparison; expected bytes and hashes stay outside identity. Duplicate aliases
 reject. A missing pass, changed value, script digest, device or profile requires one dated exception naming
 the unique old passing predicate. Unchanged statuses, unknown transitions and fail-to-pass are allowed.
-Exceptions in `tests/compat/allow.txt` use `YYYY-MM-DD <id> <old-predicate> <reason words>
+Exceptions in `tests/compat/allow.txt` use `YYYY-MM-DD <id> <old-predicate> [<region>/<tv>] <reason words>
 behaviour-rev=<new revision> expires=YYYY-MM-DD` on one line. The revision must exceed the base and equal
 the head; the date cannot be future. Expiry is inclusive and at most 60 days after the supplied judge date.
-An ambiguous predicate matching multiple profiles rejects. Neither core code nor this judge reads a clock.
+An ambiguous predicate matching multiple profiles rejects; name one with `<region>/<tv>`, for example `export/pal`, which
+excuses that row alone. Neither core code nor this judge reads a clock.
 
 `sh scripts/compat-common.sh normalize tests/compat/ledger.csv` emits canonical quoted CSV;
 `docs` emits this ledger page and `cases` emits validated CMake execution facts without title interpolation.

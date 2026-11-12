@@ -64,7 +64,7 @@ BEGIN { header1="id,title,machine,region,mapper,predicate,status,evidence,date";
     f[2]=titles[f[1]]; f[9]="core=" ENVIRON["COMPAT_REV"]; day(f[10]); for(i=1;i<=10;i++) r[key,i]=f[i]; next;
   }
   order[++count]=key;
-  if(mode=="ratchet") { values[stage,key]=expected; statuses[stage,key]=f[8]; ids[key]=f[1]; machines[key]=f[3]; regions[key]=f[4]; predicates[stage,key]=f[7]; next }
+  if(mode=="ratchet") { values[stage,key]=expected; statuses[stage,key]=f[8]; ids[key]=f[1]; machines[key]=f[3]; regions[key]=f[4]; tvs[key]=f[5]; predicates[stage,key]=f[7]; next }
   for(i=1;i<=10;i++) r[key,i]=f[i]; r[key,11]=parameter; r[key,12]=expected; r[key,13]=config; r[key,14]=cap;
 }
 END {
@@ -74,10 +74,10 @@ END {
     today=day(ENVIRON["COMPAT_TODAY"]); base=ENVIRON["COMPAT_BASE_REV"]; head=ENVIRON["COMPAT_HEAD_REV"];
     if(stage<2 || stage>3 || base !~ /^[0-9]+$/ || head !~ /^[0-9]+$/ || head+0>4294967295 || head+0<base+0) bad();
     while((readline=(getline line < ENVIRON["COMPAT_ALLOW"]))!=0) {
-      if(readline<0 || ++allow_rows>4096 || length(line)>4096) bad(); if(line ~ /^#/ || line=="") continue; n=split(line,a," "); if(n<6 || a[n-1] !~ /^behaviour-rev=[0-9]+$/ || a[n] !~ /^expires=/) bad();
+      if(readline<0 || ++allow_rows>4096 || length(line)>4096) bad(); if(line ~ /^#/ || line=="") continue; n=split(line,a," "); pt=(a[4] ~ /^(export|japan)\/(ntsc|pal)$/); if(n<6+pt || a[n-1] !~ /^behaviour-rev=[0-9]+$/ || a[n] !~ /^expires=/) bad();
       rev=a[n-1]; sub(/^behaviour-rev=/,"",rev); expiry=a[n]; sub(/^expires=/,"",expiry); until_day=day(expiry);
       if(day(a[1])>today || until_day<today || until_day-today>60 || day(a[1])>until_day || rev+0!=head+0 || head+0<=base+0) bad();
-      matches=0; for(key in ids) if(seen[1,key] && statuses[1,key]=="pass" && ids[key]==a[2] && predicates[1,key]==predicate(a[3],machines[key],regions[key])) { allowed[key]=1; matches++ }
+      matches=0; for(key in ids) if(seen[1,key] && statuses[1,key]=="pass" && ids[key]==a[2] && (!pt || a[4]==regions[key] "/" tvs[key]) && predicates[1,key]==predicate(a[3],machines[key],regions[key])) { allowed[key]=1; matches++ }
       if(matches!=1) bad();
     }
     close(ENVIRON["COMPAT_ALLOW"]);
