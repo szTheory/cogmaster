@@ -55,8 +55,9 @@ not claim that an absent baseline judge ran. To reproduce a protected comparison
 `sh scripts/compat-ratchet.sh BASE.csv HEAD.csv ALLOW.txt YYYY-MM-DD BASE_REV HEAD_REV RESULTS.csv`.
 While the base ledger has the format 1 header and the head has the format 2 header, the step reports a format
 migration and runs the head's judge, which reads both formats; once the headers match this never applies. A pull
-request runs its own ci.yml, so this adds no power beyond a ci.yml edit, which already forces the rehearsal and
-review.
+request runs its own ci.yml, so this adds no power beyond a ci.yml edit, which already forces the rehearsal. The
+comparison guards against mistakes and regressions, not against an author who can edit ci.yml; the merge itself is the
+owner's.
 
 ## Lanes
 
