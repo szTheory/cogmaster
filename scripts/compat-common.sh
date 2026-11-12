@@ -14,7 +14,7 @@ function day(s, a,y,m,d,n,i) {
   n=365*(y-1)+int((y-1)/4)-int((y-1)/100)+int((y-1)/400)+d; for(i=1;i<m;i++) n+=(i==2?28+(y%4==0 && (y%100!=0 || y%400==0)):(i==4 || i==6 || i==9 || i==11?30:31)); return n
 }
 function quote(s) { gsub(/"/,"\"\"",s); return "\"" s "\"" }
-function md(s) { gsub(/&/,"\&amp;",s); gsub(/</,"\&lt;",s); gsub(/>/,"\&gt;",s); gsub(/\|/,"\&#124;",s); return s }
+function md(s) { gsub(/&/,"\\&amp;",s); gsub(/</,"\\&lt;",s); gsub(/>/,"\\&gt;",s); gsub(/\|/,"\\&#124;",s); return s }
 function hex(s, n,i,d) { n=0; s=toupper(s); for(i=1;i<=length(s);i++) { d=index("0123456789ABCDEF",substr(s,i,1))-1; if(d<0) bad(); n=n*16+d } return n }
 function predicate(s, machine, region, p,n,a,b,t,frame,address,value,cfg,fm) {
   cfg="cfg:video=" (machine=="gg"?"gg":"sms") ";port1=pad;port2=pad;script=none;sha256=" empty;
