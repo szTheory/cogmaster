@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/szTheory/cogmaster/compare/v0.10.0...v0.11.0) (2026-11-12)
+
+
+### Features
+
+* judge PAL timing and Japanese FM ([#31](https://github.com/szTheory/cogmaster/issues/31)) ([1449a6d](https://github.com/szTheory/cogmaster/commit/1449a6db219c412887ac199cfb418161581b03dc))
+
 ## [0.10.0](https://github.com/szTheory/cogmaster/compare/v0.9.0...v0.10.0) (2026-11-11)
 
 
