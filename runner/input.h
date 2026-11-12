@@ -8,9 +8,7 @@
 int cogmaster__input_read(FILE *f, cogmaster_input *out);
 /* Checks the complete body then rewinds it; keeps memory independent of frames. port1 and port2
    are the resolved devices: motion for a port whose device takes none, or an aim outside a Light
-   Phaser's field, returns 2 with *bad_port set to 1 or 2; any other refusal leaves *bad_port 0.
-   *reset_seen is 1 when any record asks for a reset, which restarts the time the sound is stamped
-   in. */
+   Phaser's field, returns 2 with *bad_port set to 1 or 2; any other refusal leaves *bad_port 0. */
 int cogmaster__input_validate(FILE *f, uint32_t frames, uint32_t port1, uint32_t port2,
-                              int *bad_port, int *reset_seen);
+                              int *bad_port);
 #endif

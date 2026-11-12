@@ -1390,16 +1390,16 @@ if(CMAKE_SCRIPT_MODE_FILE)
     string(TOUPPER "${fm_japan}" upper)
     expect_run(2 "expectation file error" "audio@300=${upper}\n" --frames 300)
 
-    # A reset restarts the tick count, so an audio case with a script that holds one is refused at load.
+    # A script's reset=1 is the first console's Reset button on port $DD: nothing restarts, so the
+    # sound of that run is judged like any other and equals its --hash-audio line.
     string(REPEAT "p1=00 p2=00 pause=0 reset=0 start=0\n" 2 quiet)
     write_bytes("${OUT}/quiet.input" UNIX "${quiet}")
-    write_bytes("${OUT}/reset.input" UNIX "p1=00 p2=00 pause=0 reset=0 start=0\np1=00 p2=00 pause=0 reset=1 start=0\n")
+    set(held "p1=00 p2=00 pause=0 reset=0 start=0\np1=00 p2=00 pause=0 reset=1 start=0\np1=00 p2=00 pause=0 reset=1 start=0\n")
+    write_bytes("${OUT}/reset.input" UNIX "${held}")
+    set(sms1 ${psg} --machine sms1 --region ntsc-u --input ${OUT}/reset.input)
+    sound_hash(3 reset_line ${sms1})
+    expect_run(0 "predicate kind=4 frame=3 address=0000 pass observed_audio=${reset_line_hash}" "audio@3=${reset_line_hash}\n" ${sms1} --frames 3)
     string(REPEAT "0" 64 zeros)
-    expect_run(2 "audio expectation cannot follow a reset" "audio@2=${zeros}\n" --frames 2 --input ${OUT}/reset.input)
-    if(out MATCHES "predicate")
-      message(FATAL_ERROR "the reset refusal came after a frame ran:\n${out}")
-    endif()
-    expect_run(0 "predicate kind=1 frame=2 [^\n]* pass" "ram@2:$C200=00\n" --frames 2 --input ${OUT}/reset.input)
     expect_run(3 "predicate kind=4 frame=2 [^\n]* fail" "audio@2=${zeros}\n" --frames 2 --input ${OUT}/quiet.input)
 
     # A runner built to offer 800 samples a frame meets 801 or 802: exit 1, not a mismatch.

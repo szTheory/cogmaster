@@ -405,16 +405,9 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     if (status == COGMASTER__EXIT_OK && opt->input != NULL) {
         input = cogmaster__path_open(opt->input, "rb");
         int bad_port = 0;
-        int reset_seen = 0;
-        status = input != NULL ? cogmaster__input_validate(input, opt->frames, port1, port2,
-                                                           &bad_port, &reset_seen)
-                               : COGMASTER__EXIT_FAILURE;
-        if (status == COGMASTER__EXIT_OK && reset_seen && opt->expect != NULL &&
-            cogmaster__expect_has_audio(&expectations)) {
-            fprintf(stderr, "cogmaster-run: an audio expectation cannot follow a reset in the "
-                            "--input script\n");
-            status = COGMASTER__EXIT_USAGE;
-        }
+        status = input != NULL
+                     ? cogmaster__input_validate(input, opt->frames, port1, port2, &bad_port)
+                     : COGMASTER__EXIT_FAILURE;
         if (bad_port != 0) {
             uint32_t bad_device = bad_port == 1 ? port1 : port2;
             fprintf(stderr, "cogmaster-run: input file error: port %d is %s, which takes %s\n",

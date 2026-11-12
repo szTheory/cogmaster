@@ -387,8 +387,8 @@ the digest of the `audio-transitions` line of `--frames F --hash-audio`; F is fr
 several. The hash holds no machine, region or FM byte, so one judged under another profile fails. PCM is not a
 kind: the mix is provisional. The line reads `predicate kind=4 frame=F address=0000 pass
 observed_audio=<hash> transitions=<count>`. A mismatch exits 3, a malformed record 2, and a lost log record, a
-source going back in time or a frame of the wrong length 1. An `--input` script that holds `reset=1` with an audio
-record exits 2 before any frame runs, because a reset restarts time.
+source going back in time or a frame of the wrong length 1. A script's `reset=1` is the first console's Reset button
+and restarts nothing, so an audio case judges that run like any other.
 
 `boots@F` is strict smoke: a display-enabled latch was observed after a run call, at
 least two distinct native crop hashes occurred by F, and no first fault was recorded.

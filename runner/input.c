@@ -108,18 +108,14 @@ static int input_motion_ok(uint32_t device, int32_t x, int32_t y)
 }
 
 int cogmaster__input_validate(FILE *f, uint32_t frames, uint32_t port1, uint32_t port2,
-                              int *bad_port, int *reset_seen)
+                              int *bad_port)
 {
     cogmaster_input in;
     *bad_port = 0;
-    *reset_seen = 0;
     for (uint64_t i = 0u; i < frames; i++) {
         int rc = cogmaster__input_read(f, &in);
         if (rc != 0) {
             return rc;
-        }
-        if (in.reset != 0u) {
-            *reset_seen = 1;
         }
         if (!input_motion_ok(port1, in.x1, in.y1)) {
             *bad_port = 1;
