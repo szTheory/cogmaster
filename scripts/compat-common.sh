@@ -51,6 +51,7 @@ BEGIN { header1="id,title,machine,region,mapper,predicate,status,evidence,date";
   if(!(f[1] ~ /^(fixture|built)\/[A-Za-z0-9_.-]+$/ || (f[1] ~ /^[0-9a-f]+$/ && length(f[1])==40)) || f[3] !~ /^(sms|sms1|gg|sg)$/ || f[4] !~ /^(export|japan)$/ || f[5] !~ /^(ntsc|pal)$/ || f[6] !~ /^[a-z][a-z0-9_-]*$/ || f[8] !~ /^(pass|fail|unknown|unsupported|infrastructure_error|skipped)$/ || f[10] !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ || (f[5]=="pal" && (f[3]=="gg" || f[4]=="japan"))) bad();
   f[7]=predicate(f[7],f[3],f[4]); key=f[1] "|" f[3] "|" f[4] "|" f[5] "|" f[6] "|" config "|" parameter;
   if(parameter ~ /^audio@/ && (config !~ /;script=none;/ || f[1] !~ /^(fixture|built)\//)) bad();
+  if(length(f[1])==40 && kind!="boots" && !(mode=="update" && stage==2)) bad();
   if((stage SUBSEP key) in seen) bad(); seen[stage,key]=1;
   if(mode=="update" && stage==2) {
     # Fault prevented: a candidate adding rows by frame, device or profile for a catalog id, growing the page past its cap or smuggling a golden into the ledger.
