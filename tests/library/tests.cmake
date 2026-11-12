@@ -18,27 +18,23 @@ if(CMAKE_SCRIPT_MODE_FILE)
   execute_process(COMMAND "${CMAKE_COMMAND}" -E create_symlink "${OUT}/images/.unlisted.ROM" "${OUT}/images/link.sms"
     RESULT_VARIABLE symlink_rc ERROR_QUIET)
   # Fault prevented: a stand-in that is only a copy of the live ledger and page changes silently with them, and a test whose cost
-  # grows with the rows the whole list adds. The stand-in is the own fixture rows of the ledger plus the one catalog row typed here,
-  # and its page is generated from it; every run edits fresh copies of it, never a tracked file.
+  # grows with the rows the whole list adds. The stand-in is the own fixture rows of the ledger plus the default rows the seed script
+  # writes for the three catalog lines typed here, and its page is generated from it; every run edits fresh copies, never a tracked file.
   set(ENV{COMPAT_REASONS} "${ROOT}/tests/compat/reasons.txt")
   file(MAKE_DIRECTORY "${OUT}/standin")
   file(SHA1 "${FIXTURES}/vdp_lines_192.sms" lines_sha)
   file(SHA1 "${FIXTURES}/fm_sweep_jp.sms" japan_sha)
   file(SHA1 "${FIXTURES}/boot_to_play.gg" gg_sha)
-  file(WRITE "${OUT}/catalog.tsv" "${lines_sha}\tsms\tnone\t-\tSynthetic lines\n${japan_sha}\tsms\tnone\t-\tSynthetic japan\n${gg_sha}\tgg\tnone\t-\tSynthetic gg\n")
+  file(WRITE "${OUT}/catalog.tsv" "${lines_sha}\tsms\tnone\t-\tSynthetic lines\tunknown\t-\texport\tpad\tpad\n${japan_sha}\tsms\tnone\t-\tSynthetic japan\tunknown\t-\tjapan\tpad\tpad\n${gg_sha}\tgg\tnone\t-\tSynthetic gg\tunknown\t-\texport\tpad\tpad\n")
   set(empty e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855)
   file(STRINGS "${ROOT}/tests/compat/ledger.csv" fixture_rows REGEX "^(id,|\"fixture/)")
-  set(standin_head "")
   set(standin_fixtures "")
   foreach(line IN LISTS fixture_rows)
-    if(line MATCHES "^id,")
-      string(APPEND standin_head "${line}\n")
-    else()
-      string(APPEND standin_fixtures "${line}\n")
-    endif()
+    string(APPEND standin_fixtures "${line}\n")
   endforeach()
-  set(crazy "\"00cfce623709b8d9bc9e6bbb96feb9faf9a81f84\",\"Crazy Faces (Europe, prototype)\",\"gg\",\"export\",\"ntsc\",\"sega\",\"cfg:video=gg;fm=off;port1=pad;port2=pad;script=none;sha256=${empty}/boots@600\",\"unknown\",\"CC0 metadata only src/cartdb.inc\",\"2026-10-20\"\n")
-  set(standin_ledger "${standin_head}${crazy}${standin_fixtures}")
+  file(WRITE "${OUT}/standin-fixtures.csv" "${standin_fixtures}")
+  execute_process(COMMAND sh "${ROOT}/scripts/compat-seed.sh" "${OUT}/standin-fixtures.csv" "${OUT}/catalog.tsv" 2026-11-10
+    RESULT_VARIABLE rc OUTPUT_VARIABLE standin_ledger ERROR_QUIET COMMAND_ERROR_IS_FATAL ANY)
   file(WRITE "${OUT}/standin-initial.csv" "${standin_ledger}")
   execute_process(COMMAND "${CMAKE_COMMAND}" -E env "COMPAT_CATALOG=${OUT}/catalog.tsv" "COMPAT_REASONS=${ROOT}/tests/compat/reasons.txt" sh "${ROOT}/scripts/compat-common.sh" docs "${OUT}/standin-initial.csv"
     RESULT_VARIABLE rc OUTPUT_VARIABLE standin_page COMMAND_ERROR_IS_FATAL ANY)
@@ -91,9 +87,9 @@ if(CMAKE_SCRIPT_MODE_FILE)
   file(COPY_FILE "${FIXTURES}/boot_to_play.sms" "${OUT}/judge-images/plain.sms")
   library("${OUT}/judge-images" "COGMASTER_CATALOG=${OUT}/catalog.tsv")
   set(applied "${text}")
-  if(NOT applied MATCHES "rows_added=4 ratchet=ok page_bytes=[0-9]+" OR NOT applied MATCHES "pal: carts=1 ran_pal=1 boots_pass=[01] boots_fail=[01]"
+  if(NOT applied MATCHES "rows_added=1 ratchet=ok page_bytes=[0-9]+" OR NOT applied MATCHES "pal: carts=1 ran_pal=1 boots_pass=[01] boots_fail=[01]"
       OR NOT applied MATCHES "fm: carts=1 boots_pass=[01] boots_fail=[01]" OR NOT applied MATCHES "library-judge 1")
-    message(FATAL_ERROR "the synthetic catalog run must add four rows and print the count block: ${applied}")
+    message(FATAL_ERROR "the synthetic catalog run must add the PAL row and print the count block: ${applied}")
   endif()
   file(READ "${OUT}/standin/ledger.csv" merged)
   string(REGEX MATCHALL "\n" merged_lines "${merged}")
@@ -105,16 +101,19 @@ if(CMAKE_SCRIPT_MODE_FILE)
   set(cfg_on "cfg:video=sms;fm=on;port1=pad;port2=pad;script=none;sha256=${empty}/boots@600")
   set(cfg_gg "cfg:video=gg;fm=off;port1=pad;port2=pad;script=none;sha256=${empty}/boots@600")
   function(expect_row sha title machine region tv cfg)
-    if(NOT merged MATCHES "\"${sha}\",\"${title}\",\"${machine}\",\"${region}\",\"${tv}\",\"none\",\"${cfg}\",\"(pass|fail)\"")
-      message(FATAL_ERROR "the merged ledger lacks the ${machine} ${region} ${tv} row of ${title}")
+    if(NOT merged MATCHES "\"${sha}\",\"${title}\",\"${machine}\",\"${region}\",\"${tv}\",\"none\",\"${cfg}\",\"(pass|fail)\",\"core=[0-9a-f]+\"")
+      message(FATAL_ERROR "the merged ledger lacks the judged ${machine} ${region} ${tv} row of ${title}")
+    endif()
+    if(merged MATCHES "\"${sha}\",[^\n]*\"unknown\"")
+      message(FATAL_ERROR "the seeded unknown row of ${title} must be flipped, not kept beside a new row")
     endif()
   endfunction()
   expect_row("${lines_sha}" "Synthetic lines" sms export ntsc "${cfg_off}")
   expect_row("${lines_sha}" "Synthetic lines" sms export pal "${cfg_off}")
   expect_row("${japan_sha}" "Synthetic japan" sms japan ntsc "${cfg_on}")
   expect_row("${gg_sha}" "Synthetic gg" gg export ntsc "${cfg_gg}")
-  if(NOT added EQUAL 4)
-    message(FATAL_ERROR "the merge must add exactly four rows, not ${added}")
+  if(NOT added EQUAL 1)
+    message(FATAL_ERROR "the merge must add exactly the PAL row, not ${added}")
   endif()
   execute_process(COMMAND "${CMAKE_COMMAND}" -E env "COMPAT_CATALOG=${OUT}/catalog.tsv" "COMPAT_REASONS=${ROOT}/tests/compat/reasons.txt" sh "${ROOT}/scripts/compat-common.sh" docs "${OUT}/standin/ledger.csv"
     RESULT_VARIABLE rc OUTPUT_VARIABLE fresh_page COMMAND_ERROR_IS_FATAL ANY)
@@ -183,6 +182,23 @@ esac
   library("${OUT}/empty")
   if(NOT text MATCHES "candidates=0 attempted=0 evaluated=0 coverage=0")
     message(FATAL_ERROR "empty library must report zero evaluated coverage")
+  endif()
+  # Fault prevented: a real cart (its probe names the ledger id, unlike the owned fixtures) whose seeded default row the loop over the
+  # ledger already judges being judged a second time, or whose missing PAL profile is skipped because the default row exists. The
+  # wrapper gives an owned image a catalog identity and no fixture hash; the default row flips once and only the PAL run is derived.
+  file(MAKE_DIRECTORY "${OUT}/known-images")
+  file(COPY_FILE "${FIXTURES}/vdp_lines_192.sms" "${OUT}/known-images/cart.sms")
+  file(CONFIGURE OUTPUT "${OUT}/known-runner.sh" NEWLINE_STYLE UNIX @ONLY CONTENT [[case "$1" in
+  --probe) @flaky_emulator@ "@flaky_run@" "$@" | sed -e 's/^identity_sha1=.*/identity_sha1=@lines_sha@/' -e 's/^\(sha256[a-z_]*\)=.*/\1=00/' ;;
+  *) @flaky_emulator@ "@flaky_run@" "$@" ;;
+esac
+]])
+  set(RUN "${OUT}/known-runner.sh")
+  library("${OUT}/known-images" "COGMASTER_CATALOG=${OUT}/catalog.tsv" "COGMASTER_LIBRARY_EMULATOR=sh")
+  set(RUN "${flaky_run}")
+  file(READ "${OUT}/standin/ledger.csv" known_ledger)
+  if(NOT text MATCHES "pal: carts=0 ran_pal=1" OR NOT text MATCHES "rows_added=1 ratchet=ok" OR NOT known_ledger MATCHES "\"${lines_sha}\",[^\n]*\"pal\"[^\n]*\"(pass|fail)\"")
+    message(FATAL_ERROR "a cart judged by its ledger row must still get its PAL profile and no second default run: ${text}")
   endif()
   # Fault prevented: a script that reads its catalog or reasons from the working directory, which the judge now refuses (it fails closed).
   set(library_directory "${ROOT}/docs")
