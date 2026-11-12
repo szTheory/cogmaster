@@ -22,6 +22,9 @@ if(CMAKE_SCRIPT_MODE_FILE)
   function(library directory)
     file(COPY_FILE "${ROOT}/tests/compat/ledger.csv" "${OUT}/standin/ledger.csv")
     file(COPY_FILE "${ROOT}/docs/compatibility.md" "${OUT}/standin/page.md")
+    if(seed)
+      file(APPEND "${OUT}/standin/ledger.csv" "${seed}")
+    endif()
     execute_process(COMMAND "${CMAKE_COMMAND}" -E env "COGMASTER_ROM_DIR=${directory}"
       "COGMASTER_LIBRARY_RUN=${RUN}" "COGMASTER_LIBRARY_EMULATOR=${EMULATOR}" "COGMASTER_LIBRARY_OUT=${OUT}/results"
       "COGMASTER_LEDGER=${OUT}/standin/ledger.csv" "COGMASTER_PAGE=${OUT}/standin/page.md" ${ARGN}
@@ -135,6 +138,31 @@ if(CMAKE_SCRIPT_MODE_FILE)
   if(NOT rc STREQUAL "0")
     message(FATAL_ERROR "the library results directory must be ignored by git: ${rc}")
   endif()
+  # Fault prevented: one run that gives no verdict (a timeout on a loaded host) for a catalog title the ledger already holds as
+  # a pass refusing the whole merge, and with it every row adopted in the same run. The runner is a wrapper that answers the
+  # probe with a catalog identity (no owned image is in the catalog) and fails every case, so each case ends as an
+  # infrastructure error; only pass and fail leave the judge as facts.
+  file(MAKE_DIRECTORY "${OUT}/flaky-images")
+  file(WRITE "${OUT}/flaky-images/held.sms" "${halt}x")
+  file(SHA1 "${OUT}/flaky-images/held.sms" held_sha)
+  set(flaky_emulator "${EMULATOR}")
+  string(REPLACE ";" " " flaky_emulator "${flaky_emulator}")
+  set(flaky_run "${RUN}")
+  file(CONFIGURE OUTPUT "${OUT}/flaky-runner.sh" NEWLINE_STYLE UNIX @ONLY CONTENT [[case "$1" in
+  --probe) @flaky_emulator@ "@flaky_run@" "$@" | sed 's/^identity_sha1=.*/identity_sha1=@held_sha@/' ;;
+  *) exit 1 ;;
+esac
+]])
+  file(WRITE "${OUT}/flaky-catalog.tsv" "${held_sha}\tsms\tnone\t-\tSynthetic held\n")
+  set(seed "\"${held_sha}\",\"Synthetic held\",\"sms\",\"export\",\"ntsc\",\"none\",\"${cfg_off}\",\"pass\",\"-\",\"2026-11-11\"\n")
+  set(RUN "${OUT}/flaky-runner.sh")
+  library("${OUT}/flaky-images" "COGMASTER_CATALOG=${OUT}/flaky-catalog.tsv" "COGMASTER_LIBRARY_EMULATOR=sh")
+  set(RUN "${flaky_run}")
+  file(READ "${OUT}/standin/ledger.csv" flaky_ledger)
+  if(NOT text MATCHES "merge: rows_added=0 ratchet=ok" OR NOT flaky_ledger MATCHES "\"${held_sha}\",[^\n]*\"pass\"")
+    message(FATAL_ERROR "a case without a verdict must leave a passing catalog row as it was: ${text}")
+  endif()
+  set(seed "")
   library("${OUT}/empty")
   if(NOT text MATCHES "candidates=0 attempted=0 evaluated=0 coverage=0")
     message(FATAL_ERROR "empty library must report zero evaluated coverage")
