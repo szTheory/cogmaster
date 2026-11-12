@@ -59,8 +59,8 @@ it waits for a phase that does not already edit it. Decided by: a recurring hand
 
 Measured on the phase's hosted run (dispatch of `ci.yml` on the phase branch, run 43153144670, head with the whole-list
 ledger): build job on windows-arm64 214 s, be32 293 s, wasm32 55 s, the hygiene lane 38 to 45 s. The build timeout
-widened from 6 to 8 minutes by the mechanical rule (2 x 214 s, `sh scripts/ci-durations.sh ci.yml 40`); that was the
-only `ci.yml` line the phase edited. Earlier measurements of pull request runs: 627 to 637 s with the release
+widened from 6 to 9 minutes by the mechanical rule (2 x 252 s from the later dispatch, run 43158408243; 214 s was the
+first sample; `sh scripts/ci-durations.sh ci.yml 40`); that was the only `ci.yml` line the phase edited. Earlier measurements of pull request runs: 627 to 637 s with the release
 rehearsal, 302 to 321 s without; be32 and windows-arm64 are the critical path.
 
 The owner's standing instruction: whenever CI runs or finishes, evaluate the low-hanging fruit to make it faster
@@ -133,3 +133,41 @@ Core review:
   `tools/cartdb.c`", and mark `fail` noreturn behind a portable macro.
 - `docs/conformance.md` lists the catalog status values without `excluded` and the board value `compound`, and `docs/boards.md`
   explains the Graphic Board row by what it once read as, which belongs only with the behaviour revision in `docs/embedding.md`.
+
+## Milestone audit leftovers
+
+Found by the v2.0 milestone audit on the tree of release v0.12.0; none is a blocker and none moves a hash. Append-only
+record for the next tune-up or ledger work (`.planning/v2.0-MILESTONE-AUDIT.md`).
+
+- **Job timeouts drifted from the twice-the-slowest rule** (`sh scripts/ci-durations.sh ci.yml` and `nightly.yml`,
+  2026-11-12). `ci.yml` asan: slowest 153 s, so 2 x 153 s needs 6 minutes against the 5 it keeps (comment `2 x 84 s, 37
+  runs`). `nightly.yml` bench: 10 minutes against 2 x 368 s; `bench-wasm32`: 15 minutes against 2 x 456 s; the `fuzz`
+  comment says 90 s against a live 144 s (the 5-minute floor still holds). `digest.yml` still says "no runs yet" though a
+  digest run exists (55 s). `hygiene.timeout_comments` checks only the comment format and `timeout >= 2 x S` for the S the
+  comment states, so CI cannot see the drift; the weekly digest names asan, bench and bench-wasm32 at its first scheduled
+  run. Decided by: the next tune-up (re-measure, edit the workflows once).
+- **50 Game Gear rows are judged as `video=gg` though MAME runs them in Master System mode.** The core resolves a Game
+  Gear's video from the table (`src/cartdb.inc` holds 50 such rows), but `scripts/compat-seed.sh` writes `cfg:video=gg` for
+  every `gg` row and `scripts/library.cmake` always runs `--video-mode gg`; a `pass` or `fail` is then a profile fact, and
+  no user doc or test says so. Same trigger as the catalog `video` column item above.
+- **The 188-in-1 row is `skipped` with the reason `mame_no`, and the runner still exits 77 for it.** MAME marks it
+  `supported="no"` and the whole-list rule order puts that first; the Master Gear row is `skipped` too, so the reason
+  tokens `korean_188in1` and `mgear` are unreachable until a pin bump. The slot table still refuses both. The Korean-board
+  requirement text names 188-in-1 as `unsupported` and was not amended.
+- **Libretro `cogmaster_region = pal` with Game Gear content fails the load** (`libretro/libretro.c` sets PAL whatever the
+  machine and the core rejects PAL on a Game Gear), while the port and FM options clamp. The runner's equivalent exits 77
+  by design. Decide: clamp to NTSC and say so in the option text, or keep the refusal and document it; add a Game Gear
+  case to `tests/libretro/presentation.h`.
+- **The default FM rule is a literal in five places** (`src/instance.c`, `scripts/compat-common.sh` twice,
+  `scripts/compat-seed.sh`, `scripts/library.cmake`). They agree today. Flipping every `fm=on` row to `fm=off` leaves
+  `compat.whole_list.runnable` green; only `compat.whole_list.fresh` fails, so a rule drift regenerated consistently is
+  not caught. Add a case that fails `compat.whole_list.runnable` when the rule flips, or name the rule once.
+- **The `policy.claims_scoped` flag-absent control tree is thinner than the real tree.** It holds only the README, the
+  page, the saves page and the `.info`, so the `docs/*.md` loop and the page's second "Experimental" sentence are vacuous
+  there. SEED-013 now lists `docs/testing.md` and that sentence; a control over the real docs would make the proof honest.
+- **Smaller drift:** `docs/maintaining.md` "CI speed" names the macOS builds and the rehearsal as the critical path while
+  be32 (326 s) and windows-arm64 (253 s) are; `docs/conformance.md` says "two fixtures" and "two fuzz entries" (nine rows
+  over four fixtures; six fuzz targets) and `CMakePresets.json` says "only the two fuzz targets"; `docs/testing.md` lists
+  four fuzz targets and omits eeprom and pad; `ASSET_POLICY.md` says compat-update projects only existing ledger cases and
+  that local runs read the BIOS folder "recognised by digest" (only the window scan does); `tests/perf/allow.txt` names
+  phases in a file that outlived them; the quality floors (669, 627) sit 2 below the inventories.
