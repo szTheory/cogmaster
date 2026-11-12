@@ -1,20 +1,16 @@
 ---
 gsd_state_version: "1.0"
-milestone: v2.0
-milestone_name: The whole library
-status: Awaiting next milestone
-stopped_at: Milestone v2.0 closed; the library run shipped as v0.13.0 (experimental label removed)
-last_updated: "2026-11-12T06:42:06.407Z"
+milestone: v2.1
+milestone_name: Fewer failing cartridges
+status: planning
+last_updated: "2026-11-12T20:40:21.239Z"
 last_activity: 2026-11-12
-last_activity_desc: Milestone v2.0 completed and archived
-state_head: 9ddda28bf707ad5c53cd924430b57373173d04e1
 progress:
-  total_phases: 8
-  completed_phases: 8
-  total_plans: 94
-  completed_plans: 94
-  percent: 100
-current_phase: 12
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -24,16 +20,14 @@ current_phase: 12
 See: .planning/PROJECT.md (updated 2026-11-12)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Planning the next milestone (none planned; the owner's batched own-library run is the one pending hand-off)
+**Current focus:** Milestone v2.1: why a third of the checked cartridges fail the boots check (SEED-016), plus the CI timeout drift (SEED-015)
 
 ## Current Position
 
-Phase: Milestone v2.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-11-12 — library run merged (#37), v0.13.0 released; next work scoped in SEED-016
-
-Next command: `/gsd-new-milestone` (suggested scope: SEED-016, the failing carts, plus the SEED-015 CI timeout drift). The archive is in `.planning/milestones/` (v2.0-ROADMAP.md, v2.0-REQUIREMENTS.md, v2.0-MILESTONE-AUDIT.md, v2.0-PRODUCT-ROADMAP.md, v2.0-phases/).
+Status: Defining requirements
+Last activity: 2026-11-12 — Milestone v2.1 started
 
 ## Performance Metrics
 
@@ -376,6 +370,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-12 | Code review and verify phase 12 (autonomous run); ledger review 0 critical 7 warning, core review 0 critical 10 warning, fix round 1 fixed 17 (R2 per key, shared flag reader, bounded page cells, NUL and bidi hardening, honest wording), verification passed 5 of 5 with the flag staying per the owner decision, dispatch D3 run 43163239085 green on the final head, counted check code 887 of 940 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Milestone v2.0 audit (gsd-audit-milestone; integration check, audit report, documentation drift fixes in ROADMAP, REQUIREMENTS, SEED-013, SEED-015 and this file) | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Complete milestone v2.0 (gsd-complete-milestone; override close with 7 seeds acknowledged, archive, PROJECT.md review, retrospective, no tag because release-please owns tags) | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | New milestone v2.1 started (gsd-new-milestone); scope SEED-016 plus SEED-015 CI timeouts | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
