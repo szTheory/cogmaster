@@ -6,6 +6,16 @@ if(CMAKE_SCRIPT_MODE_FILE)
   set(header1 "id,title,machine,region,mapper,predicate,status,evidence,date\n")
   set(header "id,title,machine,region,tv,mapper,predicate,status,evidence,date\n")
   set(id 00cfce623709b8d9bc9e6bbb96feb9faf9a81f84)
+  # Fault prevented: a test whose cost grows with the rows of the ledger (every call below parses it) and a stand-in that is only a
+  # copy of the live ledger. The stand-in keeps the header, the own fixtures and the one catalog row, whatever else the ledger holds.
+  file(STRINGS "${ROOT}/tests/compat/ledger.csv" standin_rows REGEX "^(id,|\"fixture/|\"${id}\")")
+  set(standin "")
+  foreach(line IN LISTS standin_rows)
+    string(APPEND standin "${line}\n")
+  endforeach()
+  file(WRITE "${OUT}/standin.csv" "${standin}")
+  set(ENV{COMPAT_LEDGER} "${OUT}/standin.csv")
+  set(ENV{COMPAT_CATALOG} "${ROOT}/tests/compat/catalog.tsv")
   # The legacy format 1 candidate is still read; the output is format 2.
   file(WRITE "${OUT}/input.csv" "${header1}${id},private-label,gg,ntsc-u,sega,boots@600,pass,private-trace,2026-10-20\n")
   execute_process(COMMAND sh "${ROOT}/scripts/compat-update.sh" "${OUT}/input.csv"
@@ -34,7 +44,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     set(text "${text}" PARENT_SCOPE)
     set(err "${err}" PARENT_SCOPE)
   endfunction()
-  execute_process(COMMAND sh "${ROOT}/scripts/compat-common.sh" normalize "${ROOT}/tests/compat/ledger.csv"
+  execute_process(COMMAND sh "${ROOT}/scripts/compat-common.sh" normalize "${OUT}/standin.csv"
     RESULT_VARIABLE rc OUTPUT_VARIABLE baseline COMMAND_ERROR_IS_FATAL ANY)
   string(REPEAT a 40 unknown)
   string(REPEAT b 64 observed)
