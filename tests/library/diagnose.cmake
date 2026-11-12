@@ -64,7 +64,7 @@ if(CASE STREQUAL main)
     "diag-group: leaf=static_no_fault.frozen rows=1" "diag-group: leaf=input_mismatch rows=0"
     "leaf=fault_no_display.unmapped_read.ctrl pcslot=0 rows=1" "leaf=fault_no_display.unmapped_read.ctrl where=port rows=1"
     "candidates=6 attempted=4 evaluated=4 malformed=0 malformed_io=0 uncatalogued=1 skipped_excluded=1 noprofile=0 unsupported=0 infrastructure_error=0 title_withheld=0"
-    "judged=4 run_fail=3 " "groups_total=3 fail_total=3")
+    "judged=4 run_fail=3 " "groups_total=3 fail_total=3" "diag-other: pass mapper=none first_change=")
   if(diag_out MATCHES "Synthetic (pass|skipped)")
     message(FATAL_ERROR "a pass row and an excluded row must not be printed")
   endif()
@@ -87,26 +87,34 @@ if(CASE STREQUAL main)
   endif()
 elseif(CASE STREQUAL taxonomy)  # canned runner lines through the real library.sh and library.cmake: no emulation
   file(REMOVE_RECURSE "${OUT}")
-  file(MAKE_DIRECTORY "${OUT}/standin")
-  file(WRITE "${OUT}/wrapper.sh" [[for a do last=$a; done
-case $1 in --probe) cat "$last.probe" ;; *) cat "$last.line" ;; esac
-]])
+  file(WRITE "${OUT}/wrapper.sh" "for a do last=$a; done\ncase $1 in --probe) cat \"$last.probe\" ;; *) cat \"$last.line\" ;; esac\n")
+  set(cfg "cfg:video=sms;fm=off;port1=pad;port2=pad;script=none;sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855/boots@600")
   file(WRITE "${OUT}/standin/ledger.csv" "id,title,machine,region,tv,mapper,predicate,status,evidence,date\n")
+  foreach(d 2 c 0)  # fail rows keyed like a failing cart, the passing cart and the stray cart, which the main directory lacks
+    string(REPEAT ${d} 39 p)
+    file(APPEND "${OUT}/standin/ledger.csv" "\"${p}1\",\"T\",\"sms\",\"export\",\"ntsc\",\"none\",\"${cfg}\",\"fail\",\"-\",\"2026-11-11\"\n")
+  endforeach()
+  string(REPEAT A 80 t80)
+  set(t81 "${t80}A")
   set(f1 "first_display=none first_nonblank=none first_change=none distinct600=1 distinct1800=1 ram=live")
   set(f2 "first_display=100 first_nonblank=100 first_change=100")
   set(rows  # sub dir|rows|id digit|catalog board|title|canned line
     "main|5|1|none|Shared title|diagnose 1 verdict600=fail ${f1} fault=unmapped_read dev=ctrl pc=0002 pcslot=0 where=port fault_frame=1-9 order=nopicture mapper=none source=db"
     "main|4|2|none|T2|diagnose 1 verdict600=fail ${f2} distinct600=1 distinct1800=1 ram=live fault=rom_write dev=cart pc=0100 pcslot=1 where=rom fault_frame=10-99 order=after mapper=none source=db"
     "main|1|3|none|T3|diagnose 1 verdict600=fail ${f2} distinct600=3 distinct1800=3 ram=live fault=mapper_range dev=mapper pc=FFFC pcslot=4 where=mapper fault_frame=100-599 order=after mapper=none source=default"
-    "main|1|4|none|T4|diagnose 1 verdict600=fail first_display=none first_nonblank=300 first_change=300 distinct600=1 distinct1800=1 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=heuristic"
-    "main|1|5|none|T5|diagnose 1 verdict600=fail first_display=none first_nonblank=900 first_change=900 distinct600=1 distinct1800=1 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db"
+    "main|1|4|none|${t80}|diagnose 1 verdict600=fail first_display=none first_nonblank=300 first_change=300 distinct600=1 distinct1800=1 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=heuristic"
+    "main|1|5|none|${t81}|diagnose 1 verdict600=fail first_display=none first_nonblank=900 first_change=900 distinct600=1 distinct1800=1 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db"
     "main|1|6|none|T6|diagnose 1 verdict600=fail ${f1} fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db"
     "main|1|7|none|T7|diagnose 1 verdict600=fail ${f1} fault=unmapped_write dev=ram pc=none pcslot=none where=none fault_frame=600+ order=after mapper=none source=db"
     "main|1|8|none|T8|diagnose 1 verdict600=fail ${f2} distinct600=1 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db"
     "main|1|9|none|T9|diagnose 1 verdict600=fail ${f2} distinct600=1 distinct1800=1 ram=still fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db"
-    "main|1|a|none|Ta|diagnose 1 verdict600=fail ${f2} distinct600=1 distinct1800=1 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db"
+    "main|1|a|none|Ta|diagnose 1 verdict600=fail ${f2} distinct600=1 distinct1800=1 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db\r"
     "main|1|b|sega|Tb|diagnose 1 verdict600=fail ${f2} distinct600=2 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db"
-    "main|1|c|none|Tc|diagnose 1 verdict600=pass first_display=100 first_nonblank=100 first_change=75 distinct600=2 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db")
+    "main|1|c|none|Tc|diagnose 1 verdict600=pass first_display=100 first_nonblank=100 first_change=75 distinct600=2 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db"
+    "main|1|d|none|Td|diagnose 1 verdict600=fail ${f2} distinct600=2 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=bogus source=db"
+    "main|1|e|none|Te|diagnose 1 verdict600=fail ${f2} distinct600=2 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db extra=1"
+    "main|1|f|none|Tf|diagnose 1 verdict600=fail ${f2} distinct600=2 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none"
+    "stray|1|0|none|Stray|diagnose 1 verdict600=fail ${f2} distinct600=2 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db")
   foreach(row IN LISTS rows)
     string(REPLACE "|" ";" row "${row}")
     list(POP_FRONT row sub n digit board title line)
@@ -120,22 +128,33 @@ case $1 in --probe) cat "$last.probe" ;; *) cat "$last.line" ;; esac
     endforeach()
   endforeach()
   diag_call("${OUT}/main" "COGMASTER_LIBRARY_RUN=${OUT}/wrapper.sh" COGMASTER_LIBRARY_EMULATOR=sh)
-  if(NOT diag_rc STREQUAL "0")
-    message(FATAL_ERROR "canned lines must group completely: ${diag_rc}\n${diag_out}${diag_err}")
-  endif()
   set(l1 "diag-group: leaf=fault_no_display.unmapped_read.ctrl")
   set(l2 "diag-group: leaf=fault_static.rom_write.cart")
-  diag_expect("${diag_out}" "${l1} rows=5\n${l1} pcslot=0 rows=5\n${l1} where=port rows=5\n${l1} pc=0002 rows=5\n"
-    "${l2} rows=4\n${l2} pcslot=1 rows=4\n${l2} where=rom rows=4\ndiag-group: leaf=dark_no_fault.never_draws rows=2\n")
-  if(diag_out MATCHES "diag-group: [^\n]*pc=0100")
-    message(FATAL_ERROR "an exact pc shared by 4 rows must not print")
-  endif()
+  set(m "diag-other: mapper=none class=")
+  diag_expect("rc=${diag_rc}\n${diag_out}" "rc=0\nlibrary-diagnose 1 core=" "${l1} rows=5\n${l1} pcslot=0 rows=5\n${l1} where=port rows=5\n${l1} pc=0002 rows=5\n"
+    "${l2} rows=4\n${l2} pcslot=1 rows=4\n${l2} where=rom rows=4\ndiag-group: leaf=dark_no_fault.never_draws rows=2\n"
+    "candidates=22 attempted=22 evaluated=19 malformed=3 malformed_io=0 uncatalogued=0 skipped_excluded=0 noprofile=0 unsupported=0 infrastructure_error=0 title_withheld=1"
+    "judged=19 run_fail=18 ledger_fail=3 matched=1 ledger_fail_not_in_run=1 ledger_fail_now_pass=1 run_fail_not_in_ledger=17 groups_total=18 fail_total=18"
+    "diag: title=${t80} group=dark_no_fault.latch_miss " "diag: title=- group=dark_no_fault.late "
+    "${m}input_mismatch rows=1\n${m}fault_no_display rows=5\n${m}fault_static rows=4\n${m}fault_alive rows=1\n${m}dark_no_fault rows=4\n${m}static_no_fault rows=3\n"
+    "diag-other: source=default leaf=fault_alive.mapper_range.mapper rows=1" "diag-other: source=db leaf=fault_no_display.unmapped_read.ctrl rows=5"
+    "diag-other: pass mapper=none first_change=61-120 rows=1")
   string(REGEX MATCHALL "diag-group: leaf=[a-z_.]+ rows=[0-9]+" leaves "${diag_out}")
   list(TRANSFORM leaves REPLACE "^diag-group: leaf=([a-z_.]+) rows=.*$" "\\1")
-  set(order fault_no_display.unmapped_read.ctrl fault_static.rom_write.cart dark_no_fault.never_draws input_mismatch
-    fault_alive.mapper_range.mapper dark_no_fault.latch_miss dark_no_fault.late static_no_fault.animates_late static_no_fault.frozen
-    static_no_fault.alive_still)
-  if(NOT leaves STREQUAL order)
-    message(FATAL_ERROR "leaf order: ${leaves}")
+  string(REGEX MATCHALL "\ndiag: title=[^\n]*" dl "${diag_out}")
+  set(sorted "${dl}")
+  list(SORT sorted)
+  set(order fault_no_display.unmapped_read.ctrl fault_static.rom_write.cart dark_no_fault.never_draws input_mismatch fault_alive.mapper_range.mapper dark_no_fault.latch_miss dark_no_fault.late static_no_fault.animates_late static_no_fault.frozen static_no_fault.alive_still)
+  if(NOT leaves STREQUAL order OR NOT dl STREQUAL sorted OR diag_out MATCHES "diag-group: [^\n]*pc=0100")
+    message(FATAL_ERROR "leaf order, byte order of the diag lines, or a pc shared by 4 rows printed:\n${leaves}\n${diag_out}")
+  endif()
+  file(MAKE_DIRECTORY "${OUT}/empty")
+  diag_call("${OUT}/empty" "COGMASTER_LIBRARY_RUN=${OUT}/wrapper.sh" COGMASTER_LIBRARY_EMULATOR=sh)
+  diag_expect("rc=${diag_rc}\n${diag_out}" "rc=0\nlibrary-diagnose 1 core=" "diag-group: leaf=input_mismatch rows=0" "candidates=0 " "fail_total=0")
+  diag_call("${OUT}/stray" "COGMASTER_LIBRARY_RUN=${OUT}/wrapper.sh" COGMASTER_LIBRARY_EMULATOR=sh)
+  set(stray_rc ${diag_rc})
+  string(REGEX MATCH "groups_total=[0-9]+ fail_total=[0-9]+" stray_totals "${diag_out}")
+  if(NOT stray_rc EQUAL 1 OR diag_out STREQUAL "")
+    message(FATAL_ERROR "a fail row with no leaf must exit 1 after printing its totals: ${stray_rc} ${stray_totals}")
   endif()
 endif()
