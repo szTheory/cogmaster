@@ -2,6 +2,7 @@
 # Shared bounded quoted CSV, read as format 1 or 2, written as 2: a row names the whole run profile, one parser serves every reader. No private execution.
 set -eu
 export LC_ALL=C
+export COMPAT_CATALOG="${COMPAT_CATALOG:-tests/compat/catalog.tsv}" COMPAT_REASONS="${COMPAT_REASONS:-tests/compat/reasons.txt}"
 mode=$1; shift
 for input do
   [ -f "$input" ] && [ "$(wc -c < "$input")" -le 4194304 ] || { echo 'compat: invalid ledger input' >&2; exit 2; }
@@ -49,6 +50,12 @@ BEGIN { header1="id,title,machine,region,mapper,predicate,status,evidence,date";
   if(ver==1) { lt=f[4]; if(lt !~ /^(ntsc-u|ntsc-j|pal|any)$/) bad(); f[4]=(lt=="ntsc-j"?"japan":"export"); for(i=9;i>=5;i--) f[i+1]=f[i]; f[5]=(lt=="pal"?"pal":"ntsc") }
   for(i=1;i<=10;i++) if(f[i]=="" || length(f[i])>1024) bad();
   if(!(f[1] ~ /^fixture\/[A-Za-z0-9_.-]+$/ || (f[1] ~ /^[0-9a-f]+$/ && length(f[1])==40)) || f[3] !~ /^(sms|sms1|gg|sg)$/ || f[4] !~ /^(export|japan)$/ || f[5] !~ /^(ntsc|pal)$/ || f[6] !~ /^[a-z][a-z0-9_-]*$/ || f[8] !~ /^(pass|fail|unknown|unsupported|infrastructure_error|skipped)$/ || f[10] !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ || (f[5]=="pal" && (f[3]=="gg" || f[4]=="japan"))) bad();
+  # Fault prevented: an unsupported or skipped row with no reason, or free text a reader cannot check, so a silent refusal reads as an honest status.
+  if(f[8] ~ /^(unsupported|skipped)$/) {
+    if(f[9] !~ /^reason=[a-z0-9_]+$/) bad();
+    if(!loaded++) while((getline line < ENVIRON["COMPAT_REASONS"])>0) if(line !~ /^#/ && line!="") { split(line,rs," "); ok[rs[1]]=1 }
+    if(!(substr(f[9],8) in ok)) bad()
+  }
   f[7]=predicate(f[7],f[3],f[4]); key=f[1] "|" f[3] "|" f[4] "|" f[5] "|" f[6] "|" config "|" parameter;
   if(parameter ~ /^audio@/ && (config !~ /;script=none;/ || f[1] !~ /^fixture\//)) bad();
   if(length(f[1])==40 && kind!="boots" && !(mode=="update" && stage==2)) bad();

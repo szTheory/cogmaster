@@ -1,0 +1,15 @@
+# The closed list of reasons a ledger row may give for being unsupported or skipped. Each line is a token and its state.
+# A token is open while the board, device or pin attribute it names is missing, and retired once that exists.
+# The parser accepts every listed token, open or retired, so a ledger written before a retirement still parses.
+# The five reasons of the pinned catalog come first, then one token per slot of the cartridge table that has no board.
+mame_no open
+no_rom open
+bad_dump open
+multi_chip open
+short_dump open
+janggun open
+seojin open
+xterminator open
+graphic open
+korean_188in1 open
+mgear open

@@ -2,6 +2,8 @@
 # legacy region to the wrong profile; and a parser that accepts a ledger it must refuse.
 # Both ledgers are embedded literals compared in memory, never produced by the code under test.
 file(MAKE_DIRECTORY "${OUT}")
+set(ENV{COMPAT_REASONS} "${ROOT}/tests/compat/reasons.txt")
+set(ENV{COMPAT_CATALOG} "${ROOT}/tests/compat/catalog.tsv")
 set(empty e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855)
 set(v1_header "id,title,machine,region,mapper,predicate,status,evidence,date\n")
 set(v2_header "id,title,machine,region,tv,mapper,predicate,status,evidence,date\n")
