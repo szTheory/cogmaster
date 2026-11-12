@@ -33,7 +33,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
       string(APPEND fixture_ledger "${line}\n")
     endforeach()
     file(WRITE "${OUT}/fixture-ledger.csv" "${fixture_ledger}")
-    execute_process(COMMAND awk "index($0, \"\\\"fixture/\") == 1 {n++} END {print n + 0}" "${ROOT}/tests/compat/ledger.csv"
+    execute_process(COMMAND awk "/^\\042fixture\\// {n++} END {print n + 0}" "${ROOT}/tests/compat/ledger.csv"
       RESULT_VARIABLE rc OUTPUT_VARIABLE live_fixtures OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
     common(cases "${OUT}/fixture-ledger.csv")
     if(NOT rc STREQUAL "0")
