@@ -201,9 +201,9 @@ no_title_table)
     if(code ~ /(->|[.])cart([^A-Za-z0-9_]|$)|cartdb|cart_fact|sha1|crc32|product|serial|title|checksum/ || (FILENAME ~ /gun\.c$/ && code ~ /\] *= *[{"]/)) { f=FILENAME; sub(/^.*\//,"",f); print "no_title_table: " f ":" FNR ": " $0; bad=1 } }
   END { exit bad }' "$DIR/gun.c" "$DIR/ports.c" "$DIR/io.c" "$DIR/vdp.c" "$DIR/vdp_render.c" ;;
 claims_scoped)
-  # Wording follows is_experimental in both states and never over-claims or names a planning label; a literal tripwire (a reworded claim passes). The page is read by its non-table lines: a table row prints a catalog title.
+  # Wording follows is_experimental in both states and never over-claims or names a planning label; a literal tripwire (a reworded claim passes; the lines are joined, so a hard wrap hides nothing). The page is read by its non-table lines: a table row prints a catalog title.
   r=$ROOT/README.md; i=$ROOT/libretro/cogmaster_libretro.info.in; q=$(mktemp -d); p=$q/compatibility.md; trap 'rm -rf "$q"' EXIT; grep -v '^|' "$ROOT/docs/compatibility.md" > "$p" || true
-  for f in "$r" "$p" "$i"; do grep -Eqi 'v2\.0' "$f" && fail "claims_scoped: $f names a planning label"; [ "$f" = "$p" ] || ! grep -Eqi 'plays (all|most|every)|compatible with (all|most|every)|full compatibility|every game|all games|[0-9][0-9,]*[ ]+([a-z]+[ ]+){0,2}(games|titles|cartridges|carts)' "$f" || fail "claims_scoped: $f over-claims"; done
+  for f in "$r" "$p" "$i"; do grep -Eqi 'v2\.0' "$f" && fail "claims_scoped: $f names a planning label"; [ "$f" = "$p" ] || ! tr '\n' ' ' < "$f" | grep -Eqi 'plays (all|most|every)|compatible with (all|most|every)|full compatibility|every game|all games|[0-9][0-9,]*[ ]+([a-z]+[ ]+){0,2}(games|titles|cartridges|carts)' || fail "claims_scoped: $f over-claims"; done
   if [ "$(awk -f "$(dirname "$0")/flag.awk" "$i")" = present ]; then for f in "$r" "$p"; do grep -qi experimental "$f" || fail "claims_scoped: $f lacks experimental while the flag is present"; done; grep '^description = ' "$i" | grep -qi experimental || fail "claims_scoped: the description lacks experimental while the flag is present"
   else for f in "$r" "$ROOT"/docs/*.md "$ROOT"/libretro/*.info.in "$p"; do ! grep -qi experimental "$f" || fail "claims_scoped: $f says experimental after the flag left"; done; fi ;;
 *) fail "unknown repository check: $1" ;;

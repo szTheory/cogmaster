@@ -53,6 +53,7 @@ claims_run(flag_absent 0 "" "${readme_gone}" "${page_gone}" "${saves_gone}" "${i
 claims_run(title_in_row 0 "" "${readme}" "${page}\n| d04ea11e1f67 | ${graphic_title} | sms/export/ntsc/unsupported | unsupported | 2026-11-12 |\n" "${saves}" "${info}")
 claims_run(title_in_prose 1 "compatibility.md names a planning label" "${readme}" "${page}\n${graphic_title}\n" "${saves}" "${info}")
 claims_run(over_claim 1 "README.md over-claims" "${readme}\nIt plays 900 games.\n" "${page}" "${saves}" "${info}")
+claims_run(over_claim_wrapped 1 "README.md over-claims" "${readme}\nIt plays\nmost games and is compatible with\nevery title. 900\ngames.\n" "${page}" "${saves}" "${info}")
 claims_run(flag_present_unsaid 1 "README.md lacks experimental" "${readme_gone}" "${page}" "${saves}" "${info}")
 claims_run(flag_one_unsaid 1 "README.md lacks experimental" "${readme_gone}" "${page}" "${saves}" "${info_one}")
 claims_run(flag_upper_unsaid 1 "README.md lacks experimental" "${readme_gone}" "${page}" "${saves}" "${info_upper}")
