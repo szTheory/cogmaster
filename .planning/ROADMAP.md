@@ -40,7 +40,7 @@ pull request and one automated release.
 - [x] **Phase 9: Light Phaser** - Light Phaser titles hit where the player aims, sensed from the emitted pixel at the beam (completed 2026-11-11)
 - [x] **Phase 10: BIOS boot** - A user boots from their own BIOS dump in the runner or RetroArch; fast boot stays the default (completed 2026-11-11)
 - [x] **Phase 11: PAL and Japanese FM** - PAL timing proven on every lane and the library judge able to add PAL and Japanese FM rows for catalog-identified carts (completed 2026-11-11)
-- [ ] **Phase 12: The whole list in the ledger** - Every SMS and Game Gear entry at the pin has an honest row, and `is_experimental` leaves the core
+- [x] **Phase 12: The whole list in the ledger** - Every SMS and Game Gear entry at the pin has an honest row, and `is_experimental` leaves the core (completed 2026-11-12)
 
 ## Phase Details
 
@@ -232,7 +232,7 @@ Plans:
   3. The ratchet lets an `unsupported` row become `pass` once its board or device exists (its token is `retired` and the catalog no longer says `unsupported`), its negative controls fail, and the pull request that adds the rule is judged by the previous rules (LEDG-03).
   4. `docs/compatibility.md` holds aggregates plus the evaluated rows the budget allows (fixtures, every `unsupported` row, up to 40 `fail` rows, up to 40 others, a `+K more` line each) and stays inside its byte budget (LEDG-04).
   5. A command over the ledger's judged rows (`compat.exit`) exists and is proven in CI on the public committed rows and the synthetic library's merged ledger; a test ties `is_experimental` to the committed ledger's judged-cart floors both ways (present while unmet, absent once met); every `unsupported` row names its reason; unowned rows stay `unknown` with the count printed, including the PAL and Japanese FM rows once the owner's run has added them (LEDG-05).
-**Plans**: 9/10 plans executed
+**Plans**: 10/10 plans complete
 - [x] 12-01-PLAN.md — Generator catalog v2, Graphic Board slot (behaviour 17), amended requirement wording
 - [x] 12-02-PLAN.md — Reason rule, input hardening, flat-cost test stand-ins (no ledger change)
 - [x] 12-03-PLAN.md — Ratchet rules R1 to R3 and the update guard (LEDG-03)
@@ -242,7 +242,7 @@ Plans:
 - [x] 12-07-PLAN.md — The exit command and the flag/ledger tie (LEDG-05)
 - [x] 12-08-PLAN.md — Scoped wording and the claims test
 - [x] 12-09-PLAN.md — Docs and seeds
-- [ ] 12-10-PLAN.md — Close: dispatch D2, timeouts, final proofs, floors, records
+- [x] 12-10-PLAN.md — Close: dispatch D2, timeouts, final proofs, floors, records
 
 ## Progress
 

@@ -14,8 +14,8 @@
     "compat.fm_judged": 2,
     "compat.judged_pass": 9,
     "compat.pal_judged": 1,
-    "tests.ci": 654,
-    "tests.wasm32": 612
+    "tests.ci": 669,
+    "tests.wasm32": 627
   },
   "reasons": [
     {
