@@ -726,10 +726,10 @@ set(compat_labels compat)
 if(COGMASTER_HYGIENE)
   list(APPEND compat_labels hygiene)
 endif()
-# Timeout: 150 s; 2 x 48.74 s measured before the catalog cases, provisional until a hosted run has them.
+# Timeout: 142 s; 2 x 70.79 s (windows-arm64), slowest of 2 runs, run 43158408243.
 cogmaster_add_test(NAME compat.ratchet
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat-ratchet
-    -P ${CMAKE_CURRENT_LIST_DIR}/ratchet.cmake LABELS ${compat_labels} TIMEOUT 150)
+    -P ${CMAKE_CURRENT_LIST_DIR}/ratchet.cmake LABELS ${compat_labels} TIMEOUT 142)
 cogmaster_add_test(NAME compat.trusted_judge
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=trusted
     -DOUT=${PROJECT_BINARY_DIR}/tests/compat-trusted -P ${CMAKE_CURRENT_LIST_DIR}/ratchet.cmake
@@ -740,9 +740,10 @@ cogmaster_add_test(NAME compat.trusted_judge
 cogmaster_add_test(NAME compat.migration
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat-migration
     -P ${CMAKE_CURRENT_LIST_DIR}/migration.cmake LABELS ${compat_labels} TIMEOUT 60)
+# Timeout: 45 s; 2 x 22.21 s (windows-arm64), slowest of 2 runs, run 43153144670.
 cogmaster_add_test(NAME compat.csv
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat
-    -P ${CMAKE_CURRENT_LIST_FILE} LABELS ${compat_labels} TIMEOUT 30)
+    -P ${CMAKE_CURRENT_LIST_FILE} LABELS ${compat_labels} TIMEOUT 45)
 # Fault prevented: a ledger row for a Sports Pad or Paddle title that a pad run satisfies, or a device
 # token the key grammar silently accepts. Timeout: 30 s floor; 2 x 1.29 s, slowest of 1 run, run 42978311844.
 cogmaster_add_test(NAME compat.device_key
@@ -757,33 +758,33 @@ cogmaster_add_test(NAME compat.device_rejected
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake LABELS ${compat_labels} TIMEOUT 30)
 # Fault prevented: a claim of public support while no cartridge of the owner's library has reached the ledger, a ledger no parser
 # reads recorded as evidence, and an experimental flag that stays or goes with nobody checking it against the rows.
-# Timeout: 60 s floor; 0.55 s slowest of 3 local runs, no hosted run yet, so provisional.
+# Timeout: 60 s floor; 2 x 5.06 s (macos-x64), slowest of 1 run, run 43158408243.
 cogmaster_add_test(NAME compat.exit
   COMMAND ${CMAKE_COMMAND} -DCASE=assert -DLEDGER=${PROJECT_SOURCE_DIR}/tests/compat/ledger.csv
     -DINFO=${PROJECT_SOURCE_DIR}/libretro/cogmaster_libretro.info.in -DOUT=${PROJECT_BINARY_DIR}/tests/compat-exit
     -P ${CMAKE_CURRENT_LIST_DIR}/exit.cmake
   LABELS ${compat_labels} TIMEOUT 60)
 # Fault prevented: a met branch nobody has ever taken, a tie that passes in both directions, and an integrity leg that cannot fail.
-# Timeout: 120 s; about 36 small spawns and 1 child run, windows-arm64 spends 0.5 to 1.5 s on a spawn, provisional until a hosted run has it.
+# Timeout: 30 s floor; 2 x 4.10 s (windows-arm64), slowest of 1 run, run 43158408243.
 cogmaster_add_test(NAME compat.exit.self_test
   COMMAND ${CMAKE_COMMAND} -DCASE=self_test -DOUT=${PROJECT_BINARY_DIR}/tests/compat-exit-self
     -P ${CMAKE_CURRENT_LIST_DIR}/exit.cmake
-  LABELS ${compat_labels} TIMEOUT 120)
+  LABELS ${compat_labels} TIMEOUT 30)
 # Fault prevented: a reason the catalog uses that the closed vocabulary does not list or has retired, or a vocabulary that
-# drifts from the slots of the cartridge table that have no board. Timeout: 30 s floor; 0.04 s slowest of 4 local runs, no hosted run yet, so provisional.
+# drifts from the slots of the cartridge table that have no board. Timeout: 30 s floor; 2 x 0.22 s (windows-arm64), slowest of 2 runs, run 43158408243.
 cogmaster_add_test(NAME compat.reasons
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=reasons
     -DOUT=${PROJECT_BINARY_DIR}/tests/compat-reasons -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS ${compat_labels} TIMEOUT 30)
 # Fault prevented: a title that spoofs text direction, hides characters or becomes a spreadsheet formula, a markdown title that
 # becomes a link or emphasis on a page regeneration, and a ledger large enough to hold the runner's time hostage.
-# Timeout: 90 s floor; 2.18 s slowest of 4 local runs, no hosted run yet, so provisional.
+# Timeout: 90 s floor; 2 x 16.10 s (windows-arm64), slowest of 2 runs, run 43153144670.
 cogmaster_add_test(NAME compat.hardening
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=hardening
     -DOUT=${PROJECT_BINARY_DIR}/tests/compat-hardening -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS ${compat_labels} TIMEOUT 90)
 # Fault prevented: a page that is bounded only because today's ledger is small, and a cap that nobody notices being removed.
-# Timeout: 60 s floor; 0.20 s slowest of 4 local runs, no hosted run yet, so provisional.
+# Timeout: 60 s floor; 2 x 1.86 s (macos-x64), slowest of 2 runs, run 43158408243.
 cogmaster_add_test(NAME compat.page_bound
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=page_bound
     -DOUT=${PROJECT_BINARY_DIR}/tests/compat-page-bound -P ${CMAKE_CURRENT_LIST_FILE}
@@ -791,14 +792,14 @@ cogmaster_add_test(NAME compat.page_bound
 set(compat_page_bound_wrong ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=page_bound -DWRONG=ON
   -DOUT=${PROJECT_BINARY_DIR}/tests/compat-page-bound-wrong -P ${CMAKE_CURRENT_LIST_FILE})
 string(REPLACE ";" "$<SEMICOLON>" compat_page_bound_wrong "${compat_page_bound_wrong}")
+# Timeout: 60 s floor; 2 x 2.07 s (macos-x64), slowest of 2 runs, run 43158408243.
 cogmaster_add_test(NAME compat.page_bound.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${compat_page_bound_wrong}" -DCODE=1 "-DREGEX=exceeds the page budget"
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake LABELS ${compat_labels} TIMEOUT 60)
-# Timeout: 91 s; 2 x 45.10 s (windows-arm64 lane), slowest of 3 runs, run 43117518796. Its body is three runs old: the first run
-# with it (43115877197) was killed at 30 s on windows-arm64 and gives no time.
+# Timeout: 104 s; 2 x 51.56 s (windows-arm64), slowest of 2 runs, run 43158408243.
 cogmaster_add_test(NAME compat.public_update
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat-update
-    -P ${CMAKE_CURRENT_LIST_DIR}/update.cmake LABELS ${compat_labels} TIMEOUT 91)
+    -P ${CMAKE_CURRENT_LIST_DIR}/update.cmake LABELS ${compat_labels} TIMEOUT 104)
 cogmaster_add_test(NAME policy.compat_doc_fresh
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=fresh -DOUT=${PROJECT_BINARY_DIR}/tests/compat-doc
     -P ${CMAKE_CURRENT_LIST_FILE} LABELS ${compat_labels} policy TIMEOUT 30)
@@ -810,12 +811,12 @@ cogmaster_add_test(NAME policy.compat_doc_fresh.self_test
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake LABELS ${compat_labels} policy TIMEOUT 30)
 # Fault prevented: a denominator that shrinks unnoticed, a ledger identity the pin does not list, a status that moves without a slot-table
 # change, a hand edit of the ledger, and a seeded profile the core refuses. The legs read whole files once; the controls run on stand-ins.
-# Timeout: 60 s floor; 0.09 s slowest of 4 local runs, no hosted run yet, so provisional.
+# Timeout: 60 s floor; 2 x 2.24 s (windows-arm64), slowest of 2 runs, run 43153144670.
 cogmaster_add_test(NAME compat.whole_list.count
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=count
     -DOUT=${PROJECT_BINARY_DIR}/tests/compat-whole-count -P ${CMAKE_CURRENT_LIST_DIR}/whole_list.cmake
   LABELS ${compat_labels} TIMEOUT 60)
-# Timeout: 90 s floor; 0.63 s slowest of 4 local runs, no hosted run yet, so provisional.
+# Timeout: 90 s floor; 2 x 6.88 s (windows-arm64), slowest of 2 runs, run 43158408243.
 cogmaster_add_test(NAME compat.whole_list.fresh
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=fresh
     -DOUT=${PROJECT_BINARY_DIR}/tests/compat-whole-fresh -P ${CMAKE_CURRENT_LIST_DIR}/whole_list.cmake
@@ -823,24 +824,24 @@ cogmaster_add_test(NAME compat.whole_list.fresh
 set(compat_whole_wrong ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=fresh_wrong
   -DOUT=${PROJECT_BINARY_DIR}/tests/compat-whole-wrong -P ${CMAKE_CURRENT_LIST_DIR}/whole_list.cmake)
 string(REPLACE ";" "$<SEMICOLON>" compat_whole_wrong "${compat_whole_wrong}")
-# Timeout: 90 s floor; 0.26 s slowest of 4 local runs, no hosted run yet, so provisional.
+# Timeout: 90 s floor; 2 x 9.66 s (windows-arm64), slowest of 2 runs, run 43158408243.
 cogmaster_add_test(NAME compat.whole_list.fresh.self_test
   COMMAND ${CMAKE_COMMAND} "-DCMD=${compat_whole_wrong}" -DCODE=1 "-DREGEX=ledger is not whole \\(4 faults refused\\)"
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake LABELS ${compat_labels} TIMEOUT 90)
-# Timeout: 60 s floor; 0.14 s slowest of 4 local runs, no hosted run yet, so provisional.
+# Timeout: 60 s floor; 2 x 4.16 s (windows-arm64), slowest of 2 runs, run 43158408243.
 cogmaster_add_test(NAME compat.whole_list.reason
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=reason
     -DOUT=${PROJECT_BINARY_DIR}/tests/compat-whole-reason -P ${CMAKE_CURRENT_LIST_DIR}/whole_list.cmake
   LABELS ${compat_labels} TIMEOUT 60)
 if(COGMASTER_FIXTURES AND NOT COGMASTER_HYGIENE)
   string(REPLACE ";" "$<SEMICOLON>" compat_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
-  # Timeout: 89 s; 2 x 44.30 s, slowest of 4 runs since the parser last changed, run 43119601937.
+  # Timeout: 90 s; 2 x 44.66 s (be32), slowest of 2 runs, run 43153144670.
   cogmaster_add_test(NAME compat.fixtures
     COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=fixtures
       -DOUT=${PROJECT_BINARY_DIR}/tests/compat-fixtures -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures
       -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${compat_emulator}"
-      -P ${CMAKE_CURRENT_LIST_FILE} LABELS compat portable TIMEOUT 89)
-  # Fault prevented: a seeded default profile the core refuses. Timeout: 60 s floor; 0.23 s slowest of 4 local runs, no hosted run yet, so provisional.
+      -P ${CMAKE_CURRENT_LIST_FILE} LABELS compat portable TIMEOUT 90)
+  # Fault prevented: a seeded default profile the core refuses. Timeout: 60 s floor; 2 x 3.09 s (macos-x64), slowest of 2 runs, run 43158408243.
   cogmaster_add_test(NAME compat.whole_list.runnable
     COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=runnable
       -DOUT=${PROJECT_BINARY_DIR}/tests/compat-whole-runnable -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures

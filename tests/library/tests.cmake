@@ -288,10 +288,10 @@ endif()
 endif()
 if(COGMASTER_FIXTURES)
   string(REPLACE ";" "$<SEMICOLON>" library_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
-  # Timeout: 180 s; 2 x 54.22 s measured before the key-based cases, provisional until a hosted run has them.
+  # Timeout: 160 s; 2 x 79.87 s (windows-arm64), slowest of 1 run, run 43158408243.
   cogmaster_add_test(NAME library.synthetic
     COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/library
       -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures -DRUN=$<TARGET_FILE:cogmaster-run>
       "-DEMULATOR=${library_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
-    LABELS library TIMEOUT 180)
+    LABELS library TIMEOUT 160)
 endif()

@@ -152,11 +152,11 @@ cogmaster_add_test(NAME policy.notices
 # experimental after the flag left, or an over-claim while most identities are unknown), a planning label in user
 # text, and a check that cannot fail. The self test builds one tree per fault from the real files and also asserts a
 # passing flag-absent tree and a passing catalog-title table row.
-# Timeout: 30 s floor; 0.1 s slowest local run, no hosted run yet, so provisional.
+# Timeout: 30 s floor; 2 x 1.22 s (windows-arm64), slowest of 1 run, run 43158408243.
 cogmaster_add_test(NAME policy.claims_scoped
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCHECK=claims_scoped -P ${policy_scripts}/repository.cmake
   LABELS policy TIMEOUT 30)
-# Timeout: 60 s floor; 0.5 s slowest local run, no hosted run yet, so provisional.
+# Timeout: 60 s floor; 2 x 11.39 s (windows-arm64), slowest of 1 run, run 43158408243.
 cogmaster_add_test(NAME policy.claims_scoped.self_test
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/policy/claims
     -P ${CMAKE_CURRENT_LIST_DIR}/claims_cases.cmake
