@@ -42,6 +42,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
   file(WRITE "${OUT}/standin-initial.csv" "${standin_ledger}")
   execute_process(COMMAND "${CMAKE_COMMAND}" -E env "COMPAT_CATALOG=${OUT}/catalog.tsv" sh "${ROOT}/scripts/compat-common.sh" docs "${OUT}/standin-initial.csv"
     RESULT_VARIABLE rc OUTPUT_VARIABLE standin_page COMMAND_ERROR_IS_FATAL ANY)
+  set(library_directory "${ROOT}")
   function(library directory)
     file(WRITE "${OUT}/standin/ledger.csv" "${standin_ledger}")
     file(WRITE "${OUT}/standin/page.md" "${standin_page}")
@@ -51,7 +52,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     execute_process(COMMAND "${CMAKE_COMMAND}" -E env "COGMASTER_ROM_DIR=${directory}"
       "COGMASTER_LIBRARY_RUN=${RUN}" "COGMASTER_LIBRARY_EMULATOR=${EMULATOR}" "COGMASTER_LIBRARY_OUT=${OUT}/results"
       "COGMASTER_LEDGER=${OUT}/standin/ledger.csv" "COGMASTER_PAGE=${OUT}/standin/page.md" ${ARGN}
-      sh "${ROOT}/scripts/library.sh" run WORKING_DIRECTORY "${ROOT}"
+      sh "${ROOT}/scripts/library.sh" run WORKING_DIRECTORY "${library_directory}"
       RESULT_VARIABLE rc OUTPUT_VARIABLE text ERROR_VARIABLE err)
     if(NOT rc STREQUAL "0")
       message(FATAL_ERROR "synthetic library operation failed: ${rc}")
@@ -125,7 +126,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     message(FATAL_ERROR "the merged page must equal a fresh generation, differ from the initial page and stay under the cap")
   endif()
   file(WRITE "${OUT}/allow.empty" "")
-  execute_process(COMMAND sh "${ROOT}/scripts/compat-ratchet.sh" "${OUT}/standin-initial.csv" "${OUT}/standin/ledger.csv"
+  execute_process(COMMAND "${CMAKE_COMMAND}" -E env "COMPAT_CATALOG=${OUT}/catalog.tsv" "COMPAT_REASONS=${ROOT}/tests/compat/reasons.txt" sh "${ROOT}/scripts/compat-ratchet.sh" "${OUT}/standin-initial.csv" "${OUT}/standin/ledger.csv"
     "${OUT}/allow.empty" 2026-11-11 16 16 RESULT_VARIABLE rc OUTPUT_QUIET)
   if(NOT rc STREQUAL "0")
     message(FATAL_ERROR "the merged ledger must pass the ratchet: ${rc}")
@@ -182,6 +183,13 @@ esac
   library("${OUT}/empty")
   if(NOT text MATCHES "candidates=0 attempted=0 evaluated=0 coverage=0")
     message(FATAL_ERROR "empty library must report zero evaluated coverage")
+  endif()
+  # Fault prevented: a script that reads its catalog or reasons from the working directory, which the judge now refuses (it fails closed).
+  set(library_directory "${ROOT}/docs")
+  library("${OUT}/empty")
+  set(library_directory "${ROOT}")
+  if(NOT text MATCHES "merge: rows_added=0 ratchet=ok")
+    message(FATAL_ERROR "a run from a subdirectory of the repository must merge as from the root: ${text}")
   endif()
   execute_process(COMMAND "${CMAKE_COMMAND}" -E env "COGMASTER_ROM_DIR=${OUT}/missing"
     "${CMAKE_COMMAND}" --preset library -B "${OUT}/configure-missing" WORKING_DIRECTORY "${ROOT}"

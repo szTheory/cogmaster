@@ -578,10 +578,10 @@ set(compat_labels compat)
 if(COGMASTER_HYGIENE)
   list(APPEND compat_labels hygiene)
 endif()
-# Timeout: 98 s; 2 x 48.74 s, slowest of 4 runs since the parser last changed, run 43115877197.
+# Timeout: 150 s; 2 x 48.74 s measured before the catalog cases, provisional until a hosted run has them.
 cogmaster_add_test(NAME compat.ratchet
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DOUT=${PROJECT_BINARY_DIR}/tests/compat-ratchet
-    -P ${CMAKE_CURRENT_LIST_DIR}/ratchet.cmake LABELS ${compat_labels} TIMEOUT 98)
+    -P ${CMAKE_CURRENT_LIST_DIR}/ratchet.cmake LABELS ${compat_labels} TIMEOUT 150)
 cogmaster_add_test(NAME compat.trusted_judge
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=trusted
     -DOUT=${PROJECT_BINARY_DIR}/tests/compat-trusted -P ${CMAKE_CURRENT_LIST_DIR}/ratchet.cmake

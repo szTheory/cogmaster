@@ -24,7 +24,9 @@ umask 077
 ledger=${COGMASTER_LEDGER:-$root/tests/compat/ledger.csv}
 page=${COGMASTER_PAGE:-$root/docs/compatibility.md}
 COGMASTER_CATALOG=${COGMASTER_CATALOG:-$root/tests/compat/catalog.tsv}
+# Fault prevented: a judge that reads its catalog and reasons from the working directory, which the owner may run from anywhere.
 export COGMASTER_CATALOG
+export COMPAT_CATALOG=$COGMASTER_CATALOG COMPAT_REASONS=$root/tests/compat/reasons.txt
 sh "$root/scripts/compat-common.sh" cases "$ledger" > "$out/cases.cmake"
 : > "$out/profiles.csv"
 printf 'candidate,status,evaluated,attempted\n' > "$out/results.csv"
@@ -55,7 +57,7 @@ rev=$(awk '/^#define COGMASTER_BEHAVIOUR_REVISION / {print $3}' "$root/include/c
 : > "$out/allow.txt"
 awk '!seen[$0]++' "$out/public-facts.csv" > "$out/facts.csv"
 merge=held
-if COMPAT_CATALOG=$COGMASTER_CATALOG COMPAT_REV=$COGMASTER_LIBRARY_REV sh "$root/scripts/compat-common.sh" update "$ledger" "$out/facts.csv" > "$out/next-ledger.csv" 2>/dev/null; then
+if COMPAT_REV=$COGMASTER_LIBRARY_REV sh "$root/scripts/compat-common.sh" update "$ledger" "$out/facts.csv" > "$out/next-ledger.csv" 2>/dev/null; then
   added=$(($(wc -l < "$out/next-ledger.csv") - $(wc -l < "$ledger")))
   if sh "$root/scripts/compat-ratchet.sh" "$ledger" "$out/next-ledger.csv" "$out/allow.txt" "$COGMASTER_LIBRARY_DATE" "$rev" "$rev" >/dev/null 2>&1; then
     sh "$root/scripts/compat-common.sh" docs "$out/next-ledger.csv" > "$out/next-page.md"
