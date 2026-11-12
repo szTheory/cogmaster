@@ -222,7 +222,7 @@ matches the expected message; a crash or a missing file does not count as the ex
 | `compat.page_bound.self_test` | A copy with its caps raised, which must exceed the page budget. |
 | `compat.exit` | A ledger no parser reads, an `unsupported` row with no reason, a fixture `fail`, a floor that drops, a flag that stays or goes against the rows. |
 | `compat.exit.self_test` | A met verdict nobody has taken, a tie that passes both ways, 19 passes, 20 fixture or compound passes. |
-| `policy.claims_scoped` | A README saying experimental after the flag left, or an over-claim while the flag stays, `v2.0` in user text. |
+| `policy.claims_scoped` | An over-claim in the README, the `.info` or the page, a planning label (`v2.0`) in user text, a leftover of the removed status label. |
 | `policy.claims_scoped.self_test` | One tree per fault above, beside a passing flag-absent tree. |
 | `docs.budgets.ratio_equal` | One physical check line against ten core lines, including unterminated final lines. |
 | `docs.budgets.unclassified` | A checker omitted from the responsibility inventory. |

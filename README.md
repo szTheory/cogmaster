@@ -4,10 +4,11 @@ A Sega Master System and Game Gear emulator core in C: a small library, a headle
 libretro core for RetroArch. One core covers the Mark III, both Master System revisions, the Japanese FM unit and
 the Game Gear.
 
-**Status: experimental.** Runs Master System and Game Gear cartridges with sound in RetroArch. The runner has no
-window or speaker; it reports picture and audio hashes that are the same on every platform. It makes no promise about
-any single game: most catalogued titles have no checked result and are listed unknown; the checks are narrow (a game
-boots, a frame matches, a value appears), never "playable" or "completable". Counts and rows are in
+**Status.** Runs Master System and Game Gear cartridges with sound in RetroArch. The runner has no window or speaker;
+it reports picture and audio hashes that are the same on every platform. It makes no promise about any single game:
+the core has checked results for hundreds of cartridges and publishes them, failures included, and a title with no
+checked result is listed unknown; the checks are narrow (a game boots, a frame matches, a value appears), never
+"playable" or "completable". Counts and rows are in
 [docs/compatibility.md](docs/compatibility.md). Not supported: cartridges for the SG-1000, save states, and the boards
 the page lists as unsupported. Mark III software is the Japanese Master System: its Japan cartridges are listed under
 Master System.

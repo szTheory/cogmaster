@@ -58,7 +58,7 @@ The `.info` declares `libretro_saves`, and `libretro.span.battery`, `.eeprom` an
 guard the claim: for the 32 KiB battery fixture, the 128-byte EEPROM fixture and a plain
 cartridge, the span the module exports equals the library's battery length (32768, 128 and
 NULL with zero). RetroArch decides how a differently sized `.srm` loads; only the runner
-refuses a layout that is not its own. The core stays experimental.
+refuses a layout that is not its own.
 
 ## 93C46 EEPROM
 

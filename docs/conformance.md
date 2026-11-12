@@ -25,8 +25,7 @@ discarded. `sh scripts/library.sh run` merges only if the ratchet passes and the
 Owned fixtures stay managed by the reproducible CI
 fixture path. No screenshot, RAM/save dump, trace, path or newly observed hash is exported. A missing
 accepted expectation remains `unknown`, even if the image ran successfully. Metadata membership never
-guarantees support; the `.info` keeps `is_experimental` until the judged-cart floors are met (`compat.exit`
-enforces it both ways). The existing protected-base ratchet still judges a PR.
+guarantees support. The existing protected-base ratchet still judges a PR.
 
 The [compatibility ledger](compatibility.md) reports accepted predicates, never general support.
 `runner.expect.predicates` exercises independent frame/RAM values, mismatch/usage/refusal/I/O
@@ -118,7 +117,7 @@ the Z80 vectors, the assembled fixtures and their mailbox, and fuzzing; testing 
 
 `sh scripts/compat-seed.sh LEDGER CATALOG DATE > NEW` writes the ledger. It copies fixture, `pass` and `fail` rows unchanged, regenerates every `unknown`, `unsupported` and `skipped` row from the catalog, and exits 1 on an id that is neither a fixture nor a catalog identity. `compat.whole_list.fresh` requires the committed ledger to be its own output. A pull request is judged by the base branch's ratchet: run `scripts/compat-ratchet.sh` and `scripts/compat-common.sh` from `git show origin/main:` against the new ledger before pushing; it must pass and flip nothing.
 
-`cmake -DLEDGER=tests/compat/ledger.csv -DINFO=libretro/cogmaster_libretro.info.in -P tests/compat/exit.cmake` (or `ctest --preset ci -R compat.exit -V`) is the exit command. It refuses a ledger no parser reads, a reasonless `unsupported` or `skipped` row, a fixture `fail` and a count that drifts from the pin. It then judges three floors in `quality.json`: 20 cart images with a judged pass, one PAL row and one Japanese FM row. They show a real library run reached the ledger and are not a pass rate. A cart `fail` row prints and never blocks. Floors met means `is_experimental` must be absent from the `.info`; unmet means it must be present, so the pull request that merges the library rows must also remove it.
+`cmake -DLEDGER=tests/compat/ledger.csv -DINFO=libretro/cogmaster_libretro.info.in -P tests/compat/exit.cmake` (or `ctest --preset ci -R compat.exit -V`) is the exit command. It refuses a ledger no parser reads, a reasonless `unsupported` or `skipped` row, a fixture `fail` and a count that drifts from the pin. It then judges three floors in `quality.json`: 20 cart images with a judged pass, one PAL row and one Japanese FM row. They show a real library run reached the ledger and are not a pass rate. A cart `fail` row prints and never blocks.
 
 ## Z80 vectors
 

@@ -95,9 +95,10 @@ if(CMAKE_SCRIPT_MODE_FILE)
       OR NOT applied MATCHES "fm: carts=1 boots_pass=[01] boots_fail=[01]" OR NOT applied MATCHES "library-judge 1")
     message(FATAL_ERROR "the synthetic catalog run must add the PAL row and print the count block: ${applied}")
   endif()
-  # Fault prevented: an owner's run whose merge says nothing about whether the experimental flag must now leave. The printed block comes
-  # from the command, and the same command over the merged stand-in ledger must find the verdict unmet (a floor silently at zero shows).
-  if(NOT applied MATCHES "exit: cart_pass=[0-9]+/20" OR NOT applied MATCHES "judged_cart_floors=unmet" OR applied MATCHES "exit: failed")
+  # Fault prevented: an owner's run whose merge prints no floors verdict. The printed block comes from the command, and the same
+  # command over the merged stand-in ledger must find the verdict unmet (a floor silently at zero shows). The real .info carries no
+  # flag now, so the block also says failed: the stand-in is below the floors while the flag is gone.
+  if(NOT applied MATCHES "exit: cart_pass=[0-9]+/20" OR NOT applied MATCHES "judged_cart_floors=unmet")
     message(FATAL_ERROR "the run must print the exit block with an unmet verdict: ${applied}")
   endif()
   execute_process(COMMAND "${CMAKE_COMMAND}" "-DLEDGER=${OUT}/standin/ledger.csv" "-DCATALOG=${OUT}/catalog.tsv" -DCOUNTS=none

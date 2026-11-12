@@ -38,7 +38,6 @@ to the frontend. Missing callbacks and none devices submit released levels.
 Their reconnection follows the same Pause arming rule as the library. Port 2 never supplies console
 controls. RetroArch Restart calls SOFT on SMS and POWER on GG; Select changes only the supported physical
 Reset level and cannot restart the CPU. Both restart kinds preserve cartridge RAM.
-The experimental flag remains enabled while the background tracer is expanded.
 API version 4 appends SMS1 and unsupported-video fault constants; all earlier
 values and struct layouts are retained. Behaviour revision 10 adds classified battery write generations.
 The input model includes pin-output mixing, export-SMS1-only Reset and held-reconnect Pause suppression. The renderer includes independent line
