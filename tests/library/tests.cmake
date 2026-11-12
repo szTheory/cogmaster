@@ -197,7 +197,9 @@ if(CMAKE_SCRIPT_MODE_FILE)
   *) exit 1 ;;
 esac
 ]])
-  file(WRITE "${OUT}/flaky-catalog.tsv" "${held_sha}\tsms\tnone\t-\tSynthetic held\n")
+  # A second line carries a skipped status: the judge refuses a catalog that holds none, as an empty or reshaped one would be.
+  string(REPEAT d 40 held_skipped)
+  file(WRITE "${OUT}/flaky-catalog.tsv" "${held_sha}\tsms\tnone\t-\tSynthetic held\n${held_skipped}\tsms\tnone\t-\tSynthetic skipped\tskipped\tmame_no\texport\tpad\tpad\n")
   set(seed "\"${held_sha}\",\"Synthetic held\",\"sms\",\"export\",\"ntsc\",\"none\",\"${cfg_off}\",\"pass\",\"-\",\"2026-11-11\"\n")
   set(RUN "${OUT}/flaky-runner.sh")
   library("${OUT}/flaky-images" "COGMASTER_CATALOG=${OUT}/flaky-catalog.tsv" "COGMASTER_LIBRARY_EMULATOR=sh")
