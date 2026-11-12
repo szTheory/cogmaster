@@ -57,8 +57,8 @@ BEGIN { header1="id,title,machine,region,mapper,predicate,status,evidence,date";
   if(ver==1) { lt=f[4]; if(lt !~ /^(ntsc-u|ntsc-j|pal|any)$/) bad(); f[4]=(lt=="ntsc-j"?"japan":"export"); for(i=9;i>=5;i--) f[i+1]=f[i]; f[5]=(lt=="pal"?"pal":"ntsc") }
   for(i=1;i<=10;i++) if(f[i]=="" || length(f[i])>1024) bad();
   if(!(f[1] ~ /^fixture\/[A-Za-z0-9_.-]+$/ || (f[1] ~ /^[0-9a-f]+$/ && length(f[1])==40)) || f[3] !~ /^(sms|sms1|gg|sg)$/ || f[4] !~ /^(export|japan)$/ || f[5] !~ /^(ntsc|pal)$/ || f[6] !~ /^[a-z][a-z0-9_-]*$/ || f[8] !~ /^(pass|fail|unknown|unsupported|infrastructure_error|skipped)$/ || f[10] !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ || (f[5]=="pal" && (f[3]=="gg" || f[4]=="japan"))) bad();
-  # Fault prevented: a title that spoofs text direction, hides characters or becomes a spreadsheet formula (a lone dash is the facts placeholder).
-  if(f[2] ~ /^[=+@-]./ || f[2] ~ /\342\200[\213-\217\252-\256]|\342\201[\246-\251]|\357\273\277/) bad();
+  # Fault prevented: a title that spoofs text direction, hides characters, breaks a line (U+2028, U+2029, C1 controls) or becomes a spreadsheet formula (a lone dash is the facts placeholder).
+  if(f[2] ~ /^[=+@-]./ || f[2] ~ /\342\200[\213-\217\250-\256]|\342\201[\240-\244\246-\251]|\357\273\277|\302[\200-\237\255]|\330\234/) bad();
   # Fault prevented: an unsupported or skipped row with no reason, or free text a reader cannot check, so a silent refusal reads as an honest status.
   if(f[8] ~ /^(unsupported|skipped)$/) {
     if(f[9] !~ /^reason=[a-z0-9_]+$/) bad();
