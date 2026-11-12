@@ -17,8 +17,8 @@ function day(s, a,y,m,d,n,i) {
 function quote(s) { gsub(/"/,"\"\"",s); return "\"" s "\"" }
 function md(s, o,i,p,e) { split("&amp; &lt; &gt; &#124; &#92; &#96; &#42; &#95; &#126; &#91; &#93; &#40; &#41; &#33; &#35;",e," "); o=""; for(i=1;i<=length(s);i++) { p=index("&<>|\\`*_~[]()!#",substr(s,i,1)); o=o (p?e[p]:substr(s,i,1)) } return o }
 function put(s, x) { if(++pn[s]<=pc[s]) pb[s]=pb[s] "\n" (s>2?cell(x):x) }
-function cell(k, t,w,d,j,x,p) { split(r[k,13],t,";"); sub(/^cfg:/,"",t[1]); split("video=" (r[k,3]=="gg"?"gg":"sms") ";fm;port1=pad;port2=pad;script=none",w,";"); for(j=1;j<=5;j++) if(j!=2 && t[j]!=w[j]) d=d " " t[j]; p=r[k,11]; sub(/:.*/,"",p); x=substr(md(r[k,2]),1,64); gsub(/[^ -~]/,"?",x)
-  return "| " (length(r[k,1])==40?substr(r[k,1],1,12):r[k,1]) " | " x " | " r[k,3] "/" r[k,4] "/" r[k,5] "/" r[k,6] " " t[2] " " p d " | " r[k,8] " | " r[k,10] " |" }
+function cell(k, t,w,d,j,x,p) { split(r[k,13],t,";"); sub(/^cfg:/,"",t[1]); split("video=" (r[k,3]=="gg"?"gg":"sms") ";fm;port1=pad;port2=pad;script=none",w,";"); for(j=1;j<=5;j++) if(j!=2 && t[j]!=w[j]) d=d " " substr(t[j],1,24); p=r[k,11]; sub(/:.*/,"",p); x=substr(md(r[k,2]),1,64); gsub(/[^ -~]/,"?",x)
+  return "| " substr(r[k,1],1,(length(r[k,1])==40?12:40)) " | " x " | " r[k,3] "/" r[k,4] "/" r[k,5] "/" substr(r[k,6],1,32) " " t[2] " " p d " | " r[k,8] " | " r[k,10] " |" }
 function hex(s, n,i,d) { n=0; s=toupper(s); for(i=1;i<=length(s);i++) { d=index("0123456789ABCDEF",substr(s,i,1))-1; if(d<0) bad(); n=n*16+d } return n }
 function predicate(s, machine, region, p,n,a,b,t,frame,address,value,cfg,fm) {
   cfg="cfg:video=" (machine=="gg"?"gg":"sms") ";port1=pad;port2=pad;script=none;sha256=" empty;
@@ -116,8 +116,8 @@ END {
       for(j=1;j<=5;j++) { sub(/^[a-z0-9:]*=/,"",t[j]); print "set(compat_" i "_" parts[j] " [[" t[j] "]])" } print "set(compat_" i "_runner_region [[" (r[key,5]=="pal"?"pal":(r[key,4]=="japan"?"ntsc-j":"ntsc-u")) "]])" } }
   # Fault prevented: a generated page that grows with the ledger past the docs cap, or prints an untrusted title, a count claim that can go stale, or a bidi or zero-width character.
   if(mode=="docs") {
-    for(i=1;i<=count;i++) { k=order[i]; st=r[k,8]; ev=(st=="pass" || st=="fail"); status[st]++; split(r[k,11],a,"@"); kinds[a[1]]++; pal+=(ev && r[k,5]=="pal"); fmj+=(ev && index(r[k,13],";fm=on;")>0); g=r[k,3] "/" r[k,6] "/" st; if(!gn[g]++) gl[++ng]=g;
-      if(r[k,1] ~ /^fixture\//) fx[r[k,1]]=1; if(st ~ /^(unsupported|skipped)$/) { g=substr(r[k,9],8) " | " st; if(!rn[g]++) rl[++nr]=g }
+    for(i=1;i<=count;i++) { k=order[i]; st=r[k,8]; ev=(st=="pass" || st=="fail"); status[st]++; split(r[k,11],a,"@"); kinds[a[1]]++; pal+=(ev && r[k,5]=="pal"); fmj+=(ev && index(r[k,13],";fm=on;")>0); g=r[k,3] "/" substr(r[k,6],1,32) "/" st; if(!gn[g]++) gl[++ng]=g;
+      if(r[k,1] ~ /^fixture\//) fx[r[k,1]]=1; if(st ~ /^(unsupported|skipped)$/) { g=substr(r[k,9],8,32) " | " st; if(!rn[g]++) rl[++nr]=g }
       s=(r[k,1] ~ /^fixture\//?3:(st=="unsupported"?4:(st=="pass"?6:(ev || st=="infrastructure_error"?5:0)))); if(s) put(s,k) }
     for(i=1;i<=ng;i++) put(1,"| " gl[i] " | " gn[gl[i]] " |"); for(i=1;i<=nr;i++) put(2,"| " rl[i] " | " rn[rl[i]] " |"); for(k in fx) nfx++
     print "# Compatibility\n\nGenerated from `tests/compat/ledger.csv` by `sh scripts/compat-common.sh docs tests/compat/ledger.csv`.\n\nExperimental. A row marked unknown has no accepted check; that says nothing about whether the game works.\nPass and fail describe accepted checks only (boots is a sampled display and first-fault smoke, audio a pinned hash of chip writes, never how it sounds), with no playable or completable claim. Unsupported means the runner refuses the dump with exit 77. Skipped is the MAME verdict about the dump and is never recorded as pass.\nA 40-hex id of a compound entry is derived from the text `mame/<list>/<name>` and is not an image hash. Experimental leaves only on the own-library evidence of the maintainer, never on a pass rate.\nA row names its setting: machine, region, tv, mapper, fm and the check with its frame; tv is a setting of the run, not a fact about the cartridge.\n"
