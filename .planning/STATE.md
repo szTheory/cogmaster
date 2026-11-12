@@ -3,13 +3,12 @@ gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: The whole library
 current_phase: 12
-current_phase_name: The whole list in the ledger
-status: verifying
-stopped_at: Completed 12-10-PLAN.md
-last_updated: "2026-11-12T05:12:39.152Z"
+status: completed
+stopped_at: Phase 12 complete — all phases complete
+last_updated: "2026-11-12T05:51:59.620Z"
 last_activity: 2026-11-12
-last_activity_desc: Phase 11 complete, transitioned to Phase 12
-state_head: 64f76f25b7bbdd44d3e0c37e18a589b5d0caa910
+last_activity_desc: Phase 12 complete
+state_head: "0b33c35ba6490fd3ffc0b5c7c8db79a05ed87310"
 progress:
   total_phases: 8
   completed_phases: 8
@@ -29,17 +28,17 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 
 ## Current Position
 
-Phase: 12 — The whole list in the ledger
-Plan: 10 of 10
-Status: Phase complete — ready for verification
-Last activity: 2026-11-12 — Completed 12-10 (dispatch D2 run 43158408243 green, every timeout of the phase settled from D1 and D2, base-judge proof, pinned re-run and exit command repeated on the final tree, floors 669 and 627, LEDG-01 to LEDG-05 complete as amended; carried hand-off: the owner's own-library run, never a gate; counted check code 885)
+Phase: 12
+Plan: Not started
+Status: All phases complete
+Last activity: 2026-11-12 — Phase 12 complete
 
 Progress: [██████████] 100% of v2.0
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 146
+- Total plans completed: 156
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -58,6 +57,7 @@ Progress: [██████████] 100% of v2.0
 | 9 | 12 | - | - |
 | 10 | 11 | - | - |
 | 11 | 9 | - | - |
+| 12 | 10 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -487,6 +487,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-12 | Execute phase 12 plan 12-08 (gsd-execute-phase 12); the README status, the libretro description and the conformance sentences scoped to the experimental flag that stays (no planning label, no count), policy.claims_scoped with eleven fixture-tree controls and four recorded mutations; 2 tasks, 2 commits, counted check code 885 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Execute phase 12 plan 12-09 (gsd-execute-phase 12); the exit command, the new tests' faults and the pin-count workflow in the docs within their caps, SEED-015 with the deferred items and the CI-speed record (dispatch D1 run 43153144670), carried hand-off SEED-013 (the owner's own-library run, never a gate); 2 tasks, 2 commits, counted check code 885 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Execute phase 12 plan 12-10 (gsd-execute-phase 12); dispatch D2 run https://github.com/szTheory/cogmaster/actions/runs/43158408243 green on the complete code (D1 run 43153144670), every provisional timeout settled from the two runs (compat.public_update, compat.fixtures and compat.csv raised, build job 9 min), the old base judge and the new judge pass on the final ledger and flip nothing, pinned re-run and mawk page proxy equal, exit command exit 0 with judged_cart_floors=unmet flag=present, floors 669 and 627, LEDG-01 to LEDG-05 complete as amended, owner's own-library run carried as a hand-off and never a gate; 2 tasks, 3 commits, counted check code 885 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Code review and verify phase 12 (autonomous run); ledger review 0 critical 7 warning, core review 0 critical 10 warning, fix round 1 fixed 17 (R2 per key, shared flag reader, bounded page cells, NUL and bidi hardening, honest wording), verification passed 5 of 5 with the flag staying per the owner decision, dispatch D3 run 43163239085 green on the final head, counted check code 887 of 940 | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -509,7 +510,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-11-12T05:12:38.903Z
-Stopped at: Completed 12-10-PLAN.md
+Stopped at: Phase 12 complete — all phases complete
 Resume file: None
 Phase 11 ship pull request: #31, open as a draft since plan 07; ship reuses it (gh pr ready, title check, gh pr merge --auto --squash at ship only; no new gh pr create)
 
