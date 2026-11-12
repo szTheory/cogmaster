@@ -2,14 +2,14 @@
 gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: The whole library
-current_phase: 11
-current_phase_name: PAL and Japanese FM
-status: verifying
-stopped_at: Completed 11-09-PLAN.md
-last_updated: "2026-11-11T23:38:07.855Z"
+current_phase: 12
+current_phase_name: The whole list in the ledger
+status: planning
+stopped_at: Phase 11 complete, ready to plan Phase 12
+last_updated: "2026-11-12T00:35:19.606Z"
 last_activity: 2026-11-11
-last_activity_desc: Phase 10 complete, transitioned to Phase 11
-state_head: b95e2ea19fea9fa10f312f5db6fe3ac8c26d3105
+last_activity_desc: Phase 11 complete, transitioned to Phase 12
+state_head: f7dec5ca2cc31bb65468a8af5b5091548464fcb7
 progress:
   total_phases: 8
   completed_phases: 7
@@ -29,17 +29,17 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 
 ## Current Position
 
-Phase: 11 — PAL and Japanese FM
-Plan: 9 of 9
-Status: Phase complete — ready for verification
-Last activity: 2026-11-11 — Completed 11-05-PLAN.md
+Phase: 12 — The whole list in the ledger
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-11 — Phase 11 complete, transitioned to Phase 12
 
 Progress: [█████████░] 88% of v2.0
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 137
+- Total plans completed: 146
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -57,6 +57,7 @@ Progress: [█████████░] 88% of v2.0
 | 8 | 17 | - | - |
 | 9 | 12 | - | - |
 | 10 | 11 | - | - |
+| 11 | 9 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -450,6 +451,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-11 | Execute phase 11 plan 11-07 (gsd-execute-phase 11); owned pause_nmi fixture counts between the frame interrupt and the Pause NMI inside a band derived from its listing (one-shot core mutation, halved slack and a changed body each shown red), mailbox, PAL device and PAL FM rows in the lane hash file, hosted dispatch D1 run 43111533403 green on all eight lanes, draft pull request #31 with the ledger bridge proven on run 43112269415; counted check code 852; 3 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 11 plan 11-08 (gsd-execute-phase 11); compat-update adopts only catalog boots@600 rows on the judge's profiles (five negative controls shown red), library judge derives profiles from the catalog and probe, count-only run with a merge held unless the ratchet passes and the page fits the cap, fm_sweep_jp Japan-header fixture, synthetic proof of four adopted rows and a held merge, REG-04 amended and the owner's own-library run recorded as SEED-013; counted check code 859, conformance.md 32,217 bytes, no dispatch; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-11 | Execute phase 11 plan 11-09 (gsd-execute-phase 11); per-test hosted time report with a control, final head green on pull request run 43119601937 (bridge, protected comparison, perf and hash equality shown, cleanup race rerun), migration repeated on the final ledger, every timeout of the phase settled from five runs (compat.public_update raised after a Windows ARM64 timeout), be32 15 min, floors 654 and 612, REG-02 complete, SEED-012 and SEED-014, counted check code 859 of 906; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-11 | Code review and verify phase 11 (autonomous run); runner review 0 critical 2 warning, ledger review 0 critical 8 warning, fix round 1 fixed 15 (reset-script refusal removed, bounded re-read in the rehearsal delete, adopt-path and judge fixes), verification passed 4 of 4 with digest refreshed after the last timeout settlement, PR run 43126677381 green on its first attempt, counted check code 860 of 940 | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -472,7 +474,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-11-11T23:38:07.547Z
-Stopped at: Completed 11-09-PLAN.md
+Stopped at: Phase 11 complete, ready to plan Phase 12
 Resume file: None
 Phase 11 ship pull request: #31, open as a draft since plan 07; ship reuses it (gh pr ready, title check, gh pr merge --auto --squash at ship only; no new gh pr create)
 
