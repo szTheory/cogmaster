@@ -260,4 +260,4 @@ Plans:
 | 9. Light Phaser | v2.0 | 12/12 | Complete    | 2026-11-11 |
 | 10. BIOS boot | v2.0 | 11/11 | Complete    | 2026-11-11 |
 | 11. PAL and Japanese FM | v2.0 | 9/9 | Complete    | 2026-11-11 |
-| 12. The whole list in the ledger | v2.0 | 9/10 | In Progress | - |
+| 12. The whole list in the ledger | v2.0 | 10/10 | Complete    | 2026-11-12 |
