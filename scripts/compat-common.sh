@@ -41,7 +41,7 @@ function emit(k, j,line) { line=""; for(j=1;j<=10;j++) line=line (j>1?",":"") qu
 BEGIN { header1="id,title,machine,region,mapper,predicate,status,evidence,date"; header="id,title,machine,region,tv,mapper,predicate,status,evidence,date"; empty="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"; if(mode!="normalize" && mode!="cases" && mode!="docs" && mode!="ratchet" && mode!="results" && mode!="update") bad();
   cap_fixture=24; cap_unsupported=20; cap_fail=40; cap_other=40; cap_groups=60; cap_reasons=32; split(cap_groups " " cap_reasons " " cap_fixture " " cap_unsupported " " cap_fail " " cap_other,pc," ")
   # Fault prevented: a protected comparison or an update that quietly skips the catalog rules because it could not read the data, so a pass on a board that does not exist is accepted.
-  if(mode=="update" || mode=="ratchet" || mode=="docs") while((got=(getline line < ENVIRON["COMPAT_CATALOG"]))!=0) { if(got<0) bad(); split(line,t,"\t"); if(length(t[1])==40 && t[1] ~ /^[0-9a-f]+$/) titles[t[1]]=t[5]; cm[t[1]]=t[2]; cp[t[1]]=t[3]; cs[t[1]]=(t[6]==""?"unknown":t[6]); sg+=(t[2]=="sg") }
+  if(mode=="update" || mode=="ratchet" || mode=="docs") while((got=(getline line < ENVIRON["COMPAT_CATALOG"]))!=0) { if(got<0) bad(); split(line,t,"\t"); if(length(t[1])==40 && t[1] ~ /^[0-9a-f]+$/) titles[t[1]]=t[5]; cm[t[1]]=t[2]; cp[t[1]]=t[3]; cs[t[1]]=(t[6]==""?"unknown":t[6]); sg+=(t[2]=="sg"); locked+=(t[6]=="unsupported" || t[6]=="skipped") }
 }
 {
   sub(/\r$/,"" ); if(length($0)>4096 || $0=="" || $0 ~ /[[:cntrl:]]/ || FNR>8193) bad();
@@ -80,7 +80,7 @@ BEGIN { header1="id,title,machine,region,mapper,predicate,status,evidence,date";
     f[2]=titles[f[1]]; f[9]="core=" ENVIRON["COMPAT_REV"]; day(f[10]); for(i=1;i<=10;i++) r[key,i]=f[i]; next;
   }
   order[++count]=key;
-  if(mode=="ratchet") { values[stage,key]=expected; statuses[stage,key]=f[8]; ids[key]=f[1]; hid[stage,f[1]]=1; evid[stage,key]=f[9]; machines[key]=f[3]; regions[key]=f[4]; tvs[key]=f[5]; predicates[stage,key]=f[7]; next }
+  if(mode=="ratchet") { values[stage,key]=expected; statuses[stage,key]=f[8]; ids[key]=f[1]; evid[stage,key]=f[9]; machines[key]=f[3]; regions[key]=f[4]; tvs[key]=f[5]; predicates[stage,key]=f[7]; next }
   for(i=1;i<=10;i++) r[key,i]=f[i]; r[key,11]=parameter; r[key,12]=expected; r[key,13]=config; r[key,14]=cap;
 }
 END {
@@ -88,7 +88,7 @@ END {
   if(mode=="update" && (stage!=2 || ENVIRON["COMPAT_REV"] !~ /^[0-9a-f]+$/ || length(ENVIRON["COMPAT_REV"])!=40)) bad();
   if(mode=="ratchet") {
     today=day(ENVIRON["COMPAT_TODAY"]); base=ENVIRON["COMPAT_BASE_REV"]; head=ENVIRON["COMPAT_HEAD_REV"]; reasons();
-    if(stage<2 || stage>3 || base !~ /^[0-9]+$/ || head !~ /^[0-9]+$/ || head+0>4294967295 || head+0<base+0) bad();
+    if(stage<2 || stage>3 || base !~ /^[0-9]+$/ || head !~ /^[0-9]+$/ || head+0>4294967295 || head+0<base+0 || !locked) bad();
     while((readline=(getline line < ENVIRON["COMPAT_ALLOW"]))!=0) {
       if(readline<0 || ++allow_rows>4096 || length(line)>4096) bad(); if(line ~ /^#/ || line=="") continue; n=split(line,a," "); pt=(a[4] ~ /^(export|japan)\/(ntsc|pal)$/); if(n<6+pt || a[n-1] !~ /^behaviour-rev=[0-9]+$/ || a[n] !~ /^expires=/) bad();
       rev=a[n-1]; sub(/^behaviour-rev=/,"",rev); expiry=a[n]; sub(/^expires=/,"",expiry); until_day=day(expiry);
@@ -103,9 +103,8 @@ END {
       if(seen[1,key] && seen[2,key] && old!=now && old!="unknown" && !(old=="fail" && now=="pass") && !rel(key) && !allowed[key]) bad();
       # Fault prevented: a head pass or fail for an id whose catalog still says unsupported or skipped, so a board that does not exist is credited.
       if(seen[2,key] && now ~ /^(pass|fail)$/ && cs[ids[key]] ~ /^(unsupported|skipped)$/) bad();
-      # Fault prevented: hiding a failure by deleting its row, calling an unsupported row passing with no board behind it, and a pin bump that deadlocks on the base judge (rel releases a row only on a retired token and a catalog change).
-      if(seen[1,key] && old ~ /^(fail|unsupported|skipped)$/ && !hid[2,ids[key]] && !rel(key)) bad();
-      if(seen[1,key] && old ~ /^(unsupported|skipped)$/ && now!=old && !rel(key)) bad();
+      # Fault prevented: hiding a failure by deleting its row (per key: another row of the id does not excuse it), calling an unsupported row passing with no board behind it, and a pin bump that deadlocks on the base judge (rel releases a row only on a retired token and a catalog change).
+      if(seen[1,key] && old ~ /^(fail|unsupported|skipped)$/ && now!=old && !(old=="fail" && now=="pass") && !rel(key)) bad();
       if(stage==3 && ids[key] ~ /^fixture\// && ((seen[2,key] && now ~ /^(pass|fail)$/) || seen[3,key]) && (!seen[2,key] || !seen[3,key] || now!=statuses[3,key] || values[2,key]!=values[3,key])) bad();
     }
     print "compat: protected comparison passed"; exit 0

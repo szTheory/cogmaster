@@ -14,6 +14,8 @@ file(WRITE "${OUT}/catalog-open.tsv" "${catalog_unknown}${catalog_unsupported}${
 file(WRITE "${OUT}/catalog-board.tsv" "${catalog_unknown}${catalog_board}${catalog_skipped}")
 file(WRITE "${OUT}/catalog-pin.tsv" "${catalog_unknown}${catalog_unsupported}${catalog_pin}")
 file(WRITE "${OUT}/catalog-gone.tsv" "${catalog_unknown}${catalog_unsupported}")
+file(WRITE "${OUT}/catalog-empty.tsv" "")
+file(WRITE "${OUT}/catalog-nostatus.tsv" "${unknown_id}\tsms\tnone\t-\tSynthetic unknown\n${unsupported_id}\tsms\tnone\t-\tSynthetic unsupported\n")
 file(WRITE "${OUT}/reasons-open.txt" "# stand-in\ngraphic open\nmame_no open\njanggun open\n")
 file(WRITE "${OUT}/reasons-retired.txt" "# stand-in\ngraphic retired\nmame_no open\njanggun open\n")
 function(use catalog reasons)
@@ -273,6 +275,9 @@ catalog_case(r1_unsupported_pass "" "${unsupported_passes}" 2 catalog-open.tsv r
 catalog_case(r1_skipped_fail "" "${skipped_fails}" 2 catalog-open.tsv reasons-open.txt)
 catalog_case(r1_catalog_says_unknown "" "${unsupported_passes}" 0 catalog-board.tsv reasons-open.txt)
 catalog_case(closed_catalog_missing "" "" 2 missing.tsv reasons-open.txt)
+# A catalog that reads empty or holds no status switches R1 off and releases every skipped row, so the judge refuses it.
+catalog_case(closed_catalog_empty "" "" 2 catalog-empty.tsv reasons-open.txt)
+catalog_case(closed_catalog_no_status "${skipped_row}" "${skipped_row}" 2 catalog-nostatus.tsv reasons-open.txt)
 catalog_case(closed_reasons_missing "" "" 2 catalog-open.tsv missing.txt)
 # A board arrives: the token is retired and the catalog stops saying unsupported, so the row may be re-keyed and judged.
 catalog_case(retired_rekey "${unsupported_row}" "${unsupported_rekeyed}" 0 catalog-board.tsv reasons-retired.txt)
@@ -286,6 +291,11 @@ catalog_case(catalog_changed_token_open "${unsupported_row}" "${unsupported_reke
 catalog_case(unsupported_vanished_token_open "${unsupported_row}" "" 2 catalog-board.tsv reasons-open.txt)
 catalog_case(skipped_to_pass "${skipped_row}" "${skipped_passes}" 2 catalog-open.tsv reasons-open.txt)
 catalog_case(failure_deleted "${failing_row}" "" 2 catalog-open.tsv reasons-open.txt)
+# One id keeps its default row while only the PAL row (a fail) is dropped: the failure is per key, an unknown PAL row may vanish.
+string(REPLACE ",ntsc," ",pal," pal_fail "${failing_row}")
+string(REPLACE ",ntsc," ",pal," pal_unknown "${unknown_row}")
+catalog_case(fail_pal_row_dropped "${unknown_row}${pal_fail}" "${unknown_row}" 2 catalog-open.tsv reasons-open.txt)
+catalog_case(unknown_pal_row_dropped "${unknown_row}${pal_unknown}" "${unknown_row}" 0 catalog-open.tsv reasons-open.txt)
 catalog_case(skipped_deleted "${skipped_row}" "" 2 catalog-open.tsv reasons-open.txt)
 catalog_case(pass_to_unsupported "${passing_row}" "${now_unsupported}" 2 catalog-open.tsv reasons-open.txt)
 message(STATUS "compat.ratchet: ${catalog_cases} catalog cases")
