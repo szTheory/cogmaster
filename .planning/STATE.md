@@ -5,16 +5,16 @@ milestone_name: Fewer failing cartridges
 current_phase: 13
 current_phase_name: Why carts fail
 status: executing
-stopped_at: "Completed 13-03-PLAN.md (runtime: Claude Code, model: claude-sonnet-5-5)"
-last_updated: "2026-11-12T23:29:07.288Z"
+stopped_at: "Completed 13-04-PLAN.md (runtime: Claude Code, model: claude-sonnet-5-5)"
+last_updated: "2026-11-12T23:43:42.066Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 13 execution started
-state_head: 2926a86912fc3b5db9fc72e802c501c23ca93003
+state_head: 2bbe0f76679f5fb1489bab387f0973ad47e5374b
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 5
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-12)
 ## Current Position
 
 Phase: 13 (Why carts fail) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-11-12 — Phase 13 execution started
 
@@ -226,6 +226,7 @@ Last activity: 2026-11-12 — Phase 13 execution started
 | Phase 13 P01 | 9min | 3 tasks | 16 files |
 | Phase 13 P02 | 11 min | 2 tasks | 6 files |
 | Phase 13 P03 | 15min | 2 tasks | 5 files |
+| Phase 13 P04 | 13 min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -240,6 +241,8 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 13]: 13-02: core= is the first 7 characters of the commit id, +dirty only for tracked files outside .planning; retained output is COGMASTER_LIBRARY_OUT (default build/library/diag)
 - [Phase 13]: diagnose sub-rows print only existing facts (pcslot and where none are skipped); exact pc only at 5 or more rows, compared as a string
 - [Phase 13]: ledger cross-check keys a fail row as id, machine, region, tv, fm via compat-common.sh cases; matched wins over now-pass, remainder is not-in-run
+- [Phase 13]: Plan 04: a catalog title with an escape or RLO byte never reaches the awk (file(STRINGS) ends a row at the first non-printable byte, the cart is excluded); the hostile case pins skipped_excluded=1 beside a withheld printable hostile title
+- [Phase 13]: Plan 04: the leak controls plant into real captured output of an empty library, and a dirty baseline fails with text that carries no leak class, so it cannot satisfy a control's regex
 
 ### Pending Todos
 
@@ -416,8 +419,8 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 
 ## Session Continuity
 
-Last session: 2026-11-12T23:29:07.245Z
-Stopped at: Completed 13-03-PLAN.md (runtime: Claude Code, model: claude-sonnet-5-5)
+Last session: 2026-11-12T23:43:42.021Z
+Stopped at: Completed 13-04-PLAN.md (runtime: Claude Code, model: claude-sonnet-5-5)
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
