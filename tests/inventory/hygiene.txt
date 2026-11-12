@@ -5,6 +5,7 @@ ci.durations_tests	hygiene
 compat.csv	compat,hygiene
 compat.device_key	compat,hygiene
 compat.device_rejected	compat,hygiene
+compat.hardening	compat,hygiene
 compat.migration	compat,hygiene
 compat.public_update	compat,hygiene
 compat.ratchet	compat,hygiene

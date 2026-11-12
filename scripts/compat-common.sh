@@ -15,7 +15,7 @@ function day(s, a,y,m,d,n,i) {
   n=365*(y-1)+int((y-1)/4)-int((y-1)/100)+int((y-1)/400)+d; for(i=1;i<m;i++) n+=(i==2?28+(y%4==0 && (y%100!=0 || y%400==0)):(i==4 || i==6 || i==9 || i==11?30:31)); return n
 }
 function quote(s) { gsub(/"/,"\"\"",s); return "\"" s "\"" }
-function md(s) { gsub(/&/,"\\&amp;",s); gsub(/</,"\\&lt;",s); gsub(/>/,"\\&gt;",s); gsub(/\|/,"\\&#124;",s); return s }
+function md(s, o,i,p,e) { split("&amp; &lt; &gt; &#124; &#92; &#96; &#42; &#95; &#126; &#91; &#93; &#40; &#41; &#33; &#35;",e," "); o=""; for(i=1;i<=length(s);i++) { p=index("&<>|\\`*_~[]()!#",substr(s,i,1)); o=o (p?e[p]:substr(s,i,1)) } return o }
 function hex(s, n,i,d) { n=0; s=toupper(s); for(i=1;i<=length(s);i++) { d=index("0123456789ABCDEF",substr(s,i,1))-1; if(d<0) bad(); n=n*16+d } return n }
 function predicate(s, machine, region, p,n,a,b,t,frame,address,value,cfg,fm) {
   cfg="cfg:video=" (machine=="gg"?"gg":"sms") ";port1=pad;port2=pad;script=none;sha256=" empty;
@@ -37,7 +37,7 @@ BEGIN { header1="id,title,machine,region,mapper,predicate,status,evidence,date";
   if(mode=="update") while((getline line < ENVIRON["COMPAT_CATALOG"])>0) { split(line,t,"\t"); if(length(t[1])==40 && t[1] ~ /^[0-9a-f]+$/) titles[t[1]]=t[5]; cm[t[1]]=t[2]; cp[t[1]]=t[3] }
 }
 {
-  sub(/\r$/,"" ); if(length($0)>4096 || $0=="" || $0 ~ /[[:cntrl:]]/ || FNR>4097) bad();
+  sub(/\r$/,"" ); if(length($0)>4096 || $0=="" || $0 ~ /[[:cntrl:]]/ || FNR>8193) bad();
   if(FNR==1) { stage++; ver=($0==header1?1:($0==header?2:0)); if(!ver) bad(); next }
   delete f; field=1; text=""; state=0;
   for(i=1;i<=length($0);i++) { c=substr($0,i,1);
@@ -50,6 +50,8 @@ BEGIN { header1="id,title,machine,region,mapper,predicate,status,evidence,date";
   if(ver==1) { lt=f[4]; if(lt !~ /^(ntsc-u|ntsc-j|pal|any)$/) bad(); f[4]=(lt=="ntsc-j"?"japan":"export"); for(i=9;i>=5;i--) f[i+1]=f[i]; f[5]=(lt=="pal"?"pal":"ntsc") }
   for(i=1;i<=10;i++) if(f[i]=="" || length(f[i])>1024) bad();
   if(!(f[1] ~ /^fixture\/[A-Za-z0-9_.-]+$/ || (f[1] ~ /^[0-9a-f]+$/ && length(f[1])==40)) || f[3] !~ /^(sms|sms1|gg|sg)$/ || f[4] !~ /^(export|japan)$/ || f[5] !~ /^(ntsc|pal)$/ || f[6] !~ /^[a-z][a-z0-9_-]*$/ || f[8] !~ /^(pass|fail|unknown|unsupported|infrastructure_error|skipped)$/ || f[10] !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ || (f[5]=="pal" && (f[3]=="gg" || f[4]=="japan"))) bad();
+  # Fault prevented: a title that spoofs text direction, hides characters or becomes a spreadsheet formula (a lone dash is the facts placeholder).
+  if(f[2] ~ /^[=+@-]./ || f[2] ~ /\342\200[\213-\217\252-\256]|\342\201[\246-\251]|\357\273\277/) bad();
   # Fault prevented: an unsupported or skipped row with no reason, or free text a reader cannot check, so a silent refusal reads as an honest status.
   if(f[8] ~ /^(unsupported|skipped)$/) {
     if(f[9] !~ /^reason=[a-z0-9_]+$/) bad();

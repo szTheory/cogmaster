@@ -256,6 +256,72 @@ if(CMAKE_SCRIPT_MODE_FILE)
     endforeach()
     message(STATUS "compat.reasons: ${used} reasons in use, 3 controls")
     return()
+  elseif(CASE STREQUAL "hardening")
+    # Fault prevented: a title that spoofs text direction, hides characters or becomes a spreadsheet formula, a markdown title that
+    # becomes a link or emphasis when the page is regenerated, and a ledger large enough to hold the runner's time hostage.
+    set(header "id,title,machine,region,tv,mapper,predicate,status,evidence,date\n")
+    function(titled name want bytes)
+      file(WRITE "${OUT}/${name}.csv" "${header}fixture/a,${bytes},sms,export,ntsc,sega,boots@20,unknown,-,2026-10-20\n")
+      common(normalize "${OUT}/${name}.csv")
+      if(NOT rc STREQUAL "${want}" OR (want STREQUAL 2 AND NOT err MATCHES "invalid ledger record"))
+        message(FATAL_ERROR "title ${name}: expected exit ${want}, got ${rc}: ${err}")
+      endif()
+    endfunction()
+    # Bytes of the format characters (UTF-8 of U+200B, U+202E, U+2066, U+FEFF) and of the characters just outside each range.
+    string(ASCII 226 128 139 zero_width)
+    string(ASCII 226 128 174 bidi_override)
+    string(ASCII 226 129 166 bidi_isolate)
+    string(ASCII 239 187 191 byte_order_mark)
+    string(ASCII 226 128 138 below_range)
+    string(ASCII 226 129 165 below_isolate)
+    string(ASCII 195 169 accent)
+    foreach(hostile IN ITEMS "equals|=cmd" "plus|+1" "minus|-1" "at|@x" "zero_width|a${zero_width}b" "bidi_override|a${bidi_override}b"
+        "bidi_isolate|a${bidi_isolate}b" "byte_order_mark|${byte_order_mark}a")
+      string(REPLACE "|" ";" parts "${hostile}")
+      list(GET parts 0 name)
+      list(GET parts 1 bytes)
+      titled("${name}" 2 "${bytes}")
+    endforeach()
+    titled(plain 0 "Caf${accent} (x) a-b=c+d@e")
+    # The library judge writes a lone dash as the title of a fact (the catalog title replaces it), so it must parse.
+    titled(lone_dash 0 "-")
+    titled(plain_quoted 0 "\"Caf${accent} \"\"q\"\", (x)\"")
+    titled(below_range 0 "a${below_range}b")
+    titled(below_isolate 0 "a${below_isolate}b")
+    # The row cap is exactly 8,192 data rows: ids are zero padded, so the rows are already in key order and the parse stays linear.
+    set(rows "")
+    foreach(i RANGE 1 8192)
+      math(EXPR padded "100000+${i}")
+      string(APPEND rows "fixture/r${padded},t,sms,export,ntsc,sega,boots@20,unknown,-,2026-10-20\n")
+    endforeach()
+    file(WRITE "${OUT}/cap.csv" "${header}${rows}")
+    common(normalize "${OUT}/cap.csv")
+    if(NOT rc STREQUAL "0")
+      message(FATAL_ERROR "8192 rows must be accepted: exit ${rc}: ${err}")
+    endif()
+    file(WRITE "${OUT}/over.csv" "${header}${rows}fixture/r999999,t,sms,export,ntsc,sega,boots@20,unknown,-,2026-10-20\n")
+    common(normalize "${OUT}/over.csv")
+    if(NOT rc STREQUAL "2" OR NOT err MATCHES "invalid ledger record")
+      message(FATAL_ERROR "8193 rows must be refused with exit 2: exit ${rc}")
+    endif()
+    # Every active markdown character is written as a numeric entity exactly once: a title is data, never a link or emphasis.
+    string(CONCAT active "a#b [x](y) `t` ~~s~~ *b* _i_ ! \\ & < > |")
+    file(WRITE "${OUT}/md.csv" "${header}fixture/a,${active},sms,export,ntsc,sega,boots@20,pass,-,2026-10-20\nfixture/b,plain,sms,export,ntsc,sega,boots@20,pass,-,2026-10-20\n")
+    common(docs "${OUT}/md.csv")
+    string(CONCAT want "| a&#35;b &#91;x&#93;&#40;y&#41; &#96;t&#96; &#126;&#126;s&#126;&#126; &#42;b&#42; &#95;i&#95; &#33; &#92; &amp; &lt; &gt; &#124; |")
+    string(FIND "${text}" "${want}" at)
+    if(NOT rc STREQUAL "0" OR at LESS 0 OR text MATCHES "&amp;#")
+      message(FATAL_ERROR "the page must escape every active character once: exit ${rc}: ${text}${err}")
+    endif()
+    common(normalize "${ROOT}/tests/compat/ledger.csv")
+    if(NOT rc STREQUAL "0")
+      message(FATAL_ERROR "the committed ledger must be accepted: exit ${rc}: ${err}")
+    endif()
+    string(REGEX MATCHALL "\n" lines "${text}")
+    list(LENGTH lines live)
+    math(EXPR live "${live}-1")
+    message(STATUS "compat.hardening: live rows ${live} of 8192")
+    return()
   elseif(CASE MATCHES "^device_(key|rejected)$")
     set(header "id,title,machine,region,mapper,predicate,status,evidence,date\n")
     set(empty "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
@@ -366,11 +432,6 @@ if(CMAKE_SCRIPT_MODE_FILE)
   reject("${header}${row}${row}")
   string(REPLACE "boots@20" "boots@00020" alias "${row}")
   reject("${header}${row}${alias}")
-  set(many "${header}")
-  foreach(i RANGE 1 4097)
-    string(APPEND many "fixture/f${i},title,sms,ntsc-u,sega,boots@20,unknown,-,2026-10-20\n")
-  endforeach()
-  reject("${many}")
   string(REPEAT x 4194305 large)
   file(WRITE "${OUT}/large.csv" "${large}")
   common(normalize "${OUT}/large.csv")
@@ -534,11 +595,18 @@ cogmaster_add_test(NAME compat.device_rejected
   COMMAND ${CMAKE_COMMAND} "-DCMD=${compat_device_rejected}" -DCODE=1 "-DREGEX=device tokens refused: 10[^0-9]"
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake LABELS ${compat_labels} TIMEOUT 30)
 # Fault prevented: a reason the catalog uses that the closed vocabulary does not list or has retired, or a vocabulary that
-# drifts from the slots of the cartridge table that have no board. Timeout: 30 s floor; 0.3 s slowest local run, no hosted run yet, so provisional.
+# drifts from the slots of the cartridge table that have no board. Timeout: 30 s floor; 0.04 s slowest of 4 local runs, no hosted run yet, so provisional.
 cogmaster_add_test(NAME compat.reasons
   COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=reasons
     -DOUT=${PROJECT_BINARY_DIR}/tests/compat-reasons -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS ${compat_labels} TIMEOUT 30)
+# Fault prevented: a title that spoofs text direction, hides characters or becomes a spreadsheet formula, a markdown title that
+# becomes a link or emphasis on a page regeneration, and a ledger large enough to hold the runner's time hostage.
+# Timeout: 90 s floor; 2.18 s slowest of 4 local runs, no hosted run yet, so provisional.
+cogmaster_add_test(NAME compat.hardening
+  COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -DCASE=hardening
+    -DOUT=${PROJECT_BINARY_DIR}/tests/compat-hardening -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS ${compat_labels} TIMEOUT 90)
 # Timeout: 91 s; 2 x 45.10 s (windows-arm64 lane), slowest of 3 runs, run 43117518796. Its body is three runs old: the first run
 # with it (43115877197) was killed at 30 s on windows-arm64 and gives no time.
 cogmaster_add_test(NAME compat.public_update
