@@ -5,6 +5,10 @@ planted: 2026-11-11
 planted_during: phase 11, plan 09
 trigger_when: the next phase's compact page exists, or a reviewer reopens one of the items below, or a release run repeats a CI failure named here
 scope: medium
+audit_acknowledged:
+  milestone: v2.0
+  at: 2026-11-12
+  status: dormant
 ---
 
 # SEED-014: PAL and Japanese FM follow-ups left out of the phase

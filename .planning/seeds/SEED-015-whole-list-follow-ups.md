@@ -5,6 +5,10 @@ planted: 2026-11-12
 planted_during: phase 12, plan 09
 trigger_when: the next ledger work, the next CI-speed work, a pin bump that changes a catalog count, or a reviewer reopens one of the items below
 scope: medium
+audit_acknowledged:
+  milestone: v2.0
+  at: 2026-11-12
+  status: dormant
 ---
 
 # SEED-015: whole-list ledger and CI-speed follow-ups left out of the phase

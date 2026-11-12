@@ -5,6 +5,10 @@ planted: 2026-11-10
 planted_during: phase 6, plan 08
 trigger_when: a private library is configured (COGMASTER_ROM_DIR names a directory), or any real Korean, Zemina or 4 PAK dump is probed and the scan refuses or misplaces it
 scope: small
+audit_acknowledged:
+  milestone: v2.0
+  at: 2026-11-12
+  status: dormant
 ---
 
 # SEED-009: measure the board scan thresholds on real dumps

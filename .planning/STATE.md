@@ -2,38 +2,38 @@
 gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: The whole library
-current_phase: 12
-status: completed
-stopped_at: Phase 12 complete — all phases complete
-last_updated: "2026-11-12T05:51:59.620Z"
+status: Awaiting next milestone
+stopped_at: Milestone v2.0 completed and archived; shipped as v0.12.0
+last_updated: "2026-11-12T06:42:06.407Z"
 last_activity: 2026-11-12
-last_activity_desc: Phase 12 complete
-state_head: "0b33c35ba6490fd3ffc0b5c7c8db79a05ed87310"
+last_activity_desc: Milestone v2.0 completed and archived
+state_head: 9ddda28bf707ad5c53cd924430b57373173d04e1
 progress:
   total_phases: 8
   completed_phases: 8
   total_plans: 94
   completed_plans: 94
   percent: 100
+current_phase: 12
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-11-10)
+See: .planning/PROJECT.md (updated 2026-11-12)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Milestone v2.0 audited (tech_debt, no gaps); next is /gsd-complete-milestone v2.0
+**Current focus:** Planning the next milestone (none planned; the owner's batched own-library run is the one pending hand-off)
 
 ## Current Position
 
-Phase: 12 of 12 (all eight v2.0 phases complete, releases v0.5.0 to v0.12.0 published)
-Plan: 94 of 94 complete
-Status: Milestone audit written (.planning/v2.0-MILESTONE-AUDIT.md): 49 of 49 requirements, tech_debt, no blockers
-Last activity: 2026-11-12 — Milestone v2.0 audit
+Phase: Milestone v2.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-11-12 — Milestone v2.0 completed and archived (shipped as v0.12.0)
 
-Progress: [██████████] 100% of v2.0
+Next command: `/gsd-new-milestone`. The archive is in `.planning/milestones/` (v2.0-ROADMAP.md, v2.0-REQUIREMENTS.md, v2.0-MILESTONE-AUDIT.md, v2.0-PRODUCT-ROADMAP.md, v2.0-phases/).
 
 ## Performance Metrics
 
@@ -229,123 +229,9 @@ Progress: [██████████] 100% of v2.0
 
 ### Decisions
 
-The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milestone close); the full list with sources is
-`.planning/preparation/DECISIONS.md`; per-plan decisions are in the archived summaries under
-`.planning/milestones/v1.0-phases/`.
-- [Phase 05]: 05-01: the opening battery-test paragraph of testing.md moved to saves.md under Testing saves; docs.api_names takes a newline-separated DOC list through awk ARGV
-- [Phase 05]: 05-02: the BMP top-down branch stays because sips writes a negative height (-192); compare.c holds the reader and hosted helpers sit at 273 of 300 lines
-- [Phase 05]: 05-03: be32 keeps its C++ cross compiler because every configure enables C++ for the header check (static evidence, no step time measured); floored timeout comments may carry a bracketed reason
-- [Phase 05]: 05-07: CART_BODY_MAX names the 1 MiB body limit and CART_MAX derives from it; the core seeded-load oracle computes the body after the copier-header strip
-- [Phase 05]: 05-04: wasm32 is in hash-equality (COUNT 8) and CI required's needs after 12 equal main runs; the report-only exemption is deleted from ci_required, its tests and docs
-- [Phase 05]: quality.json floors set to 410 (ci) and 385 (wasm32) after plan 05-05's inventory additions; plan 05-14 sets final values
-- [Phase 05]: Added docs.budgets.no_quality control for budgets.cmake's missing quality.json failure path
-- [Phase 05]: 05-08: nightly report comment keeps only the true reason (needs.*.result); hardware comments cite preparation sections on one source line
-- [Phase 05]: 05-06: size ceilings are 15 percent above the largest measured value, rounded up to a whole kibibyte; the ratchet needs a new reasons entry to loosen
-- [Phase 05]: 05-06: ratchet fixtures are measured in lines because a file written on Windows has CRLF line ends
-- [Phase 05]: 05-09: P1 WR-02 and IN-04 deferred to SEED-007 under AGENTS rule 7, P1 WR-04 accepted risk, no script changed; P4 WR-02 recorded fixed from 04-REVIEW-FIX.md
-- [Phase 05]: README check runs against the built boot_to_play.sms fixture (owned image, digest in tests/built/expected.txt), not a tests/roms fixture: present on every fixtures lane, no ROM bytes
-- [Phase 05]: 05-11: the Dependabot exception in CI required is keyed on the pull request author and pinned by a control that widens it to any author; the control matches the diagnostic up to 'want fail' because CMake wraps the full line
-- [Phase 05]: 05-12: Dependabot auto-merge reads the PR title as data via gh into a file; single updates merge only on same-major dotted versions; policy.dependabot added 16 counted lines (719 of 745)
-- [Phase 05]: 05-13: the digest job restates contents read beside its three added permissions (a job's permissions replace the workflow's); policy.digest accepts contents read in the job block and nothing outside the decision's four
-- [Phase 05]: 05-13: a red pull request is read from the newest CI run on its head commit via actions/runs?head_sha, never statusCheckRollup; the sound-code nightly run is the plain post-merge dispatch 42762969470 on main (head f69ab03 contains 8faf841)
-- [Phase 05]: 05-14: the perf gate is armed in a ci.yml-only commit (950ff2c); a throwaway draft PR 18 failed perf (verdict=FAIL, +4.87 percent) with every other job green; final head 73547df passed pull_request run 42764989102
-- [Phase 05]: 05-14: quality.json floors tests.ci 422 and tests.wasm32 397 follow the inventory line counts, not a local macOS ctest count
-- [Phase 06]: 06-01: the six Korean-board slots stay board 0 with reason 'mapper arm not present' until each arm lands; slot ids equal row position plus one under a start-up self-check; emitted counts unique table rows so excluded records add to seen only
-- [Phase 06]: 06-02: the cart_info appended block starts at the version 9 size 376 and adds 152 bytes; api_version compares the API number as a number because awk sub() leaves a string and k<=v stopped scanning older programs at API 10
-- [Phase 06]: 06-03: the library reads 36-byte rows by binary search with titles in tests/compat/catalog.tsv; the old table equals the new one outside the EEPROM persistence column; the slot-by-name lookup is a bounded loop because strcmp is not linkable
-- [Phase 06]: Mapper reset clears the whole struct; ext boards live behind the default arms in mapper_ext.c; boot_to_play delta_bp=0 vs main 8c97f8e (runs 42781709144, 42781713344)
-- [Phase 06]: size.cartdb starts at the 100 KB hard bound (102400); a follow-up replaces it with the first hosted Linux x64 value plus about 15 percent. The pin check is a mode of cart.generator so no inventory changes.
-- [Phase 06]: Ext boards fault with mapper_range only when the highest selected 8 KiB bank is at or past twice the page count and the page count is not a power of two
-- [Phase 06]: 06-07: 4 PAK writes to $FFFD-$FFFF page slots 0-2 as MAME's inherited Sega write_mapper does (register-only reading cited, not implemented); Zemina and Nemesis share one write arm; the generator self-check refuses the temporary slot reason
-- [Phase 06]: 06-08: scan thresholds stay T=3 with margins 2s+2 and 2y+2 (no private library, SEED-009 holds the measurement); the Sega wins only at s >= 2x+2 and no store sites at all means Sega by default; a family failing its size rule or under a Game Gear header falls to the doubt zone naming the candidate
-- [Phase 06]: 06-09: the refusal text lives in probe.c beside the board names and main.c makes one call; no test name added, three existing runner cases extended
-- [Phase 06]: 06-10: the Korean, Zemina and 4 PAK images are detected by the scan (board_source heuristic), not by fixture_facts rows; a 4 PAK slot powers up on page 0 (banks 0 and 1)
-- [Phase 06]: 06-11: no perf allow line; boot_to_play delta_bp 0 on final head run 42787536409, eight-lane hash equality green
-- [Phase 07]: 93C46: EWEN/EWDS act on the completing clock; WRITE, ERASE, WRAL and ERAL run when chip select falls, so one change is reported per completed command
-- [Phase 07]: 07-02: COGMASTER_BOARD_SEGA_EEPROM appended at 10 with API 11, behaviour 13 and state format 13; the probe word is sega_eeprom and the catalog generator must match it
-- [Phase 07]: 07-03: board 10 keeps its banks in the ext arm over the existing bank array; the chip is visited with per-phase count bounds (command 0-7, data and read 0-15) and CS low implies idle; a generation moves only while a battery span exists
-- [Phase 07]: 07-04: the eeprom slot sets persistence 2 and 128 bytes by board constant; persistence 3 is no longer emitted
-- [Phase 07]: 07-05: the owned EEPROM fixture row is region 1 (export, Game Gear header code 6); cartdb --fixture accepts exactly the battery and EEPROM row shapes
-- [Phase 7]: 07-06: the EEPROM fuzz entry opens the chip window itself and bounds the command phase at 7 clocks; a generated eeprom-clocks seed drives the replay
-- [Phase 07]: EEPROM import takes none or the whole 128-byte span; battery import unchanged; the libretro .info declares saves behind libretro.span.* host guards
-- [Phase 07]: 07-08: --save-interval 0 is accepted without --save-dir (off); a periodic flush failure ends the run at once and the exit flush is unchanged; the EEPROM refusal tells oversize from a wrong length by comparing the read length with the span
-- [Phase 7]: 07-09: the same test names are registered on every lane; only the asserted behaviour differs per platform (dirsync, next_index)
-- [Phase 7]: 07-09: the kill test locates the kill with a --png file because a killed process loses unflushed stdout
-- [Phase 7]: 07-10: RetroArch writes saves to saves/cogmaster/<name>.srm; the hosted restart steps compare that file with the runner after each pass and the control asserts exit 1 with REGEX ^ because compare_files is silent
-- [Phase 08]: Port layer: cogmaster__ports_pins and cogmaster__io_th_changed take every pad pin and every TH write, pinned by a 65536-pair differential; no behaviour change
-- [Phase 08]: 08-02: relaxed shape pins landed before the header growth; header, asserts and v12.c in one commit; embedding paragraph 613 bytes, file 34,624
-- [Phase 08]: 08-03: set_input copies min(tag, ours) & ~3 bytes with a byte loop into a zeroed local (a variable memcpy into a known-size local emits __memcpy_chk on Apple clang and abi.undefined rejects it); axes are range-checked to +-32767 and dropped until plan 08-05
-- [Phase 08]: 08-04: the glasses cut is (frame_lines - 96) * 684 - 607 on the window tick; one rare-path helper owns every $FFF8-$FFFF store so the RAM branch keeps one compare; dispatch 1 green, H=12302997 B=12302854 delta_bp=0
-- [Phase 08]: 08-05: both MAME and ares put the Paddle's high nibble on TR high, so the nibble follows the device's own clock even when the console drives TR; the pad is driven by the TH wire, not the echoed readback, so Japan and export give the same bytes
-- [Phase 08]: 08-05: SPORTS_IDLE_TICKS and PADDLE_HALF_TICKS live only in src/internal.h; the state cross-checks read the value each sio call returns and no new field name begins input_; pending motion survives a soft reset and a load zeroes it
-- [Phase 08]: The state test requires the loader and an independent checker to agree in both directions on every patched state, so an unreachable rule is caught as well as a loose bound
-- [Phase 08]: The pad fuzz target names the saved fields to change in ten bytes after the profile byte and moves ticks only inside the frame window with a bus sync, so its state leg always has input and every instance it saves is one a run could have saved
-- [Phase 8]: Plan 08-07: the table's controller intent is held in two instance bytes outside the saved fields and resolved against the availability rule in get_info; a paddle row with no region reads as Japan in cart_fact_to_info, 1 of 1658 rows moved
-- [Phase 8]: Plan 08-08: auto resolves from cogmaster_info after load (already degraded by the profile), so only an explicit device choice can exit 77; the probe prints raw table intent
-- [Phase 08]: Plan 08-09: a pad or an empty port accepts only zero axes, a Paddle or Sports Pad any in-range value; the refusal line names the port and device; --eyes prints last after every other output line
-- [Phase 8]: Sports Pad idle timeout probed at 511 and 512 cycles (1,533 and 1,536 ticks): a gap is whole Z80 cycles of 3 ticks
-- [Phase 8]: Replay recorder keeps motion within 100 counts a frame and drains audio each frame so the last frame follows the last delta and a restored copy matches in state bytes
-- [Phase 08]: PADDLE_HALF_TICKS stays 299: the eight criterion sweep lengths read 126 to 150 ones of 256; src/internal.h untouched
-- [Phase 08]: The Paddle position oracle clamps after every frame's motion (saturating sum), matching the core; the sweep's two shortest periods (29, 31) are the detect loop unrolled because a padded DJNZ loop cannot be shorter than 43 cycles
-- [Phase 08]: 08-12: the eye counts are simulated from the literal table (checked against the .DB row of glasses.asm) over 30 frames, the mailbox judged in a second run
-- [Phase 08]: 08-12: exact-byte files in script-mode runner tests go through file(CONFIGURE) with a newline style, since file(WRITE) writes CRLF on Windows
-- [Phase 8]: 08-13: the two device fixtures' table rows are plain ROM, SMS, persistence 0 and region 0, so the table adds only the default controllers and the Paddle's Japan region
-- [Phase 8]: 08-13: any later edit of sports_pad.asm or paddle.asm fails the build identity check until its row in fixture_facts.txt is re-pinned and src/cartdb.inc regenerated
-- [Phase 08]: 08-14: cogmaster__eyes_anaglyph is a pure host function (red from left, green and blue from right, top bits zero) tested by a closed-form grid plus a bad-variant control; the test is its own executable with one case name
-- [Phase 08]: 08-15: a device the profile cannot take is found by one set_input probe per port at load, so the one log line comes at load and each port is judged alone
-- [Phase 08]: 08-15: glasses.sms draws nothing, so the stereo cases use two guests the test builds and a model of the rule built from the library's own eyes and pictures
-- [Phase 08]: 08-16: the ledger key device token is pad|none|paddle|sports in the normalizer, library lane, fixture lane and doc; changed-key ratchet cases are paired with adjacent-key cases because a rejecting grammar also answers exit 2
-- [Phase 8]: Phase 8 closes with the controller guide in docs/controllers.md as the one behaviour prose; the local library judge is carried to ship because the agent had no library location, and the cogmaster_3d_view default stays left
-- [Phase 09]: Phase 9 plan 1: COGMASTER__DEVICE_LAST stays SPORTS_PAD until the plan that teaches device_ok and the models about the phaser; v13.c pins no phaser answer
-- [Phase 09]: Phase 09 plan 2: the sensor mask on th_pins applies only to an input TH on a non-Game-Gear machine; th_edge takes the in-line tick as uint32_t and io_th_changed passes m->bus.t, keeping the absolute tick for ports_th
-- [Phase 09]: Phase 09 plan 3: a power reset keeps the pending aim like a soft reset and only a load zeroes it, because cogmaster_reset never touches pending_input; the docs say a load parks the aim
-- [Phase 09]: Phase 09 plan 4: gun_wrap runs after the height update so the next picture is armed for the height it has, and a sync renders ahead only when a due dot is not yet emitted, so a gun that finds nothing leaves the render cursor as an unplugged run does
-- [Phase 09]: Phase 09 plan 5: a fuzz frame brings the lazy sensor up to the beam before run_frame because a device change applied from a mid-window state drops dots a lazy sensor has not yet looked at (unreachable through the public API); the noshot case runs 160 frames per profile, past the last new poll-loop alignment, instead of 600
-- [Phase 09]: Plan 09-06: runner phaser aim is validated per device in input_motion_ok (0 0, or x 1 to 256 and y 1 to 240); no crosshair or mapping in the runner
-- [Phase 09]: Plan 09-07: the fixture's rows are derived by a CMake oracle from the image's .DEFINEs and judged on the port1 and port2 profile labels, the first part runs in frame 4 after a two-flag set-up wait, and ports.state.gun is settled at 20 s (4.52 s hosted) instead of its provisional 120 s
-- [Phase 09]: Plan 09-08: no_title_table strips comments then scans exactly five sensor files (a 12-line awk case, 735 of 922 counted lines), and ports.gun.identity flips the whole header identity of the owned fixture over four profiles and compares mailbox, frame and frame count against an unflipped and a parked run
-- [Phase 09]: Host aim cursor is a 1-based aim (centre x + w / 2 + 1); out-of-range pointers, empty rectangles and a NULL rectangle park as 0 0; an aim outside the rectangle draws no crosshair
-- [Phase 09]: Plan 09-10: the libretro Light Phaser aims by the frontend pointer through the last frame's rectangle or by a pad, stick and mouse cursor, a gun on a port whose option is not the phaser is ignored, and the crosshair is drawn after the conversion loop into the output buffer only in the native RGB444 colours (white 0x0FFF, red 0x000F, green 0x00F0, yellow 0x00FF)
-- [Phase 09]: Plan 09-11: table controller code 1 maps to the Light Phaser with no region or machine effect (a Game Gear degrades it through the availability rule), and the ledger token lphaser is accepted in every key grammar copy while only auto is refused
-- [Phase 9]: Soft reset and power reset keep a Light Phaser aim and only a load parks it; the three libretro gun cases run in their own loop at the 10 s floor
-- [Phase 10]: Release scan scratch directory is DIR.extract, one per staging directory, so parallel controls cannot clobber each other
-- [Phase 10]: firmware_scan reads the two digest tables through cmake -E cat so a missing table is empty and fails vacuous; the tables themselves are not hashed as scanned files
-- [Phase 10]: The window scan rolls a 32-byte window through od output line by line (one hash lookup per byte) because sliding substr over one long hex string is quadratic in BWK awk; the end and low_entropy controls use their own dumps since the plan's dump repeats every 256 bytes
-- [Phase 10]: The hygiene job timeout is 3 minutes after a measured 63 s, and hosted dispatch 1 saw perf, be32 and wasm32 fail at their apt-get step on runner DNS in three attempts and on main, so those legs are unproven for this branch
-- [Phase 10]: 10-03: the media struct grows at its end (reserved3, bios, bios_size) and only its size pin loosens to >=; every offset pin stays exact
-- [Phase 10]: 10-04: mem_slow is read only by mem_read; the cold decoder and peek decode from mem_ctrl and bios.size, so a direct mem_ctrl write stays truthful until plan 05 adds the load and state recompute sites
-- [Phase 10]: 10-05: a BIOS in the media is the request to boot from it; load and both reset kinds call cogmaster__boot_power_on when bios.size is set, the state binds boot mode and BIOS CRC-32 at header offsets 53 and 54, and state_load recomputes mem_slow after APPLY
-- [Phase 10]: 10-05: hosted dispatch D2 (run 43062734904) is green on every lane after the runner DNS recovered, perf delta_bp -11 against a fresh main run 43063808940, and the four bios test timeouts stay at the 20 s floor (slowest 0.57 s)
-- [Phase 10]: 10-06: fuzz_bios is a third harness entry whose input is the BIOS image against a fixed owned cartridge; no existing seed, harness or replay was edited, and bios.hostile bounds seven owned hostile images to one instruction of overshoot
-- [Phase 10]: 10-07: the equivalence check steps the BIOS instance inside frames and closes each with cogmaster_run_frame (a raw step past the deadline leaves renderer state that state load refuses), the probe cartridge is 64 KiB so the paging literals 0, 0, 1, 2 are meaningful, and 88 compared and 69 excluded names are pinned with a reason for each exclusion
-- [Phase 10]: 10-08: the BIOS helper takes its recognition table as an argument so host.bios injects its own rows and exercises the real bytes-to-digest-to-name path, the read is one fread of 8193 bytes with sentinel-checked bounds, and cogmaster-host is not linked to the core in CMake (consumers already link it; a second link gave duplicate-library warnings)
-- [Phase 10]: 10-09: the runner reads the BIOS after the cartridge and decides the Game Gear refusal first, an absent BIOS path is exit 77 while any other read error is 1, every BIOS text is fixed and never prints the path, and the cross-lane device row runs two frames because from the third a BIOS run of the probe hashes like a fast one
-- [Phase 10]: 10-10: the libretro BIOS option does nothing without content and logs one warning naming only the file on every other refusal, a Game Gear game never asks for the system folder, the region picks Japan then PAL then the export file with no fallback, and the two libretro timeouts take the 20 s floor from D3
-- [Phase 10]: 10-11: BIOS wording amended to what was built, BIOS-01..05 complete; every phase timeout settled at the 20 s floor from run 43074158512; final dispatch run 43076225840 and nightly 43076276567 green, perf delta -11 bp; real-BIOS residue stays an owner hand-off in SEED-010
-- [Phase 11]: Plan 01: the tree scan reads each file once into one temporary file (counted lines unchanged at 845) and the analyzer runs four processes at a time; local medians 27 to 21 s and 21 to 16 s
-- [Phase 11]: Plan 02: --fm is strict and once and the core's profile refusal gives exit 77 for a Game Gear; audio@F=H copies the running transition hash so one drain serves several frames; an audio case with a reset script exits 2 at load; every frame holds exactly floor(f x N / D) minus floor((f - 1) x N / D) samples on both TVs
-- [Phase 11]: Ledger parser: a format 1 row is widened to ten slots at read time and the default fm is resolved once in predicate(); audio is accepted only for fixture or built ids with script none
-- [Phase 11]: Plan 04: the committed ledger is the normalize output (format 2, nothing moved); the ci.yml bridge triggers only on the exact format 1 to format 2 header literal pair compared as strings, so a quoted, CR-damaged or other header fails closed in the base judge; apt calls retry three times
-- [Phase 11]: Plan 05: audio rows copied by script from the transition pins; compat.fixtures compares region, tv and fm with the runner's execution line against literal tables and the core default with the awk default read through normalize on a ledger that omits fm
-- [Phase 11]: Plan 11-06: vdp_vtable expectations come from the literal V counter intervals and are recomputed in closed_form; a one-line core mutation was shown to fail the PAL 192 mailbox test (restored); NTSC 240 is built but not judged
-- [Phase 11]: Plan 11-07: the Pause count band is [floor((C - 132) / 78), floor((C - 36) / 78)] derived from the listing (guarded 78-cycle body, 76-cycle frame handler), a one-shot core one line late fails it and moves V to 0000; dispatch D1 run 43111533403 is green on all eight lanes and draft pull request #31 ran the ledger bridge (run 43112269415, cleanup rerun for a read-after-delete race)
-- [Phase 11]: Plan 11-08: compat-update adopts a new key only for a catalog id with the catalog machine and mapper, boots@600 under the default config, pass or fail, on the judge's profile whitelist; the library judge derives profiles from the catalog and probe, and the merge is held unless the ratchet passes and the page stays under the docs cap; REG-04 is amended to the synthetic proof and the owner's own-library run is SEED-013
-- [Phase 11]: Timeouts are max(floor, 2 x the slowest hosted second) from raw seconds over five runs; the be32 job is 15 minutes by the mechanical rule; the rehearsal cleanup race stays a seed (SEED-014)
-- [Phase 12]: Plan 12-01: the Sega Graphic Board is slot 21 (graphic, board 0) set by the generator for any fact with controller code 4, so the table refuses its SHA-1 (runner exit 77); behaviour revision 17, API 14 and state 16 unchanged; src/state.c's 16 is a header offset and was left alone
-- [Phase 12]: Plan 12-01: catalog v2 is ten fields (status, reason, region, port1, port2 appended); the 19 compound entries are catalog lines with the SHA-1 of mame/<list>/<name> as id, machine from the list name; a same-SHA-1 group takes the worst status (any supported no is skipped mame_no); pin counts are measured and reconciled inside the generator (1463 = 1476 - 13)
-- [Phase 12]: A title may be a lone formula character (the library judge writes a lone dash as a fact title) but a formula character followed by any byte is refused
-- [Phase 12]: md() escapes in one pass over a lookup table so no numeric entity is escaped twice, identical on BWK, mawk and gawk awk
-- [Phase 12]: compat.reasons runs its controls in process and reuses its two live awk spawns
-- [Phase 12]: Open slot reasons in reasons.txt must equal the board-0 non-SG-1000 slot names, so retiring a token needs the slot table to change with it
-- [Phase 12]: Plan 12-03: an update candidate stating unsupported or skipped for an existing key is refused (discarded), not kept with a reason: the library judge observes pass and fail only and those two statuses are catalog facts the seed writes
-- [Phase 12]: Plan 12-03: the ratchet and the update load the catalog and reasons unconditionally and exit 2 on an unreadable file; one release predicate (a retired token and a catalog no longer unsupported for an unsupported row, a catalog no longer skipped for a skipped row) governs every way such a row may leave
-- [Phase 12]: Plan 12-04: the page is bounded by six caps in one BEGIN assignment and a per-section counter; fixtures, unsupported, fail and pass rows are capped sections, skipped and unknown rows appear only in the counts and tables; the 600-byte line check forced soft wrapping of the intro
-- [Phase 12]: Plan 12-05: the seed learns existing rows by zipping normalize and cases output, so the shared parser stays the only CSV reader; the whole-list legs are file-path functions that controls call in-process over stand-ins; the idempotence check seeds with 1970-01-01 so a re-dated row always differs
-- [Phase 12]: Plan 12-06: a derived profile is skipped only when the loop over ledger rows ran it for the same image (probe identity equal to the ledger id), so a seeded default row flips and the PAL row still arrives; a skipped id gets derived runs whose facts the update guard discards, a device id gets none; a probe wrapper proves the real-cart path without a ROM
-- [Phase 12]: Plan 12-07: the exit command is one function that returns a status, a message and lines, so the self test runs 22 controls in process and starts one cmake child; the tie accepts exactly unmet with the flag present or met with it absent, so the owner's rows force the removal in the same change; judged cartridge rows are image identities of the catalog, never a fixture or compound id
-- [Phase 12]: Plan 12-08: the claims check reads the flag from the template and judges README, description and page prose in both states; the page is read by its non-table lines because table rows print catalog titles; the README says cartridges for the SG-1000 so the digit rule stays free of false positives
-- [Phase 12]: Plan 12-09: the owner's standing CI instruction and the phase's measured hosted jobs live in SEED-015 and are pointed to from the CI speed section of docs/maintaining.md by directory, with no planning id; the bytes for the new sentences came from the generator-printed per-slot count list
-- [Phase 12]: Plan 12-10: a test timeout is max(floor, 2 x slowest hosted seconds) on raw seconds from two dispatches; over-half raises for compat.public_update, compat.fixtures and compat.csv; the build job limit follows the measured report (9 minutes) and is verified by the pull request run
+The v1.0 and v2.0 decision logs are in PROJECT.md Key Decisions (outcomes filled at milestone close); the full list with
+sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the archived summaries under
+`.planning/milestones/v1.0-phases/` and `.planning/milestones/v2.0-phases/`.
 
 ### Pending Todos
 
@@ -489,6 +375,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-12 | Execute phase 12 plan 12-10 (gsd-execute-phase 12); dispatch D2 run https://github.com/szTheory/cogmaster/actions/runs/43158408243 green on the complete code (D1 run 43153144670), every provisional timeout settled from the two runs (compat.public_update, compat.fixtures and compat.csv raised, build job 9 min), the old base judge and the new judge pass on the final ledger and flip nothing, pinned re-run and mawk page proxy equal, exit command exit 0 with judged_cart_floors=unmet flag=present, floors 669 and 627, LEDG-01 to LEDG-05 complete as amended, owner's own-library run carried as a hand-off and never a gate; 2 tasks, 3 commits, counted check code 885 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Code review and verify phase 12 (autonomous run); ledger review 0 critical 7 warning, core review 0 critical 10 warning, fix round 1 fixed 17 (R2 per key, shared flag reader, bounded page cells, NUL and bidi hardening, honest wording), verification passed 5 of 5 with the flag staying per the owner decision, dispatch D3 run 43163239085 green on the final head, counted check code 887 of 940 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Milestone v2.0 audit (gsd-audit-milestone; integration check, audit report, documentation drift fixes in ROADMAP, REQUIREMENTS, SEED-013, SEED-015 and this file) | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Complete milestone v2.0 (gsd-complete-milestone; override close with 7 seeds acknowledged, archive, PROJECT.md review, retrospective, no tag because release-please owns tags) | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -518,11 +405,11 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 ## Session Continuity
 
 Last session: 2026-11-12
-Stopped at: Milestone v2.0 audit written — all phases complete and released
+Stopped at: Milestone v2.0 completed and archived; shipped as v0.12.0
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
 ## Operator Next Steps
 
-- Merge the audit and documentation fixes on a `milestone/v2.0-close` pull request, then run `/gsd-complete-milestone v2.0` in a fresh session (one GSD step per session).
+- Start the next milestone, when the owner approves scope, with /gsd-new-milestone.
 - Owner hand-offs (batched, none is a gate): SEED-013 `sh scripts/library.sh run` and, only when it prints `judged_cart_floors=met`, the flag-removal pull request; SEED-010 pad, Light Phaser and BIOS judges; SEED-009 scan thresholds.

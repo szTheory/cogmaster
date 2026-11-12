@@ -2,7 +2,7 @@
 title: "Product roadmap (rolling)"
 summary: "Immediate / Near / Mid / Long direction for cogmaster with the evidence and promotion trigger for each horizon; ROADMAP.md is the execution contract, seeds hold the source narratives."
 read_when: "At every new-milestone and complete-milestone step, and when a finding changes priorities."
-updated: 2026-11-10
+updated: 2026-11-12
 ---
 
 # Product roadmap (rolling)
@@ -31,14 +31,15 @@ platform. Requirements: `milestones/v1.0-REQUIREMENTS.md`. Evidence: `.planning/
 
 **Unresolved debt carried into the next milestone** (none blocking; SEED-007 holds the tune-up): provisional CI timeouts (windows-arm64 failed one main run), the perf gate still in report mode with the `boot_to_play` allow line to 2027-01-07, open review dispositions from phases 1, 2 and 4, the README's missing ROM step, nightly lanes not yet run on the sound code, and third-party sound ROM conformance with no lane.
 
-## Near — v2.0 "The whole library" (SEED-001)
+## Shipped — v2.0 "The whole library" (v0.5.0 to v0.12.0)
 
-The remaining mappers (Korean, 93C46 EEPROM), the Light Phaser, 3-D glasses, Sports Pad and Paddle, the BIOS
-boot path with the user's dump, `.srm` interop, full PAL and Japanese FM over the ledger, and the ledger over
-the whole CC0 MAME lists. **Trigger:** v1.0 shipped. **Why next:** what collectors and players notice first
-after the core plays; the owner's cart collection becomes the ratchet's input. Opens with SEED-007.
-**Weighed at the same boundary:** the browser build (SEED-008) and SG-1000/SC-3000 mode (SEED-006), which can
-ride inside v2.0 if the VDP's legacy modes are already needed for an SMS title.
+Shipped 2026-11-12 with 49 of 49 requirements, audit status tech_debt and no gaps (`milestones/v2.0-MILESTONE-AUDIT.md`). Eight phases, each merged by one pull request and released automatically: (5) the tune-up of the v1.0 debt; (6) the Korean boards, Zemina, Nemesis, 4 PAK and Hi-Com detected hash-first; (7) 93C46 EEPROM and battery saves that survive a restart; (8) Sports Pad, Paddle and 3-D glasses at pin level; (9) the Light Phaser; (10) BIOS boot from the user's own dump; (11) PAL and Japanese FM over the ledger; (12) the whole Master System and Game Gear list in the ledger, with `compat.exit` tying `is_experimental` to the judged rows. The flag stays until the owner's own-library run meets the floors (decision 2026-11-12). Requirements: `milestones/v2.0-REQUIREMENTS.md`.
+
+**Unresolved debt carried into the next milestone** (none blocking): the owner's batched run (SEED-013, with the SEED-010 judges and the SEED-009 thresholds), timeout drift in asan, the nightly bench and bench-wasm32 and the other CI-speed items (SEED-015, SEED-007), BIOS follow-ups (SEED-011), the hash-less audio predicate (SEED-012) and PAL and Japanese FM follow-ups (SEED-014).
+
+## Immediate — none
+
+No milestone is in progress and no scope is owner-approved. **Preferred next step:** the owner's one batched own-library run, which can remove `is_experimental` (SEED-013), then a small tune-up from SEED-015 when the weekly digest names the drifted jobs. **Alternatives weighed:** v3.0 states and movies (the next horizon below), the browser build (SEED-008) and SG-1000/SC-3000 mode (SEED-006). Nothing moves into Immediate until the owner approves scope at `/gsd-new-milestone`.
 
 ## Mid — v3.0 "States and movies" (SEED-002), v4.0 "Measured accuracy" (SEED-003)
 
@@ -62,3 +63,4 @@ instructions-per-frame budget; each seed names its own.
 | 2026-10-18 | Initial horizons set during preparation | Library shares from the CC0 MAME lists (653 SMS, 823 GG, 214 SG-1000 entries at `1d7a454ed79e`); sibling velocity evidence (every phase a release; fixtures chosen at kickoff); owner decisions: SMS + GG in v1.0, SG-1000 as a seed, repo created at preparation |
 | 2026-10-18 | The browser build is SEED-008 with a wasm32 hash lane already in phase 1 | Owner: running efficiently in the browser through WebAssembly is very important |
 | 2026-11-10 | v1.0 shipped and archived; horizons unchanged, nothing yet moved into Immediate | The order of v2.0 and later was not re-ranked: no new evidence at close, and the next scope needs owner approval at `/gsd-new-milestone` |
+| 2026-11-12 | v2.0 shipped and archived; v3.0 stays next in order, nothing moved into Immediate | The owner's own-library run, not a new milestone, is what removes `is_experimental`; no new evidence re-ranks states and movies, the browser or SG-1000, and the next scope needs owner approval at `/gsd-new-milestone` |
