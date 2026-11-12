@@ -77,5 +77,16 @@ else
   echo 'merge: held (update refused)' >> "$out/summary.txt"
   merge=refused
 fi
+# Fault prevented: an owner's run whose merge says nothing about whether the experimental flag must now leave, or a printed failure
+# mistaken for a release gate: the command's status is printed and never this script's. Counts only; a stand-in catalog has no pin counts.
+counts=-DCOUNTS=none
+[ "$COGMASTER_CATALOG" != "$root/tests/compat/catalog.tsv" ] || counts=
+if cmake -DLEDGER="$ledger" -DINFO="$root/libretro/cogmaster_libretro.info.in" -DCATALOG="$COGMASTER_CATALOG" $counts \
+  -DOUT="$out/exit" -P "$root/tests/compat/exit.cmake" > "$out/exit.txt" 2>&1; then status=0; else status=$?; fi
+sed -n 's/^-- \(exit: .*\)$/\1/p' "$out/exit.txt" >> "$out/summary.txt"
+if [ "$status" -ne 0 ]; then
+  echo "exit: failed ($status)" >> "$out/summary.txt"
+  sed -n 's/^  \(exit: .*\)$/\1/p' "$out/exit.txt" | sed -n 1p >> "$out/summary.txt"
+fi
 cat "$out/summary.txt"
 [ "$merge" != refused ] || exit 1

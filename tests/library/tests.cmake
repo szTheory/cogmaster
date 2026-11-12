@@ -95,6 +95,16 @@ if(CMAKE_SCRIPT_MODE_FILE)
       OR NOT applied MATCHES "fm: carts=1 boots_pass=[01] boots_fail=[01]" OR NOT applied MATCHES "library-judge 1")
     message(FATAL_ERROR "the synthetic catalog run must add the PAL row and print the count block: ${applied}")
   endif()
+  # Fault prevented: an owner's run whose merge says nothing about whether the experimental flag must now leave. The printed block comes
+  # from the command, and the same command over the merged stand-in ledger must find the verdict unmet (a floor silently at zero shows).
+  if(NOT applied MATCHES "exit: cart_pass=[0-9]+/20" OR NOT applied MATCHES "judged_cart_floors=unmet" OR applied MATCHES "exit: failed")
+    message(FATAL_ERROR "the run must print the exit block with an unmet verdict: ${applied}")
+  endif()
+  execute_process(COMMAND "${CMAKE_COMMAND}" "-DLEDGER=${OUT}/standin/ledger.csv" "-DCATALOG=${OUT}/catalog.tsv" -DCOUNTS=none
+    "-DOUT=${OUT}/exit-standin" -P "${ROOT}/tests/compat/exit.cmake" RESULT_VARIABLE rc OUTPUT_VARIABLE exit_text ERROR_VARIABLE exit_err)
+  if(NOT rc STREQUAL "0" OR NOT exit_text MATCHES "judged_cart_floors=unmet flag=unchecked")
+    message(FATAL_ERROR "the command over the merged stand-in ledger must exit 0 with an unmet verdict: ${rc} ${exit_text}${exit_err}")
+  endif()
   file(READ "${OUT}/standin/ledger.csv" merged)
   string(REGEX MATCHALL "\n" merged_lines "${merged}")
   string(REGEX MATCHALL "\n" standin_lines "${standin_ledger}")
@@ -200,6 +210,14 @@ esac
   library("${OUT}/empty")
   if(NOT text MATCHES "candidates=0 attempted=0 evaluated=0 coverage=0")
     message(FATAL_ERROR "empty library must report zero evaluated coverage")
+  endif()
+  # Fault prevented: a printed failure of the exit command mistaken for a release gate. A judge malfunction recorded in the ledger fails
+  # the command's second leg; the block says so and the script still exits 0 (library() requires status 0).
+  set(seed "\"${lines_sha}\",\"Synthetic lines\",\"sms\",\"export\",\"pal\",\"none\",\"${cfg_off}\",\"infrastructure_error\",\"-\",\"2026-11-11\"\n")
+  library("${OUT}/empty")
+  set(seed "")
+  if(NOT text MATCHES "exit: failed \\([0-9]+\\)" OR NOT text MATCHES "exit: leg 3: 1 rows have status infrastructure_error" OR text MATCHES "judged_cart_floors")
+    message(FATAL_ERROR "a failing exit command must be printed with its leg and never change the script status: ${text}")
   endif()
   # Fault prevented: a real cart (its probe names the ledger id, unlike the owned fixtures) whose seeded default row the loop over the
   # ledger already judges being judged a second time, or whose missing PAL profile is skipped because the default row exists. The
