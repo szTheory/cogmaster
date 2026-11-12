@@ -109,3 +109,4 @@ turns that status into exit 77. The slots and their reasons as the table states 
   emulated.
 - **Master Gear:** a converter, not a game.
 - **X-Terminator:** a cheat device.
+- **Sega Graphic Board:** a peripheral that is not emulated; its one dump is refused, where it once read as a plain pad.

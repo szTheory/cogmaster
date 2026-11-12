@@ -22,6 +22,7 @@ this file covers data. Written on 2026-10-18, before any such file exists. `[AP.
   commercial game or a real BIOS.
 - A digest of a commercial title's emulated frame, RAM or sound is a derived fact of our own output and is never
   committed; ledger rows for such titles carry `boots` predicates only, and compat-update never adds a digest.
+  A ledger row says what our core did with a dump the maintainer owns; no dump byte, no digest of our output.
 - Bulk tables from databases that state no licence (No-Intro DATs, emulator header databases, ROM-pack headers,
   SMS Power!'s game lists). MAME's CC0 `hash/sms.xml`, `hash/gamegear.xml` and `hash/sg1000.xml` are the allowed
   databases [AP.01].
@@ -121,7 +122,8 @@ are in HOSTS-AND-INTEGRATION 1.
 
 ## 6. Names
 "Sega", "Master System", "Mark III", "Game Gear", "SG-1000" and "SC-3000" are used only to say what the core
-emulates. The project is not affiliated with or endorsed by Sega.
+emulates. The project is not affiliated with or endorsed by Sega. Titles identify a cartridge by public catalog data,
+belong to their owners and imply no endorsement.
 
 ## 7. If something gets in
 Remove it and rewrite the branch before pushing; the push hook scans every commit about to leave. If it was
