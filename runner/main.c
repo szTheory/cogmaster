@@ -2,6 +2,7 @@
  *
  *   cogmaster-run [--machine M] [--region R] --frames N [OPTION]... [FILE]
  *   cogmaster-run [--machine M] [--region R] --bench N [OPTION]... [FILE]
+ *   cogmaster-run --diagnose [--machine M] [--region R] [OPTION]... FILE
  *   cogmaster-run --probe FILE
  *   cogmaster-run --help | --version
  *
@@ -38,6 +39,7 @@
  *
  * --mailbox peeks the RAM mailbox after each frame, stops at the first
  * frame whose status reads $00, and prints the mailbox (mailbox.h).
+ * --diagnose runs 1800 frames of the file and prints one line of facts about its boot (diag.h).
  * docs/runner.md describes all of this for users.
  *
  * --boot bios --bios FILE starts from that 8192-byte Master System BIOS
@@ -56,6 +58,7 @@
 #include "bios.h"
 #include "clock.h"
 #include "cogmaster.h"
+#include "diag.h"
 #include "exit_status.h"
 #include "expect.h"
 #include "input.h"
@@ -219,28 +222,12 @@ static int read_fault(const cogmaster *m, cogmaster_fault *fault)
    COGMASTER_FAULT_* constant. */
 static void print_fault(const cogmaster_fault *f)
 {
-    static const char *const kinds[] = {
-        [0] = "none",
-        [COGMASTER_FAULT_KIND_UNMAPPED_READ] = "unmapped_read",
-        [COGMASTER_FAULT_KIND_UNMAPPED_WRITE] = "unmapped_write",
-        [COGMASTER_FAULT_KIND_ROM_WRITE] = "rom_write",
-        [COGMASTER_FAULT_KIND_MAPPER_RANGE] = "mapper_range",
-        [COGMASTER_FAULT_KIND_ED_UNDEFINED] = "ed_undefined",
-        [COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE] = "unsupported_video_mode",
-    };
-    static const char *const devices[] = {
-        [COGMASTER_FAULT_DEVICE_NONE] = "none",     [COGMASTER_FAULT_DEVICE_CPU] = "cpu",
-        [COGMASTER_FAULT_DEVICE_CART] = "cart",     [COGMASTER_FAULT_DEVICE_RAM] = "ram",
-        [COGMASTER_FAULT_DEVICE_MAPPER] = "mapper", [COGMASTER_FAULT_DEVICE_CTRL] = "ctrl",
-        [COGMASTER_FAULT_DEVICE_VDP] = "vdp",
-    };
     if (!f->present) {
         printf("fault none\n");
         return;
     }
-    const char *kind = f->kind < sizeof kinds / sizeof kinds[0] ? kinds[f->kind] : "unknown";
-    const char *dev =
-        f->device < sizeof devices / sizeof devices[0] ? devices[f->device] : "unknown";
+    const char *kind = cogmaster__fault_kind_name(f->kind);
+    const char *dev = cogmaster__fault_device_name(f->device);
     printf("fault frame=%llu line=%lu dot=%lu pc=$%04X op=$%02X addr=$%04X width=%u dev=%s "
            "kind=%s\n",
            (unsigned long long)f->frame, (unsigned long)f->line, (unsigned long)f->dot,
@@ -327,12 +314,16 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     }
     uint16_t *pixels = (uint16_t *)malloc((size_t)256u * 240u * sizeof *pixels);
     uint32_t *samples = opt->bench ? (uint32_t *)malloc(cogmaster__bench_bytes(opt->frames)) : NULL;
-    if (pixels == NULL || (opt->bench && samples == NULL)) {
+    cogmaster__diag *diag = opt->diagnose ? (cogmaster__diag *)malloc(sizeof *diag) : NULL;
+    if (pixels == NULL || (opt->bench && samples == NULL) || (opt->diagnose && diag == NULL)) {
         fprintf(stderr, "cogmaster-run: out of memory\n");
         free(pixels);
         free(samples);
+        free(diag);
         return COGMASTER__EXIT_FAILURE;
     }
+    if (diag != NULL)
+        cogmaster__diag_init(diag);
     cogmaster_config cfg;
     memset(&cfg, 0, sizeof cfg);
     cfg.size = (uint32_t)sizeof cfg;
@@ -352,6 +343,7 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
                 (unsigned long)st);
         free(pixels);
         free(samples);
+        free(diag);
         return COGMASTER__EXIT_FAILURE;
     }
 
@@ -518,6 +510,9 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
                                              pixels, audio_case ? audio_hex : NULL,
                                              audio_case ? audio.transitions : 0u);
         }
+        if (status == COGMASTER__EXIT_OK && diag != NULL) {
+            status = cogmaster__diag_frame(diag, m, (uint32_t)n, result.display_enabled, pixels);
+        }
         for (uint32_t k = 0; k < opt->png_count && status == COGMASTER__EXIT_OK; k++) {
             if (opt->pngs[k].frame == n) {
                 status = write_png(m, opt->pngs[k].path, pixels);
@@ -558,6 +553,9 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
                     "cogmaster-run: --png %lu:%s not written: the run stopped after frame %lu\n",
                     (unsigned long)opt->pngs[k].frame, opt->pngs[k].path, (unsigned long)ran);
         }
+    }
+    if (status == COGMASTER__EXIT_OK && diag != NULL) {
+        status = cogmaster__diag_print(diag, m, image, image_size, ran);
     }
     if (status == COGMASTER__EXIT_OK && opt->trace) {
         print_fault(&fault);
@@ -608,6 +606,7 @@ static int run(const cogmaster__run_options *opt, const uint8_t *image, size_t i
     cogmaster_destroy(m);
     free(pixels);
     free(samples);
+    free(diag);
     return status;
 }
 

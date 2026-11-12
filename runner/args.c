@@ -8,11 +8,13 @@
 
 #include "bench.h"
 #include "cogmaster.h"
+#include "diag.h"
 #include "exit_status.h"
 
 static const char synopsis[] =
     "usage: cogmaster-run [--machine NAME] [--region NAME] --frames N [OPTION]... [FILE]\n"
     "       cogmaster-run [--machine NAME] [--region NAME] --bench N [OPTION]... [FILE]\n"
+    "       cogmaster-run --diagnose [--machine NAME] [--region NAME] [OPTION]... FILE\n"
     "       cogmaster-run --probe FILE\n"
     "       cogmaster-run --help | --version\n"
     "  FILE, --rom FILE     the cartridge image to run; without one, the test card\n"
@@ -34,6 +36,7 @@ static const char synopsis[] =
     "  --port2 NAME         second controller: auto (default), pad, none, paddle, sports, lphaser\n"
     "  --png N:FILE         write frame N's crop to FILE as a PNG (1 <= N <= --frames)\n"
     "  --trace first-fault  stop at the first fault and print it, or 'fault none'\n"
+    "  --diagnose           run 1800 frames and print one line of boot facts\n"
     "  --eyes               after the last frame, print how often each 3-D glasses eye showed\n"
     "  --mailbox            stop when the RAM mailbox reports done; print its records\n"
     "  --probe              print the file's header fields and digests; run nothing\n"
@@ -210,6 +213,17 @@ static int set_file(cogmaster__run_options *o, const char *path)
 /* Checks the combination once every argument is read. */
 static int check_combination(const cogmaster__run_options *o)
 {
+    if (o->diagnose) {
+        if (o->file == NULL) {
+            return usage("--diagnose needs a file");
+        }
+        if (o->probe || o->frames != 0u || o->hash || o->hash_audio || o->png_count != 0u ||
+            o->trace || o->mailbox || o->eyes || o->input || o->save_dir || o->expect ||
+            o->save_interval != 0u || o->boot_given || o->bios != NULL) {
+            return usage("--diagnose runs its own fixed frames, so it takes no other run option");
+        }
+        return COGMASTER__EXIT_OK;
+    }
     if (o->probe) {
         if (o->file == NULL) {
             return usage("--probe needs a file");
@@ -357,6 +371,8 @@ int cogmaster__parse_options(int argc, char **argv, cogmaster__run_options *o)
             o->mailbox = 1;
         } else if (strcmp(arg, "--eyes") == 0) {
             o->eyes = 1;
+        } else if (strcmp(arg, "--diagnose") == 0) {
+            o->diagnose = 1;
         } else if (strcmp(arg, "--probe") == 0) {
             o->probe = 1;
         } else if (strcmp(arg, "--rom") == 0) {
@@ -373,5 +389,9 @@ int cogmaster__parse_options(int argc, char **argv, cogmaster__run_options *o)
             return status;
         }
     }
-    return check_combination(o);
+    int status = check_combination(o);
+    if (status == COGMASTER__EXIT_OK && o->diagnose) {
+        o->frames = COGMASTER__DIAG_FRAMES;
+    }
+    return status;
 }
