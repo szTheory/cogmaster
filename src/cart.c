@@ -272,9 +272,10 @@ static cogmaster_status guess_board(const uint8_t *b, size_t body, cogmaster_car
 }
 
 /* The table's controller codes: 1 is a light phaser, 2 a paddle and 3 a sports pad, which are the
-   device numbers of the same names. Code 4 (graphic board) and any other read as a plain pad until
-   a later release models them. A light phaser row names no region or machine of its own, so it
-   leaves region_guess and machine_guess alone. */
+   device numbers of the same names. Code 4 is the Sega Graphic Board; its one row is a table slot
+   of board 0, so the probe refuses it, and the plain pad here is only the degraded value reported
+   with that refusal. A light phaser row names no region or machine of its own, so it leaves
+   region_guess and machine_guess alone. */
 #define CART_CTRL_LIGHT_PHASER 1u
 #define CART_CTRL_PADDLE 2u
 #define CART_CTRL_SPORTS_PAD 3u

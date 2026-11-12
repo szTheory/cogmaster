@@ -211,9 +211,13 @@ elseif(CMAKE_SCRIPT_MODE_FILE)
   if(NOT rc STREQUAL "0" OR NOT eeprom_count EQUAL 2 OR NOT ctrl1_count EQUAL 2 OR NOT ctrl2_count EQUAL 2
      OR NOT got MATCHES "0xa3,0xa3[^\n]*\\.ctrl1 = 1u, \\.ctrl2 = 3u"
      OR NOT got MATCHES "0xa4,0xa4[^\n]*\\.ctrl1 = 2u, \\.ctrl2 = 0u"
-     OR NOT got MATCHES "0xa5,0xa5[^\n]*\\.ctrl1 = 0u, \\.ctrl2 = 4u")
+     OR NOT got MATCHES "0xa5,0xa5[^\n]*\\.board = 0u, \\.slot = 21u[^\n]*\\.ctrl1 = 0u, \\.ctrl2 = 4u")
     message(FATAL_ERROR "eeprom or controller facts mismatch: ${rc} ${got} ${err}")
   endif()
+  # A Graphic Board default controller is the graphic slot (board 0); on a slot cartridge it is a conflict.
+  software(g1 "g1" sms_cart "korean" "a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7" "<sharedfeat name='ctrl1_default' value='graphic'/>")
+  file(WRITE "${OUT}/graphic-slot.xml" "<!-- license:CC0-1.0 -->${g1}")
+  refuses("${OUT}/graphic-slot.xml" "graphic controller on a slot cartridge")
   # A device on one alias and none on the other keeps the device; two devices conflict.
   software(d1 "d1" sms_cart "" "a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6" "<sharedfeat name='ctrl1_default' value='lphaser'/>")
   software(d2 "d0" sms_cart "" "a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6" "")

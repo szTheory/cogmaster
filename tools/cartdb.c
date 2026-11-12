@@ -52,6 +52,7 @@ static const struct slot slots[] = {
     {"nemesis", 18u, COGMASTER_BOARD_NEMESIS, ""},
     {"seojin", 19u, 0u, "game select at $FFF0 and data bit 7 inverted; no hardware dump evidence"},
     {"zemina", 20u, COGMASTER_BOARD_ZEMINA, ""},
+    {"graphic", 21u, 0u, "Sega Graphic Board peripheral is not emulated"},
 };
 #define SLOTS (sizeof slots / sizeof slots[0])
 static uint32_t slot_seen[SLOTS], slot_emitted[SLOTS];
@@ -152,6 +153,11 @@ static const struct slot *find_slot(const char *name)
     exit(1);
 }
 
+/* The controller code of the Sega Graphic Board; a record that names it as a default controller is
+   the graphic slot. Fault prevented: a Graphic Board dump loaded as a plain pad, so a pad boot
+   result would be recorded as a claim about a peripheral the core does not emulate. */
+#define GRAPHIC_CODE 4u
+
 static uint32_t controller(const char *value)
 {
     static const char *const names[] = {"lphaser", "paddle", "sports", "graphic"};
@@ -193,6 +199,8 @@ static void scan_features(char *p, uint32_t *ctrl1, uint32_t *ctrl2)
         else if (shared && !strcmp(name, "ctrl2_default"))
             *ctrl2 = controller(value);
     }
+    if (*ctrl1 == GRAPHIC_CODE || *ctrl2 == GRAPHIC_CODE)
+        slot_seen[find_slot("graphic")->id - 1u]++;
 }
 
 static uint32_t number(const char *s)
@@ -349,7 +357,13 @@ static void parse(char *s)
                 f.declared = 128u;
             }
         }
-        if (f.persistence == 2u && !*slot && f.machine)
+        if (f.ctrl1 == GRAPHIC_CODE || f.ctrl2 == GRAPHIC_CODE) {
+            if (*slot)
+                fail("graphic controller on a slot cartridge");
+            f.slot = find_slot("graphic")->id;
+            f.board = 0u;
+        }
+        if (f.persistence == 2u && !*slot && f.machine && f.board)
             f.board = 2u;
         if (f.persistence == 2u) {
             f.geometry = ((f.board == 2u &&

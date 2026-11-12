@@ -956,6 +956,11 @@ if(CMAKE_SCRIPT_MODE_FILE)
     expect_probe_form("${out}")
     expect_key("${out}" unsupported_reason "janggun: reverse bit[^\n]*")
     expect_exit(77 "reverse bit" --frames 1 ${SEEDS}/janggun-board.sms)
+    # Fault prevented: an image the core cannot play running as a pad, and a refusal that also
+    # catches a supported board. An 8 KiB Game Gear image has no board and exits 77 as a board
+    # refusal; an image of a supported board runs. Both images are authored by the test build.
+    expect_exit(77 "unsupported: [^\n]*board" --frames 1 --machine gg ${SEEDS}/gg-8k.gg)
+    expect_exit(0 "^$" --frames 1 ${SEEDS}/di-halt.sms)
   elseif(CASE STREQUAL "refuse_size")
     # Below 1 KiB and above 1 MiB + 512 the core refuses the image; above
     # 64 MiB the runner refuses the file before reading it.
