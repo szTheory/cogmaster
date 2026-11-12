@@ -78,6 +78,7 @@ cart.probe.sizes	cart,portable
 compat.csv	compat
 compat.device_key	compat
 compat.device_rejected	compat
+compat.exit	compat
 compat.fixtures	compat,portable
 compat.hardening	compat
 compat.migration	compat

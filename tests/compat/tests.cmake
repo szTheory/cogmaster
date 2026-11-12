@@ -755,6 +755,14 @@ string(REPLACE ";" "$<SEMICOLON>" compat_device_rejected "${compat_device_reject
 cogmaster_add_test(NAME compat.device_rejected
   COMMAND ${CMAKE_COMMAND} "-DCMD=${compat_device_rejected}" -DCODE=1 "-DREGEX=device tokens refused: 10[^0-9]"
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake LABELS ${compat_labels} TIMEOUT 30)
+# Fault prevented: a claim of public support while no cartridge of the owner's library has reached the ledger, a ledger no parser
+# reads recorded as evidence, and an experimental flag that stays or goes with nobody checking it against the rows.
+# Timeout: 60 s floor; 0.5 s slowest local run, no hosted run yet, so provisional.
+cogmaster_add_test(NAME compat.exit
+  COMMAND ${CMAKE_COMMAND} -DCASE=assert -DLEDGER=${PROJECT_SOURCE_DIR}/tests/compat/ledger.csv
+    -DINFO=${PROJECT_SOURCE_DIR}/libretro/cogmaster_libretro.info.in -DOUT=${PROJECT_BINARY_DIR}/tests/compat-exit
+    -P ${CMAKE_CURRENT_LIST_DIR}/exit.cmake
+  LABELS ${compat_labels} TIMEOUT 60)
 # Fault prevented: a reason the catalog uses that the closed vocabulary does not list or has retired, or a vocabulary that
 # drifts from the slots of the cartridge table that have no board. Timeout: 30 s floor; 0.04 s slowest of 4 local runs, no hosted run yet, so provisional.
 cogmaster_add_test(NAME compat.reasons
