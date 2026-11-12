@@ -1602,7 +1602,7 @@ set(runner_fixtures "")
 if(COGMASTER_FIXTURES)
   set(runner_fixtures -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures)
 endif()
-# Timeout: 107 s; 2 x 53.07 s (be32 lane), slowest of 4 runs, run 43115877197.
+# Timeout: 107 s; 2 x 53.07 s (be32 lane), slowest of 6 runs, run 43115877197.
 cogmaster_add_test(NAME runner.hashes_file
   COMMAND ${CMAKE_COMMAND} -DCASE=hash_matrix -DRUN=$<TARGET_FILE:cogmaster-run>
     "-DEMULATOR=${runner_emulator}" -DOUT=${PROJECT_BINARY_DIR} ${runner_fixtures}
@@ -2064,7 +2064,7 @@ cogmaster_add_test(NAME runner.audio_cadence.self_test
 # Fault prevented: a sound claim that is only a frame hash (the transition stream, which shows the chips'
 # writes, can differ while the picture stays equal), an audio expectation that reads an empty trace because
 # only --hash-audio enabled it, and two readers draining the log so one sees nothing.
-# Timeout: 114 s; 2 x 56.72 s (be32 lane), slowest of 4 runs, run 43115877197.
+# Timeout: 114 s; 2 x 56.72 s (be32 lane), slowest of 6 runs, run 43115877197.
 if(COGMASTER_FIXTURES)
   cogmaster_add_test(NAME runner.expect.audio
     COMMAND ${runner_check} -DCASE=expect_audio -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures
