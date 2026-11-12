@@ -24,7 +24,8 @@ int cogmaster__expect_frame(cogmaster__expect *e, const cogmaster *m, uint32_t f
                             uint32_t display, uint16_t *pixels, const char *audio_hex,
                             uint64_t transitions);
 /* Reads the frame the last run call produced: sets its crop hash in hex and *nonblank to 1 when the
-   crop holds two or more distinct values, and folds the display and fault into e. No case is judged. */
+   crop holds two or more distinct values, and folds the display and fault into e. No case is
+   judged. */
 int cogmaster__expect_observe(cogmaster__expect *e, const cogmaster *m, uint32_t display,
                               uint16_t *pixels, char hex[65], uint32_t *nonblank);
 /* The boots predicate over what observe has folded in so far: display on, two distinct pictures,

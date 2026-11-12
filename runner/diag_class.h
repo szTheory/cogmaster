@@ -12,11 +12,11 @@
    the first 600 run calls, so a frame-600 verdict sees it; one at 600 or later it does not. */
 static inline const char *cogmaster__diag_bucket(uint32_t frame)
 {
-    return frame == 0u     ? "0"
-           : frame < 10u   ? "1-9"
-           : frame < 100u  ? "10-99"
-           : frame < 600u  ? "100-599"
-                           : "600+";
+    return frame == 0u    ? "0"
+           : frame < 10u  ? "1-9"
+           : frame < 100u ? "10-99"
+           : frame < 600u ? "100-599"
+                          : "600+";
 }
 
 /* A fault at 0-based frame f was recorded during run call f + 1, so it is before the first
@@ -25,7 +25,10 @@ static inline const char *cogmaster__diag_bucket(uint32_t frame)
 static inline const char *cogmaster__diag_order(uint32_t present, uint32_t frame,
                                                 uint32_t first_nonblank)
 {
-    return !present ? "none" : first_nonblank == 0u ? "nopicture" : frame < first_nonblank ? "before" : "after";
+    return !present                 ? "none"
+           : first_nonblank == 0u   ? "nopicture"
+           : frame < first_nonblank ? "before"
+                                    : "after";
 }
 
 /* Where the program counter sat in the Z80 address map (.planning/preparation/SMS-SYSTEM.md

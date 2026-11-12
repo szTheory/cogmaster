@@ -229,9 +229,9 @@ static void diag_class(void)
     static const struct {
         uint32_t frame;
         const char *bucket;
-    } buckets[] = {{0u, "0"},           {1u, "1-9"},        {9u, "1-9"},
-                   {10u, "10-99"},      {99u, "10-99"},     {100u, "100-599"},
-                   {599u, "100-599"},   {600u, "600+"},     {4294967295u, "600+"}};
+    } buckets[] = {{0u, "0"},         {1u, "1-9"},    {9u, "1-9"},
+                   {10u, "10-99"},    {99u, "10-99"}, {100u, "100-599"},
+                   {599u, "100-599"}, {600u, "600+"}, {4294967295u, "600+"}};
     for (size_t i = 0; i < sizeof buckets / sizeof buckets[0]; i++)
         CHECK(strcmp(cogmaster__diag_bucket(buckets[i].frame), buckets[i].bucket) == 0);
     CHECK(strcmp(cogmaster__diag_order(0u, 0u, 5u), "none") == 0);
