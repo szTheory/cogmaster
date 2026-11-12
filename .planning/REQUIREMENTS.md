@@ -59,22 +59,22 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DIAG-01 | TBD | Pending |
-| DIAG-02 | TBD | Pending |
-| DIAG-03 | TBD | Pending |
-| FIX-01 | TBD | Pending |
-| FIX-02 | TBD | Pending |
-| FIX-03 | TBD | Pending |
-| FIX-04 | TBD | Pending |
-| RUN-01 | TBD | Pending |
-| RUN-02 | TBD | Pending |
-| TUNE-11 | TBD | Pending |
+| DIAG-01 | Phase 13 | Pending |
+| DIAG-02 | Phase 13 | Pending |
+| DIAG-03 | Phase 13 | Pending |
+| FIX-01 | Phase 14 | Pending |
+| FIX-02 | Phase 14 | Pending |
+| FIX-03 | Phase 14 | Pending |
+| FIX-04 | Phase 14 | Pending |
+| RUN-01 | Phase 15 | Pending |
+| RUN-02 | Phase 15 | Pending |
+| TUNE-11 | Phase 15 | Pending |
 
 **Coverage:**
 - v2.1 requirements: 10 total
-- Mapped to phases: 0
-- Unmapped: 10 ⚠️
+- Mapped to phases: 10 (Phase 13: 3, Phase 14: 4, Phase 15: 3)
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-11-12*
-*Last updated: 2026-11-12 after initial definition*
+*Last updated: 2026-11-12 after roadmap creation (Phases 13 to 15)*

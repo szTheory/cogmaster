@@ -6,7 +6,7 @@ status: planning
 last_updated: "2026-11-12T20:40:21.239Z"
 last_activity: 2026-11-12
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-11-12)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 13 of 15 (Why carts fail), not started
 Plan: —
-Status: Defining requirements
-Last activity: 2026-11-12 — Milestone v2.1 started
+Status: Roadmap created; ready to discuss Phase 13
+Last activity: 2026-11-12 — Roadmap created for milestone v2.1 (Phases 13 to 15)
 
 ## Performance Metrics
 
@@ -371,6 +371,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-12 | Milestone v2.0 audit (gsd-audit-milestone; integration check, audit report, documentation drift fixes in ROADMAP, REQUIREMENTS, SEED-013, SEED-015 and this file) | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Complete milestone v2.0 (gsd-complete-milestone; override close with 7 seeds acknowledged, archive, PROJECT.md review, retrospective, no tag because release-please owns tags) | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | New milestone v2.1 started (gsd-new-milestone); scope SEED-016 plus SEED-015 CI timeouts | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Roadmap v2.1 (gsd-new-milestone); 3 phases, 10 requirements; roadmapper claude-opus-5-5 | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -406,5 +407,5 @@ Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published wit
 
 ## Operator Next Steps
 
-- Start the next milestone, when the owner approves scope, with /gsd-new-milestone.
+- Milestone v2.1 is roadmapped (Phases 13 to 15). After the roadmap is approved and merged, the next step is /gsd-discuss-phase 13.
 - Owner hand-offs (batched, none is a gate): SEED-013 is done (v0.13.0); SEED-010 pad, Light Phaser and BIOS judges; SEED-009 scan thresholds.
