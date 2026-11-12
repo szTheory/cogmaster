@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/szTheory/cogmaster/compare/v0.12.0...v0.13.0) (2026-11-12)
+
+
+### Features
+
+* add compatibility results and drop the experimental label ([#37](https://github.com/szTheory/cogmaster/issues/37)) ([032ebab](https://github.com/szTheory/cogmaster/commit/032ebabc340b56b1123bb8745cc91d8c7a635189))
+
 ## [0.12.0](https://github.com/szTheory/cogmaster/compare/v0.11.0...v0.12.0) (2026-11-12)
 
 
