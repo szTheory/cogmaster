@@ -204,7 +204,7 @@ claims_scoped)
   # Wording follows is_experimental in both states and never over-claims or names a planning label; a literal tripwire (a reworded claim passes). The page is read by its non-table lines: a table row prints a catalog title.
   r=$ROOT/README.md; i=$ROOT/libretro/cogmaster_libretro.info.in; q=$(mktemp -d); p=$q/compatibility.md; trap 'rm -rf "$q"' EXIT; grep -v '^|' "$ROOT/docs/compatibility.md" > "$p" || true
   for f in "$r" "$p" "$i"; do grep -Eqi 'v2\.0' "$f" && fail "claims_scoped: $f names a planning label"; [ "$f" = "$p" ] || ! grep -Eqi 'plays (all|most|every)|compatible with (all|most|every)|full compatibility|every game|all games|[0-9][0-9,]*[ ]+([a-z]+[ ]+){0,2}(games|titles|cartridges|carts)' "$f" || fail "claims_scoped: $f over-claims"; done
-  if grep -qx 'is_experimental = "true"' "$i"; then for f in "$r" "$p"; do grep -qi experimental "$f" || fail "claims_scoped: $f lacks experimental while the flag is present"; done; grep '^description = ' "$i" | grep -qi experimental || fail "claims_scoped: the description lacks experimental while the flag is present"
+  if [ "$(awk -f "$(dirname "$0")/flag.awk" "$i")" = present ]; then for f in "$r" "$p"; do grep -qi experimental "$f" || fail "claims_scoped: $f lacks experimental while the flag is present"; done; grep '^description = ' "$i" | grep -qi experimental || fail "claims_scoped: the description lacks experimental while the flag is present"
   else for f in "$r" "$ROOT"/docs/*.md "$ROOT"/libretro/*.info.in "$p"; do ! grep -qi experimental "$f" || fail "claims_scoped: $f says experimental after the flag left"; done; fi ;;
 *) fail "unknown repository check: $1" ;;
 esac

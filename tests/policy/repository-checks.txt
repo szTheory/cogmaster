@@ -5,6 +5,7 @@ check|tests/cmake/ci_required.cmake|Workflow required-job policy and its negativ
 check|tests/cmake/expect_fail.cmake|Shared exact exit status and tolerant diagnostic negative-control helper
 check|scripts/firmware-window.sh|Local firmware window scan: 32-byte windows of the owner dump against the tree, build outputs and release zips
 check|tests/cmake/firmware_scan.cmake|Release firmware scan: digests of firmware and ROMs and copier-headered firmware-class members, with vacuous guards
+check|tests/cmake/flag.awk|The one reader of the is_experimental flag shared by the exit command and the wording check
 behavior|tests/cmake/floor.cmake|Examines packaged deliverables for loader compatibility on supported operating systems
 check|tests/cmake/quality.cmake|Quality ceilings and floors read from quality.json with string(JSON)
 check|tests/cmake/readme.cmake|README play steps: the command runs, its printed line, ROM extensions and the no-BIOS sentence
