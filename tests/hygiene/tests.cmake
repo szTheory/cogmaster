@@ -422,7 +422,7 @@ cogmaster_add_test(NAME policy.publish_signer
 # Fault prevented: a required gate that fails because a deleted tag still reads back for a few seconds. With a
 # gh that keeps answering "exists" for LAG reads of the tag and a no-op sleep, rehearsal-delete must succeed for
 # a short lag, and for a tag that never goes must read exactly six times, name the tag and exit 1.
-# Timeout: 30 s floor; the same shell-only body as policy.publish_signer, no hosted time yet, so provisional.
+# Timeout: 30 s floor; 2 x 0.20 s, slowest of 1 run, run 43126677381.
 set(hygiene_delete ${CMAKE_BINARY_DIR}/hygiene/publish_delete)
 file(REMOVE_RECURSE ${hygiene_delete})
 file(WRITE ${hygiene_delete}/bin/gh [=[

@@ -940,8 +940,7 @@ foreach(profile IN ITEMS sms-japan sms-export gg)
 endforeach()
 # Fault prevented: the Japan header variant of fm_sweep assembled to other bytes than the pinned ones
 # (another assembler, a changed header.inc), which would leave the library judge's admitted image stale.
-# Timeout: 20 s floor; the pin case of fixtures.bios_shape.pin (2 x 0.06 s, slowest of 9 runs, run 43074158512),
-# no hosted run of this test yet, so provisional.
+# Timeout: 20 s floor; 2 x 0.06 s, slowest of 9 runs, run 43126677381.
 cogmaster_add_test(NAME fixtures.fm_sweep_jp.pin
   COMMAND ${CMAKE_COMMAND} -DCASE=pin -DNAME=fm_sweep_jp -DIMAGE=${COGMASTER_FIXTURES_DIR}/fm_sweep_jp.sms
     -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt -P ${CMAKE_CURRENT_LIST_FILE}
