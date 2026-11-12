@@ -1,6 +1,7 @@
 ---
 id: SEED-013
-status: dormant
+status: done
+completed: 2026-11-12 (v0.13.0)
 planted: 2026-11-11
 planted_during: phase 11, plan 08
 revised_during: phase 12, plan 06
