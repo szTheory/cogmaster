@@ -79,6 +79,8 @@ compat.device_rejected	compat
 compat.fixtures	compat,portable
 compat.hardening	compat
 compat.migration	compat
+compat.page_bound	compat
+compat.page_bound.self_test	compat
 compat.public_update	compat
 compat.ratchet	compat
 compat.reasons	compat

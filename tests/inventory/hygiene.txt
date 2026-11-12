@@ -7,6 +7,8 @@ compat.device_key	compat,hygiene
 compat.device_rejected	compat,hygiene
 compat.hardening	compat,hygiene
 compat.migration	compat,hygiene
+compat.page_bound	compat,hygiene
+compat.page_bound.self_test	compat,hygiene
 compat.public_update	compat,hygiene
 compat.ratchet	compat,hygiene
 compat.reasons	compat,hygiene
