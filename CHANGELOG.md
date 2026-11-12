@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/szTheory/cogmaster/compare/v0.11.0...v0.12.0) (2026-11-12)
+
+
+### Features
+
+* list every Master System and Game Gear entry in the ledger ([#33](https://github.com/szTheory/cogmaster/issues/33)) ([325b210](https://github.com/szTheory/cogmaster/commit/325b21015288f11fddbbbc7a60930cd478d81e1f))
+
 ## [0.11.0](https://github.com/szTheory/cogmaster/compare/v0.10.0...v0.11.0) (2026-11-12)
 
 
