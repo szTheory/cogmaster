@@ -6,6 +6,10 @@ planted_during: phase 11, plan 08
 revised_during: phase 12, plan 06
 trigger_when: the release carrying the whole-list ledger is out and the owner can run the library with their carts
 scope: small
+audit_acknowledged:
+  milestone: v2.0
+  at: 2026-11-12
+  status: dormant
 ---
 
 # SEED-013: the owner's own-library run for PAL and Japanese FM rows

@@ -5,6 +5,10 @@ planted: 2026-11-11
 planted_during: phase 11, plan 09
 trigger_when: the milestone-end run of the owner's library (SEED-013) shows enough Japanese FM carts with no pinned golden, or a reviewer asks for a sound-based row that needs no golden
 scope: medium
+audit_acknowledged:
+  milestone: v2.0
+  at: 2026-11-12
+  status: dormant
 ---
 
 # SEED-012: A sound row for an FM cartridge with no golden (hash-less `audio@F`)

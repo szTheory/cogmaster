@@ -5,6 +5,10 @@ planted: 2026-11-11
 planted_during: phase 10, plan 11
 trigger_when: the owner holds a Game Gear BIOS dump or asks for a built-in-game BIOS, a Mark III profile or a BIOS boot without a cartridge, or the real frontend drifts from the in-process fake
 scope: medium
+audit_acknowledged:
+  milestone: v2.0
+  at: 2026-11-12
+  status: dormant
 ---
 
 # SEED-011: BIOS boot follow-ups left out of the first phase

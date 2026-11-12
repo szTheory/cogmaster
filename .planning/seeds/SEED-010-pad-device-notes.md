@@ -5,6 +5,10 @@ planted: 2026-11-11
 planted_during: phase 8, code review
 trigger_when: a private library is configured (COGMASTER_ROM_DIR names a directory) and the Sports Pad, Paddle or 3-D titles are judged, or a pad-device change touches src/ports.c, src/io.c or libretro/libretro.c
 scope: small
+audit_acknowledged:
+  milestone: v2.0
+  at: 2026-11-12
+  status: dormant
 ---
 
 # SEED-010: pad device measurements and review leftovers
