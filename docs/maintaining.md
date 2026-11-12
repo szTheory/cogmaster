@@ -226,7 +226,7 @@ cogmaster-cartdb --pin <commit> --catalog tests/compat/catalog.tsv --counts test
   sms.xml gamegear.xml sg1000.xml --fixture tests/cart/fixture_facts.txt > src/cartdb.inc
 ```
 
-The run writes `src/cartdb.inc` to stdout, the catalog and the counts to the named files, and prints the entry-to-identity reconciliation. A pin bump regenerates all three in one run, and the tests compare them with the committed files. `--pin` is required and is
+The run writes `src/cartdb.inc` to stdout, the catalog and counts to the named files, and prints the reconciliation. A pin bump regenerates all three in one run; the tests check them against each other, not the lists, so `cmp` them. `--pin` is required and is
 printed on the table's first line. The fixture input is a fixed owned fact, never the assembler output;
 assembly checks its SHA-1 after linking, and no core target depends on fixture assembly. The bounded C17
 converter never expands DTDs or external entities.
