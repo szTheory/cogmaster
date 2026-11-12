@@ -5,16 +5,16 @@ milestone_name: The whole library
 current_phase: 12
 current_phase_name: The whole list in the ledger
 status: executing
-stopped_at: Completed 12-03-PLAN.md
-last_updated: "2026-11-12T03:46:44.174Z"
+stopped_at: Completed 12-04-PLAN.md
+last_updated: "2026-11-12T03:58:42.401Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 11 complete, transitioned to Phase 12
-state_head: f05302a77425e779ede799a8a2f8e4b37fbde4ae
+state_head: e583b83bbeab150ef3f32b853fcc32a56b6c9a04
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 94
-  completed_plans: 87
+  completed_plans: 88
   percent: 88
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-11-10)
 ## Current Position
 
 Phase: 12 — The whole list in the ledger
-Plan: 4 of 10
+Plan: 5 of 10
 Status: Ready to execute
-Last activity: 2026-11-12 — Completed 12-03 (ratchet rules R1 to R3, fail-closed judge, update guard)
+Last activity: 2026-11-12 — Completed 12-04 (bounded compatibility page, compat.page_bound and its control)
 
 Progress: [█████████░] 88% of v2.0
 
@@ -217,6 +217,7 @@ Progress: [█████████░] 88% of v2.0
 | Phase 12 P01 | 13 min | 3 tasks | 23 files |
 | Phase 12 P02 | 75min | 3 tasks | 12 files |
 | Phase 12 P03 | 50min | 3 tasks | 6 files |
+| Phase 12 P04 | 50min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -332,6 +333,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 - [Phase 12]: Open slot reasons in reasons.txt must equal the board-0 non-SG-1000 slot names, so retiring a token needs the slot table to change with it
 - [Phase 12]: Plan 12-03: an update candidate stating unsupported or skipped for an existing key is refused (discarded), not kept with a reason: the library judge observes pass and fail only and those two statuses are catalog facts the seed writes
 - [Phase 12]: Plan 12-03: the ratchet and the update load the catalog and reasons unconditionally and exit 2 on an unreadable file; one release predicate (a retired token and a catalog no longer unsupported for an unsupported row, a catalog no longer skipped for a skipped row) governs every way such a row may leave
+- [Phase 12]: Plan 12-04: the page is bounded by six caps in one BEGIN assignment and a per-section counter; fixtures, unsupported, fail and pass rows are capped sections, skipped and unknown rows appear only in the counts and tables; the 600-byte line check forced soft wrapping of the intro
 
 ### Pending Todos
 
@@ -466,6 +468,7 @@ The v1.0 decision log is in PROJECT.md Key Decisions (outcomes filled at milesto
 | 2026-11-12 | Execute phase 12 plan 12-01 (gsd-execute-phase 12); Graphic Board slot and behaviour 17, catalog v2 with compound ids and pin counts, amended wording; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Execute phase 12 plan 12-02 (gsd-execute-phase 12); closed reason rule and vocabulary, title hardening, 8,192-row cap, one-pass markdown escaping, flat-cost test stand-ins; 3 tasks, 4 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Execute phase 12 plan 12-03 (gsd-execute-phase 12); ratchet rules R1 to R3 with a judge that fails closed on unreadable data, library.sh absolute data paths, the update guard (a library run never touches a skipped or unsupported id); 3 tasks, 3 commits, counted check code 876 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Execute phase 12 plan 12-04 (gsd-execute-phase 12); the page bounded by six caps (aggregates, group and reason tables, capped fixture, unsupported, fail and other sections with more-lines), compat.page_bound on a hostile 700-row ledger and its raised-cap control; 2 tasks, 2 commits, counted check code 879 | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -487,8 +490,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-12T03:46:34.931Z
-Stopped at: Completed 12-03-PLAN.md
+Last session: 2026-11-12T03:58:42.013Z
+Stopped at: Completed 12-04-PLAN.md
 Resume file: None
 Phase 11 ship pull request: #31, open as a draft since plan 07; ship reuses it (gh pr ready, title check, gh pr merge --auto --squash at ship only; no new gh pr create)
 
