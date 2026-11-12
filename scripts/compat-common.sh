@@ -65,9 +65,9 @@ BEGIN { header1="id,title,machine,region,mapper,predicate,status,evidence,date";
   if(length(f[1])==40 && kind!="boots" && !(mode=="update" && stage==2)) bad();
   if((stage SUBSEP key) in seen) bad(); seen[stage,key]=1;
   if(mode=="update" && stage==2) {
-    # Fault prevented: a candidate adding rows by frame, device or profile for a catalog id, growing the page past its cap or smuggling a golden into the ledger.
-    if(!(f[1] in titles)) next;
-    if(key SUBSEP 1 in r) { if(f[7]!=r[key,7]) next }
+    # Fault prevented: a candidate adding rows by frame, device or profile for a catalog id, growing the page past its cap or smuggling a golden into the ledger; or turning a skipped or unsupported row into a pass, or its reason into core=<revision> (a library run observes only pass and fail).
+    if(!(f[1] in titles) || cs[f[1]]!="unknown") next;
+    if(key SUBSEP 1 in r) { if(f[7]!=r[key,7] || f[8] ~ /^(unsupported|skipped)$/) next }
     else {
       match(config,/;fm=(on|off)/); pf=substr(config,RSTART+4,RLENGTH-4); w=(f[3]=="gg"?" export,ntsc,off japan,ntsc,off ":(f[3]~/^sms1?$/?" export,ntsc,off export,pal,off japan,ntsc,on ":""));
       if(f[3]!=cm[f[1]] || f[6]!=cp[f[1]] || parameter!="boots@600" || f[8]!~/^(pass|fail)$/ || !index(w," " f[4] "," f[5] "," pf " ") || config!="cfg:video=" (f[3]=="gg"?"gg":"sms") ";fm=" pf ";port1=pad;port2=pad;script=none;sha256=" empty) next;
