@@ -22,7 +22,8 @@ this file covers data. Written on 2026-10-18, before any such file exists. `[AP.
   commercial game or a real BIOS.
 - A digest of a commercial title's emulated frame, RAM or sound is a derived fact of our own output and is never
   committed; ledger rows for such titles carry `boots` predicates only, and compat-update never adds a digest.
-  A ledger row says what our core did with a dump the maintainer owns; no dump byte, no digest of our output.
+  A ledger row is public catalog metadata and, only for a row the maintainer judged, what our core did with a dump
+  the maintainer owns; no dump byte, no digest of our output.
 - Bulk tables from databases that state no licence (No-Intro DATs, emulator header databases, ROM-pack headers,
   SMS Power!'s game lists). MAME's CC0 `hash/sms.xml`, `hash/gamegear.xml` and `hash/sg1000.xml` are the allowed
   databases [AP.01].
