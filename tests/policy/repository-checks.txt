@@ -34,6 +34,7 @@ behavior|tests/cmake/mailbox.cmake|Runs fixture and compares emulated RAM output
 behavior|tests/cmake/perf_compare.cmake|Compares measured executable performance observations
 behavior|tests/cmake/install_line.cmake|Executes the published installation command against packaged binaries
 behavior|tests/policy/budget_cases.cmake|Constructs synthetic checked trees and registers boundary and helper fixtures without implementing checker policy
+behavior|tests/policy/claims_cases.cmake|Builds fixture trees from the real files with one claim fault each and asserts the claims check refuses them; it implements no policy
 behavior|tests/policy/e2e_cases.cmake|Constructs hosted helper boundary fixtures and registers behavior assertions for CI and hygiene
 behavior|tests/policy/firmware_window_cases.cmake|Builds a self-authored dump, planted windows and throwaway repositories and registers the window scan controls without implementing scan policy
 behavior|tests/policy/firmware_release_cases.cmake|Constructs owned firmware-scan fixtures and registers controls without implementing scan policy

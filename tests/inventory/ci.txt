@@ -374,6 +374,8 @@ policy.bios_dir_reads.self_test	policy
 policy.bios_table	policy
 policy.bios_table.self_test.doc	policy
 policy.bios_table.self_test.table	policy
+policy.claims_scoped	policy
+policy.claims_scoped.self_test	policy
 policy.compat_doc_fresh	compat,policy
 policy.compat_doc_fresh.self_test	compat,policy
 policy.dependabot	policy
