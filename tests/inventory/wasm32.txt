@@ -303,6 +303,7 @@ io.port3e	io,portable
 io.port3f_region	io,portable
 io.port_dc_dd	io,portable
 library.diagnose	library
+library.diagnose.leak_name	library
 library.diagnose.taxonomy	library
 library.synthetic	library
 mapper.codemasters.banks	mapper,portable
