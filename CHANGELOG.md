@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/szTheory/cogmaster/compare/v0.13.0...v0.14.0) (2026-11-13)
+
+
+### Features
+
+* **runner:** add a counts-only boot diagnostic and group failing carts by cause ([#40](https://github.com/szTheory/cogmaster/issues/40)) ([17375f7](https://github.com/szTheory/cogmaster/commit/17375f726b7452e6fd3d9049a42915574602f7cc))
+
 ## [0.13.0](https://github.com/szTheory/cogmaster/compare/v0.12.0...v0.13.0) (2026-11-12)
 
 
