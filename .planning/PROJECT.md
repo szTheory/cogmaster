@@ -71,12 +71,12 @@ MIT-licensed C library that any host can embed.
 - ✓ BIOS boot from the user's own dump in the runner or RetroArch, fast boot staying the default, both firmware legality scans with negative controls, and the `$3E` arbitration checked against the hardware notes — v2.0 (Phase 10)
 - ✓ PAL timing proven identical on every lane, FM judged by its sound on owned fixtures, and the library judge able to add PAL and Japanese FM rows through `compat-update.sh` — v2.0 (Phase 11)
 - ✓ The whole list in the ledger: one honest row per Master System and Game Gear entry at the pin, a bounded compatibility page, ratchet rules for unsupported rows, and `compat.exit` tying `is_experimental` to the judged-cart floors both ways (satisfied as amended: the flag stays until the owner's own-library run) — v2.0 (Phase 12)
+- ✓ The failing default-profile rows have a known cause: `cogmaster-run --diagnose` and `sh scripts/library.sh diagnose` print counts, kinds and catalog titles only, a canary scan with five negative controls proves nothing from a dump leaks, and 205 failing rows (of 209 in the ledger) are grouped by cause in `13-CAUSE-GROUPS.md`; no ledger row moved — v2.1 (Phase 13)
 
 ### Active
 
 v2.1 (defined in `.planning/REQUIREMENTS.md`):
 
-- [ ] Explain the 210 failing default-profile rows with a counts-only per-cart diagnostic, grouped by cause
 - [ ] Fix the largest causes in group-size order and flip the rows they explain to `pass`
 - [ ] Re-run the library judge and merge the flipped rows
 - [ ] Re-measure and correct the drifted CI job timeouts in one workflow edit
@@ -186,4 +186,4 @@ After each milestone:
 3. Lessons are exported to `.planning/LESSONS.md`.
 
 ---
-*Last updated: 2026-11-12 after starting milestone v2.1*
+*Last updated: 2026-11-12 after Phase 13*
