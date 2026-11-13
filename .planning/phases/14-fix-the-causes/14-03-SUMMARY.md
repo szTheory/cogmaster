@@ -122,7 +122,7 @@ status: complete
 ## Task Commits
 
 1. **Task 1: stop recording `$FFFC` unused-bit writes** - `eb8dfee` (fix)
-2. **Task 2: the Sega shift gate** - no commit; the D-06 trace was not taken (dumps absent), so the shift stays as it is and no code changed
+2. **Task 2: the Sega shift gate** - no commit; the D-06 trace was not taken (it needs a dump path), so the shift stays as it is and no code changed
 3. **Task 3: record ranks 1 and 8** - `cf2fda6` (docs), then the measured counts in `f439bae` (docs) after the diagnose re-run
 
 **Plan metadata:** the commit that carries this file (docs: complete plan)
