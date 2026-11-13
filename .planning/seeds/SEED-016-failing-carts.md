@@ -1,6 +1,7 @@
 ---
 id: SEED-016
-status: dormant
+status: done
+completed: 2026-11-13 (v0.14.0 to v0.14.2, milestone v2.1)
 planted: 2026-11-12
 planted_during: after v0.13.0, library run review
 trigger_when: the next milestone is scoped; this is the recommended first item of it

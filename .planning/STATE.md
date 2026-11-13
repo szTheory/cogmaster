@@ -2,36 +2,36 @@
 gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Fewer failing cartridges
-current_phase: 15
-status: completed
-stopped_at: Phase 15 complete — all phases complete
-last_updated: "2026-11-13T21:41:50.465Z"
+status: Awaiting next milestone
+stopped_at: Milestone v2.1 complete and archived
+last_updated: "2026-11-13T23:10:38.798Z"
 last_activity: 2026-11-13
-last_activity_desc: "Phase 15 shipped as PR #44"
-state_head: a0c39907c1a65c19a34d934998951e0da0c52fb4
+last_activity_desc: Milestone v2.1 completed and archived
+state_head: c3f917544a5fc3dfca0a4afdf6af0a0a64d463cf
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 15
   completed_plans: 15
-  percent: 67
+  percent: 100
+current_phase: 15
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-11-12)
+See: .planning/PROJECT.md (updated 2026-11-13)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 15 — Re-run, merge and timeouts
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 15
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-11-13 -- Phase 15 shipped as PR #44
+Phase: Milestone v2.1 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-11-13 — Milestone v2.1 completed and archived
 
 ## Performance Metrics
 
@@ -438,13 +438,15 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-13 | Execute phase 15 plan 15-02 (gsd-execute-phase 15); job timeouts re-derived from a fresh 40-run read in one workflow commit (asan 5 to 9, bench 10 to 13, bench-wasm32 15 to 16, build 9 to 12, be32 15 to 21 minutes; fuzz and digest comments re-cited), timeout hygiene check and saved-read cross-check exit 0, CI-speed paragraph in the maintaining guide, SEED-015 and SEED-016 breadcrumbs, counts-only ship hand-off, local ci and hygiene workflows exit 0; 2 tasks | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Ship phase 15 (gsd-ship 15); branch pushed once, PR #44 opened non-draft with the counts-only title and body, the core-stamp commit answers 200 on the public API; auto-merge and the head-commit CI check are the next shell steps | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Milestone v2.1 audit (gsd-audit-milestone; branch milestone/v2.1-fewer-failing-cartridges off origin/main, integration check by gsd-integration-checker, report .planning/v2.1-MILESTONE-AUDIT.md, status tech_debt, 10 of 10 requirements satisfied) | Claude Code | claude-sonnet-5-5 |
+| 2026-11-13 | Complete milestone v2.1 (gsd-complete-milestone v2.1; branch milestone/v2.1-fewer-failing-cartridges; SEED-016 closed as done, closeout override_closeout for the stale Phase 13 verification the audit accepted, roadmap, requirements, audit and phases 13 to 15 archived, PROJECT.md evolved, retrospective and product roadmap refreshed, no tag because release-please owns them) | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
-Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-offs and follow-ups from the milestone audit; none is a gate):
+Items acknowledged and deferred, most recent first (v2.1 closed SEED-016 as done and acknowledged nothing new; v2.0 rows are owner hand-offs and follow-ups from the milestone audit; none is a gate):
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
+| seeds | SEED-016: why a third of the checked cartridges fail the boots check | done 2026-11-13 (v0.14.0 to v0.14.2), no longer carried | 2026-11-13 | v2.1 |
 | seeds | SEED-015: whole-list ledger, CI-speed and milestone audit follow-ups | dormant (next ledger or CI-speed work) | 2026-11-12 | v2.0 |
 | seeds | SEED-014: PAL and Japanese FM follow-ups | dormant | 2026-11-12 | v2.0 |
 | seeds | SEED-013: the owner's own-library run (`sh scripts/library.sh run`) and the `is_experimental` removal | done 2026-11-12 (v0.13.0), no longer carried | 2026-11-12 | v2.0 |
@@ -467,11 +469,11 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 ## Session Continuity
 
 Last session: 2026-11-13T19:12:44.976Z
-Stopped at: Phase 15 complete — all phases complete
+Stopped at: Milestone v2.1 complete and archived
 Resume file: None
-Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
+Milestone v2.1 pull requests: #40, #42 and #44 (phases 13 to 15) and releases #41, #43 and #45 (v0.14.0 to v0.14.2)
 
 ## Operator Next Steps
 
-- Milestone v2.1 audit is done (tech_debt, no blocker). The next step is /gsd-complete-milestone v2.1.
-- Owner hand-offs (batched, none is a gate): SEED-013 is done (v0.13.0); SEED-010 pad, Light Phaser and BIOS judges; SEED-009 scan thresholds.
+
+- Start the next milestone with /gsd-new-milestone

@@ -2,7 +2,7 @@
 title: "Product roadmap (rolling)"
 summary: "Immediate / Near / Mid / Long direction for cogmaster with the evidence and promotion trigger for each horizon; ROADMAP.md is the execution contract, seeds hold the source narratives."
 read_when: "At every new-milestone and complete-milestone step, and when a finding changes priorities."
-updated: 2026-11-12
+updated: 2026-11-13
 ---
 
 # Product roadmap (rolling)
@@ -37,9 +37,15 @@ Shipped 2026-11-12 with 49 of 49 requirements, audit status tech_debt and no gap
 
 **Unresolved debt carried into the next milestone** (none blocking): the owner's batched run (SEED-013, with the SEED-010 judges and the SEED-009 thresholds), timeout drift in asan, the nightly bench and bench-wasm32 and the other CI-speed items (SEED-015, SEED-007), BIOS follow-ups (SEED-011), the hash-less audio predicate (SEED-012) and PAL and Japanese FM follow-ups (SEED-014).
 
+## Shipped — v2.1 "Fewer failing cartridges" (v0.14.0 to v0.14.2)
+
+Shipped 2026-11-13 with 10 of 10 requirements, audit status tech_debt and no gaps (`milestones/v2.1-MILESTONE-AUDIT.md`). Three phases, each merged by one pull request and released automatically: (13) a counts-only boot diagnostic in the runner and the library judge, with a leak scan, that grouped the 205 failing default-profile rows by cause; (14) the causes fixed or closed with a stated reason: routine cartridge writes and accesses to ports nothing decodes stopped being faults, the legacy video-mode rows were closed as not emulated by design, the boots check was shown sound, behaviour revision 18 and no hash pin moved; (15) the owner's library re-run merged through the ratchet (285 rows from `fail` to `pass`, none lost, the page at pass 1029 and fail 96) and the drifted CI timeouts re-derived. Requirements: `milestones/v2.1-REQUIREMENTS.md`.
+
+**Unresolved debt carried into the next milestone** (none blocking): stale fault-vocabulary lines in `docs/audio.md`, `docs/embedding.md` and `docs/runner.md`; the reg-0 board question (needs new evidence); the owner's batched hand-offs (SEED-010 judges, SEED-009 thresholds); the rest of SEED-015 and SEED-007 (ledger rows, review leftovers); BIOS follow-ups (SEED-011), the hash-less audio predicate (SEED-012) and PAL and Japanese FM follow-ups (SEED-014).
+
 ## Immediate — none
 
-No milestone is in progress and no scope is owner-approved. **Preferred next step:** find out why 210 default-profile carts fail the boots check and fix the shared causes (SEED-016), with the CI timeout drift from SEED-015 as the small second item. **Alternatives weighed:** v3.0 states and movies (the next horizon below), the browser build (SEED-008) and SG-1000/SC-3000 mode (SEED-006). Nothing moves into Immediate until the owner approves scope at `/gsd-new-milestone`.
+No milestone is in progress and no scope is owner-approved. **Preferred next step:** promote the TMS9918 legacy video modes (SEED-006), because they are now the evidence-backed cause of 46 of the 49 remaining default-profile `fail` rows (graphics1 13, graphics2 33, no M4=1 row), and the same modes carry SG-1000 and SC-3000 titles. **Alternatives weighed:** v3.0 states and movies (the next horizon below), the browser build (SEED-008), and a small ledger and documentation tune-up (SEED-015, SEED-007 and the v2.1 audit's stale-doc items) that can ride inside any milestone. Nothing moves into Immediate until the owner approves scope at `/gsd-new-milestone`.
 
 ## Mid — v3.0 "States and movies" (SEED-002), v4.0 "Measured accuracy" (SEED-003)
 
@@ -64,3 +70,4 @@ instructions-per-frame budget; each seed names its own.
 | 2026-10-18 | The browser build is SEED-008 with a wasm32 hash lane already in phase 1 | Owner: running efficiently in the browser through WebAssembly is very important |
 | 2026-11-10 | v1.0 shipped and archived; horizons unchanged, nothing yet moved into Immediate | The order of v2.0 and later was not re-ranked: no new evidence at close, and the next scope needs owner approval at `/gsd-new-milestone` |
 | 2026-11-12 | v2.0 shipped and archived; v3.0 stays next in order, nothing moved into Immediate | The owner's own-library run, not a new milestone, is what removes `is_experimental`; no new evidence re-ranks states and movies, the browser or SG-1000, and the next scope needs owner approval at `/gsd-new-milestone` |
+| 2026-11-13 | v2.1 shipped and archived; SEED-006 becomes the preferred next step, nothing moved into Immediate | The Phase 14 outcomes show 46 of the 49 remaining failing rows need the legacy modes, which is the trigger SEED-006 names ("already needed for an SMS title in the ledger"); the other horizons were not re-ranked and the next scope needs owner approval at `/gsd-new-milestone` |

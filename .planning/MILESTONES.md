@@ -1,5 +1,37 @@
 # Milestones
 
+## v2.1 Fewer failing cartridges (Shipped: 2026-11-13)
+
+**Phases completed:** 3 phases, 15 plans, 36 tasks (the archive tool's count from summary front matter)
+
+**Delivered:** The reason a third of the checked cartridges failed the boots check is known, fixed and published. A counts-only diagnostic (`cogmaster-run --diagnose`, `sh scripts/library.sh diagnose`) grouped the 205 failing default-profile rows by cause; routine cartridge writes and accesses to ports nothing decodes stopped being recorded as faults; the legacy video-mode rows are closed as not emulated by design and the boots check is shown sound. The owner's library re-run merged through the unchanged ratchet: 285 ledger rows moved from `fail` to `pass` with no pass row lost, and the page reads pass 1029, fail 96, unknown 832, unsupported 5 and skipped 24 over 1,986 rows. The drifted CI timeouts were re-derived from a fresh 40-run read. Released as v0.14.0 to v0.14.2 (PRs #39 to #45).
+
+**Stats:**
+- Requirements: 10 of 10 satisfied (DIAG 3, FIX 4, RUN 2, TUNE 1); audit status tech_debt, no gaps, 10 of 10 connections wired and 4 of 4 flows complete; FIX-01 and FIX-03 read `partial` in the three-source matrix only because their SUMMARY front matter omits them
+- Timeline: 2 days, 2026-11-12 (v0.13.0 close ba2679c) to 2026-11-13 (release 0.14.2); 7 commits on main, three phase pull requests (#40, #42, #44) each followed by a release pull request, plus the kickoff pull request #39
+- Files changed in the range: 108, with 13,180 insertions and 1,424 deletions (git diff --shortstat ba2679c 846a6fd); `src` and `include` only: 5 files, 26 insertions and 43 deletions
+- Code: 9,386 lines of C in `src/`; 681 tests in the `ci` workflow (671 at the v2.0 close)
+- Public surface: API 14 and state format 16 unchanged, behaviour revision 17 to 18 (the unsupported-video-mode fault now carries the mode nibble); no frame or audio pin moved
+- Git range: ba2679c to 846a6fd
+
+**Known verification overrides:** 0 newly acknowledged, 16 carried forward from a prior close (see STATE.md Deferred Items). Closeout type: override_closeout. Phase 13's verification reads stale because Phase 14 changed five files it covers on purpose (the diagnose evidence words); the audit recorded it as accepted, not re-verified, and the checks it verified still pass. SEED-016, the one open item at the pre-close audit, is closed as done by this milestone.
+
+**Tech debt carried forward** (from the milestone audit, `.planning/milestones/v2.1-MILESTONE-AUDIT.md`):
+- Stale documentation: `docs/audio.md` line 77 and the fault-vocabulary lines in `docs/embedding.md` and `docs/runner.md` still describe port faults the core no longer records; the port classes in `runner/diag_class.h` are dead vocabulary exercised only by canned lines.
+- Bookkeeping: `requirements-completed` is empty in the 13-01, 13-02 and 14-01 to 14-07 SUMMARYs (FIX-01 and FIX-03 appear in none); `14-VERIFICATION.md` still reads `human_needed` for the pad press that `14-UAT.md` records as passed.
+- Provenance and review: the ledger's `core=` stamp names the pre-squash commit of PR #44 (not an ancestor of `main`, still reachable on GitHub; losing the phase branch would break the public-pin rule for it); the diagnose cross-check is within one row (50 ntsc fail rows against 49); `scripts/library.sh` stamps `COGMASTER_LIBRARY_REV` from `git rev-parse HEAD` on the run path without a dirty check; advisory WR-02 (`ram=live|still` can read the last bus byte when a guest turns work RAM off) and the Phase 15 open review items are left by design.
+- Open question: the board choice for the reg-0 cartridges (11 to 12 rows at the baseline, none failing now) needs new evidence; the Sega bank-shift trace was not taken, and a refused ratchet row would have shown the risk (none was).
+
+**Key accomplishments:**
+- `cogmaster-run --diagnose` prints one closed line per cartridge (frame-600 verdict, first picture, fault class, program counter slot, mapper and its source) and `sh scripts/library.sh diagnose` validates and groups them into counts, kinds and catalog titles only; a canary scan with five negative controls proves nothing from a dump leaks.
+- The 205 failing default-profile rows were grouped by cause in descending size, with seven closed-vocabulary evidence words (video mode, mapper address, power-of-two pages, write address, port, size, header) deciding each fix.
+- Sega `$FFFC` writes to unused bits, writes to non-register ROM addresses (eight raise sites) and the two port raise sites in `src/io.c` no longer record a fault; the diagnose fell from 205 to 104 to 69 to 49 failing rows with none outside the ledger and no hash pin moved.
+- The legacy video-mode rows (46, graphics1 and graphics2, none with M4=1), the `zemina`, `korean_nb` and `korean` families and the three no-fault rows each have a recorded outcome; the boots check is shown sound over the post-fix population, and the pad press on the one frozen cartridge changed no picture.
+- The owner's library re-run merged in one commit through the unchanged ratchet: 1,116 rows re-judged under one `core=` stamp, 285 `fail` to `pass`, no pass row lost, the page equal to its regeneration at 13,813 of 38,912 bytes.
+- The asan, build, be32, bench and bench-wasm32 timeouts (9, 12, 21, 13 and 16 minutes) were re-derived by the twice-the-slowest rule from a fresh 40-run read in one workflow commit, with the fuzz and digest comments re-cited and `hygiene.timeout_comments` passing.
+
+---
+
 ## v2.0 The whole library (Shipped: 2026-11-12)
 
 **Phases completed:** 8 phases, 94 plans, 227 tasks (the per-plan task counts in STATE.md; the archive tool counted 97 from summary front matter)
