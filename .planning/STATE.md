@@ -6,7 +6,7 @@ status: Awaiting next milestone
 stopped_at: Milestone v2.1 complete and archived
 last_updated: "2026-11-13T23:10:38.798Z"
 last_activity: 2026-11-13
-last_activity_desc: Milestone v2.1 completed and archived
+last_activity_desc: Milestone v2.1 close shipped as PR #46
 state_head: c3f917544a5fc3dfca0a4afdf6af0a0a64d463cf
 progress:
   total_phases: 3
@@ -439,6 +439,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-13 | Ship phase 15 (gsd-ship 15); branch pushed once, PR #44 opened non-draft with the counts-only title and body, the core-stamp commit answers 200 on the public API; auto-merge and the head-commit CI check are the next shell steps | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Milestone v2.1 audit (gsd-audit-milestone; branch milestone/v2.1-fewer-failing-cartridges off origin/main, integration check by gsd-integration-checker, report .planning/v2.1-MILESTONE-AUDIT.md, status tech_debt, 10 of 10 requirements satisfied) | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Complete milestone v2.1 (gsd-complete-milestone v2.1; branch milestone/v2.1-fewer-failing-cartridges; SEED-016 closed as done, closeout override_closeout for the stale Phase 13 verification the audit accepted, roadmap, requirements, audit and phases 13 to 15 archived, PROJECT.md evolved, retrospective and product roadmap refreshed, no tag because release-please owns them) | Claude Code | claude-sonnet-5-5 |
+| 2026-11-13 | Ship milestone v2.1 close (gsd-ship; branch milestone/v2.1-fewer-failing-cartridges pushed, PR #46 opened non-draft with title docs: complete milestone v2.1, no external review command configured; auto-merge and the head-commit CI check are the next shell steps) | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
