@@ -4,17 +4,17 @@ milestone: v2.1
 milestone_name: Fewer failing cartridges
 current_phase: 15
 current_phase_name: Re-run, merge and timeouts
-status: executing
-stopped_at: Completed 15-01-PLAN.md
-last_updated: "2026-11-13T18:59:39.017Z"
+status: verifying
+stopped_at: Completed 15-02-PLAN.md
+last_updated: "2026-11-13T19:12:45.040Z"
 last_activity: 2026-11-13
-last_activity_desc: "Phase 15 plan 01 complete (post-fix library results merged)"
-state_head: 60d8a7fe38ffbbff4efe760e14f088249e2cbe20
+last_activity_desc: Phase 15 plan 02 complete (job timeouts re-derived, ship hand-off written)
+state_head: de463f25e085b436afb212306bf9ecf78487ae2c
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 15
-  completed_plans: 14
+  completed_plans: 15
   percent: 67
 ---
 
@@ -31,8 +31,8 @@ See: .planning/PROJECT.md (updated 2026-11-12)
 
 Phase: 15 (Re-run, merge and timeouts) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
-Last activity: 2026-11-13 -- Phase 15 plan 01 complete (post-fix library results merged)
+Status: Phase complete — ready for verification
+Last activity: 2026-11-13 -- Phase 15 plan 02 complete (job timeouts re-derived, ship hand-off written)
 
 ## Performance Metrics
 
@@ -239,6 +239,7 @@ Last activity: 2026-11-13 -- Phase 15 plan 01 complete (post-fix library results
 | Phase 14 P07 | 35 min | 2 tasks | 1 files |
 | Phase 14 P08 | 75 min | 3 tasks | 8 files |
 | Phase 15 P01 | 7 min | 3 tasks | 4 files |
+| Phase 15 P02 | 10min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -266,6 +267,9 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 14]: Plan 07: D-08 shape absent (rank 6 order=before 6, order=after 0, all graphics1 M4=0), so no latch move and no core edit; rank 6 closes in plan 08 with the D-07 reason
 - [Phase 14]: Plan 08: ranks 2 and 6 closed as not emulated by design (46 legacy-mode rows, SEED-006); boots check recorded sound over 3 no-fault rows; rank 3 open on D-04 is the single gap round entry, so FIX-01 and FIX-03 stay open
 - [Phase 15]: 15-01: the owner's library run at 0b4ae67 was accepted on the merge line (ratchet ok, 0 rows added, 1116 rewritten), the two-file status check and the single full-length core stamp; page pass 744 to 1029 and fail 381 to 96 (285 fail-to-pass, no pass row lost); the library: counts were not pasted and are recorded as not reported
+- [Phase 15]: Plan 15-02: each non-floor timeout comment is the ci-durations script's comment alone; fuzz and digest keep the 5-minute floor phrase because the floor still sets their minutes; asan drops it because the rule now gives 9
+- [Phase 15]: Plan 15-02: build (9 to 12) and be32 (15 to 21) were corrected in the same workflow commit, being below twice the fresh slowest; cause is test growth, not the runner
+- [Phase 15]: Plan 15-02: the ship body names workflows by display name (CI, Nightly, Digest), never by file name; the title stays fix(compat) for a patch release
 
 ### Pending Todos
 
@@ -458,8 +462,8 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 
 ## Session Continuity
 
-Last session: 2026-11-13T18:59:23.837Z
-Stopped at: Completed 15-01-PLAN.md
+Last session: 2026-11-13T19:12:44.976Z
+Stopped at: Completed 15-02-PLAN.md
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
