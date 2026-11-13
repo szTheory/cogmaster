@@ -426,6 +426,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-13 | Verify work phase 14 (gsd-verify-work 14); pad press for the one frozen no-fault cart run by the owner from a counts-only scratch script (0 of 1 changed), UAT complete, verification passed, phase transitioned | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Discuss phase 15 (gsd-discuss-phase 15); three advisor lenses (ledger and ratchet, CI timeouts, sequencing), 19 decisions, no code changed | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Plan phase 15 (gsd-plan-phase 15); research skipped (context covers it), two plans in two waves, three checker rounds (1 blocker and 5 warnings, then 4, then 2 small text fixes applied by the orchestrator), 19 of 19 decisions covered, no code changed | Claude Code | claude-sonnet-5-5 (orchestrator), claude-opus-5-5 (planner), claude-haiku-5-5 (plan checker) |
+| 2026-11-13 | Execute phase 15 plan 15-01 (gsd-execute-phase 15); the owner ran sh scripts/library.sh once (about 644 s, rows judged at the phase head), ratchet ok, 0 rows added and 1116 rewritten, page pass 744 to 1029 and fail 381 to 96 (285 fail-to-pass, no pass row lost), page equals its regeneration, compat.exit passes, local ci workflow exit 0 (676 plus 5 tests), old base judge exit 0; 3 tasks | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 

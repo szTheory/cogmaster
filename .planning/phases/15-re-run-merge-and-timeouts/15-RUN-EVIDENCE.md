@@ -80,3 +80,17 @@ Transitions by the transition count (rows whose status changed; there is no othe
 | sms | pal | off | fail | pass | 125 | transition count |
 
 Fail rows left in the merged ledger by the same program: 50 with tv ntsc (48 with fm off on sms, 2 with fm on) and 46 with tv pal. The 50 ntsc fail rows are within one of the 49 default-profile fails of the Phase 14 diagnose (the count includes the Japanese FM profile rows); this is a sanity reading, not a gate, so no counts-only diagnose run is asked of the owner.
+
+## Local gates
+
+Run on the commit that carries the merged ledger and page, from the repository root.
+
+| check | command | exit status |
+| ----- | ------- | ----------- |
+| the ci workflow (676 tests in its test step and 5 in its release test step passed) | `cmake --workflow --preset ci` | 0 |
+| the old base judge (the origin/main copies of the ratchet and the common script) over the merged ledger, behaviour revisions 18 and 18, printing the protected-comparison pass line | `sh "$t/scripts/compat-ratchet.sh" "$t/base.csv" tests/compat/ledger.csv tests/compat/allow.txt "$(date -u +%F)" 18 18 build/ci/tests/compat-fixtures/results.csv`, with `t="$TMPDIR/p15-base"` holding those `git show origin/main:` copies | 0 |
+| nothing outside .planning changed on the branch but the ledger and the page | `git diff --quiet origin/main...HEAD -- . ':(exclude).planning' ':(exclude)docs/compatibility.md' ':(exclude)tests/compat/ledger.csv'` | 0 |
+
+## Hand-off
+
+The judged commit above becomes reachable on the remote once the branch is pushed at /gsd-ship; the verifier then runs `gh api repos/szTheory/cogmaster/commits/0b4ae67b7f14c3d997c24ca719fb18f1d3cd29a4` and records its status (the run's stamp must be a public commit). The CI run URL for the pushed head is recorded at ship. Plan 2 makes the workflow commit after the ledger commit.
