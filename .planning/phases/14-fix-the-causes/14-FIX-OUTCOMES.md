@@ -102,14 +102,14 @@ Counts of failing rows by class, per leaf, as printed by the reducer: `leaf | cl
 
 | rank | leaf | rows (13 note) | outcome | evidence | residual leaf counts |
 | ---- | ---- | -------------- | ------- | -------- | ------------------- |
-| 1 | fault_alive.mapper_range.mapper | 109 | fixed, unconfirmed on dumps | D-05 stop not met: faddr=fffc:y 109, faddr=fffd-f:n 0, faddr=fffd-f:y 0 in the baseline (13 note rank 1); the `$FFFC` raise is gone and the value is stored. D-06: trace not taken (dumps absent), shift left as it is | before 109, after not measured; the kept odd-size marker would show as faddr=fffd-f:n, expected 0; Phase 15 re-run is the confirmation |
+| 1 | fault_alive.mapper_range.mapper | 109 | fixed in the core | D-05 stop not met: faddr=fffc:y 109, faddr=fffd-f:n 0, faddr=fffd-f:y 0 in the baseline (13 note rank 1); the `$FFFC` raise is gone and the value is stored. After: run_fail 205 to 104, run_fail_not_in_ledger 0, ledger_fail_now_pass 101. D-06: trace not taken (it needs the dump directory path, which this run did not read), shift left as it is | before 109, after 0 (the leaf no longer prints); residual faddr=fffd-f:* rows 0 |
 | 2 | fault_static.unsupported_video_mode.vdp | 36 | pending | pending | pending |
 | 3 | fault_alive.rom_write.cart | 32 | pending | pending | pending |
 | 4 | fault_alive.unmapped_write.none | 8 | pending | pending | pending |
 | 5 | fault_alive.unmapped_read.ctrl | 7 | pending | pending | pending |
 | 6 | fault_alive.unsupported_video_mode.vdp | 6 | pending | pending | pending |
 | 7 | fault_static.rom_write.cart | 4 | pending | pending | pending |
-| 8 | fault_no_display.mapper_range.mapper | 1 | fixed, unconfirmed on dumps | inherits rank 1: faddr=fffc:y 1 in the baseline (13 note rank 8) | before 1, after not measured; Phase 15 re-run is the confirmation |
+| 8 | fault_no_display.mapper_range.mapper | 1 | fixed in the core | inherits rank 1: faddr=fffc:y 1 in the baseline (13 note rank 8); the leaf no longer prints in the re-run | before 1, after 0 |
 | 9 | dark_no_fault.never_draws | 1 | pending | pending | pending |
 | 10 | static_no_fault.frozen | 1 | pending | pending | pending |
 | 11 | input_mismatch | 0 | pending | pending | pending |
@@ -123,3 +123,5 @@ Work order: code groups in rank order: ranks 1 and 8 (plan 03), rank 2's gates a
 The base hashes file `build/p14-base-hashes.txt` was taken from origin/main at commit 81a9cc9761873f20910738e393bed8b3558822b6, before any edit of the phase (plan 01).
 
 Plan 03: no pin moved. The Sega bank shift was left as it is (D-06 trace not taken), so no gate was added and the hashes of the 512 KiB shift fixtures are unchanged.
+
+Plan 03 re-run: `sh scripts/library.sh diagnose` from the repository root at head 97f345c, whose core source equals the core commit of the fix (eb8dfee), exit status 0, on a clean tree. Totals: run_fail 205 to 104, run_fail_not_in_ledger 0 (compared as numbers), ledger_fail_now_pass 101. Leaves that grew: rank 3 32 to 36, rank 4 8 to 11, rank 5 7 to 8, rank 9 1 to 2; ranks 2, 6, 7 and 10 unchanged. The 9 added rows are consistent with 110 rows moving out of ranks 1 and 8 (101 passing, 9 landing on the next fault of the same cart); the per-cart link was not traced.
