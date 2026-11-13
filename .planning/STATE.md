@@ -437,6 +437,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-13 | Execute phase 15 plan 15-01 (gsd-execute-phase 15); the owner ran sh scripts/library.sh once (about 644 s, rows judged at the phase head), ratchet ok, 0 rows added and 1116 rewritten, page pass 744 to 1029 and fail 381 to 96 (285 fail-to-pass, no pass row lost), page equals its regeneration, compat.exit passes, local ci workflow exit 0 (676 plus 5 tests), old base judge exit 0; 3 tasks | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Execute phase 15 plan 15-02 (gsd-execute-phase 15); job timeouts re-derived from a fresh 40-run read in one workflow commit (asan 5 to 9, bench 10 to 13, bench-wasm32 15 to 16, build 9 to 12, be32 15 to 21 minutes; fuzz and digest comments re-cited), timeout hygiene check and saved-read cross-check exit 0, CI-speed paragraph in the maintaining guide, SEED-015 and SEED-016 breadcrumbs, counts-only ship hand-off, local ci and hygiene workflows exit 0; 2 tasks | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Ship phase 15 (gsd-ship 15); branch pushed once, PR #44 opened non-draft with the counts-only title and body, the core-stamp commit answers 200 on the public API; auto-merge and the head-commit CI check are the next shell steps | Claude Code | claude-sonnet-5-5 |
+| 2026-11-13 | Milestone v2.1 audit (gsd-audit-milestone; branch milestone/v2.1-fewer-failing-cartridges off origin/main, integration check by gsd-integration-checker, report .planning/v2.1-MILESTONE-AUDIT.md, status tech_debt, 10 of 10 requirements satisfied) | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -472,5 +473,5 @@ Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published wit
 
 ## Operator Next Steps
 
-- Phase 15 plan 01 is complete (the owner's library run merged: pass 744 to 1029, fail 381 to 96, no pass row lost; ci workflow and old base judge exit 0). The next step is /gsd-execute-phase 15 for plan 02 (the job timeouts).
+- Milestone v2.1 audit is done (tech_debt, no blocker). The next step is /gsd-complete-milestone v2.1.
 - Owner hand-offs (batched, none is a gate): SEED-013 is done (v0.13.0); SEED-010 pad, Light Phaser and BIOS judges; SEED-009 scan thresholds.
