@@ -5,16 +5,16 @@ milestone_name: Fewer failing cartridges
 current_phase: 14
 current_phase_name: Fix the causes
 status: executing
-stopped_at: Completed 14-02-PLAN.md
-last_updated: "2026-11-13T03:49:58.994Z"
+stopped_at: Completed 14-03-PLAN.md
+last_updated: "2026-11-13T03:52:46.761Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 14 execution started
-state_head: 0619e310b92245144a595bd432771d72f3971158
+state_head: 0187c1c15e02f07f15260016fe8d68391fe68886
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 13
-  completed_plans: 7
+  completed_plans: 8
   percent: 33
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-12)
 ## Current Position
 
 Phase: 14 (Fix the causes) — EXECUTING
-Plan: 3 of 8
+Plan: 4 of 8
 Status: Ready to execute
 Last activity: 2026-11-12 — Phase 14 execution started
 
@@ -231,6 +231,7 @@ Last activity: 2026-11-12 — Phase 14 execution started
 | Phase 13 P05 | about 1h (owner run and hosted CI included) | 3 tasks | 4 files |
 | Phase 14 P01 | 10min | 2 tasks | 8 files |
 | Phase 14 P02 | 85 min | 2 tasks | 8 files |
+| Phase 14 P03 | 12 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -251,6 +252,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 14]: 14-01: pow2 rounds the body up to 16 KiB pages before the power-of-two test (16385 bytes is two pages, y; 0 bytes is n); size and pow2 read image_size minus body_offset
 - [Phase 14]: 14-01: new reducer sub-rows (faddr, vdpmode, wclass, pclass, size) key on the class value itself joined by colon, never a dot, so the leak scan name pattern cannot fire; base hashes file build/p14-base-hashes.txt taken from origin/main 81a9cc9
 - [Phase 14]: The unsupported-video-mode fault carries the mode select nibble in addr; behaviour revision 18 is the phase's only bump
+- [Phase 14]: 14-03: D-05 stop rule not met (rank 1 baseline faddr=fffc:y 109, fffd-f:n 0); the Sega $FFFC raise is removed and the odd-size bank marker kept. D-06 trace not taken (dumps absent): the Sega bank shift is left as it is.
 
 ### Pending Todos
 
@@ -434,8 +436,8 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 
 ## Session Continuity
 
-Last session: 2026-11-13T03:49:58.865Z
-Stopped at: Completed 14-02-PLAN.md
+Last session: 2026-11-13T03:52:46.635Z
+Stopped at: Completed 14-03-PLAN.md
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
