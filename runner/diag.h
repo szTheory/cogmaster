@@ -1,6 +1,7 @@
 /* --diagnose: run a cartridge for a fixed number of frames and print one line of facts about how
    it booted. Every printed value is a number, an enum word or a word from a static table, so the
-   line leaks no digest, opcode, exact frame, size or name. docs/runner.md describes the line. */
+   line leaks no digest, byte, image size, name or path. It does print the first-event call numbers
+   and the fault pc; the fault's own frame is bucketed. docs/runner.md describes the line. */
 #ifndef COGMASTER_RUNNER_DIAG_H
 #define COGMASTER_RUNNER_DIAG_H
 

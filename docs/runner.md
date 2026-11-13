@@ -409,8 +409,9 @@ failure; mismatches exit 3, unsupported capabilities 77, invalid syntax 2 and I/
 ## Diagnose
 
 `--diagnose FILE` runs exactly 1800 frames and prints one line, then exits 0. It holds only numbers, enum words
-and words from fixed tables, never a digest, opcode, exact frame, image size, region guess, name or path. Frames
-are run calls counted from 1; a field is `none` when its event never happened.
+and words from fixed tables, never a digest, byte, image size, name or path. It does print the first-event call
+numbers and the fault pc; the fault's own frame is bucketed. Frames are run calls counted from 1; a field is `none`
+when its event never happened.
 
 ```text
 diagnose 1 verdict600=pass first_display=2 first_nonblank=2 first_change=2 distinct600=3 distinct1800=3 ram=still fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=header
