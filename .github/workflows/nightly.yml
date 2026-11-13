@@ -34,6 +34,13 @@ on:
 permissions:
   contents: read
 
+# Only a pull request's runs supersede each other, so a push to a pull request
+# does not queue a second macOS bench beside the first. A scheduled or
+# dispatched run has its own group and is never cancelled.
+concurrency:
+  group: nightly-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 defaults:
   run:
     shell: bash
