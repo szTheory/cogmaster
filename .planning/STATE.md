@@ -423,6 +423,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-13 | Execute phase 14 plan 14-06 (gsd-execute-phase 14); reads of undriven ports and writes to ports nothing decodes record no fault (D-11 trigger not met), seeds repointed to ED 00, diagnose re-run run_fail 69 to 49 with ranks 4 and 5 gone, local ci workflow exit 0; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Execute phase 14 plan 14-07 (gsd-execute-phase 14); D-08 shape absent (rank 6: order=before 6, after 0, all M4=0), no core edit, rank 6 recorded as close per D-07 for plan 08; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Execute phase 14 plan 14-08 (gsd-execute-phase 14); final diagnose run_fail 205 to 49 with not in ledger 0, ranks 2 and 6 closed as not emulated by design, families and gap round recorded (rank 3 open on D-04), boots check sound over 3 no-fault rows, pin compare exit 0, SEED-006 and SEED-016 breadcrumbs; 3 tasks | Claude Code | claude-sonnet-5-5 |
+| 2026-11-13 | Verify work phase 14 (gsd-verify-work 14); pad press for the one frozen no-fault cart run by the owner from a counts-only scratch script (0 of 1 changed), UAT complete, verification passed, phase transitioned | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -448,7 +449,6 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 | seeds | SEED-008 | dormant | 2026-11-10 | v1.0 |
 | deferred_items | 02/deferred-items.md: hygiene.format and hygiene.no_float findings found during 02-09 | acknowledged (resolved by commits 3834dff and 2cceac5) | 2026-11-10 | v1.0 |
 | deferred_items | 03/deferred-items.md: local actionlint does not know the Ubuntu 26.04 runner labels | acknowledged (local linter metadata limitation) | 2026-11-10 | v1.0 |
-| 2026-11-13 | Verify work phase 14 (gsd-verify-work 14); pad press for the one frozen no-fault cart run by the owner from a counts-only scratch script (0 of 1 changed), UAT complete, verification passed, phase transitioned | Claude Code | claude-sonnet-5-5 |
 
 ## Session Continuity
 
