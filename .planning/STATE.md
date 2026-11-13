@@ -5,16 +5,16 @@ milestone_name: Fewer failing cartridges
 current_phase: 14
 current_phase_name: Fix the causes
 status: executing
-stopped_at: Completed 14-03-PLAN.md
-last_updated: "2026-11-13T03:52:46.761Z"
+stopped_at: Completed 14-04-PLAN.md
+last_updated: "2026-11-13T04:22:34.583Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 14 execution started
-state_head: 0187c1c15e02f07f15260016fe8d68391fe68886
+state_head: e4afc9161f5976e2ed6fbeef71d6ad24cf43d0bb
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 13
-  completed_plans: 8
+  completed_plans: 9
   percent: 33
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-12)
 ## Current Position
 
 Phase: 14 (Fix the causes) — EXECUTING
-Plan: 4 of 8
+Plan: 5 of 8
 Status: Ready to execute
 Last activity: 2026-11-12 — Phase 14 execution started
 
@@ -232,6 +232,7 @@ Last activity: 2026-11-12 — Phase 14 execution started
 | Phase 14 P01 | 10min | 2 tasks | 8 files |
 | Phase 14 P02 | 85 min | 2 tasks | 8 files |
 | Phase 14 P03 | 12 min | 3 tasks | 4 files |
+| Phase 14 P04 | 15 min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -253,6 +254,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 14]: 14-01: new reducer sub-rows (faddr, vdpmode, wclass, pclass, size) key on the class value itself joined by colon, never a dot, so the leak scan name pattern cannot fire; base hashes file build/p14-base-hashes.txt taken from origin/main 81a9cc9
 - [Phase 14]: The unsupported-video-mode fault carries the mode select nibble in addr; behaviour revision 18 is the phase's only bump
 - [Phase 14]: 14-03: D-05 stop rule not met (rank 1 baseline faddr=fffc:y 109, fffd-f:n 0); the Sega $FFFC raise is removed and the odd-size bank marker kept. Re-run on the dumps: run_fail 205 to 104, ranks 1 and 8 at 0, 101 carts now pass, 9 rows landed on later faults (ranks 3, 4, 5, 9). D-06 trace not taken (needs a dump path the agent may not read): the Sega bank shift is left as it is, no gate added; 101 of 110 carts passing is the evidence it is not wrong in the main.
+- [Phase 14]: 14-04: D-07 gate no M4=1 rows (rank 2 closes per D-07, closure in plan 08); D-10 no family M4=1 rows; D-04 trigger fired on reg-0 (11 rows) but every rom_write row is db-sourced so no header rule reaches it: open for the gap round. No code changed.
 
 ### Pending Todos
 
@@ -408,6 +410,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-12 | Plan phase 14 (gsd-plan-phase 14); researcher sonnet-5-5, planner opus-5-5, checker haiku-5-5; 8 plans in 8 sequential waves; three checker rounds, 0 blockers at the end, one final targeted fix applied without a fourth checker pass | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Execute phase 14 plan 14-01 (gsd-execute-phase 14); seven closed-vocabulary diagnose words (vdpmode, faddr, pow2, wclass, pclass, size, header), colon-joined counts-only reducer sub-rows, base hashes file taken from origin/main 81a9cc9, local ci workflow exit 0; 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Execute phase 14 plan 14-02 (gsd-execute-phase 14); video mode nibble in the unsupported-mode fault addr, behaviour revision 18, library baseline reproduced (run_fail 205, not in ledger 0), outcomes note with decision table, local ci workflow exit 0; 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-13 | Execute phase 14 plan 14-04 (gsd-execute-phase 14); D-07, D-10 and D-04 gates read from the baseline sub-rows, rank 2 decided (close per D-07), reg-0 board question open for the gap round, no code change, local ci workflow exit 0; 3 tasks, 2 docs commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -436,12 +439,12 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 
 ## Session Continuity
 
-Last session: 2026-11-13T03:52:46.635Z
-Stopped at: Completed 14-03-PLAN.md
+Last session: 2026-11-13T04:22:34.484Z
+Stopped at: Completed 14-04-PLAN.md
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
 ## Operator Next Steps
 
-- Phase 14 plans 14-01 and 14-02 are done; plans 14-03 to 14-08 remain. The next step is /gsd-execute-phase 14 (it runs the first plan without a summary). The library run reads the dump directory from the ignored local settings, so no export is needed.
+- Phase 14 plans 14-01 to 14-04 are done; plans 14-05 to 14-08 remain. The next step is /gsd-execute-phase 14 (it runs the first plan without a summary). The library run reads the dump directory from the ignored local settings, so no export is needed.
 - Owner hand-offs (batched, none is a gate): SEED-013 is done (v0.13.0); SEED-010 pad, Light Phaser and BIOS judges; SEED-009 scan thresholds.
