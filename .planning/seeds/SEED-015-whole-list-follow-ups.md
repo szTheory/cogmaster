@@ -81,6 +81,16 @@ half its timeout, and write the finding here or in a phase note, never only in a
   waits for a phase that edits `ci.yml` anyway.
 - **The dead branch from the first to the second ledger format** in the protected comparison step, made dead by the
   format 2 migration. Removing it edits `ci.yml`; same trigger.
+- **Phase 15 timeouts findings** (`.planning/phases/15-re-run-merge-and-timeouts/15-RUN-EVIDENCE.md`). Still open: the
+  per-test ctest `TIMEOUT` values of `library.synthetic` (160 s), `compat.ratchet` (142 s), `compat.public_update` (104 s) and
+  `compat.csv` (45 s; the Phase 12 review leftover below names the rule to settle them), because `hygiene.timeout_comments`
+  scans `timeout-minutes` lines only and the roadmap named jobs, not tests. `runner.diagnose` (about 311 s on the be32 lane at
+  the Phase 15 discuss read) and `library.diagnose` (about 142 s) arrived in Phases 13 and 14 and roughly doubled the be32
+  lane, so a cheaper be32 lane is a seed to judge against the be32 coverage it should keep; making a job faster inside the
+  timeouts pull request would have put its timeout out of step with the runs it cites. The three rules of the "CI speed"
+  rewrite bullet above are now one paragraph in `docs/maintaining.md`, while that section's critical-path sentence (macOS
+  builds, then the rehearsal) is still the stale line the milestone audit named. The jobs left with stale run IDs (wasm32,
+  retroarch, perf, hygiene, nofp) satisfy the rule against the fresh read and were not edited.
 - **Rejected with data, do not reopen without new numbers:** a cost ordering of the be32 tests, dropping the libretro
   host tests, caching, and path-filtering the `edited` filter. The phase's CI review measured each and found no saving
   that kept the checks it removes.
@@ -149,7 +159,11 @@ record for the next tune-up or ledger work (`.planning/v2.0-MILESTONE-AUDIT.md`)
   comment says 90 s against a live 144 s (the 5-minute floor still holds). `digest.yml` still says "no runs yet" though a
   digest run exists (55 s). `hygiene.timeout_comments` checks only the comment format and `timeout >= 2 x S` for the S the
   comment states, so CI cannot see the drift; the weekly digest names asan, bench and bench-wasm32 at its first scheduled
-  run. Decided by: the next tune-up (re-measure, edit the workflows once).
+  run. Decided by: the next tune-up (re-measure, edit the workflows once). **Done in Phase 15** (table and run IDs in
+  `.planning/phases/15-re-run-merge-and-timeouts/15-RUN-EVIDENCE.md`): asan 5 to 9 minutes, bench 10 to 13, bench-wasm32
+  15 to 16, the fuzz and digest comments re-cited, all in one commit. The same read showed `build` (9 minutes against 2 x 332 s)
+  and `be32` (15 against 2 x 609 s) below the rule too, so both were corrected in that commit (build 12, be32 21); the cause is
+  test growth, not the runner.
 - **50 Game Gear rows are judged as `video=gg` though MAME runs them in Master System mode.** The core resolves a Game
   Gear's video from the table (`src/cartdb.inc` holds 50 such rows), but `scripts/compat-seed.sh` writes `cfg:video=gg` for
   every `gg` row and `scripts/library.cmake` always runs `--video-mode gg`; a `pass` or `fail` is then a profile fact, and

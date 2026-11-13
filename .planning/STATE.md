@@ -3,18 +3,17 @@ gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Fewer failing cartridges
 current_phase: 15
-current_phase_name: Re-run, merge and timeouts
-status: planning
-stopped_at: Phase 14 complete, ready to plan Phase 15
-last_updated: "2026-11-13T16:02:06.748Z"
+status: completed
+stopped_at: Phase 15 complete — all phases complete
+last_updated: "2026-11-13T21:41:50.465Z"
 last_activity: 2026-11-13
-last_activity_desc: "Phase 14 shipped as PR #42"
-state_head: dfddee36a849f5ddb05205ae6778bd048d89b65a
+last_activity_desc: "Phase 15 shipped as PR #44"
+state_head: a0c39907c1a65c19a34d934998951e0da0c52fb4
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 15
+  completed_plans: 15
   percent: 67
 ---
 
@@ -25,19 +24,19 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-12)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 14 — Fix the causes
+**Current focus:** Phase 15 — Re-run, merge and timeouts
 
 ## Current Position
 
-Phase: 15 — Re-run, merge and timeouts
+Phase: 15
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-13 -- Phase 14 shipped as PR #42
+Status: All phases complete
+Last activity: 2026-11-13 -- Phase 15 shipped as PR #44
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 169
+- Total plans completed: 171
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -59,6 +58,7 @@ Last activity: 2026-11-13 -- Phase 14 shipped as PR #42
 | 12 | 10 | - | - |
 | 13 | 5 | - | - |
 | 14 | 8 | - | - |
+| 15 | 2 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -238,6 +238,8 @@ Last activity: 2026-11-13 -- Phase 14 shipped as PR #42
 | Phase 14 P06 | 75 min | 3 tasks | 10 files |
 | Phase 14 P07 | 35 min | 2 tasks | 1 files |
 | Phase 14 P08 | 75 min | 3 tasks | 8 files |
+| Phase 15 P01 | 7 min | 3 tasks | 4 files |
+| Phase 15 P02 | 10min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -264,6 +266,10 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 14]: Plan 06: D-11 trigger not met (rank 4 pclass is 3e-3f:gg:export only), so port writes nothing decodes and port reads nothing drives record no fault; run_fail 69 to 49
 - [Phase 14]: Plan 07: D-08 shape absent (rank 6 order=before 6, order=after 0, all graphics1 M4=0), so no latch move and no core edit; rank 6 closes in plan 08 with the D-07 reason
 - [Phase 14]: Plan 08: ranks 2 and 6 closed as not emulated by design (46 legacy-mode rows, SEED-006); boots check recorded sound over 3 no-fault rows; rank 3 open on D-04 is the single gap round entry, so FIX-01 and FIX-03 stay open
+- [Phase 15]: 15-01: the owner's library run at 0b4ae67 was accepted on the merge line (ratchet ok, 0 rows added, 1116 rewritten), the two-file status check and the single full-length core stamp; page pass 744 to 1029 and fail 381 to 96 (285 fail-to-pass, no pass row lost); the library: counts were not pasted and are recorded as not reported
+- [Phase 15]: Plan 15-02: each non-floor timeout comment is the ci-durations script's comment alone; fuzz and digest keep the 5-minute floor phrase because the floor still sets their minutes; asan drops it because the rule now gives 9
+- [Phase 15]: Plan 15-02: build (9 to 12) and be32 (15 to 21) were corrected in the same workflow commit, being below twice the fresh slowest; cause is test growth, not the runner
+- [Phase 15]: Plan 15-02: the ship body names workflows by display name (CI, Nightly, Digest), never by file name; the title stays fix(compat) for a patch release
 
 ### Pending Todos
 
@@ -292,6 +298,8 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-10-20 | Ship phase 2 (gsd-ship) | Codex | GPT-6 |
 | 2026-10-20 | Plan phase 3 (gsd-plan-phase) | Codex | GPT-6 |
 | 2026-10-20 | Execute phase 3 through plan 03-18; ready for code review (gsd-execute-phase) | Codex | GPT-6 |
+| 2026-11-13 | Code review and fix phase 15 (gsd-code-review --fix) | Claude Code | claude-sonnet-5-5 |
+| 2026-11-13 | Execute phase 15 verification gates (gsd-execute-phase) | Claude Code | claude-sonnet-5-5 |
 
 | 2026-10-20 | Code review phase 3 (gsd-code-review); standard, 152 files, 1 blocker and 1 warning | Codex | GPT-6 |
 | 2026-10-20 | Code review fixes phase 3 (gsd-code-review 03 --fix); both findings fixed, round 1 | Codex | GPT-6 |
@@ -424,6 +432,11 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-13 | Execute phase 14 plan 14-07 (gsd-execute-phase 14); D-08 shape absent (rank 6: order=before 6, after 0, all M4=0), no core edit, rank 6 recorded as close per D-07 for plan 08; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Execute phase 14 plan 14-08 (gsd-execute-phase 14); final diagnose run_fail 205 to 49 with not in ledger 0, ranks 2 and 6 closed as not emulated by design, families and gap round recorded (rank 3 open on D-04), boots check sound over 3 no-fault rows, pin compare exit 0, SEED-006 and SEED-016 breadcrumbs; 3 tasks | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Verify work phase 14 (gsd-verify-work 14); pad press for the one frozen no-fault cart run by the owner from a counts-only scratch script (0 of 1 changed), UAT complete, verification passed, phase transitioned | Claude Code | claude-sonnet-5-5 |
+| 2026-11-13 | Discuss phase 15 (gsd-discuss-phase 15); three advisor lenses (ledger and ratchet, CI timeouts, sequencing), 19 decisions, no code changed | Claude Code | claude-sonnet-5-5 |
+| 2026-11-13 | Plan phase 15 (gsd-plan-phase 15); research skipped (context covers it), two plans in two waves, three checker rounds (1 blocker and 5 warnings, then 4, then 2 small text fixes applied by the orchestrator), 19 of 19 decisions covered, no code changed | Claude Code | claude-sonnet-5-5 (orchestrator), claude-opus-5-5 (planner), claude-haiku-5-5 (plan checker) |
+| 2026-11-13 | Execute phase 15 plan 15-01 (gsd-execute-phase 15); the owner ran sh scripts/library.sh once (about 644 s, rows judged at the phase head), ratchet ok, 0 rows added and 1116 rewritten, page pass 744 to 1029 and fail 381 to 96 (285 fail-to-pass, no pass row lost), page equals its regeneration, compat.exit passes, local ci workflow exit 0 (676 plus 5 tests), old base judge exit 0; 3 tasks | Claude Code | claude-sonnet-5-5 |
+| 2026-11-13 | Execute phase 15 plan 15-02 (gsd-execute-phase 15); job timeouts re-derived from a fresh 40-run read in one workflow commit (asan 5 to 9, bench 10 to 13, bench-wasm32 15 to 16, build 9 to 12, be32 15 to 21 minutes; fuzz and digest comments re-cited), timeout hygiene check and saved-read cross-check exit 0, CI-speed paragraph in the maintaining guide, SEED-015 and SEED-016 breadcrumbs, counts-only ship hand-off, local ci and hygiene workflows exit 0; 2 tasks | Claude Code | claude-sonnet-5-5 |
+| 2026-11-13 | Ship phase 15 (gsd-ship 15); branch pushed once, PR #44 opened non-draft with the counts-only title and body, the core-stamp commit answers 200 on the public API; auto-merge and the head-commit CI check are the next shell steps | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -452,12 +465,12 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 
 ## Session Continuity
 
-Last session: 2026-11-13T05:54:56.986Z
-Stopped at: Phase 14 complete, ready to plan Phase 15
+Last session: 2026-11-13T19:12:44.976Z
+Stopped at: Phase 15 complete — all phases complete
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
 ## Operator Next Steps
 
-- Phase 14 is complete and verified (UAT passed, the pad press was run on the owner's dump directory with counts-only output). The next step is /gsd-ship 14, then /gsd-discuss-phase 15 on a fresh branch off origin/main. The library run reads the dump directory from the ignored local settings, so no export is needed.
+- Phase 15 plan 01 is complete (the owner's library run merged: pass 744 to 1029, fail 381 to 96, no pass row lost; ci workflow and old base judge exit 0). The next step is /gsd-execute-phase 15 for plan 02 (the job timeouts).
 - Owner hand-offs (batched, none is a gate): SEED-013 is done (v0.13.0); SEED-010 pad, Light Phaser and BIOS judges; SEED-009 scan thresholds.

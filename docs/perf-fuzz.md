@@ -68,8 +68,8 @@ lane that runs the `portable` label. Each prints `replayed N` and fails when N i
 **libFuzzer, nightly.** The `fuzz` job in `nightly.yml` runs `cmake --workflow --preset fuzz` on `ubuntu-26.04`:
 clang-21 with `-fsanitize=fuzzer-no-link,address,undefined`, the six targets linked with `-fsanitize=fuzzer`, each
 run for 60 s over a fresh copy of the seeds with `-timeout=2 -max_len=1049089` (1 MiB, a copier header and one
-byte, so the size-reject path is reachable). A crashing input is uploaded as the `fuzz-artifacts` artifact. The
-job is `continue-on-error` until ten green nightly runs. A finding is a harness or core bug to triage, never a
+byte, so the size-reject path is reachable). A crashing input is uploaded as the `fuzz-artifacts` artifact. A
+finding fails the night and opens or updates the nightly issue. It is a harness or core bug to triage, never a
 release gate of its own.
 
 **Adding a regression.** Minimise the input (`cogmaster-fuzz-<target> -minimize_crash=1 -runs=10000 <file>`), fix

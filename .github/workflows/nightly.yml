@@ -34,6 +34,13 @@ on:
 permissions:
   contents: read
 
+# Only a pull request's runs supersede each other, so a push to a pull request
+# does not queue a second macOS bench beside the first. A scheduled or
+# dispatched run has its own group and is never cancelled.
+concurrency:
+  group: nightly-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 defaults:
   run:
     shell: bash
@@ -42,7 +49,7 @@ jobs:
   bench:
     name: bench (${{ matrix.runner }})
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 10  # 2 x 297 s (worst lane), slowest of 33 runs, run 40817678633
+    timeout-minutes: 13  # 2 x 368 s, slowest of 40 runs, run 42764095033
     strategy:
       fail-fast: false
       matrix:
@@ -81,14 +88,14 @@ jobs:
   # has no resident set size, so its max_rss_kib line reads 0.
   bench-wasm32:
     runs-on: ubuntu-26.04
-    timeout-minutes: 15  # 2 x 438 s, slowest of 33 runs, run 42561596371
+    timeout-minutes: 16  # 2 x 456 s, slowest of 40 runs, run 42768407261
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: WASI sysroot and runtime
         run: |
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends wasi-libc libclang-rt-21-dev-wasm32
+          sudo apt-get -o Acquire::Retries=3 update && sudo apt-get -o Acquire::Retries=3 install -y --no-install-recommends wasi-libc libclang-rt-21-dev-wasm32
           scripts/fetch-pin.sh wasmtime-x86_64-linux build/pins/wasmtime
       - name: Build the runner
         run: |
@@ -120,16 +127,14 @@ jobs:
   # uploaded and joins tests/fuzz/regress with a manifest row.
   fuzz:
     runs-on: ubuntu-26.04
-    timeout-minutes: 5  # 5-minute floor (apt); 2 x 90 s, slowest of 26 runs, run 41002722591
-    # Report-only until ten green nightly runs; then this line goes.
-    continue-on-error: true
+    timeout-minutes: 5  # 5-minute floor (apt); 2 x 144 s, slowest of 40 runs, run 43020467034
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       # clang-21 is on the image; its sanitizer and libFuzzer runtimes may not be.
       - name: Sanitizer and libFuzzer runtimes
-        run: dpkg -s libclang-rt-21-dev > /dev/null 2>&1 || { sudo apt-get update && sudo apt-get install -y libclang-rt-21-dev; }
+        run: dpkg -s libclang-rt-21-dev > /dev/null 2>&1 || { sudo apt-get -o Acquire::Retries=3 update && sudo apt-get -o Acquire::Retries=3 install -y libclang-rt-21-dev; }
       - run: cmake --workflow --preset fuzz
       - name: Every test ran
         run: cmake -DJUNIT=build/fuzz/junit.xml -DINVENTORY=tests/inventory/fuzz.txt -DCHECK=check_junit -P tests/cmake/repository.cmake

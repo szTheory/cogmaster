@@ -118,7 +118,7 @@ jobs:
     if: needs.changes.outputs.heavy == 'true'
     name: build (${{ matrix.os }}-${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 9  # 2 x 252 s, slowest of 40 runs, run 43158408243
+    timeout-minutes: 12  # 2 x 332 s, slowest of 37 runs, run 43460663238
     strategy:
       fail-fast: false
       matrix:
@@ -266,7 +266,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.heavy == 'true'
     runs-on: ubuntu-26.04
-    timeout-minutes: 5  # 5-minute floor (apt); 2 x 84 s, slowest of 37 runs, run 42728887374
+    timeout-minutes: 9  # 2 x 243 s, slowest of 37 runs, run 43462502049
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -307,7 +307,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.heavy == 'true'
     runs-on: ubuntu-26.04
-    timeout-minutes: 15  # 2 x 445 s, slowest of 40 runs, run 43062734904
+    timeout-minutes: 21  # 2 x 609 s, slowest of 37 runs, run 43458609482
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

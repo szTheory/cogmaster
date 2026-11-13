@@ -24,7 +24,7 @@ defaults:
 jobs:
   digest:
     runs-on: ubuntu-26.04
-    timeout-minutes: 5  # 5-minute floor; no runs yet
+    timeout-minutes: 5  # 5-minute floor; 2 x 55 s, slowest of 1 run, run 42769805382
     # A job's permissions replace the workflow's, so contents is named again.
     permissions:
       contents: read
