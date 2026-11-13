@@ -5,16 +5,16 @@ milestone_name: Fewer failing cartridges
 current_phase: 14
 current_phase_name: Fix the causes
 status: executing
-stopped_at: Completed 14-01-PLAN.md
-last_updated: "2026-11-13T03:28:32.181Z"
+stopped_at: Completed 14-02-PLAN.md
+last_updated: "2026-11-13T03:49:58.994Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 14 execution started
-state_head: e4356365e7637b29c163af6aac599542e92a568d
+state_head: 0619e310b92245144a595bd432771d72f3971158
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 13
-  completed_plans: 6
+  completed_plans: 7
   percent: 33
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-12)
 ## Current Position
 
 Phase: 14 (Fix the causes) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-11-12 — Phase 14 execution started
 
@@ -230,6 +230,7 @@ Last activity: 2026-11-12 — Phase 14 execution started
 | Phase 13 P04 | 13 min | 3 tasks | 10 files |
 | Phase 13 P05 | about 1h (owner run and hosted CI included) | 3 tasks | 4 files |
 | Phase 14 P01 | 10min | 2 tasks | 8 files |
+| Phase 14 P02 | 85 min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -249,6 +250,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 13]: 13-05: leaves reported as printed, the groups-under-5 line counts the empty input_mismatch leaf, runner.diagnose timeout 633 s from the be32 raw 316.11 s
 - [Phase 14]: 14-01: pow2 rounds the body up to 16 KiB pages before the power-of-two test (16385 bytes is two pages, y; 0 bytes is n); size and pow2 read image_size minus body_offset
 - [Phase 14]: 14-01: new reducer sub-rows (faddr, vdpmode, wclass, pclass, size) key on the class value itself joined by colon, never a dot, so the leak scan name pattern cannot fire; base hashes file build/p14-base-hashes.txt taken from origin/main 81a9cc9
+- [Phase 14]: The unsupported-video-mode fault carries the mode select nibble in addr; behaviour revision 18 is the phase's only bump
 
 ### Pending Todos
 
@@ -403,6 +405,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-12 | Ship phase 13 (gsd-ship 13); branch pushed, PR #40 opened with a Conventional Commit title, no external review command configured, TDD audit skipped (no gate-status trailers) | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Plan phase 14 (gsd-plan-phase 14); researcher sonnet-5-5, planner opus-5-5, checker haiku-5-5; 8 plans in 8 sequential waves; three checker rounds, 0 blockers at the end, one final targeted fix applied without a fourth checker pass | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Execute phase 14 plan 14-01 (gsd-execute-phase 14); seven closed-vocabulary diagnose words (vdpmode, faddr, pow2, wclass, pclass, size, header), colon-joined counts-only reducer sub-rows, base hashes file taken from origin/main 81a9cc9, local ci workflow exit 0; 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Execute phase 14 plan 14-02 (gsd-execute-phase 14); video mode nibble in the unsupported-mode fault addr, behaviour revision 18, library baseline reproduced (run_fail 205, not in ledger 0), outcomes note with decision table, local ci workflow exit 0; 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -431,12 +434,12 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 
 ## Session Continuity
 
-Last session: 2026-11-13T03:28:21.235Z
-Stopped at: Completed 14-01-PLAN.md
+Last session: 2026-11-13T03:49:58.865Z
+Stopped at: Completed 14-02-PLAN.md
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
 ## Operator Next Steps
 
-- Phase 14 plan 14-01 is done; plans 14-02 to 14-08 remain. The next step is /gsd-execute-phase 14 (it runs the first plan without a summary). For the library run the owner exports COGMASTER_ROM_DIR once.
+- Phase 14 plans 14-01 and 14-02 are done; plans 14-03 to 14-08 remain. The next step is /gsd-execute-phase 14 (it runs the first plan without a summary). The library run reads the dump directory from the ignored local settings, so no export is needed.
 - Owner hand-offs (batched, none is a gate): SEED-013 is done (v0.13.0); SEED-010 pad, Light Phaser and BIOS judges; SEED-009 scan thresholds.
