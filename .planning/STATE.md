@@ -252,7 +252,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 14]: 14-01: pow2 rounds the body up to 16 KiB pages before the power-of-two test (16385 bytes is two pages, y; 0 bytes is n); size and pow2 read image_size minus body_offset
 - [Phase 14]: 14-01: new reducer sub-rows (faddr, vdpmode, wclass, pclass, size) key on the class value itself joined by colon, never a dot, so the leak scan name pattern cannot fire; base hashes file build/p14-base-hashes.txt taken from origin/main 81a9cc9
 - [Phase 14]: The unsupported-video-mode fault carries the mode select nibble in addr; behaviour revision 18 is the phase's only bump
-- [Phase 14]: 14-03: D-05 stop rule not met (rank 1 baseline faddr=fffc:y 109, fffd-f:n 0); the Sega $FFFC raise is removed and the odd-size bank marker kept. D-06 trace not taken (dumps absent): the Sega bank shift is left as it is.
+- [Phase 14]: 14-03: D-05 stop rule not met (rank 1 baseline faddr=fffc:y 109, fffd-f:n 0); the Sega $FFFC raise is removed and the odd-size bank marker kept. Re-run on the dumps: run_fail 205 to 104, ranks 1 and 8 at 0, 101 carts now pass, 9 rows landed on later faults (ranks 3, 4, 5, 9). D-06 trace not taken (needs a dump path the agent may not read): the Sega bank shift is left as it is, no gate added; 101 of 110 carts passing is the evidence it is not wrong in the main.
 
 ### Pending Todos
 
