@@ -253,11 +253,7 @@ static void run_board(uint32_t board)
                 cogmaster__bus_write(r.m, (uint16_t)reg_addr(board), (uint8_t)v);
                 seen_over |= model_write(&r.g, reg_addr(board), v);
             }
-            if (board == COGMASTER__BOARD_KOREAN_NB) {
-                if (v == 0u) {
-                    expect_fault(r.m, COGMASTER__FAULT_ROM_WRITE, COGMASTER__DEVICE_CART, 0xA000u);
-                }
-            } else if (seen_over) {
+            if (seen_over) {
                 expect_fault(r.m, COGMASTER__FAULT_MAPPER_RANGE, COGMASTER__DEVICE_MAPPER,
                              reg_addr(board));
             } else {
@@ -285,13 +281,14 @@ static void run_board(uint32_t board)
         check_banks(&r);
         CHECK_EQ_U64(fault_of(r.m).present, 0);
 
-        /* Writes to ROM that are not a register change no bank. */
+        /* Writes to ROM that are not a register change no bank and record no
+           fault. */
         static const uint16_t other[6] = {0x1234u, 0x0000u, 0x4000u, 0x8000u, 0xA001u, 0xBFFFu};
         for (uint32_t i = 0; i < 6u; i++) {
             cogmaster__bus_write(r.m, other[i], 3u);
             check_banks(&r);
         }
-        expect_fault(r.m, COGMASTER__FAULT_ROM_WRITE, COGMASTER__DEVICE_CART, 0x1234u);
+        CHECK_EQ_U64(fault_of(r.m).present, 0);
         if (board == COGMASTER__BOARD_KOREAN) {
             cogmaster__bus_write(r.m, 0x9FFFu, 3u);
             check_banks(&r);
@@ -402,7 +399,7 @@ static void run_regs(uint32_t board)
                 check_banks(&r);
             }
         }
-        expect_fault(r.m, COGMASTER__FAULT_ROM_WRITE, COGMASTER__DEVICE_CART, 0x1234u);
+        CHECK_EQ_U64(fault_of(r.m).present, 0);
         rig_close(&r);
     }
 }

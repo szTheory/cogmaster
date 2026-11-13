@@ -131,9 +131,8 @@ void cogmaster__mapper_write(cogmaster *m, uint16_t addr, uint8_t v)
             p->bank[slot] = bank_write(m, addr, slot == 1u ? v & 0x7Fu : v);
         } else if (addr >= CM_RAM_BASE && addr < 0xC000u && (p->ctrl & CM_RAM_ON) != 0u) {
             cogmaster__battery_write(m, addr & (m->cart.ram_size - 1u), v);
-        } else if (addr < 0xC000u) {
-            cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_CART, COGMASTER__FAULT_ROM_WRITE);
         }
+        /* Any other write below $C000 is a write to ROM and changes nothing. */
         break;
     default:
         cogmaster__mapext_write(m, addr, v);

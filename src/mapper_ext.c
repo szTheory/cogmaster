@@ -93,13 +93,12 @@ void cogmaster__mapext_write(cogmaster *m, uint16_t addr, uint8_t v)
         /* The one register is a write to exactly $A000: it picks the 16 KiB
            bank of $8000-$BFFF, value modulo the page count (MAME
            src/devices/bus/sega8/rom.cpp, sega8_korean_device, pin
-           1d7a454ed79e). Every other write below $C000 is a write to ROM. */
+           1d7a454ed79e). Every other write below $C000 is a write to ROM and changes
+           nothing. */
         if (addr == 0xA000u) {
             ext_check(m, addr, 2u * (uint32_t)v + 1u);
             p->bank8[4] = ext_bank(m, 2u * (uint32_t)v);
             p->bank8[5] = ext_bank(m, 2u * (uint32_t)v + 1u);
-        } else if (addr < 0xC000u) {
-            cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_CART, COGMASTER__FAULT_ROM_WRITE);
         }
         break;
     case COGMASTER__BOARD_HICOM:
@@ -112,8 +111,6 @@ void cogmaster__mapext_write(cogmaster *m, uint16_t addr, uint8_t v)
             for (uint32_t i = 0; i < 4u; i++) {
                 p->bank8[i] = ext_bank(m, 4u * (uint32_t)v + i);
             }
-        } else if (addr < 0xC000u) {
-            cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_CART, COGMASTER__FAULT_ROM_WRITE);
         }
         break;
     case COGMASTER__BOARD_ZEMINA:
@@ -122,13 +119,11 @@ void cogmaster__mapext_write(cogmaster *m, uint16_t addr, uint8_t v)
            $4000 and $6000, value modulo twice the page count; $0000-$3FFF
            otherwise stay fixed. Nemesis is the same board (MAME rom.cpp,
            sega8_zemina_device::write_cart, same pin). Every other write below
-           $C000 is a write to ROM. */
+           $C000 is a write to ROM and changes nothing. */
         if (addr < 4u) {
             static const uint8_t window[4] = {4u, 5u, 2u, 3u};
             ext_check(m, addr, v);
             p->bank8[window[addr]] = ext_bank(m, v);
-        } else if (addr < 0xC000u) {
-            cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_CART, COGMASTER__FAULT_ROM_WRITE);
         }
         break;
     case COGMASTER__BOARD_4PAK:
@@ -156,8 +151,6 @@ void cogmaster__mapext_write(cogmaster *m, uint16_t addr, uint8_t v)
             ext_pak_slot(m, addr, 2u, (uint32_t)(p->raw[0] & 0x30u) + p->raw[1]);
         } else if (addr >= 0xFFFDu) {
             ext_pak_slot(m, addr, (uint32_t)addr - 0xFFFDu, v);
-        } else if (addr < 0xC000u) {
-            cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_CART, COGMASTER__FAULT_ROM_WRITE);
         }
         break;
     case COGMASTER__BOARD_SEGA_EEPROM:
@@ -168,7 +161,7 @@ void cogmaster__mapext_write(cogmaster *m, uint16_t addr, uint8_t v)
            chip select from bits 0, 1 and 2 (write_cart). The cartridge RAM
            holds the chip's image: a completed command that changed a byte
            moves the battery generation once. Any other write below $C000 is a
-           write to ROM. */
+           write to ROM and changes nothing. */
         if (addr == 0xFFFCu) {
             p->ctrl = (uint8_t)(v & (EEPROM_OPEN | EEPROM_RESET));
             if ((v & EEPROM_RESET) != 0u) {
@@ -181,8 +174,6 @@ void cogmaster__mapext_write(cogmaster *m, uint16_t addr, uint8_t v)
                 cogmaster__battery_length(m) != 0u) {
                 m->cart.generation++;
             }
-        } else if (addr < 0xC000u) {
-            cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_CART, COGMASTER__FAULT_ROM_WRITE);
         }
         break;
     default:
