@@ -25,6 +25,7 @@ One line per raise. A source is a document section, never a row count. "Benign b
 | `unmapped_read` of `$00`-`$3F` | benign by hardware | SMS-SYSTEM C5 and section 4 (open bus or `$FF`); docs/embedding.md (shipped-game behaviour is never a fault) |
 | `unsupported_video_mode` with M4 = 0 | emulation gap, not emulated by design | SMS-VDP section 7; DEC.03 |
 | `unsupported_video_mode` with M4 = 1 | decode question | SMS-VDP section 2.5 |
+| `rom_write` to a foreign board's exact register | D-04 trigger threshold: 5 rows in one reg-* class of ranks 3 and 7 (assumption; the owner can change the figure) | SMS-CARTRIDGES 2.2 (the exact register addresses) |
 | memory-side `unmapped_read` and `unmapped_write`, and `ed_undefined` | genuine fault, unchanged | DEC.39; DEC.40 |
 
 ## Baseline classes
@@ -103,8 +104,8 @@ Counts of failing rows by class, per leaf, as printed by the reducer: `leaf | cl
 | rank | leaf | rows (13 note) | outcome | evidence | residual leaf counts |
 | ---- | ---- | -------------- | ------- | -------- | ------------------- |
 | 1 | fault_alive.mapper_range.mapper | 109 | fixed in the core | D-05 stop not met: faddr=fffc:y 109, faddr=fffd-f:n 0, faddr=fffd-f:y 0 in the baseline (13 note rank 1); the `$FFFC` raise is gone and the value is stored. After: run_fail 205 to 104, run_fail_not_in_ledger 0, ledger_fail_now_pass 101. D-06: trace not taken (it needs the dump directory path, which this run did not read), shift left as it is | before 109, after 0 (the leaf no longer prints); residual faddr=fffd-f:* rows 0 |
-| 2 | fault_static.unsupported_video_mode.vdp | 36 | pending | pending | pending |
-| 3 | fault_alive.rom_write.cart | 32 | pending | pending | pending |
+| 2 | fault_static.unsupported_video_mode.vdp | 36 | decided: close per D-07 | M4=0 by class: graphics1 7, graphics2 29 (36 of 36); M4=1 rows 0, so no decode question to check; closure written in plan 08 | before 36, after 36 (no code change in this plan) |
+| 3 | fault_alive.rom_write.cart | 32 | open: D-04 needs new evidence | D-04 trigger fired on reg-0 (11 rows of ranks 3 and 7, baseline); D-04: no shared header property; board choice needs new evidence (every row source db, so a header rule cannot reach them); the drop D-04 decides lands in plan 05 | pending |
 | 4 | fault_alive.unmapped_write.none | 8 | pending | pending | pending |
 | 5 | fault_alive.unmapped_read.ctrl | 7 | pending | pending | pending |
 | 6 | fault_alive.unsupported_video_mode.vdp | 6 | pending | pending | pending |
@@ -117,6 +118,18 @@ Counts of failing rows by class, per leaf, as printed by the reducer: `leaf | cl
 groups under 5: 5 groups, 7 rows (13 note)
 
 Work order: code groups in rank order: ranks 1 and 8 (plan 03), rank 2's gates and decision (plan 04), ranks 3 and 7 (plan 05), ranks 4 and 5 (plan 06), rank 6 (plan 07); closures of rank 2 and the groups under 5, and the final counts, in plan 08 (the last plan writes the closures). Rows stay in rank order whatever plan fills them.
+
+## Gates (plan 04)
+
+The three gates read the baseline sub-rows above; the post-plan-03 counts of the same sub-rows (re-run at head 97f345c) are given beside them where they differ.
+
+D-07 gate: no M4=1 rows. M4=0 by class over every unsupported_video_mode leaf (ranks 2 and 6; no other leaf prints one): graphics1 13 (rank 2: 7, rank 6: 6), graphics2 29 (rank 2); text, multicolor and mixed 0. M4=1 by class and machine: mode4 0, invalid 0, sms2only 0. All 42 rows are on the SMS 1 profile family (machine sms); no Game Gear row.
+
+D-10 families: no family M4=1 rows. zemina: vdpmode graphics1 1 and graphics2 6 on rank 2, rank 7 lt100 write 1; korean_nb: graphics1 1 and graphics2 2 on rank 2, rank 7 reg-0 writes 2; korean: graphics1 2 on rank 2, rank 3 reg-cm writes 2. The decode and the family mapper are not in question, so no trace was taken: not taken, nothing to ask it.
+
+D-04 trigger: fired on reg-0, worked in Task 3. Counts over ranks 3 and 7 together, baseline (post-plan-03 in brackets): reg-0 11 [12] (rank 3 sega 8 [9], rank 7 korean_nb 2 and none 1), reg-zm 3 [4] below threshold, reg-cm 4 [4] below threshold, reg-korean 0, reg-4pak 0. Threshold: 5 rows in one reg-* class, an assumption written in the Decision table.
+
+D-04: no shared header property; board choice needs new evidence. Every rom_write row of ranks 3 and 7 has board source db (36 of 36 on rank 3 post-plan-03, 4 of 4 on rank 7): the database row decides before any header rule in `guess_board` runs, so a header rule in src/cart.c cannot change the board of one of these images. A table row is keyed on a digest and is out (D-04, D-13), and scan thresholds are untouched. The retained output joins no row's write class to its header state, and the leaf size and header sub-rows mix every write class. Routed to the single gap round (CLAUDE.md rule 7) by plan 08. Plan 05 still lands the drop that D-04 decides.
 
 ## Pins
 
