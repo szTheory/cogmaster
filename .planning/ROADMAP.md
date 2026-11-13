@@ -118,7 +118,13 @@ Plans:
   2. The compatibility page and its counts agree with the merged ledger, and `compat.exit` stays green
   3. The asan, nightly bench and bench-wasm32 job timeouts and the fuzz and digest comments are re-derived by the twice-the-slowest rule from live runs, each timeout with its run IDs, in one edit per workflow file, and `hygiene.timeout_comments` passes
   4. `cmake --workflow --preset ci` passes and the pull request has a CI run on its head commit
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+**Wave 1**
+- [ ] 15-01-PLAN.md — Owner re-runs the library judge; accept by counts, merge ledger and page in one commit, local gates and the old base judge
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 15-02-PLAN.md — Timeouts re-derived from fresh live runs in one workflow commit, CI-speed paragraph, seed breadcrumbs, ship hand-off text
 **Note**: The owner passes `COGMASTER_ROM_DIR` for the re-run; nothing from the dumps is committed. `ci.yml` is edited once in this phase, in the last push, and no earlier v2.1 phase edits it.
 
 ## Progress
