@@ -5,11 +5,11 @@ milestone_name: Fewer failing cartridges
 current_phase: 14
 current_phase_name: Fix the causes
 status: planning
-stopped_at: Phase 13 complete, ready to plan Phase 14
-last_updated: "2026-11-13T00:49:11.676Z"
+stopped_at: Phase 14 context gathered
+last_updated: "2026-11-13T01:21:03.783Z"
 last_activity: 2026-11-12
 last_activity_desc: "Phase 13 shipped as PR #40"
-state_head: e571cfa696e4938ccd39ed8c26f7cfd377ddfa31
+state_head: 46574aadb11f2746fdb84664744282d71df060eb
 progress:
   total_phases: 3
   completed_phases: 1
@@ -396,6 +396,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-12 | Plan phase 13 (gsd-plan-phase 13); researcher, planner and checker agents, 3 checker rounds then one owner-approved narrow retry; 5 plans in 5 waves; decision coverage 25 of 25; the phase branch phase/13-why-carts-fail is cut from the milestone branch tip by the first execute task (rule 10 deviation, owner may override) | Claude Code | claude-sonnet-5-5 (researcher claude-sonnet-5-5, planner claude-opus-5-5, checker claude-haiku-5-5) |
 | 2026-11-13 | Execute phase 13 plan 13-05 (gsd-execute-phase 13); diagnose run over the owner library exit 0, counts-only note .planning/phases/13-why-carts-fail/13-CAUSE-GROUPS.md, ledger and page unchanged, four diagnose test timeouts settled from hosted run https://github.com/szTheory/cogmaster/actions/runs/43334476928 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Execute phase 13 close-out (gsd-execute-phase 13); code review 0 critical, 3 warnings (WR-01 and WR-03 fixed in one fix round, WR-02 left open for the owner), verifier passed 4 of 4, phase marked complete; 13-REVIEW-DISPOSITION.md records every finding | Claude Code | claude-sonnet-5-5 (reviewer, fixer and verifier claude-sonnet-5-5) |
+| 2026-11-12 | Discuss phase 14 (gsd-discuss-phase 14); five advisor agents (fault policy and boots check, mapper_range, video modes, mapper families and ports, phase shape) and an orchestrator reconciliation; 15 decisions; branch phase/14-fix-the-causes cut from origin/main | Claude Code | claude-sonnet-5-5 (advisors claude-sonnet-5-5) |
 | 2026-11-12 | Ship phase 13 (gsd-ship 13); branch pushed, PR #40 opened with a Conventional Commit title, no external review command configured, TDD audit skipped (no gate-status trailers) | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
@@ -425,12 +426,12 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 
 ## Session Continuity
 
-Last session: 2026-11-13T00:17:42.913Z
-Stopped at: Phase 13 complete, ready to plan Phase 14
+Last session: 2026-11-13T01:21:03.733Z
+Stopped at: Phase 14 context gathered
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
 ## Operator Next Steps
 
-- Milestone v2.1 is roadmapped (Phases 13 to 15). After the roadmap is approved and merged, the next step is /gsd-discuss-phase 13.
+- Phase 14 context is gathered. The next step is /gsd-plan-phase 14. For the execute step the owner exports COGMASTER_ROM_DIR once.
 - Owner hand-offs (batched, none is a gate): SEED-013 is done (v0.13.0); SEED-010 pad, Light Phaser and BIOS judges; SEED-009 scan thresholds.
