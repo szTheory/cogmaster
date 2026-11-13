@@ -1,20 +1,16 @@
 ---
 gsd_state_version: "1.0"
-milestone: v2.1
-milestone_name: Fewer failing cartridges
-status: Awaiting next milestone
-stopped_at: Milestone v2.1 complete and archived
-last_updated: "2026-11-13T23:10:38.798Z"
+milestone: v2.2
+milestone_name: Legacy video modes
+status: planning
+last_updated: "2026-11-13T23:54:22.451Z"
 last_activity: 2026-11-13
-last_activity_desc: Milestone v2.1 close shipped as PR #46
-state_head: c3f917544a5fc3dfca0a4afdf6af0a0a64d463cf
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 15
-  completed_plans: 15
-  percent: 100
-current_phase: 15
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -28,10 +24,11 @@ See: .planning/PROJECT.md (updated 2026-11-13)
 
 ## Current Position
 
-Phase: Milestone v2.1 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-11-13 — Milestone v2.1 completed and archived
+Status: Defining requirements
+Last activity: 2026-11-13 — Milestone v2.2 started
+
 
 ## Performance Metrics
 
@@ -440,6 +437,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-13 | Milestone v2.1 audit (gsd-audit-milestone; branch milestone/v2.1-fewer-failing-cartridges off origin/main, integration check by gsd-integration-checker, report .planning/v2.1-MILESTONE-AUDIT.md, status tech_debt, 10 of 10 requirements satisfied) | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Complete milestone v2.1 (gsd-complete-milestone v2.1; branch milestone/v2.1-fewer-failing-cartridges; SEED-016 closed as done, closeout override_closeout for the stale Phase 13 verification the audit accepted, roadmap, requirements, audit and phases 13 to 15 archived, PROJECT.md evolved, retrospective and product roadmap refreshed, no tag because release-please owns them) | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Ship milestone v2.1 close (gsd-ship; branch milestone/v2.1-fewer-failing-cartridges pushed, PR #46 opened non-draft with title docs: complete milestone v2.1, no external review command configured; auto-merge and the head-commit CI check are the next shell steps) | Claude Code | claude-sonnet-5-5 |
+| 2026-11-13 | New milestone v2.2 Legacy video modes (gsd-new-milestone); nine-lens fan-out plus adversarial pass, scope approved by the owner | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -477,4 +475,4 @@ Milestone v2.1 pull requests: #40, #42 and #44 (phases 13 to 15) and releases #4
 ## Operator Next Steps
 
 
-- Start the next milestone with /gsd-new-milestone
+- Milestone v2.2 is being defined; after the roadmap is approved run /gsd-discuss-phase 16

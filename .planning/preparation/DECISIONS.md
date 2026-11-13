@@ -21,6 +21,7 @@ evidence. IDs use a dot (`DEC.07`) so they never collide with GSD's `D-NN` phase
 | DEC.06 | Horizon order: players and homebrew developers (v1.0–v2.0), states and movies (v3.0), measured accuracy (v4.0), tools and AI (v5.0), everywhere (v6.0); the browser (SEED-008) is weighed against v2.0 at the first new-milestone step | Personas ranked by reach and dependency; owner priority on WASM | ECOSYSTEM 3; PRODUCT-ROADMAP |
 | DEC.07 | v1.0 boards: no mapper, the Sega mapper (with on-cart RAM) and Codemasters; 620/653 SMS and 812/823 GG entries of the CC0 lists (97.0 %) | Library share counted at MAME `1d7a454ed79e` | CARTRIDGES 2, 7 |
 | DEC.08 | v1.0 sound: PSG with Game Gear stereo and the YM2413 for the Japanese profile, both in phase 4 | FM titles are a visible feature of the Japanese library; a permissive OPLL exists | SMS-AUDIO 3, 4 |
+| DEC.68 | The browser build keeps DEC.01 and AGENTS rule 2 unchanged: this repository ships the library as a zero-import wasm module with its frame and audio hash test and a size ceiling; the page (canvas, audio worklet, gamepad) lives in a sibling repository that pins the release asset. Browser work is not scheduled yet (after v3.0 states) | Owner decision 2026-11-13, taking the 2026-11-13 fan-out recommendation after a check that SEED-008's JS harness is window, audio and input code, which DEC.01 forbids, while the wasm32 hash lane already proves the library is browser-shaped | SEED-008; PRODUCT-ROADMAP; research/NEXT-MILESTONE |
 
 ## Process
 | ID | Decision | Because | See |

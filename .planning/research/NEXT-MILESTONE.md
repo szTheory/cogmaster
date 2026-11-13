@@ -73,7 +73,7 @@ API-adding milestone.
   rows; SC-3000 keyboard, tablet and multicarts stay out (no evidence; the "multicart" entries are Dahjee RAM pass-through).
   Mk I RAM size (1 KB or 2 KB) and ROM mirroring are unresolved hardware choices.
 - Browser: ship the library as a zero-import wasm module with a hash test; the page belongs in a sibling repo unless
-  the owner amends rule 2 and DEC.01. Needs an owner ruling.
+  the owner amends rule 2 and DEC.01. Settled 2026-11-13 as DEC.68: rule 2 stays, the page lives in a sibling repo, after v3.0.
 - Movies: only with a named consumer; BizHawk import needs an inflate seed and zip-bomb caps, and BizHawk's source must
   not be read (licence history); use the TASVideos format pages.
 - Tools: stdlib `ctypes` docs, no PyPI or npm packages. Ports: handhelds marginal (about 36 Ir per Z80 cycle estimate),

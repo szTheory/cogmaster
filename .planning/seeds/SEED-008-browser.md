@@ -45,3 +45,7 @@ frame-time and power checks in Chrome, Firefox and Safari, including on a phone.
 
 No threads means no SharedArrayBuffer, so no COOP/COEP headers, and any static host works. Browser SMS
 emulators exist (ECOSYSTEM 1); cogmaster's would be the accurate, permissive one other sites can embed.
+
+## Update 2026-11-13
+
+DEC.68 settles the rule 2 question: this repository ships the library as a zero-import wasm module with the hash test and a size ceiling; the JS harness and page above move to a sibling repository that pins the release asset. The release path (18 zips, 19 assets) changes when the wasm asset is added. Sequenced after v3.0 (PRODUCT-ROADMAP).

@@ -27,19 +27,28 @@ legacy TMS9918 video modes the core does not render (SEED-006) and 3 show no fau
 (`.planning/v2.1-MILESTONE-AUDIT.md`, archived with the milestone) found 10 of 10 requirements satisfied, status
 tech_debt and no blockers.
 
-## Next Milestone Goals
+## Current Milestone: v2.2 Legacy video modes
 
-After v2.1, none of it a gate:
+**Goal:** Cartridges that use the TMS9918 Graphics I and II modes draw their real picture instead of faulting, so most
+of the 46 default-profile `fail` rows that wait on these modes leave the unsupported-mode leaf.
 
-- The legacy video modes (SEED-006) cause 46 of the 49 remaining default-profile `fail` rows; the board question for the reg-0
-  cartridges (11 to 12 rows at the baseline, none failing now) needs new evidence before it is more than a seed.
-- The pad, Light Phaser and BIOS judges (SEED-010) and the scan-threshold measurement (SEED-009) can ride in the next
-  owner sitting.
-- The rest of SEED-015 and SEED-007 (ledger rows, review leftovers), and the v2.1 documentation debt listed in the
-  audit (stale fault-vocabulary lines in `docs/audio.md`, `docs/embedding.md` and `docs/runner.md`).
-- Later horizons (states and movies, measured accuracy, tools, ports, the browser, SG-1000) stay seeds in
-  `.planning/seeds/` and horizons in `.planning/PRODUCT-ROADMAP.md`; each needs the owner's approval at
-  `/gsd-new-milestone`.
+**Target features:**
+- Graphics I and II rendering on the Master System and Game Gear (SMS video) profiles, in its own module with a fixed
+  TMS palette and the 4-slot legacy sprite engine, dispatched once per line so mode 4 and every hash pin stay put
+  (behaviour revision 19, state format 17).
+- Text, multicolour, the mixed modes, the invalid text modes and native Game Gear keep their fault, with the reason stated.
+- The library re-run through the unchanged ratchet, the dead diagnose vocabulary pruned once, the false and stale doc
+  lines fixed, and a milestone-close clean-state check script.
+
+The scope comes from the 2026-11-13 fan-out (`.planning/research/NEXT-MILESTONE.md`), approved by the owner the same day.
+The browser question is settled as DEC.68 (the library as wasm here, the page in a sibling repository, after v3.0).
+
+## Later Horizons
+
+In order, none of it a gate (`.planning/PRODUCT-ROADMAP.md` holds triggers and reasons): v3.0 States and rewind (public
+state API, libretro save states, rewind, run-ahead and a `SYSTEM_RAM` export); v3.1 the SG-1000 machine; then the browser
+module, movies (only with a named consumer), measured accuracy (needs the owner's hardware), tools and ports. The pad,
+Light Phaser and BIOS judges (SEED-010) and the scan thresholds (SEED-009) can ride in any owner sitting.
 
 ## Core Value
 
@@ -68,10 +77,17 @@ MIT-licensed C library that any host can embed.
 
 ### Active
 
-None defined. The next milestone's requirements are written at `/gsd-new-milestone`. Deferred candidates from v2.1:
-LEDG-06 (a catalog `video` column for the 50 Game Gear entries MAME runs in Master System mode), LEDG-07 (per-alias
-`supported` and a reason for `partial` entries) and PAD-08 (the pad, Light Phaser and BIOS judges and the scan
-thresholds on the owner's hardware).
+<!-- Current scope: milestone v2.2. Full text in REQUIREMENTS.md. -->
+
+- [ ] **MODE-01 to MODE-08**: Graphics I and II render with owned fixtures and closed-form pixels, legacy sprites, the other
+  modes keep their fault, no pin moves, the perf gate stays green, and the hardware notes and provenance rows are written
+- [ ] **RUN-03, RUN-04**: the library re-run merges through the ratchet and the compatibility page equals its regeneration
+- [ ] **TUNE-12 to TUNE-17**: stale doc lines, the dirty-tree stamp, the assembler fetch retry, the diagnose vocabulary
+  prune, re-derived timeouts and a milestone-close clean-state check
+
+Deferred candidates: LEDG-06 (a catalog `video` column for the 50 Game Gear entries MAME runs in Master System mode),
+LEDG-07 (per-alias `supported` and a reason for `partial` entries), PAD-08 (the pad, Light Phaser and BIOS judges and the
+scan thresholds on the owner's hardware), and text and multicolour modes (only if the diagnose shows 5 or more rows landing there).
 
 ### Out of Scope
 
@@ -187,4 +203,4 @@ After each milestone:
 3. Lessons are exported to `.planning/LESSONS.md`.
 
 ---
-*Last updated: 2026-11-13 after v2.1 milestone*
+*Last updated: 2026-11-13 after starting milestone v2.2*

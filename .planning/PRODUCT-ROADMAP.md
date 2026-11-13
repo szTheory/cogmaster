@@ -73,7 +73,7 @@ fault and a static correct picture still fails the `distinct >= 2` boots predica
 **Alternatives weighed and why they lost:** states first (largest universal gap, but its trigger has not fired on
 evidence and every behaviour revision already refuses older states, so doing modes first costs no migration);
 modes plus the SG-1000 machine in one milestone (two unrelated risks, the SG-1000 "pass" is weaker still); the
-browser build (blocked on an owner ruling about rule 2); a standalone tune-up phase (the debt is 2 to 3 hours and
+browser build (rule 2 is settled by DEC.68, but it is sequenced after states); a standalone tune-up phase (the debt is 2 to 3 hours and
 lands in files the feature edits).
 
 ## Mid — v3.0 "States and rewind", v3.1 "SG-1000", v4.0 "Measured accuracy" (SEED-002, SEED-006, SEED-003)
@@ -94,7 +94,7 @@ stable failing set in the ledger that documentation does not explain.
 ## Long — browser, movies, v5.0 "Tools" (SEED-004), v6.0 "Everywhere" (SEED-005)
 
 The browser (SEED-008): the library as a zero-import wasm module with a hash test in the repo and the page in a
-sibling repo that pins the release asset, unless the owner amends rule 2 and DEC.01. Movies (SEED-002's second
+sibling repo that pins the release asset (DEC.68, owner decision 2026-11-13: rule 2 and DEC.01 stay unchanged). Movies (SEED-002's second
 half): an own format only when a named consumer exists; BizHawk import needs an inflate seed and stays out of the
 reference sources (use the TASVideos format pages). Hooks, debugger views, `ctypes` docs rather than PyPI or npm
 packages; handheld ports and a libretro buildbot listing only after save states exist. **Triggers:** a user ask or
@@ -109,4 +109,4 @@ a met instructions-per-frame budget; each seed names its own.
 | 2026-11-10 | v1.0 shipped and archived; horizons unchanged, nothing yet moved into Immediate | The order of v2.0 and later was not re-ranked: no new evidence at close, and the next scope needs owner approval at `/gsd-new-milestone` |
 | 2026-11-12 | v2.0 shipped and archived; v3.0 stays next in order, nothing moved into Immediate | The owner's own-library run, not a new milestone, is what removes `is_experimental`; no new evidence re-ranks states and movies, the browser or SG-1000, and the next scope needs owner approval at `/gsd-new-milestone` |
 | 2026-11-13 | v2.1 shipped and archived; SEED-006 becomes the preferred next step, nothing moved into Immediate | The Phase 14 outcomes show 46 of the 49 remaining failing rows need the legacy modes, which is the trigger SEED-006 names ("already needed for an SMS title in the ledger"); the other horizons were not re-ranked and the next scope needs owner approval at `/gsd-new-milestone` |
-| 2026-11-13 | v2.2 "Legacy video modes" recommended for Immediate; v3.0 re-scoped to "States and rewind" and pre-committed as the milestone after it; the SG-1000 machine moved to v3.1; movies and the browser moved to Long | A nine-lens fan-out and an adversarial pass ranked Graphics I and II first on hard evidence and low risk. Player value alone favours states, so the order is the owner's to swap. Movies have no named consumer, and the browser build needs a ruling on rule 2. Awaiting owner approval at `/gsd-new-milestone` |
+| 2026-11-13 | v2.2 "Legacy video modes" recommended for Immediate; v3.0 re-scoped to "States and rewind" and pre-committed as the milestone after it; the SG-1000 machine moved to v3.1; movies and the browser moved to Long | A nine-lens fan-out and an adversarial pass ranked Graphics I and II first on hard evidence and low risk. Player value alone favours states, so the order is the owner's to swap. Movies have no named consumer, and the owner settled the browser question as DEC.68 (the library as wasm here, the page in a sibling repo). Awaiting owner approval at `/gsd-new-milestone` |
