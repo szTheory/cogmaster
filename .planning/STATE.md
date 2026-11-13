@@ -5,16 +5,16 @@ milestone_name: Fewer failing cartridges
 current_phase: 14
 current_phase_name: Fix the causes
 status: executing
-stopped_at: Completed 14-06-PLAN.md (runtime claude-code, model Sonnet 5.5)
-last_updated: "2026-11-13T05:17:21.611Z"
+stopped_at: Completed 14-07-PLAN.md (runtime claude-code, model Sonnet 5.5)
+last_updated: "2026-11-13T05:33:40.355Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 14 execution started
-state_head: a7fe8e075cd7821aadc1c1ca6e648e5db923c0a1
+state_head: b1655ad635756893f824ea859acb52ec0cc1d1b1
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
   percent: 33
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-12)
 ## Current Position
 
 Phase: 14 (Fix the causes) — EXECUTING
-Plan: 7 of 8
+Plan: 8 of 8
 Status: Ready to execute
 Last activity: 2026-11-12 — Phase 14 execution started
 
@@ -235,6 +235,7 @@ Last activity: 2026-11-12 — Phase 14 execution started
 | Phase 14 P04 | 15 min | 3 tasks | 1 files |
 | Phase 14 P05 | 40 min | 3 tasks | 8 files |
 | Phase 14 P06 | 75 min | 3 tasks | 10 files |
+| Phase 14 P07 | 35 min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -259,6 +260,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 14]: 14-04: D-07 gate no M4=1 rows (rank 2 closes per D-07, closure in plan 08); D-10 no family M4=1 rows; D-04 trigger fired on reg-0 (11 rows) but every rom_write row is db-sourced so no header rule reaches it: open for the gap round. No code changed.
 - [Phase 14]: 14-05: the ROM_WRITE raise is removed on every board (constant kept); rank 3 keeps open: D-04 needs new evidence for plan 08's gap round
 - [Phase 14]: Plan 06: D-11 trigger not met (rank 4 pclass is 3e-3f:gg:export only), so port writes nothing decodes and port reads nothing drives record no fault; run_fail 69 to 49
+- [Phase 14]: Plan 07: D-08 shape absent (rank 6 order=before 6, order=after 0, all graphics1 M4=0), so no latch move and no core edit; rank 6 closes in plan 08 with the D-07 reason
 
 ### Pending Todos
 
@@ -416,6 +418,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-12 | Execute phase 14 plan 14-02 (gsd-execute-phase 14); video mode nibble in the unsupported-mode fault addr, behaviour revision 18, library baseline reproduced (run_fail 205, not in ledger 0), outcomes note with decision table, local ci workflow exit 0; 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Execute phase 14 plan 14-04 (gsd-execute-phase 14); D-07, D-10 and D-04 gates read from the baseline sub-rows, rank 2 decided (close per D-07), reg-0 board question open for the gap round, no code change, local ci workflow exit 0; 3 tasks, 2 docs commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Execute phase 14 plan 14-06 (gsd-execute-phase 14); reads of undriven ports and writes to ports nothing decodes record no fault (D-11 trigger not met), seeds repointed to ED 00, diagnose re-run run_fail 69 to 49 with ranks 4 and 5 gone, local ci workflow exit 0; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-13 | Execute phase 14 plan 14-07 (gsd-execute-phase 14); D-08 shape absent (rank 6: order=before 6, after 0, all M4=0), no core edit, rank 6 recorded as close per D-07 for plan 08; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -444,12 +447,12 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 
 ## Session Continuity
 
-Last session: 2026-11-13T05:17:21.562Z
-Stopped at: Completed 14-06-PLAN.md (runtime claude-code, model Sonnet 5.5)
+Last session: 2026-11-13T05:33:40.282Z
+Stopped at: Completed 14-07-PLAN.md (runtime claude-code, model Sonnet 5.5)
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
 ## Operator Next Steps
 
-- Phase 14 plans 14-01 to 14-06 are done; plans 14-07 and 14-08 remain. The next step is /gsd-execute-phase 14 (it runs the first plan without a summary). The library run reads the dump directory from the ignored local settings, so no export is needed.
+- Phase 14 plans 14-01 to 14-07 are done; plan 14-08 remains. The next step is /gsd-execute-phase 14 (it runs the first plan without a summary). The library run reads the dump directory from the ignored local settings, so no export is needed.
 - Owner hand-offs (batched, none is a gate): SEED-013 is done (v0.13.0); SEED-010 pad, Light Phaser and BIOS judges; SEED-009 scan thresholds.
