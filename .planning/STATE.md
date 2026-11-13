@@ -5,10 +5,10 @@ milestone_name: Fewer failing cartridges
 current_phase: 15
 status: completed
 stopped_at: Phase 15 complete — all phases complete
-last_updated: "2026-11-13T21:36:20.091Z"
+last_updated: "2026-11-13T21:41:50.465Z"
 last_activity: 2026-11-13
-last_activity_desc: Phase 15 complete
-state_head: 39120049497345965d4a0cfe19fac072704b226b
+last_activity_desc: "Phase 15 shipped as PR #44"
+state_head: a0c39907c1a65c19a34d934998951e0da0c52fb4
 progress:
   total_phases: 3
   completed_phases: 2
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-11-12)
 Phase: 15
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-11-13 — Phase 15 complete
+Last activity: 2026-11-13 -- Phase 15 shipped as PR #44
 
 ## Performance Metrics
 
@@ -436,6 +436,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-13 | Plan phase 15 (gsd-plan-phase 15); research skipped (context covers it), two plans in two waves, three checker rounds (1 blocker and 5 warnings, then 4, then 2 small text fixes applied by the orchestrator), 19 of 19 decisions covered, no code changed | Claude Code | claude-sonnet-5-5 (orchestrator), claude-opus-5-5 (planner), claude-haiku-5-5 (plan checker) |
 | 2026-11-13 | Execute phase 15 plan 15-01 (gsd-execute-phase 15); the owner ran sh scripts/library.sh once (about 644 s, rows judged at the phase head), ratchet ok, 0 rows added and 1116 rewritten, page pass 744 to 1029 and fail 381 to 96 (285 fail-to-pass, no pass row lost), page equals its regeneration, compat.exit passes, local ci workflow exit 0 (676 plus 5 tests), old base judge exit 0; 3 tasks | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Execute phase 15 plan 15-02 (gsd-execute-phase 15); job timeouts re-derived from a fresh 40-run read in one workflow commit (asan 5 to 9, bench 10 to 13, bench-wasm32 15 to 16, build 9 to 12, be32 15 to 21 minutes; fuzz and digest comments re-cited), timeout hygiene check and saved-read cross-check exit 0, CI-speed paragraph in the maintaining guide, SEED-015 and SEED-016 breadcrumbs, counts-only ship hand-off, local ci and hygiene workflows exit 0; 2 tasks | Claude Code | claude-sonnet-5-5 |
+| 2026-11-13 | Ship phase 15 (gsd-ship 15); branch pushed once, PR #44 opened non-draft with the counts-only title and body, the core-stamp commit answers 200 on the public API; auto-merge and the head-commit CI check are the next shell steps | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
