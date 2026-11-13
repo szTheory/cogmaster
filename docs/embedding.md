@@ -58,6 +58,7 @@ API version 12 appends the axis fields `x1`, `y1`, `x2` and `y2` to `cogmaster_i
 API version 13 appends `COGMASTER_DEVICE_LIGHT_PHASER`, with behaviour revision 15 and state format 15, so older state bytes are refused. A phaser port reads its aim from `x1` `y1` (port 1) or `x2` `y2` (port 2) as 1-based field dots; the last call wins and `0 0` means no aim.
 API version 14 appends `bios` and `bios_size` to `cogmaster_media` (72 bytes), with behaviour revision 16 and state format 16, so older state bytes are refused.
 Behaviour revision 17 refuses the Sega Graphic Board dump, which read as a plain pad before, so state bytes saved at revision 16 are refused.
+Behaviour revision 18 makes the unsupported-video-mode fault record the mode select nibble in `addr`, so state bytes saved at revision 17 are refused.
 
 ## Getting it
 
@@ -354,7 +355,8 @@ The record is part of the instance's saved state.
 | 5 | `COGMASTER_FAULT_DEVICE_CTRL` | the memory and I/O control ports `$3E` and `$3F` |
 | 6 | `COGMASTER_FAULT_DEVICE_VDP` | the video display processor |
 
-`addr` is the full 16-bit bus address; for `IN A,(n)` and `OUT (n),A` that is A × 256 + n. Outside kind 5, `pc`
+`addr` is the full 16-bit bus address; for `IN A,(n)` and `OUT (n),A` that is A × 256 + n. For kind 6 it holds
+the video mode select nibble M4 M3 M2 M1 (0–15), and 0, Graphics I, is a valid value. Outside kind 5, `pc`
 is the address of the instruction, its first `$DD` or `$FD` prefix included, and `opcode` its first byte after
 those prefixes.
 
