@@ -272,26 +272,14 @@ static cogmaster_fault fault_of(const cogmaster *m)
 }
 
 /* LD A,0; IN A,($00); HALT on the export console: nothing drives a read of
-   $00-$3F, so the read returns open bus, is counted, and records the first
-   fault: kind unmapped_read (1), device ctrl (5), the bus address A<<8|n,
-   the IN's own address and opcode, and the beam at the I/O cycle's data
-   T-state, 7 + 10 T-states after the origin. */
+   $00-$3F, so the read returns open bus ($FF) and is counted, and it is no
+   fault (SMS-SYSTEM C5 and section 4): a shipped game may read such a port. */
 static void test_fault_unmapped_read(void)
 {
     static const uint8_t prog[] = {0x3Eu, 0x00u, 0xDBu, 0x00u, 0x76u};
     cogmaster *m = load(prog, sizeof prog);
     (void)run(m);
-    cogmaster_fault f = fault_of(m);
-    CHECK_EQ_U64(f.present, 1);
-    CHECK_EQ_U64(f.kind, 1);
-    CHECK_EQ_U64(f.device, 5);
-    CHECK_EQ_HEX(f.addr, 0x0000);
-    CHECK_EQ_HEX(f.pc, 0x0002);
-    CHECK_EQ_HEX(f.opcode, 0xDB);
-    CHECK_EQ_U64(f.width, 8);
-    CHECK_EQ_U64(f.frame, 0);
-    CHECK_EQ_U64(f.line, ORIGIN_LINE);
-    CHECK_EQ_U64(f.dot, (ORIGIN_TICK + 3u * 17u) / 2u);
+    CHECK_EQ_U64(fault_of(m).present, 0);
     CHECK_EQ_HEX(m->z80.reg[COGMASTER__Z80_A], 0xFF);
     CHECK_EQ_U64(m->counters.open_bus_reads, 1);
     cogmaster_destroy(m);
@@ -327,47 +315,53 @@ static void expect_none(const char *what, cogmaster *m)
     cogmaster_destroy(m);
 }
 
-/* On the full-decode consoles a write to a port nothing latches records
-   unmapped_write (2) with device none (0): OUT ($3E),A on the Game Gear,
-   which has no $3E in its own mode, and OUT ($00),A on the Japanese
-   console. On the export console $00 latches as $3E.
+/* On the full-decode consoles a write to a port nothing latches has no
+   documented effect and is no fault: OUT ($3E),A on the Game Gear, which has
+   no $3E in its own mode, and OUT ($00),A on the Japanese console. On the
+   export console $00 latches as $3E.
      $0000  LD A,$AB; OUT (n),A; HALT */
 static void test_fault_unmapped_write(void)
 {
     static const uint8_t to_3e[] = {0x3Eu, 0xABu, 0xD3u, 0x3Eu, 0x76u};
     static const uint8_t to_00[] = {0x3Eu, 0xABu, 0xD3u, 0x00u, 0x76u};
-    expect_fault(load_on(to_3e, sizeof to_3e, COGMASTER_MACHINE_GG, COGMASTER_REGION_AUTO), 2u, 0u,
-                 0xAB3Eu, 0x0002u, 0xD3u);
-    expect_fault(load_on(to_00, sizeof to_00, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_JAPAN), 2u,
-                 0u, 0xAB00u, 0x0002u, 0xD3u);
+    expect_none("Game Gear OUT ($3E)",
+                load_on(to_3e, sizeof to_3e, COGMASTER_MACHINE_GG, COGMASTER_REGION_AUTO));
+    expect_none("Japanese OUT ($00)",
+                load_on(to_00, sizeof to_00, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_JAPAN));
     expect_none("export OUT ($00)",
                 load_on(to_00, sizeof to_00, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT));
 }
 
 /* A write to $0000-$BFFF that is neither a mapper register nor cartridge
-   RAM records rom_write (3) on the cartridge (2): LD ($2000),A on a Sega
-   image after LD ($FFFF),A, which records nothing, and LD ($2000),A on an
-   image with no mapper. Cartridge RAM mapped by $FFFC b3 takes writes.
+   RAM records nothing and changes no bank: LD ($2000),A on a Sega image
+   after LD ($FFFF),A, which sets bank 2, and LD ($2000),A on an image with no
+   mapper. Cartridge RAM mapped by $FFFC b3 takes writes.
      $0000  LD A,$12; LD ($FFFF),A; LD ($2000),A; HALT
      $0000  LD A,$08; LD ($FFFC),A; LD ($8000),A; HALT */
 static void test_fault_rom_write(void)
 {
     static const uint8_t sega[] = {0x3Eu, 0x12u, 0x32u, 0xFFu, 0xFFu, 0x32u, 0x00u, 0x20u, 0x76u};
-    expect_fault(load_sega(sega, sizeof sega, 128u * 1024u), 3u, 2u, 0x2000u, 0x0005u, 0x32u);
-    expect_fault(load_on(sega + 5, sizeof sega - 5u, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO),
-                 3u, 2u, 0x2000u, 0x0000u, 0x32u);
+    cogmaster *m = load_sega(sega, sizeof sega, 128u * 1024u);
+    (void)run(m);
+    CHECK_EQ_U64(fault_of(m).present, 0);
+    CHECK_EQ_U64(m->mapper.bank[2], 0x12u % m->cart.pages);
+    cogmaster_destroy(m);
+    expect_none("write to ROM, no mapper",
+                load_on(sega + 5, sizeof sega - 5u, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO));
     static const uint8_t ram[] = {0x3Eu, 0x08u, 0x32u, 0xFCu, 0xFFu, 0x32u, 0x00u, 0x80u, 0x76u};
     expect_none("cartridge RAM", load_sega(ram, sizeof ram, 128u * 1024u));
 }
 
 /* mapper_range (4) on the mapper (4): a bank at or past the page count of
-   a 384 KiB (24-page) image, and a $FFFC write setting b7, b4 or b1-0. On
-   a 512 KiB image a bank past the end wraps, as on hardware, and $FFFC b3
-   and b2 are cartridge RAM controls: neither is a fault.
+   a 384 KiB (24-page) image. On a 512 KiB image a bank past the end wraps, as
+   on hardware, and every $FFFC value is stored with no fault, the unused bits
+   b7, b4 and b1-0 included.
      $0000  LD A,v; LD (addr),A; HALT */
 static void test_fault_mapper_range(void)
 {
     uint8_t prog[] = {0x3Eu, 0x1Eu, 0x32u, 0xFFu, 0xFFu, 0x76u};
+    expect_fault(load_sega(prog, sizeof prog, 384u * 1024u), 4u, 4u, 0xFFFFu, 0x0002u, 0x32u);
+    prog[1] = 0x18u;
     expect_fault(load_sega(prog, sizeof prog, 384u * 1024u), 4u, 4u, 0xFFFFu, 0x0002u, 0x32u);
     prog[1] = 0x17u;
     expect_none("bank 23 of 24", load_sega(prog, sizeof prog, 384u * 1024u));
@@ -377,7 +371,11 @@ static void test_fault_mapper_range(void)
     static const uint8_t bad[] = {0x80u, 0x10u, 0x01u, 0x02u, 0x03u};
     for (size_t i = 0; i < sizeof bad; i++) {
         prog[1] = bad[i];
-        expect_fault(load_sega(prog, sizeof prog, BIG_MAX), 4u, 4u, 0xFFFCu, 0x0002u, 0x32u);
+        cogmaster *m = load_sega(prog, sizeof prog, BIG_MAX);
+        (void)run(m);
+        CHECK_EQ_U64(fault_of(m).present, 0);
+        CHECK_EQ_HEX(m->mapper.ctrl, bad[i]);
+        cogmaster_destroy(m);
     }
     prog[1] = 0x0Cu;
     expect_none("$FFFC = $0C", load_sega(prog, sizeof prog, BIG_MAX));

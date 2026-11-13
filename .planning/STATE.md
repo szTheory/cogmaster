@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Fewer failing cartridges
-current_phase: 14
-current_phase_name: Fix the causes
+current_phase: 15
+current_phase_name: Re-run, merge and timeouts
 status: planning
-stopped_at: Phase 13 complete, ready to plan Phase 14
-last_updated: "2026-11-13T00:49:11.676Z"
-last_activity: 2026-11-12
-last_activity_desc: "Phase 13 shipped as PR #40"
-state_head: e571cfa696e4938ccd39ed8c26f7cfd377ddfa31
+stopped_at: Phase 14 complete, ready to plan Phase 15
+last_updated: "2026-11-13T16:02:06.748Z"
+last_activity: 2026-11-13
+last_activity_desc: "Phase 14 shipped as PR #42"
+state_head: dfddee36a849f5ddb05205ae6778bd048d89b65a
 progress:
   total_phases: 3
-  completed_phases: 1
-  total_plans: 5
-  completed_plans: 5
-  percent: 33
+  completed_phases: 2
+  total_plans: 13
+  completed_plans: 13
+  percent: 67
 ---
 
 # Project State
@@ -25,19 +25,19 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-12)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 13 — Why carts fail
+**Current focus:** Phase 14 — Fix the causes
 
 ## Current Position
 
-Phase: 14 — Fix the causes
+Phase: 15 — Re-run, merge and timeouts
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-11-12 -- Phase 13 shipped as PR #40
+Last activity: 2026-11-13 -- Phase 14 shipped as PR #42
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 161
+- Total plans completed: 169
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -58,6 +58,7 @@ Last activity: 2026-11-12 -- Phase 13 shipped as PR #40
 | 11 | 9 | - | - |
 | 12 | 10 | - | - |
 | 13 | 5 | - | - |
+| 14 | 8 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -229,6 +230,14 @@ Last activity: 2026-11-12 -- Phase 13 shipped as PR #40
 | Phase 13 P03 | 15min | 2 tasks | 5 files |
 | Phase 13 P04 | 13 min | 3 tasks | 10 files |
 | Phase 13 P05 | about 1h (owner run and hosted CI included) | 3 tasks | 4 files |
+| Phase 14 P01 | 10min | 2 tasks | 8 files |
+| Phase 14 P02 | 85 min | 2 tasks | 8 files |
+| Phase 14 P03 | 12 min | 3 tasks | 4 files |
+| Phase 14 P04 | 15 min | 3 tasks | 1 files |
+| Phase 14 P05 | 40 min | 3 tasks | 8 files |
+| Phase 14 P06 | 75 min | 3 tasks | 10 files |
+| Phase 14 P07 | 35 min | 2 tasks | 1 files |
+| Phase 14 P08 | 75 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -246,6 +255,15 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 13]: Plan 04: a catalog title with an escape or RLO byte never reaches the awk (file(STRINGS) ends a row at the first non-printable byte, the cart is excluded); the hostile case pins skipped_excluded=1 beside a withheld printable hostile title
 - [Phase 13]: Plan 04: the leak controls plant into real captured output of an empty library, and a dirty baseline fails with text that carries no leak class, so it cannot satisfy a control's regex
 - [Phase 13]: 13-05: leaves reported as printed, the groups-under-5 line counts the empty input_mismatch leaf, runner.diagnose timeout 633 s from the be32 raw 316.11 s
+- [Phase 14]: 14-01: pow2 rounds the body up to 16 KiB pages before the power-of-two test (16385 bytes is two pages, y; 0 bytes is n); size and pow2 read image_size minus body_offset
+- [Phase 14]: 14-01: new reducer sub-rows (faddr, vdpmode, wclass, pclass, size) key on the class value itself joined by colon, never a dot, so the leak scan name pattern cannot fire; base hashes file build/p14-base-hashes.txt taken from origin/main 81a9cc9
+- [Phase 14]: The unsupported-video-mode fault carries the mode select nibble in addr; behaviour revision 18 is the phase's only bump
+- [Phase 14]: 14-03: D-05 stop rule not met (rank 1 baseline faddr=fffc:y 109, fffd-f:n 0); the Sega $FFFC raise is removed and the odd-size bank marker kept. Re-run on the dumps: run_fail 205 to 104, ranks 1 and 8 at 0, 101 carts now pass, 9 rows landed on later faults (ranks 3, 4, 5, 9). D-06 trace not taken (needs a dump path the agent may not read): the Sega bank shift is left as it is, no gate added; 101 of 110 carts passing is the evidence it is not wrong in the main.
+- [Phase 14]: 14-04: D-07 gate no M4=1 rows (rank 2 closes per D-07, closure in plan 08); D-10 no family M4=1 rows; D-04 trigger fired on reg-0 (11 rows) but every rom_write row is db-sourced so no header rule reaches it: open for the gap round. No code changed.
+- [Phase 14]: 14-05: the ROM_WRITE raise is removed on every board (constant kept); rank 3 keeps open: D-04 needs new evidence for plan 08's gap round
+- [Phase 14]: Plan 06: D-11 trigger not met (rank 4 pclass is 3e-3f:gg:export only), so port writes nothing decodes and port reads nothing drives record no fault; run_fail 69 to 49
+- [Phase 14]: Plan 07: D-08 shape absent (rank 6 order=before 6, order=after 0, all graphics1 M4=0), so no latch move and no core edit; rank 6 closes in plan 08 with the D-07 reason
+- [Phase 14]: Plan 08: ranks 2 and 6 closed as not emulated by design (46 legacy-mode rows, SEED-006); boots check recorded sound over 3 no-fault rows; rank 3 open on D-04 is the single gap round entry, so FIX-01 and FIX-03 stay open
 
 ### Pending Todos
 
@@ -396,7 +414,16 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-12 | Plan phase 13 (gsd-plan-phase 13); researcher, planner and checker agents, 3 checker rounds then one owner-approved narrow retry; 5 plans in 5 waves; decision coverage 25 of 25; the phase branch phase/13-why-carts-fail is cut from the milestone branch tip by the first execute task (rule 10 deviation, owner may override) | Claude Code | claude-sonnet-5-5 (researcher claude-sonnet-5-5, planner claude-opus-5-5, checker claude-haiku-5-5) |
 | 2026-11-13 | Execute phase 13 plan 13-05 (gsd-execute-phase 13); diagnose run over the owner library exit 0, counts-only note .planning/phases/13-why-carts-fail/13-CAUSE-GROUPS.md, ledger and page unchanged, four diagnose test timeouts settled from hosted run https://github.com/szTheory/cogmaster/actions/runs/43334476928 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Execute phase 13 close-out (gsd-execute-phase 13); code review 0 critical, 3 warnings (WR-01 and WR-03 fixed in one fix round, WR-02 left open for the owner), verifier passed 4 of 4, phase marked complete; 13-REVIEW-DISPOSITION.md records every finding | Claude Code | claude-sonnet-5-5 (reviewer, fixer and verifier claude-sonnet-5-5) |
+| 2026-11-12 | Discuss phase 14 (gsd-discuss-phase 14); five advisor agents (fault policy and boots check, mapper_range, video modes, mapper families and ports, phase shape) and an orchestrator reconciliation; 15 decisions; branch phase/14-fix-the-causes cut from origin/main | Claude Code | claude-sonnet-5-5 (advisors claude-sonnet-5-5) |
 | 2026-11-12 | Ship phase 13 (gsd-ship 13); branch pushed, PR #40 opened with a Conventional Commit title, no external review command configured, TDD audit skipped (no gate-status trailers) | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Plan phase 14 (gsd-plan-phase 14); researcher sonnet-5-5, planner opus-5-5, checker haiku-5-5; 8 plans in 8 sequential waves; three checker rounds, 0 blockers at the end, one final targeted fix applied without a fourth checker pass | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Execute phase 14 plan 14-01 (gsd-execute-phase 14); seven closed-vocabulary diagnose words (vdpmode, faddr, pow2, wclass, pclass, size, header), colon-joined counts-only reducer sub-rows, base hashes file taken from origin/main 81a9cc9, local ci workflow exit 0; 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Execute phase 14 plan 14-02 (gsd-execute-phase 14); video mode nibble in the unsupported-mode fault addr, behaviour revision 18, library baseline reproduced (run_fail 205, not in ledger 0), outcomes note with decision table, local ci workflow exit 0; 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-13 | Execute phase 14 plan 14-04 (gsd-execute-phase 14); D-07, D-10 and D-04 gates read from the baseline sub-rows, rank 2 decided (close per D-07), reg-0 board question open for the gap round, no code change, local ci workflow exit 0; 3 tasks, 2 docs commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-13 | Execute phase 14 plan 14-06 (gsd-execute-phase 14); reads of undriven ports and writes to ports nothing decodes record no fault (D-11 trigger not met), seeds repointed to ED 00, diagnose re-run run_fail 69 to 49 with ranks 4 and 5 gone, local ci workflow exit 0; 3 tasks, 3 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-13 | Execute phase 14 plan 14-07 (gsd-execute-phase 14); D-08 shape absent (rank 6: order=before 6, after 0, all M4=0), no core edit, rank 6 recorded as close per D-07 for plan 08; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
+| 2026-11-13 | Execute phase 14 plan 14-08 (gsd-execute-phase 14); final diagnose run_fail 205 to 49 with not in ledger 0, ranks 2 and 6 closed as not emulated by design, families and gap round recorded (rank 3 open on D-04), boots check sound over 3 no-fault rows, pin compare exit 0, SEED-006 and SEED-016 breadcrumbs; 3 tasks | Claude Code | claude-sonnet-5-5 |
+| 2026-11-13 | Verify work phase 14 (gsd-verify-work 14); pad press for the one frozen no-fault cart run by the owner from a counts-only scratch script (0 of 1 changed), UAT complete, verification passed, phase transitioned | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -425,12 +452,12 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 
 ## Session Continuity
 
-Last session: 2026-11-13T00:17:42.913Z
-Stopped at: Phase 13 complete, ready to plan Phase 14
+Last session: 2026-11-13T05:54:56.986Z
+Stopped at: Phase 14 complete, ready to plan Phase 15
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
 ## Operator Next Steps
 
-- Milestone v2.1 is roadmapped (Phases 13 to 15). After the roadmap is approved and merged, the next step is /gsd-discuss-phase 13.
+- Phase 14 is complete and verified (UAT passed, the pad press was run on the owner's dump directory with counts-only output). The next step is /gsd-ship 14, then /gsd-discuss-phase 15 on a fresh branch off origin/main. The library run reads the dump directory from the ignored local settings, so no export is needed.
 - Owner hand-offs (batched, none is a gate): SEED-013 is done (v0.13.0); SEED-010 pad, Light Phaser and BIOS judges; SEED-009 scan thresholds.

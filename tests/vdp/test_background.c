@@ -390,22 +390,28 @@ static void unsupported(void)
         for (uint32_t mode = 0u; mode < 16u; mode++) {
             int valid = machine == 3u ? (mode == 8u || mode == 10u || mode == 12u)
                                       : (mode >= 8u && mode != 9u && mode != 13u);
-            if (valid)
-                continue;
             cogmaster *m = make_profile(machine);
             m->vdp.reg[0] = (uint8_t)(((mode & 8u) >> 1) | (mode & 2u));
             m->vdp.reg[1] = (uint8_t)(0x40u | ((mode & 4u) << 1) | ((mode & 1u) << 4));
             cogmaster_run_result r = {0};
             r.size = sizeof r;
             CHECK_EQ_U64(cogmaster_run_frame(m, &r), COGMASTER_STATUS_OK);
-            CHECK(r.overshoot_ticks < 69u);
-            CHECK_EQ_HEX(m->field[0][0], 0xF00u);
             cogmaster_fault f = {0};
             f.size = sizeof f;
+            if (valid) {
+                /* A supported mode records nothing. */
+                CHECK_EQ_U64(cogmaster_get_fault(m, &f), COGMASTER_STATUS_OK);
+                CHECK_EQ_U64(f.present, 0u);
+                cogmaster_destroy(m);
+                continue;
+            }
+            CHECK(r.overshoot_ticks < 69u);
+            CHECK_EQ_HEX(m->field[0][0], 0xF00u);
             CHECK_EQ_U64(cogmaster_get_fault(m, &f), COGMASTER_STATUS_OK);
             CHECK_EQ_U64(f.present, 1u);
             CHECK_EQ_U64(f.device, COGMASTER_FAULT_DEVICE_VDP);
             CHECK_EQ_U64(f.kind, COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE);
+            CHECK_EQ_HEX(f.addr, mode);
             cogmaster_destroy(m);
         }
     }

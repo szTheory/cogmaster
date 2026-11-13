@@ -49,13 +49,19 @@ uint32_t cogmaster__vdp_sprite_address(const cogmaster *m, uint32_t tile, uint32
     return address;
 }
 
+/* The mode select nibble M4 M3 M2 M1: M4 and M2 in register 0 bits 2 and 1, M3 and M1 in
+   register 1 bits 3 and 4 (SMS-VDP section 2.5). */
+static uint32_t vdp_mode(const cogmaster *m)
+{
+    const uint8_t *r = m->vdp.reg;
+    return ((uint32_t)(r[0] & 4u) << 1) | ((r[1] & 8u) >> 1) | (r[0] & 2u) | ((r[1] & 16u) >> 4);
+}
+
 /* Legacy and invalid text combinations have no renderer. Extended heights
    on the 315-5124 also select invalid text (SMS-VDP section 2.5). */
 static int vdp_supported(const cogmaster *m)
 {
-    const uint8_t *r = m->vdp.reg;
-    uint32_t mode =
-        ((uint32_t)(r[0] & 4u) << 1) | ((r[1] & 8u) >> 1) | (r[0] & 2u) | ((r[1] & 16u) >> 4);
+    uint32_t mode = vdp_mode(m);
     if (cogmaster__profile(m).vdp_masks) {
         return mode == 8u || mode == 10u || mode == 12u;
     }
@@ -186,7 +192,7 @@ void cogmaster__vdp_render_until(cogmaster *m, uint32_t line, uint32_t x)
                                                (x > COGMASTER__FIELD_W ? COGMASTER__FIELD_W : x);
     uint32_t at = m->render_line * COGMASTER__FIELD_W + m->render_x;
     if (at < end && m->vdp.display && !vdp_supported(m)) {
-        cogmaster__bus_fault(m, 0u, COGMASTER_FAULT_DEVICE_VDP,
+        cogmaster__bus_fault(m, (uint16_t)vdp_mode(m), COGMASTER_FAULT_DEVICE_VDP,
                              COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE);
     }
     while (at < end) {

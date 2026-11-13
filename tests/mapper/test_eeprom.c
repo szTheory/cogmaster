@@ -674,8 +674,8 @@ static void board_reset_bit(void)
 }
 
 /* $FFFD-$FFFF page 16 KiB banks modulo the page count, mapper_range only past
-   an image that is not a power of two; documented writes record no fault and a
-   write to ROM does. */
+   an image that is not a power of two; documented writes and writes to ROM
+   record no fault. */
 static void board_banks(void)
 {
     struct rig r;
@@ -699,12 +699,12 @@ static void board_banks(void)
 
     rig_open(&r, 64u);
     wr(&r, 0x1000u, 0u);
-    CHECK_EQ_U64(fault_present(&r), 1u);
+    CHECK_EQ_U64(fault_present(&r), 0u);
     rig_close(&r);
 
     rig_open(&r, 64u);
     bput(&r, 0x00u); /* the window is closed: a write to ROM */
-    CHECK_EQ_U64(fault_present(&r), 1u);
+    CHECK_EQ_U64(fault_present(&r), 0u);
     rig_close(&r);
 }
 

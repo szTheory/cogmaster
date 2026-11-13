@@ -15,10 +15,10 @@ Requirements for this milestone. Each maps to one roadmap phase. Scope decisions
 
 ### Fixes
 
-- [ ] **FIX-01**: Each cause group of 5 or more rows is either fixed in the core or the boots check, or closed with a stated reason, in descending order of group size
-- [ ] **FIX-02**: If the boots check rejects carts that run correctly, the check is corrected, and a fixture shows that a late-first-picture cart passes while a cart that never draws still fails
-- [ ] **FIX-03**: The `zemina`, `korean_nb` and `korean` fail rows each have a stated cause and are fixed or refused with a closed reason
-- [ ] **FIX-04**: Every core fix lands with a test in the `ci` workflow, and any shipped frame or audio pin that moves is named, justified and recorded with a behaviour revision bump
+- [x] **FIX-01**: Each cause group of 5 or more rows is either fixed in the core or the boots check, or closed with a stated reason, in descending order of group size
+- [x] **FIX-02**: If the boots check rejects carts that run correctly, the check is corrected, and a fixture shows that a late-first-picture cart passes while a cart that never draws still fails
+- [x] **FIX-03**: The `zemina`, `korean_nb` and `korean` fail rows each have a stated cause and are fixed or refused with a closed reason
+- [x] **FIX-04**: Every core fix lands with a test in the `ci` workflow, and any shipped frame or audio pin that moves is named, justified and recorded with a behaviour revision bump
 
 ### Library run
 
@@ -62,10 +62,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DIAG-01 | Phase 13 | Complete |
 | DIAG-02 | Phase 13 | Complete |
 | DIAG-03 | Phase 13 | Complete |
-| FIX-01 | Phase 14 | Pending |
-| FIX-02 | Phase 14 | Pending |
-| FIX-03 | Phase 14 | Pending |
-| FIX-04 | Phase 14 | Pending |
+| FIX-01 | Phase 14 | Complete |
+| FIX-02 | Phase 14 | Complete |
+| FIX-03 | Phase 14 | Complete |
+| FIX-04 | Phase 14 | Complete |
 | RUN-01 | Phase 15 | Pending |
 | RUN-02 | Phase 15 | Pending |
 | TUNE-11 | Phase 15 | Pending |

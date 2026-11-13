@@ -458,16 +458,15 @@ uint8_t cogmaster__io_in(cogmaster *m, uint16_t port)
         }
         return p == 0u ? cogmaster__io_open_bus(m) : m->io.gg[p - 1u];
     }
-    if (p < 0x40u) {
-        /* $3E and $3F are write-only; nothing drives a read there. */
-        cogmaster__bus_fault(m, port, COGMASTER__DEVICE_CTRL, COGMASTER__FAULT_UNMAPPED_READ);
-    }
+    /* A read of $00-$3F nothing drives (the memory and I/O control ports are write-only) returns
+       the open bus and is no fault: shipped games read such ports (SMS-SYSTEM C5 and section 4). */
     return cogmaster__io_open_bus(m);
 }
 
 /* The bus sends every port but the VDP's and the sound chip's here. Writes
-   to the I/O chip ($C0-$FF) latch nothing and are no fault; on a
-   full-decode console a write nothing else latches is unmapped_write. */
+   to the I/O chip ($C0-$FF) and to ports nothing decodes latch nothing and are
+   no fault: no document describes an effect, let alone a fault, for such a
+   write (SMS-SYSTEM section 4). */
 void cogmaster__io_out(cogmaster *m, uint16_t port, uint8_t v)
 {
     struct cogmaster__io *io = &m->io;
@@ -502,9 +501,5 @@ void cogmaster__io_out(cogmaster *m, uint16_t port, uint8_t v)
             io->mem_ctrl = v;
             cogmaster__bus_decode(m);
         }
-        return;
-    }
-    if (p < 0xC0u) {
-        cogmaster__bus_fault(m, port, COGMASTER__DEVICE_NONE, COGMASTER__FAULT_UNMAPPED_WRITE);
     }
 }

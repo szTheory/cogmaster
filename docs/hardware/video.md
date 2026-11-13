@@ -72,7 +72,8 @@ fetches and the sprite pipeline. Source: the register diagrams linked above.
 
 Legacy TMS modes and invalid text modes render deterministic backdrop and
 record `COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE` on the VDP, while the
-CPU still returns at the fixed frame deadline. SMS1 only supports Mode 4
+CPU still returns at the fixed frame deadline. The fault's address holds the mode select nibble
+M4 M3 M2 M1 (SMS-VDP section 2.5). SMS1 only supports Mode 4
 combinations 1000, 1010 and 1100; its extended-height combinations are invalid.
 
 Sprites share the same cursor. At tick 600 the SAT is scanned for the next
