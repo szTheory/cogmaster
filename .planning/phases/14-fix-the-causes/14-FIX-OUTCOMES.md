@@ -131,6 +131,12 @@ D-04 trigger: fired on reg-0, worked in Task 3. Counts over ranks 3 and 7 togeth
 
 D-04: no shared header property; board choice needs new evidence. Every rom_write row of ranks 3 and 7 has board source db (36 of 36 on rank 3 post-plan-03, 4 of 4 on rank 7): the database row decides before any header rule in `guess_board` runs, so a header rule in src/cart.c cannot change the board of one of these images. A table row is keyed on a digest and is out (D-04, D-13), and scan thresholds are untouched. The retained output joins no row's write class to its header state, and the leaf size and header sub-rows mix every write class. Routed to the single gap round (CLAUDE.md rule 7) by plan 08. Plan 05 still lands the drop that D-04 decides.
 
+## Video mode decision (plan 07)
+
+D-07 gate read first: plan 04's gate found no M4=1 row in any unsupported_video_mode leaf, and rank 6 is not open on D-07, so D-08 was evaluated.
+
+D-08: shape absent, closed in plan 08. Counts, from `sh scripts/library.sh diagnose` from the repository root at head e6311f2 on a clean tree, exit status 0 (run_fail 49, run_fail_not_in_ledger 0): rank 6 rows 6, `order=before` 6, `order=after` 0, `order=nopicture` 0 (the shape needs 5 or more rows with `order=after`); vdpmode class graphics1 6 of 6 (M4=0, so that half of the shape holds). Every rank 6 fault came before the first non-blank picture, so no supported mode-4 picture was displayed ahead of it and the rows are not a restart transient. No core edit was made, and the raise stays where the renderer's schedule puts it.
+
 ## Pins
 
 The base hashes file `build/p14-base-hashes.txt` was taken from origin/main at commit 81a9cc9761873f20910738e393bed8b3558822b6, before any edit of the phase (plan 01).
