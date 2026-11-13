@@ -42,7 +42,7 @@ Full phase details: `.planning/milestones/v2.0-ROADMAP.md`. Requirements: `.plan
 
 - [x] **Phase 13: Why carts fail** - A counts-only diagnostic in the library judge, run over the owner's library, grouped by cause (completed 2026-11-12)
 - [x] **Phase 14: Fix the causes** - Each cause group of 5 or more rows fixed in the core or the boots check, or closed with a stated reason (completed 2026-11-13)
-- [ ] **Phase 15: Re-run, merge and timeouts** - Flipped rows merged through the ratchet, the page agrees, and the drifted CI timeouts re-derived
+- [x] **Phase 15: Re-run, merge and timeouts** - Flipped rows merged through the ratchet, the page agrees, and the drifted CI timeouts re-derived (completed 2026-11-13)
 
 ## Phase Details
 
@@ -118,7 +118,7 @@ Plans:
   2. The compatibility page and its counts agree with the merged ledger, and `compat.exit` stays green
   3. The asan, nightly bench and bench-wasm32 job timeouts and the fuzz and digest comments are re-derived by the twice-the-slowest rule from live runs, each timeout with its run IDs, in one edit per workflow file, and `hygiene.timeout_comments` passes
   4. `cmake --workflow --preset ci` passes and the pull request has a CI run on its head commit
-**Plans**: 2/2 plans executed
+**Plans**: 2/2 plans complete
 Plans:
 **Wave 1**
 - [x] 15-01-PLAN.md — Owner re-runs the library judge; accept by counts, merge ledger and page in one commit, local gates and the old base judge

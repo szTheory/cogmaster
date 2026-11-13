@@ -161,6 +161,7 @@ Publishes the compatibility results judged at the fix head and re-derives the CI
 - judged-cart floors: met (554 cart passes against 20, 511 PAL rows judged against 1, 51 FM rows judged against 1)
 - fail rows left: 50 with ntsc (48 with fm off, 2 with fm on) and 46 with pal; the earlier diagnose read 49 default-profile fails
 - expected churn: 1116 re-judged rows carry a new evidence stamp and date, passes included
+- Nightly changes: the fuzz job is no longer report-only, a superseded Nightly run on a pull request is cancelled, and the Nightly package installs retry
 
 Job timeouts, each twice the slowest successful run of the last 40 runs, rounded up to whole minutes, with the 5-minute floor kept where one applied:
 
