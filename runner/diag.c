@@ -123,7 +123,7 @@ int cogmaster__diag_print(const cogmaster__diag *d, const cogmaster *m, const ui
         snprintf(slot_text, sizeof slot_text, "%lu", (unsigned long)slot);
     printf("diagnose 1 verdict600=%s first_display=%s first_nonblank=%s first_change=%s "
            "distinct600=%lu distinct1800=%lu ram=%s fault=%s dev=%s pc=%s pcslot=%s where=%s "
-           "fault_frame=%s order=%s mapper=%s source=%s\n",
+           "fault_frame=%s order=%s mapper=%s source=%s vdpmode=%s\n",
            d->verdict600 ? "pass" : "fail", display, nonblank, change,
            (unsigned long)d->distinct600, (unsigned long)d->held, d->live ? "live" : "still",
            fault.present ? cogmaster__fault_kind_name(fault.kind) : "none",
@@ -131,6 +131,7 @@ int cogmaster__diag_print(const cogmaster__diag *d, const cogmaster *m, const ui
            fault.present ? cogmaster__diag_where(fault.device, fault.addr) : "none",
            fault.present ? cogmaster__diag_bucket((uint32_t)fault.frame) : "none",
            cogmaster__diag_order(fault.present, (uint32_t)fault.frame, d->first_nonblank),
-           cogmaster__board_name(cart.board), cogmaster__board_source_name(cart.board_source));
+           cogmaster__board_name(cart.board), cogmaster__board_source_name(cart.board_source),
+           cogmaster__diag_vdpmode(fault.present ? fault.kind : 0u, (uint32_t)fault.addr));
     return COGMASTER__EXIT_OK;
 }

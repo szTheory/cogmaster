@@ -120,12 +120,13 @@ $1 == "rec" {
   v = kv($10, "verdict600"); fd = kv($11, "first_display"); fnb = kv($12, "first_nonblank"); fc = kv($13, "first_change")
   d6 = kv($14, "distinct600"); d18 = kv($15, "distinct1800"); ram = kv($16, "ram"); fk = kv($17, "fault"); dev = kv($18, "dev")
   pc = kv($19, "pc"); ps = kv($20, "pcslot"); wh = kv($21, "where"); ff = kv($22, "fault_frame"); ord = kv($23, "order")
-  mp = kv($24, "mapper"); src = kv($25, "source")
-  if (NF != 25 || !hex40($2) || !ok($3, "sms sms1 gg") || !ok($4, "export japan") || $5 != "ntsc" || !ok($6, "on off") || !ok($7, boards) ||
+  mp = kv($24, "mapper"); src = kv($25, "source"); vm = kv($26, "vdpmode")
+  if (NF != 26 || !hex40($2) || !ok($3, "sms sms1 gg") || !ok($4, "export japan") || $5 != "ntsc" || !ok($6, "on off") || !ok($7, boards) ||
       $8 != "diagnose" || $9 != "1" || !ok(v, "pass fail") || !isnn(fd) || !isnn(fnb) || !isnn(fc) || d6 !~ /^[1-8]$/ || d18 !~ /^[1-8]$/ ||
       !ok(ram, "live still") || !ok(fk, kinds) || !ok(dev, devs) || !(pc == "none" || pc ~ /^[0-9A-F][0-9A-F][0-9A-F][0-9A-F]$/) ||
       !(ps == "none" || ps ~ /^[0-4]$/) || !ok(wh, wheres) || !ok(ff, "0 1-9 10-99 100-599 600+ none") ||
-      !ok(ord, "before after nopicture none") || !ok(mp, boards) || !ok(src, "none db header heuristic default")) { bad++; next }
+      !ok(ord, "before after nopicture none") || !ok(mp, boards) || !ok(src, "none db header heuristic default") ||
+      !ok(vm, "none graphics1 text graphics2 mixed multicolor mode4 invalid sms2only")) { bad++; next }
   evaluated++
   key = $2 SUBSEP $3 SUBSEP $4 SUBSEP $5 SUBSEP $6
   if (v == "pass") {
@@ -154,6 +155,8 @@ $1 == "rec" {
   if (ps != "none") subs[g SUBSEP 1 SUBSEP ps]++
   if (wh != "none") subs[g SUBSEP 2 SUBSEP wh]++
   if (pc != "none") subs[g SUBSEP 3 SUBSEP pc]++
+  # The class sub-rows join their parts with a colon: a dot before a machine name would read as a file name to the leak scan.
+  if (vm != "none") subs[g SUBSEP 5 SUBSEP (vm ":" $3 ":" mp)]++
   mc[mp SUBSEP cls]++; sl[src SUBSEP g]++
   t = title[$2]
   if (length(t) > 80 || t !~ tre) { t = "-"; withheld++ }
@@ -165,7 +168,7 @@ END {
   # Leaf lines and sub-rows carry numeric sort keys (rows, class, split, kind, device, line kind, sub-row key) that sh removes after sorting.
   for (g in groups) printf "G %d %s 0 0 diag-group: leaf=%s rows=%d\n", groups[g], leafkey[g], g, groups[g]
   if (!("input_mismatch" in groups)) print "G 0 1 0 0 0 0 0 diag-group: leaf=input_mismatch rows=0"
-  split("pcslot where pc", label, " ")
+  split("pcslot where pc faddr vdpmode wclass pclass size", label, " ")
   for (k in subs) {
     split(k, a, SUBSEP)
     # An exact pc is shown only when 5 or more rows share it.

@@ -253,6 +253,18 @@ static void diag_class(void)
     CHECK(strcmp(cogmaster__diag_where(COGMASTER_FAULT_DEVICE_CPU, 0x0000u), "cpu") == 0);
     CHECK(strcmp(cogmaster__diag_where(COGMASTER_FAULT_DEVICE_VDP, 0xBFu), "vdp") == 0);
     CHECK(strcmp(cogmaster__diag_where(7u, 0x00u), "unknown") == 0);
+    /* The sixteen video mode nibbles, then a fault of another kind, which names no mode. */
+    static const char *const modes[16] = {"graphics1", "text",   "graphics2", "mixed",
+                                          "multicolor", "mixed",  "mixed",     "mixed",
+                                          "mode4",     "invalid", "mode4",     "sms2only",
+                                          "mode4",     "invalid", "sms2only",  "sms2only"};
+    for (uint32_t n = 0u; n < 16u; n++)
+        CHECK(strcmp(cogmaster__diag_vdpmode(COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE, n),
+                     modes[n]) == 0);
+    CHECK(strcmp(cogmaster__diag_vdpmode(COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE, 0xFFF1u),
+                 "text") == 0);
+    CHECK(strcmp(cogmaster__diag_vdpmode(COGMASTER_FAULT_KIND_ED_UNDEFINED, 1u), "none") == 0);
+    CHECK(strcmp(cogmaster__diag_vdpmode(0u, 1u), "none") == 0);
 }
 
 int main(int argc, char **argv)

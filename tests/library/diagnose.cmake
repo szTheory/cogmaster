@@ -101,8 +101,12 @@ if(CASE STREQUAL main)
   diag_standin()
   string(REPEAT v 32768 halt)
   file(WRITE "${OUT}/halt.sms" "${halt}${bytes_canary}")  # a short tail past a power of two is not a copier-header size
+  string(ASCII 243 62 64 211 191 62 129 211 191 118 mode0_code)  # DI; LD A,$40; OUT ($BF),A; LD A,$81; OUT ($BF),A; HALT
+  string(REPEAT "v" 1014 mode0_pad)
+  file(WRITE "${OUT}/mode0.sms" "${mode0_code}${mode0_pad}")  # the display on with mode select 0: an unsupported video mode fault
   set(images "never.sms|${OUT}/halt.sms|unknown|-|Synthetic never draws" "pass.sms|${FIXTURES}/boot_to_play.sms|unknown|-|Synthetic pass"
     "port.sms|${SEEDS}/in-a-00.sms|unknown|-|Synthetic port fault" "static.sms|${SEEDS}/static-display.sms|unknown|-|Synthetic static"
+    "mode0.sms|${OUT}/mode0.sms|unknown|-|Synthetic mode zero"
     "skipped.sms|${SEEDS}/jr-self.sms|skipped|mame_no|Synthetic skipped")  # name|source|catalog status|reason|title
   foreach(row IN LISTS images)
     string(REPLACE "|" ";" row "${row}")
@@ -137,12 +141,12 @@ if(CASE STREQUAL main)
   if(diag_out MATCHES "Synthetic pass")
     message(FATAL_ERROR "diagnose vacuity: the pass title is printed")
   endif()
-  diag_channels("${named}" "Synthetic never draws;Synthetic port fault;Synthetic static;-")
+  diag_channels("${named}" "Synthetic never draws;Synthetic port fault;Synthetic static;Synthetic mode zero;-")
   string(CONCAT shape "^(library-diagnose 1 core=[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f](\\+dirty)? behaviour=[0-9]+"  # four anchored shapes with distinct prefixes: a line matches at most one, and must match one
     "|diag: title=[^\n]* group=[a-z_.]+ first_display=([0-9]+|none) first_nonblank=([0-9]+|none) distinct600=[1-8] distinct1800=[1-8] fault=[a-z_]+"
     " dev=[a-z]+ pc=(none|[0-9A-F]+) mapper=[a-z0-9_]+ first_change=([0-9]+|none) fault_frame=(0|1-9|10-99|100-599|600\\+|none)"
     " order=(before|after|nopicture|none) where=[a-z0-9]+ ram=(live|still) source=[a-z]+"
-    "|diag-group: leaf=[a-z_.]+ (pcslot=[0-4] |where=[a-z0-9]+ |pc=[0-9A-F]+ )?rows=[0-9]+|diag-other: (pass )?[a-z_0-9]+=[a-z_0-9.-]+( [a-z_0-9]+=[a-z_0-9.-]+)*)$")
+    "|diag-group: leaf=[a-z_.]+ (pcslot=[0-4] |where=[a-z0-9]+ |pc=[0-9A-F]+ |(faddr|vdpmode|wclass|pclass|size)=[a-z0-9_:-]+ )?rows=[0-9]+|diag-other: (pass )?[a-z_0-9]+=[a-z_0-9.-]+( [a-z_0-9]+=[a-z_0-9.-]+)*)$")
   string(REGEX MATCHALL "[^\n]+" lines "${diag_out}")
   list(FILTER lines EXCLUDE REGEX "${shape}")
   if(lines)
@@ -153,8 +157,9 @@ if(CASE STREQUAL main)
     "diag-group: leaf=dark_no_fault.never_draws rows=1" "diag-group: leaf=fault_no_display.unmapped_read.ctrl rows=1"
     "diag-group: leaf=static_no_fault.frozen rows=1" "diag-group: leaf=input_mismatch rows=0"
     "leaf=fault_no_display.unmapped_read.ctrl pcslot=0 rows=1" "leaf=fault_no_display.unmapped_read.ctrl where=port rows=1"
-    "candidates=6 attempted=4 evaluated=4 malformed=0 malformed_io=0 uncatalogued=1 skipped_excluded=1 noprofile=0 unsupported=0 infrastructure_error=0 title_withheld=0"
-    "judged=4 run_fail=3 " "groups_total=3 fail_total=3" "diag-other: pass mapper=none first_change=")
+    "vdpmode=graphics1:sms:none rows=1"
+    "candidates=7 attempted=5 evaluated=5 malformed=0 malformed_io=0 uncatalogued=1 skipped_excluded=1 noprofile=0 unsupported=0 infrastructure_error=0 title_withheld=0"
+    "judged=5 run_fail=4 " "groups_total=4 fail_total=4" "diag-other: pass mapper=none first_change=")
   if(diag_out MATCHES "Synthetic (pass|skipped)")
     message(FATAL_ERROR "a pass row and an excluded row must not be printed")
   endif()
@@ -186,23 +191,24 @@ elseif(CASE STREQUAL taxonomy)  # canned runner lines through the real library.s
   string(REPEAT A 80 t80)
   set(t81 "${t80}A")
   set(f1 "first_display=none first_nonblank=none first_change=none distinct600=1 distinct1800=1 ram=live")
+  set(tail " vdpmode=none")  # the words every canned line ends with; the three malformed rows keep their own fault
   set(rows  # sub dir|rows|id digit|catalog board|title|canned line
-    "main|5|1|none|Shared title|diagnose 1 verdict600=fail ${f1} fault=unmapped_read dev=ctrl pc=0002 pcslot=0 where=port fault_frame=1-9 order=nopicture mapper=none source=db"
-    "main|4|2|none|T2|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=1 distinct1800=1 ram=live fault=rom_write dev=cart pc=0100 pcslot=1 where=rom fault_frame=10-99 order=after mapper=none source=db"
-    "main|1|3|none|T3|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=3 distinct1800=3 ram=live fault=mapper_range dev=mapper pc=FFFC pcslot=4 where=mapper fault_frame=100-599 order=after mapper=none source=default"
-    "main|1|4|none|${t80}|diagnose 1 verdict600=fail first_display=none first_nonblank=300 first_change=300 distinct600=1 distinct1800=1 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=heuristic"
-    "main|1|5|none|${t81}|diagnose 1 verdict600=fail first_display=none first_nonblank=900 first_change=900 distinct600=1 distinct1800=1 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db"
-    "main|1|6|none|T6|diagnose 1 verdict600=fail ${f1} fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db"
-    "main|1|7|none|T7|diagnose 1 verdict600=fail ${f1} fault=unmapped_write dev=ram pc=none pcslot=none where=none fault_frame=600+ order=after mapper=none source=db"
-    "main|1|8|none|T8|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=1 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db"
-    "main|1|9|none|T9|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=1 distinct1800=1 ram=still fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db"
-    "main|1|a|none|Ta|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=1 distinct1800=1 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db\r"
-    "main|1|b|sega|Tb|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=2 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db"
-    "main|1|c|none|Tc|diagnose 1 verdict600=pass first_display=100 first_nonblank=100 first_change=75 distinct600=2 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db"
-    "main|1|d|none|Td|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=2 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=bogus source=db"
-    "main|1|e|none|Te|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=2 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db extra=1"
-    "main|1|f|none|Tf|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=2 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none"
-    "stray|1|0|none|Stray|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=2 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db")
+    "main|5|1|none|Shared title|diagnose 1 verdict600=fail ${f1} fault=unmapped_read dev=ctrl pc=0002 pcslot=0 where=port fault_frame=1-9 order=nopicture mapper=none source=db${tail}"
+    "main|4|2|none|T2|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=1 distinct1800=1 ram=live fault=rom_write dev=cart pc=0100 pcslot=1 where=rom fault_frame=10-99 order=after mapper=none source=db${tail}"
+    "main|1|3|none|T3|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=3 distinct1800=3 ram=live fault=mapper_range dev=mapper pc=FFFC pcslot=4 where=mapper fault_frame=100-599 order=after mapper=none source=default${tail}"
+    "main|1|4|none|${t80}|diagnose 1 verdict600=fail first_display=none first_nonblank=300 first_change=300 distinct600=1 distinct1800=1 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=heuristic${tail}"
+    "main|1|5|none|${t81}|diagnose 1 verdict600=fail first_display=none first_nonblank=900 first_change=900 distinct600=1 distinct1800=1 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db${tail}"
+    "main|1|6|none|T6|diagnose 1 verdict600=fail ${f1} fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db${tail}"
+    "main|1|7|none|T7|diagnose 1 verdict600=fail ${f1} fault=unmapped_write dev=ram pc=none pcslot=none where=none fault_frame=600+ order=after mapper=none source=db${tail}"
+    "main|1|8|none|T8|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=1 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db${tail}"
+    "main|1|9|none|T9|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=1 distinct1800=1 ram=still fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db${tail}"
+    "main|1|a|none|Ta|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=1 distinct1800=1 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db${tail}\r"
+    "main|1|b|sega|Tb|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=2 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db${tail}"
+    "main|1|c|none|Tc|diagnose 1 verdict600=pass first_display=100 first_nonblank=100 first_change=75 distinct600=2 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db${tail}"
+    "main|1|d|none|Td|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=2 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=bogus source=db${tail}"
+    "main|1|e|none|Te|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=2 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db${tail} extra=1"
+    "main|1|f|none|Tf|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=2 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none${tail}"
+    "stray|1|0|none|Stray|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=2 distinct1800=2 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db${tail}")
   foreach(row IN LISTS rows)
     string(REPLACE "|" ";" row "${row}")
     list(POP_FRONT row sub n digit board title line)
@@ -262,7 +268,7 @@ elseif(CASE STREQUAL leak_title)  # the real library.sh, library.cmake and awk w
   string(REPEAT 6 40 id)
   file(WRITE "${imgdir}/one.sms" "x")
   file(WRITE "${imgdir}/one.sms.probe" "identity_sha1=${id}\nregion_guess=ntsc-u\n")
-  file(WRITE "${imgdir}/one.sms.line" "diagnose 1 verdict600=fail first_display=none first_nonblank=none first_change=none distinct600=1 distinct1800=1 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db\n")
+  file(WRITE "${imgdir}/one.sms.line" "diagnose 1 verdict600=fail first_display=none first_nonblank=none first_change=none distinct600=1 distinct1800=1 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db vdpmode=none\n")
   file(WRITE "${OUT}/catalog.tsv" "${id}\tsms\tnone\t-\t${name_canary}\tunknown\t-\texport\tpad\tpad\n")  # legal under the title charset, so the awk prints it
   diag_call("${imgdir}" COGMASTER_LIBRARY_RUN=${OUT}/wrapper.sh COGMASTER_LIBRARY_EMULATOR=sh)
   diag_need("the planted title is not printed" "${diag_out}" "diag: title=${name_canary} group=dark_no_fault.never_draws ")

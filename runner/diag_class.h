@@ -64,4 +64,41 @@ static inline const char *cogmaster__diag_where(uint32_t device, uint32_t addr)
     }
 }
 
+/* The class of the video mode an unsupported-mode fault names: the low nibble of the fault
+   address is the mode select M4 M3 M2 M1 (.planning/preparation/SMS-VDP.md section 2.5). 0 to 7
+   have the mode 4 bit clear, so they are the TMS9918 modes: graphics1 (0), text (1), graphics2
+   (2), multicolor (4) and the mixed combinations (3, 5, 6, 7). 8, 10 and 12 are mode 4 on every
+   chip; 9 and 13 are the invalid text mode everywhere; 11, 14 and 15 are mode 4 on SMS2 and Game
+   Gear but the invalid text mode on SMS1. The core accepts the mode 4 nibbles, so "mode4" should
+   never print; it is here so a future change shows up as a word, not as a surprise. */
+static inline const char *cogmaster__diag_vdpmode(uint32_t kind, uint32_t addr)
+{
+    if (kind != COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE)
+        return "none";
+    switch (addr & 15u) {
+    case 0u:
+        return "graphics1";
+    case 1u:
+        return "text";
+    case 2u:
+        return "graphics2";
+    case 4u:
+        return "multicolor";
+    case 3u:
+    case 5u:
+    case 6u:
+    case 7u:
+        return "mixed";
+    case 8u:
+    case 10u:
+    case 12u:
+        return "mode4";
+    case 9u:
+    case 13u:
+        return "invalid";
+    default:
+        return "sms2only";
+    }
+}
+
 #endif /* COGMASTER_RUNNER_DIAG_CLASS_H */
