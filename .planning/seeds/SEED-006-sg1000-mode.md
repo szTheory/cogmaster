@@ -36,3 +36,4 @@ the Taiwanese multicart mappers, a machine profile `sg1000`/`sc3000`, and the `h
 - `.planning/preparation/SMS-VDP.md` section 7.
 - `.planning/preparation/SMS-CARTRIDGES-AND-PERIPHERALS.md` sections 2 and 3.
 - `.planning/preparation/SMS-SYSTEM.md` sections 3 and 4.
+- Phase 14 outcomes (`.planning/phases/14-fix-the-causes/14-FIX-OUTCOMES.md`): the library shows 46 rows needing legacy modes (graphics1 13, graphics2 33, all on machine sms, 40 in one leaf and 6 in another, no M4=1 row). That is the evidence the When to Surface sentence asks for ("if the VDP's legacy modes are already needed for an SMS title in the ledger"); promoting the seed stays the owner's call.

@@ -38,3 +38,13 @@ flip many rows to `pass`; that is the biggest real improvement left in the core.
 The agent has not read the owner's library (the secrets guard blocks it; the owner passes `COGMASTER_ROM_DIR` in a
 shell). The diagnostic needs real dumps. Decide whether the owner runs the diagnostic and pastes the grouped counts, or
 authorises the agent to run it in this shell against the extracted folder (counts only, nothing committed).
+
+## Breadcrumbs
+
+- Outcomes of the first fix phase: `.planning/phases/14-fix-the-causes/14-FIX-OUTCOMES.md` (library run_fail 205 to 49, not in ledger 0).
+- Closed groups by leaf name: fault_static.unsupported_video_mode.vdp (40 rows) and fault_alive.unsupported_video_mode.vdp (6 rows), not emulated by design, reopened by SEED-006; dark_no_fault.never_draws (2 rows) and static_no_fault.frozen (1 row), no evidence, kept failing by the boots check; input_mismatch (0 rows). The boots check is recorded sound.
+- Seed candidates: no new leaf under 5 rows printed. Plan 04 marked reg-zm (3 rows) and reg-cm (4 rows) of ranks 3 and 7 as below the 5-row threshold of the decision table (the owner can change that figure); both classes passed once the write fault was dropped.
+- Rank 6 (6 rows, 5 at one program counter, all before the first picture) and dark_no_fault.never_draws (2 rows) are the first leaves to trace if the next fix phase wants more than the legacy-mode closure.
+- Gap round entry: rank 3 fault_alive.rom_write.cart, open on D-04 (the board choice for the reg-0 carts needs new evidence; 0 rows fail at the head).
+- Not taken, for Phase 15's confirmation run: the Sega bank-shift trace (D-06) and the one pad press on the static_no_fault row (D-14); both need a dump path the agent may not read.
+

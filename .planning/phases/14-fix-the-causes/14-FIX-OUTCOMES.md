@@ -2,15 +2,16 @@
 
 Counts only.
 
-- core commit: faf9cc788dbfea6973234e50c2861f157c763af7
+- core commit: a4ad03abfdad612304b2953a084767e38926ca9f (formatting and one comment only since 4e7f825f6cbe2a91c3e6a543eacae7ecb044f729, the last commit that changed core behaviour; the final diagnose ran at head 230cbc9, whose core behaviour equals it)
+- baseline core commit: faf9cc788dbfea6973234e50c2861f157c763af7
 - behaviour revision: 18
 - date (UTC): 2026-11-13
-- command: `sh scripts/library.sh diagnose`, exit status 0
+- command: `sh scripts/library.sh diagnose`, exit status 0 (the baseline run and the final run)
 - ledger read: tests/compat/ledger.csv at commit 032ebabc340b56b1123bb8745cc91d8c7a635189
 - caps: verdict at frame 600, view to frame 1800
 - phase 13 note: .planning/phases/13-why-carts-fail/13-CAUSE-GROUPS.md at commit 17375f726b7452e6fd3d9049a42915574602f7cc
 
-The baseline run was made on a clean tree at the core commit above, with the mode nibble in the fault record and before any benign fault kind was dropped. Its totals: run_fail 205 and run_fail_not_in_ledger 0 (compared as numbers), the same 205 failing rows as the Phase 13 note.
+The baseline run was made on a clean tree at the baseline core commit above, with the mode nibble in the fault record and before any benign fault kind was dropped. Its totals: run_fail 205 and run_fail_not_in_ledger 0 (compared as numbers), the same 205 failing rows as the Phase 13 note.
 
 ## Decision table
 
@@ -194,4 +195,8 @@ Pad press (D-14): not run; see rank 10. With 1 `static_no_fault` row at the head
 ## Pins (plan 08)
 
 Base-versus-head compare: `ctest --test-dir build/ci -R '^runner\.hashes_file$' --output-on-failure --no-tests=error` on the committed head, exit status 0 (the hashes file was removed first and rewritten by the test), then `cmake "-DFILES=build/p14-base-hashes.txt;build/ci/hashes.txt" -DCOUNT=2 -DMODE=compare -P tests/cmake/hashes.cmake`, exit status 0 ("2 identical files"). No pin moved across the phase, so no line needs a justification, and the behaviour revision stays 18. The base file was taken from origin/main (commit 81a9cc9, plan 01), so the worktree form was not needed.
+
+Test files (D-13): `tests/core/test_state.c` and `tests/diag/expected.csv` assert no dropped fault kind (RESEARCH premise check 9), and `tests/mapper/test_mapper.c` asserts only memory-side cartridge and RAM `unmapped_write` faults, which stay, so none of the three needed an edit. The docs/embedding.md revision-18 sentence and Faults rows and the tests/core/test_core.c revision comment already list exactly the changes that landed (the mode nibble, the unused `$FFFC` bits, writes to a cartridge address that is no register, reads of undriven ports, writes to ports nothing decodes), so no drop was held back and neither file changed in this plan.
+
+Gates (plan 08): `cmake --workflow --preset ci` exit status 0 (676 tests and 5 release tests pass) and `cmake --workflow --preset hygiene` exit status 0 (84 tests) on the phase head. The first hygiene run failed: clang-format on the plan 01 diagnose class code and its test, and the no-float scan on a comment in `src/mapper.c` that wrote a section number as a decimal; both were fixed in the files at fault (formatting and comment wording only, no behaviour or hash change). Fences: `git diff --exit-code origin/main -- tests/compat/ledger.csv docs/compatibility.md .github/workflows/ci.yml` exit status 0; no `TIMEOUT` line changed in `tests` or `CMakeLists.txt`; no file added under `tests/cmake`, `scripts` or `tests/compat`; `cmake -DROOT="$PWD" -P tests/cmake/budgets.cmake` exit status 0.
 
