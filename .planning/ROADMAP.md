@@ -40,7 +40,7 @@ Full phase details: `.planning/milestones/v2.0-ROADMAP.md`. Requirements: `.plan
 
 **Milestone goal:** find out why a third of the checked cartridges fail the boots check, fix the causes the evidence names, and merge the rows that flip to `pass`. The milestone is SEED-016 plus the CI timeout drift from SEED-015. No phase sets a target number of flipped rows: the causes decide the count.
 
-- [ ] **Phase 13: Why carts fail** - A counts-only diagnostic in the library judge, run over the owner's library, grouped by cause
+- [x] **Phase 13: Why carts fail** - A counts-only diagnostic in the library judge, run over the owner's library, grouped by cause (completed 2026-11-12)
 - [ ] **Phase 14: Fix the causes** - Each cause group of 5 or more rows fixed in the core or the boots check, or closed with a stated reason
 - [ ] **Phase 15: Re-run, merge and timeouts** - Flipped rows merged through the ratchet, the page agrees, and the drifted CI timeouts re-derived
 
@@ -55,7 +55,7 @@ Full phase details: `.planning/milestones/v2.0-ROADMAP.md`. Requirements: `.plan
   2. A test over synthetic fixtures shows the diagnostic output holds no image bytes and no file names or paths, and a negative control that leaks one makes the same test fail
   3. A planning note records the failing rows grouped by cause with a count per group, counts only and no dump content, ordered by descending group size, so the next phase can cite it
   4. `cmake --workflow --preset ci` passes and the committed ledger and compatibility page are unchanged
-**Plans**: 5/5 plans executed
+**Plans**: 5/5 plans complete
 Plans:
 **Wave 1**
 - [x] 13-01-PLAN.md — Runner `--diagnose` mode: one closed line per cart, frame-600 verdict shared with `--expect boots@600`

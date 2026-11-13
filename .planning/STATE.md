@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Fewer failing cartridges
-current_phase: 13
-current_phase_name: Why carts fail
-status: verifying
-stopped_at: "Completed 13-05-PLAN.md (runtime: Claude Code, model: claude-sonnet-5-5)"
-last_updated: "2026-11-13T00:17:42.951Z"
+current_phase: 14
+current_phase_name: Fix the causes
+status: planning
+stopped_at: Phase 13 complete, ready to plan Phase 14
+last_updated: "2026-11-13T00:42:40.966Z"
 last_activity: 2026-11-12
-last_activity_desc: Phase 13 execution started
-state_head: 1585be862eca4c6ff754f357d342e00228d1381d
+last_activity_desc: Phase 13 complete, transitioned to Phase 14
+state_head: 49225e64b4bdfad139fce8965ef937692c6bdc8f
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 5
   completed_plans: 5
-  percent: 0
+  percent: 33
 ---
 
 # Project State
@@ -29,15 +29,15 @@ See: .planning/PROJECT.md (updated 2026-11-12)
 
 ## Current Position
 
-Phase: 13 (Why carts fail) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-11-12 — Phase 13 execution started
+Phase: 14 — Fix the causes
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-12 — Phase 13 complete, transitioned to Phase 14
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 156
+- Total plans completed: 161
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -57,6 +57,7 @@ Last activity: 2026-11-12 — Phase 13 execution started
 | 10 | 11 | - | - |
 | 11 | 9 | - | - |
 | 12 | 10 | - | - |
+| 13 | 5 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -423,7 +424,7 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 ## Session Continuity
 
 Last session: 2026-11-13T00:17:42.913Z
-Stopped at: Completed 13-05-PLAN.md (runtime: Claude Code, model: claude-sonnet-5-5)
+Stopped at: Phase 13 complete, ready to plan Phase 14
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
