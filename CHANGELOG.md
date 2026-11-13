@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.1](https://github.com/szTheory/cogmaster/compare/v0.14.0...v0.14.1) (2026-11-13)
+
+
+### Bug Fixes
+
+* **core:** stop faulting on routine cartridge writes and port accesses ([#42](https://github.com/szTheory/cogmaster/issues/42)) ([b64f939](https://github.com/szTheory/cogmaster/commit/b64f939c56b9a42638a24b0bd839aa3f992e5fc4))
+
 ## [0.14.0](https://github.com/szTheory/cogmaster/compare/v0.13.0...v0.14.0) (2026-11-13)
 
 
