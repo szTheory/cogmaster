@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.2](https://github.com/szTheory/cogmaster/compare/v0.14.1...v0.14.2) (2026-11-13)
+
+
+### Bug Fixes
+
+* **compat:** publish the post-fix library results and re-derive job timeouts ([#44](https://github.com/szTheory/cogmaster/issues/44)) ([011bca6](https://github.com/szTheory/cogmaster/commit/011bca6e4dcfa3ae8019af7456fbe5be4c0bea23))
+
 ## [0.14.1](https://github.com/szTheory/cogmaster/compare/v0.14.0...v0.14.1) (2026-11-13)
 
 
