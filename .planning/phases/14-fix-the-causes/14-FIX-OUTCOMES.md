@@ -138,3 +138,5 @@ The base hashes file `build/p14-base-hashes.txt` was taken from origin/main at c
 Plan 03: no pin moved. The Sega bank shift was left as it is (D-06 trace not taken), so no gate was added and the hashes of the 512 KiB shift fixtures are unchanged.
 
 Plan 03 re-run: `sh scripts/library.sh diagnose` from the repository root at head 97f345c, whose core source equals the core commit of the fix (eb8dfee), exit status 0, on a clean tree. Totals: run_fail 205 to 104, run_fail_not_in_ledger 0 (compared as numbers), ledger_fail_now_pass 101. Leaves that grew: rank 3 32 to 36, rank 4 8 to 11, rank 5 7 to 8, rank 9 1 to 2; ranks 2, 6, 7 and 10 unchanged. The 9 added rows are consistent with 110 rows moving out of ranks 1 and 8 (101 passing, 9 landing on the next fault of the same cart); the per-cart link was not traced.
+
+Plan 04: no code changed, so no pin moved and no diagnose re-run was taken; the counts of ranks 2 to 7 are the post-plan-03 re-run's above. `ctest` over the vdp, mapper, core, cart, runner.diagnose and docs groups exits 0 on the plan head.
