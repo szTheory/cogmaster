@@ -11,31 +11,43 @@ researchers who need frame-exact, reproducible runs; and porters who need an int
 handhelds and in the browser. The owner tries every release on a Mac in RetroArch and tests with a large
 collection of physical cartridges.
 
+## Current Milestone: v2.1 Fewer failing cartridges
+
+**Goal:** Find out why about a third of the checked cartridges (210 default-profile `fail` rows of 603 judged) fail the
+boots check, fix the biggest shared causes, and publish the rows that flip to `pass`.
+
+**Target features:**
+- A per-cart diagnostic in the library judge (frames to first non-blank, first fault kind and PC, mapper chosen) that
+  prints counts and kinds only, never ROM bytes (SEED-016).
+- Fixes in order of group size: check strictness first, then mapper families (`zemina`, `korean_nb`, `korean`), then
+  individual faults.
+- A re-run of the library judge over the owner's library, with the flipped rows merged by pull request. The agent runs
+  it in a shell where the owner passes `COGMASTER_ROM_DIR`, reads counts and catalog titles only, and commits nothing
+  from the dumps (owner decision 2026-11-12).
+- The CI timeout drift (SEED-015): asan, the nightly bench, bench-wasm32 and the fuzz comment re-measured and edited in
+  one workflow change.
+
 ## Current State
 
-**v0.12.0 is shipped** (milestone v2.0 "The whole library", phases 5 to 12, releases v0.5.0 to v0.12.0). The public
+**v0.13.0 is shipped** (milestone v2.0 "The whole library", phases 5 to 12, releases v0.5.0 to v0.13.0). The public
 surface is API 14, behaviour revision 17 and state format 16. The core plays Sega, Codemasters and Korean-board
 cartridges (Korean `$A000`, Hicom, Zemina, Nemesis, `korean_nb` and 4 PAK), keeps battery and 93C46 EEPROM saves across
 restarts, supports the Sports Pad, Paddle, 3-D glasses and Light Phaser, boots from the user's own BIOS dump on request,
 and runs the PAL and Japanese FM profiles. The compatibility ledger holds a row with an honest status for every
-Master System and Game Gear entry at the MAME pin, and `compat.exit` ties the libretro core's `is_experimental` flag to
-the judged rows both ways. The flag stays until the owner's own-library run meets the floors (owner decision
-2026-11-12). The milestone audit (`.planning/milestones/v2.0-MILESTONE-AUDIT.md`) found 49 of 49 requirements
-satisfied, status tech_debt and no blockers.
+Master System and Game Gear entry at the MAME pin. The owner's own-library run is merged (v0.13.0): 396 default-profile
+passes and 210 `fail` rows, and the libretro core's `is_experimental` flag is gone. The milestone audit
+(`.planning/milestones/v2.0-MILESTONE-AUDIT.md`) found 49 of 49 requirements satisfied, status tech_debt and no
+blockers.
 
 ## Next Milestone Goals
 
-No new milestone is planned. What waits, in order, none of it a gate:
+After v2.1, none of it a gate:
 
-- **The one batched owner run** (SEED-013): `sh scripts/library.sh run` over the owner's library, then, only when the
-  printed block says `judged_cart_floors=met`, the pull request that merges the run's rows and removes
-  `is_experimental`. The pad, Light Phaser and BIOS judges (SEED-010) and the scan-threshold measurement (SEED-009) can
-  ride in the same sitting.
-- **CI timeout drift and the other tune-up leftovers** (SEED-015, with SEED-007): asan, the nightly bench and
-  bench-wasm32 timeouts no longer match twice their slowest live run, and the weekly digest names them on 2026-11-16;
-  re-measure in one workflow edit.
+- The pad, Light Phaser and BIOS judges (SEED-010) and the scan-threshold measurement (SEED-009) can ride in the next
+  owner sitting.
+- The rest of SEED-015 and SEED-007 (ledger rows, review leftovers).
 - Later horizons (states and movies, measured accuracy, tools, ports, the browser, SG-1000) stay seeds in
-  `.planning/seeds/` and horizons in `.planning/PRODUCT-ROADMAP.md`; the next milestone needs the owner's approval at
+  `.planning/seeds/` and horizons in `.planning/PRODUCT-ROADMAP.md`; each needs the owner's approval at
   `/gsd-new-milestone`.
 
 ## Core Value
@@ -59,10 +71,15 @@ MIT-licensed C library that any host can embed.
 - ✓ BIOS boot from the user's own dump in the runner or RetroArch, fast boot staying the default, both firmware legality scans with negative controls, and the `$3E` arbitration checked against the hardware notes — v2.0 (Phase 10)
 - ✓ PAL timing proven identical on every lane, FM judged by its sound on owned fixtures, and the library judge able to add PAL and Japanese FM rows through `compat-update.sh` — v2.0 (Phase 11)
 - ✓ The whole list in the ledger: one honest row per Master System and Game Gear entry at the pin, a bounded compatibility page, ratchet rules for unsupported rows, and `compat.exit` tying `is_experimental` to the judged-cart floors both ways (satisfied as amended: the flag stays until the owner's own-library run) — v2.0 (Phase 12)
+- ✓ The failing default-profile rows have a known cause: `cogmaster-run --diagnose` and `sh scripts/library.sh diagnose` print counts, kinds and catalog titles only, a canary scan with five negative controls proves nothing from a dump leaks, and 205 failing rows (of 209 in the ledger) are grouped by cause in `13-CAUSE-GROUPS.md`; no ledger row moved — v2.1 (Phase 13)
 
 ### Active
 
-(None yet: the next milestone's requirements are defined by `/gsd-new-milestone`; candidates are the seeds in `.planning/seeds/`.)
+v2.1 (defined in `.planning/REQUIREMENTS.md`):
+
+- [ ] Fix the largest causes in group-size order and flip the rows they explain to `pass`
+- [ ] Re-run the library judge and merge the flipped rows
+- [ ] Re-measure and correct the drifted CI job timeouts in one workflow edit
 
 ### Out of Scope
 
@@ -169,4 +186,4 @@ After each milestone:
 3. Lessons are exported to `.planning/LESSONS.md`.
 
 ---
-*Last updated: 2026-11-12 after v2.0 milestone*
+*Last updated: 2026-11-12 after Phase 13*

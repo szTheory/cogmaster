@@ -74,6 +74,9 @@ byte-identical files. Built files stay in the build directory; they never reach 
   Explicit `scripts/compat-update.sh` projects only existing public CC0 ledger cases, canonical public
   titles, unchanged accepted predicates, statuses, dates and core revision. It discards local labels,
   evidence, unknown identities and observed golden proposals. Owned fixtures use their CI build path.
+- `scripts/library.sh diagnose` prints only counts, enum words, frame numbers, fault PCs and catalog titles that pass the
+  title charset. It never prints image bytes, digests, file names or paths.
+- Its per-row output stays local and is never committed; a planning note may carry group counts only.
 - Firmware is identified by digest. The digests are facts and may be committed; the bytes may not. From MAME's
   BSD-3 driver source at `1d7a454ed79e` [AP.02]:
 

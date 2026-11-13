@@ -297,4 +297,26 @@ if(COGMASTER_FIXTURES)
       -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures -DRUN=$<TARGET_FILE:cogmaster-run>
       "-DEMULATOR=${library_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
     LABELS library TIMEOUT 160)
+  set(diag ${CMAKE_CURRENT_LIST_DIR}/diagnose.cmake)
+  set(diag_args -DROOT=${PROJECT_SOURCE_DIR} -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures -DSEEDS=${PROJECT_BINARY_DIR}/tests/seeds
+    -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${library_emulator}" -P ${diag})
+  # Timeout: 206 s; 2 x 102.97 s (macos-x64), slowest of 1 run, run 43334476928.
+  cogmaster_add_test(NAME library.diagnose COMMAND ${CMAKE_COMMAND} -DCASE=main
+    -DOUT=${PROJECT_BINARY_DIR}/tests/library-diagnose/main ${diag_args} LABELS library TIMEOUT 206)
+  # Timeout: 35 s; 2 x 17.5 s (windows-arm64), slowest of 1 run, run 43334476928.
+  cogmaster_add_test(NAME library.diagnose.taxonomy COMMAND ${CMAKE_COMMAND} -DCASE=taxonomy
+    -DOUT=${PROJECT_BINARY_DIR}/tests/library-diagnose/taxonomy ${diag_args} LABELS library TIMEOUT 35)
+  # Timeout: 34 s; 2 x 16.82 s (macos-x64), slowest of 1 run, run 43334476928.
+  cogmaster_add_test(NAME library.diagnose.hostile COMMAND ${CMAKE_COMMAND} -DCASE=hostile
+    -DOUT=${PROJECT_BINARY_DIR}/tests/library-diagnose/hostile ${diag_args} LABELS library TIMEOUT 34)
+  # Fault prevented: a leak scan with no teeth.
+  foreach(leak name path bytes digest title)
+    set(re "diagnose leak: leak_${leak}")
+    if(leak STREQUAL title)
+      set(re "diagnose leak: leak_name.*diagnose leak: leak_title")
+    endif()
+    string(REPLACE ";" "$<SEMICOLON>" cmd "${CMAKE_COMMAND};-DROOT=${PROJECT_SOURCE_DIR};-DCASE=leak_${leak};-DOUT=${PROJECT_BINARY_DIR}/tests/library-diagnose/leak_${leak};-P;${diag}")
+    cogmaster_add_test(NAME library.diagnose.leak_${leak} COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=${re}"
+      -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake LABELS library TIMEOUT 30)
+  endforeach()
 endif()

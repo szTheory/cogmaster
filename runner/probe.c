@@ -14,6 +14,7 @@
 
 #include "cogmaster.h"
 #include "crc32.h"
+#include "diag.h"
 #include "exit_status.h"
 #include "md5.h"
 #include "sha1.h"
@@ -187,7 +188,6 @@ int cogmaster__probe_print(const char *path, const uint8_t *image, size_t n)
     cogmaster_status st = cogmaster_probe(image, n, &info);
     int header = info.header_at != 0u;
     int copier = n % 16384u == COPIER_HEADER;
-    static const char *const sources[] = {"none", "db", "header", "heuristic", "default"};
     uint32_t machine = cogmaster__auto_machine(path, image, n);
 
     printf("size=%lu\n", (unsigned long)n);
@@ -223,7 +223,7 @@ int cogmaster__probe_print(const char *path, const uint8_t *image, size_t n)
     printf("board_source=%s\nboard_candidate=%s\nscan_sega=%lu\nscan_candidate=%lu\n"
            "scan_runner_up=%lu\nunsupported_id=%lu\nunsupported_reason=%s\nport1_default=%s\n"
            "port2_default=%s\n",
-           sources[info.board_source <= 4u ? info.board_source : 0u],
+           cogmaster__board_source_name(info.board_source),
            info.board_candidate != 0u ? cogmaster__board_name(info.board_candidate) : "none",
            (unsigned long)info.scan_sega, (unsigned long)info.scan_candidate,
            (unsigned long)info.scan_runner_up, (unsigned long)info.unsupported_id,

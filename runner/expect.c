@@ -137,9 +137,8 @@ int cogmaster__expect_audio_at(const cogmaster__expect *e, uint32_t frame)
     return 0;
 }
 
-int cogmaster__expect_frame(cogmaster__expect *e, const cogmaster *m, uint32_t frame,
-                            uint32_t display, uint16_t *pixels, const char *audio_hex,
-                            uint64_t transitions)
+int cogmaster__expect_observe(cogmaster__expect *e, const cogmaster *m, uint32_t display,
+                              uint16_t *pixels, char hex[65], uint32_t *nonblank)
 {
     cogmaster_info info = {0};
     info.size = sizeof info;
@@ -156,15 +155,16 @@ int cogmaster__expect_frame(cogmaster__expect *e, const cogmaster *m, uint32_t f
         return COGMASTER__EXIT_FAILURE;
     cogmaster__sha256 s;
     cogmaster__sha256_init(&s);
+    *nonblank = 0u;
     for (uint32_t y = 0u; y < f.h; y++) {
         for (uint32_t x = 0u; x < f.w; x++) {
             uint16_t v = pixels[(size_t)y * (f.pitch_bytes / 2u) + x];
             uint8_t bytes[2] = {(uint8_t)v, (uint8_t)(v >> 8)};
             cogmaster__sha256_update(&s, bytes, sizeof bytes);
+            *nonblank |= (uint32_t)(v != pixels[0]);
         }
     }
     uint8_t digest[32];
-    char hex[65];
     cogmaster__sha256_final(&s, digest);
     cogmaster__sha256_hex(digest, hex);
     e->display |= display;
@@ -175,6 +175,23 @@ int cogmaster__expect_frame(cogmaster__expect *e, const cogmaster *m, uint32_t f
     } else if (strcmp(e->first, hex) != 0) {
         e->distinct = 2u;
     }
+    return COGMASTER__EXIT_OK;
+}
+
+int cogmaster__expect_boots(const cogmaster__expect *e)
+{
+    return e->display && e->distinct >= 2u && !e->fault;
+}
+
+int cogmaster__expect_frame(cogmaster__expect *e, const cogmaster *m, uint32_t frame,
+                            uint32_t display, uint16_t *pixels, const char *audio_hex,
+                            uint64_t transitions)
+{
+    char hex[65];
+    uint32_t nonblank;
+    int status = cogmaster__expect_observe(e, m, display, pixels, hex, &nonblank);
+    if (status != COGMASTER__EXIT_OK)
+        return status;
     for (uint32_t i = 0u; i < e->count; i++) {
         cogmaster__expect_case *c = &e->cases[i];
         if (c->frame != frame)
@@ -193,7 +210,7 @@ int cogmaster__expect_frame(cogmaster__expect *e, const cogmaster *m, uint32_t f
                   : c->kind == 1u
                       ? (uint32_t)(cogmaster_peek(m, COGMASTER_SPACE_BUS, c->address) == c->value)
                   : c->kind == 2u ? (uint32_t)mailbox(m)
-                                  : (uint32_t)(e->display && e->distinct >= 2u && !e->fault);
+                                  : (uint32_t)cogmaster__expect_boots(e);
         printf("predicate kind=%lu frame=%lu address=%04lX %s observed_frame=%s display=%lu "
                "distinct_at_least=%lu first_fault=%lu\n",
                (unsigned long)c->kind, (unsigned long)frame, (unsigned long)c->address,

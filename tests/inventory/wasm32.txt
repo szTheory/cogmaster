@@ -302,6 +302,14 @@ io.pause_history	io,portable
 io.port3e	io,portable
 io.port3f_region	io,portable
 io.port_dc_dd	io,portable
+library.diagnose	library
+library.diagnose.hostile	library
+library.diagnose.leak_bytes	library
+library.diagnose.leak_digest	library
+library.diagnose.leak_name	library
+library.diagnose.leak_path	library
+library.diagnose.leak_title	library
+library.diagnose.taxonomy	library
 library.synthetic	library
 mapper.codemasters.banks	mapper,portable
 mapper.codemasters.ram	mapper,portable
@@ -463,6 +471,8 @@ runner.device.paddle_export_refused	portable,runner
 runner.device.probe_default	portable,runner
 runner.device.refused	portable,runner
 runner.device.usage	portable,runner
+runner.diagnose	portable,runner
+runner.diagnose.class	portable,runner
 runner.exit.failure	portable,runner
 runner.exit.table	runner
 runner.expect.audio	fm,portable,runner

@@ -57,6 +57,7 @@ required on every record. Pause is edge-triggered by the core; Reset and native 
 ```text
 cogmaster-run [--machine NAME] [--region NAME] --frames N [OPTION]... [FILE]
 cogmaster-run [--machine NAME] [--region NAME] --bench N [OPTION]... [FILE]
+cogmaster-run --diagnose [--machine NAME] [--region NAME] [OPTION]... FILE
 cogmaster-run --probe FILE
 cogmaster-run --help | --version
 ```
@@ -84,6 +85,7 @@ cogmaster-run --help | --version
 | `--trace first-fault` | After each frame, read the core's first-fault record; stop at the first fault and print it, described under [First fault](#first-fault). |
 | `--eyes` | After the last frame, print one line `eyes frames=F none=N left=L right=R flips=X last=left\|right\|none`: how many frames reported each 3-D glasses eye, how many frames showed a non-zero eye different from the last non-zero one, and the last eye shown. It only counts: `--hash`, `--png` and `--expect` stay the plain picture and nothing is composed. It is a usage error with `--probe`. |
 | `--mailbox` | After each frame, read the RAM mailbox a diagnostic ROM fills; stop at the first frame whose status reads done after reading running, and print the mailbox, described under [Mailbox](#mailbox). |
+| `--diagnose` | Run 1800 frames and print one line of boot facts, described under [Diagnose](#diagnose). Give it only with a file and the profile options `--machine`, `--region`, `--fm`, `--video-mode`, `--port1` and `--port2`. |
 | `--probe` | Print the file's header fields and digests, described under [Probe](#probe), and run nothing. Give it only with a file. |
 | `--expect FILE` | Judge accepted bounded frame, RAM, mailbox and boot observations. |
 | `--help` | Print the usage text and the exit statuses. Give it alone. |
@@ -403,6 +405,36 @@ and SHA-256 of input bytes (the empty digest without a script). The first fault 
 a diagnostic and does not stop the capped run. `--trace`, `--mailbox`, `--bench` and
 `--probe` conflict with `--expect`. A signal before an expected frame is infrastructure
 failure; mismatches exit 3, unsupported capabilities 77, invalid syntax 2 and I/O errors 1.
+
+## Diagnose
+
+`--diagnose FILE` runs exactly 1800 frames and prints one line, then exits 0. It holds only numbers, enum words
+and words from fixed tables, never a digest, byte, image size, name or path. It does print the first-event call
+numbers and the fault pc; the fault's own frame is bucketed. Frames are run calls counted from 1; a field is `none`
+when its event never happened.
+
+```text
+diagnose 1 verdict600=pass first_display=2 first_nonblank=2 first_change=2 distinct600=3 distinct1800=3 ram=still fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=header
+```
+
+| Field | Value |
+|---|---|
+| `verdict600` | `pass` or `fail`: the `boots@F` predicate at call 600, computed from the same state, so it equals the status of `--frames 600 --expect` with `boots@600` (0 is pass, 3 is fail) |
+| `first_display` | the first call whose frame had the display enabled |
+| `first_nonblank` | the first call after which the native crop holds two or more distinct RGB444 values (the first non-blank picture) |
+| `first_change` | the first call whose crop differs from call 1's, the event that makes `boots@F` see two distinct pictures |
+| `distinct600`, `distinct1800` | distinct crops seen by call 600 and by call 1800, counted up to 8 |
+| `ram` | `live` when the 8 KiB of work RAM at `$C000..$DFFF` differs between calls 1740 and 1800, else `still` |
+| `fault`, `dev`, `pc` | the first fault's kind, device and address as under [First fault](#first-fault), `pc` as four uppercase hex digits |
+| `pcslot` | where `pc` sat: 0 for `$0000..$00FF`, 1 for `$0100..$3FFF`, 2 for `$4000..$7FFF`, 3 for `$8000..$BFFF`, 4 for `$C000..$FFFF` |
+| `where` | the kind of address the fault names, from its device: `rom` and `slot2` for the cartridge below and from `$8000`, `ram`, `mapper`, `port` (the control ports), `cpu`, `vdp` or `unknown` |
+| `fault_frame` | the bucket of the fault's frame, counted from 0: `0`, `1-9`, `10-99`, `100-599` or `600+`; a fault below 600 is one `verdict600` sees |
+| `order` | `before` when the fault was recorded during or before the first non-blank call, `after` when later, `nopicture` when no non-blank picture showed, `none` without a fault |
+| `mapper`, `source` | the board the core chose and how, as under [Probe](#probe) |
+
+The 1800 frames always run: a signal before the last one exits 1 with one line on standard error and prints no
+fact. A usage error, exit 2, is any run option beyond the ones named above or a missing file; a cartridge the
+core will not load exits 77 as for any run.
 
 ## Exit status
 

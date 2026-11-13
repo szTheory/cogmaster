@@ -1,20 +1,21 @@
 ---
 gsd_state_version: "1.0"
-milestone: v2.0
-milestone_name: The whole library
-status: Awaiting next milestone
-stopped_at: Milestone v2.0 closed; the library run shipped as v0.13.0 (experimental label removed)
-last_updated: "2026-11-12T06:42:06.407Z"
+milestone: v2.1
+milestone_name: Fewer failing cartridges
+current_phase: 14
+current_phase_name: Fix the causes
+status: planning
+stopped_at: Phase 13 complete, ready to plan Phase 14
+last_updated: "2026-11-13T00:49:11.676Z"
 last_activity: 2026-11-12
-last_activity_desc: Milestone v2.0 completed and archived
-state_head: 9ddda28bf707ad5c53cd924430b57373173d04e1
+last_activity_desc: "Phase 13 shipped as PR #40"
+state_head: e571cfa696e4938ccd39ed8c26f7cfd377ddfa31
 progress:
-  total_phases: 8
-  completed_phases: 8
-  total_plans: 94
-  completed_plans: 94
-  percent: 100
-current_phase: 12
+  total_phases: 3
+  completed_phases: 1
+  total_plans: 5
+  completed_plans: 5
+  percent: 33
 ---
 
 # Project State
@@ -24,21 +25,19 @@ current_phase: 12
 See: .planning/PROJECT.md (updated 2026-11-12)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Planning the next milestone (none planned; the owner's batched own-library run is the one pending hand-off)
+**Current focus:** Phase 13 — Why carts fail
 
 ## Current Position
 
-Phase: Milestone v2.0 complete
-Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-11-12 — library run merged (#37), v0.13.0 released; next work scoped in SEED-016
-
-Next command: `/gsd-new-milestone` (suggested scope: SEED-016, the failing carts, plus the SEED-015 CI timeout drift). The archive is in `.planning/milestones/` (v2.0-ROADMAP.md, v2.0-REQUIREMENTS.md, v2.0-MILESTONE-AUDIT.md, v2.0-PRODUCT-ROADMAP.md, v2.0-phases/).
+Phase: 14 — Fix the causes
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-12 -- Phase 13 shipped as PR #40
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 156
+- Total plans completed: 161
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -58,6 +57,7 @@ Next command: `/gsd-new-milestone` (suggested scope: SEED-016, the failing carts
 | 10 | 11 | - | - |
 | 11 | 9 | - | - |
 | 12 | 10 | - | - |
+| 13 | 5 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -224,6 +224,11 @@ Next command: `/gsd-new-milestone` (suggested scope: SEED-016, the failing carts
 | Phase 12 P08 | 45min | 2 tasks | 8 files |
 | Phase 12 P09 | 20min | 2 tasks | 4 files |
 | Phase 12 P10 | 45min | 2 tasks | 9 files |
+| Phase 13 P01 | 9min | 3 tasks | 16 files |
+| Phase 13 P02 | 11 min | 2 tasks | 6 files |
+| Phase 13 P03 | 15min | 2 tasks | 5 files |
+| Phase 13 P04 | 13 min | 3 tasks | 10 files |
+| Phase 13 P05 | about 1h (owner run and hosted CI included) | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -232,6 +237,15 @@ Next command: `/gsd-new-milestone` (suggested scope: SEED-016, the failing carts
 The v1.0 and v2.0 decision logs are in PROJECT.md Key Decisions (outcomes filled at milestone close); the full list with
 sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the archived summaries under
 `.planning/milestones/v1.0-phases/` and `.planning/milestones/v2.0-phases/`.
+- [Phase 13]: 13-01: phase branch cut from milestone-branch tip (milestone docs are not on origin/main); owner may override
+- [Phase 13]: 13-01: --diagnose frame-600 verdict is cogmaster__expect_boots over the shared expect state; diag state heap-allocated for small wasm32 stacks
+- [Phase 13]: 13-02: diagnose runs only the first NTSC profile library.cmake derives (Japanese FM and Game Gear Japan included, PAL skipped) and only catalog rows with status unknown and pad/pad ports; other rows count as skipped_excluded
+- [Phase 13]: 13-02: core= is the first 7 characters of the commit id, +dirty only for tracked files outside .planning; retained output is COGMASTER_LIBRARY_OUT (default build/library/diag)
+- [Phase 13]: diagnose sub-rows print only existing facts (pcslot and where none are skipped); exact pc only at 5 or more rows, compared as a string
+- [Phase 13]: ledger cross-check keys a fail row as id, machine, region, tv, fm via compat-common.sh cases; matched wins over now-pass, remainder is not-in-run
+- [Phase 13]: Plan 04: a catalog title with an escape or RLO byte never reaches the awk (file(STRINGS) ends a row at the first non-printable byte, the cart is excluded); the hostile case pins skipped_excluded=1 beside a withheld printable hostile title
+- [Phase 13]: Plan 04: the leak controls plant into real captured output of an empty library, and a dirty baseline fails with text that carries no leak class, so it cannot satisfy a control's regex
+- [Phase 13]: 13-05: leaves reported as printed, the groups-under-5 line counts the empty input_mismatch leaf, runner.diagnose timeout 633 s from the be32 raw 316.11 s
 
 ### Pending Todos
 
@@ -376,6 +390,13 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-12 | Code review and verify phase 12 (autonomous run); ledger review 0 critical 7 warning, core review 0 critical 10 warning, fix round 1 fixed 17 (R2 per key, shared flag reader, bounded page cells, NUL and bidi hardening, honest wording), verification passed 5 of 5 with the flag staying per the owner decision, dispatch D3 run 43163239085 green on the final head, counted check code 887 of 940 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Milestone v2.0 audit (gsd-audit-milestone; integration check, audit report, documentation drift fixes in ROADMAP, REQUIREMENTS, SEED-013, SEED-015 and this file) | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Complete milestone v2.0 (gsd-complete-milestone; override close with 7 seeds acknowledged, archive, PROJECT.md review, retrospective, no tag because release-please owns tags) | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | New milestone v2.1 started (gsd-new-milestone); scope SEED-016 plus SEED-015 CI timeouts | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Roadmap v2.1 (gsd-new-milestone); 3 phases, 10 requirements; roadmapper claude-opus-5-5 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Discuss phase 13 (gsd-discuss-phase 13); four advisor agents (plumbing, leak contract, cause taxonomy, run protocol) and an orchestrator adversarial pass; 25 decisions | Claude Code | claude-sonnet-5-5 (advisors claude-sonnet-5-5) |
+| 2026-11-12 | Plan phase 13 (gsd-plan-phase 13); researcher, planner and checker agents, 3 checker rounds then one owner-approved narrow retry; 5 plans in 5 waves; decision coverage 25 of 25; the phase branch phase/13-why-carts-fail is cut from the milestone branch tip by the first execute task (rule 10 deviation, owner may override) | Claude Code | claude-sonnet-5-5 (researcher claude-sonnet-5-5, planner claude-opus-5-5, checker claude-haiku-5-5) |
+| 2026-11-13 | Execute phase 13 plan 13-05 (gsd-execute-phase 13); diagnose run over the owner library exit 0, counts-only note .planning/phases/13-why-carts-fail/13-CAUSE-GROUPS.md, ledger and page unchanged, four diagnose test timeouts settled from hosted run https://github.com/szTheory/cogmaster/actions/runs/43334476928 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Execute phase 13 close-out (gsd-execute-phase 13); code review 0 critical, 3 warnings (WR-01 and WR-03 fixed in one fix round, WR-02 left open for the owner), verifier passed 4 of 4, phase marked complete; 13-REVIEW-DISPOSITION.md records every finding | Claude Code | claude-sonnet-5-5 (reviewer, fixer and verifier claude-sonnet-5-5) |
+| 2026-11-12 | Ship phase 13 (gsd-ship 13); branch pushed, PR #40 opened with a Conventional Commit title, no external review command configured, TDD audit skipped (no gate-status trailers) | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -404,12 +425,12 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 
 ## Session Continuity
 
-Last session: 2026-11-12
-Stopped at: Milestone v2.0 completed and archived; shipped as v0.12.0
+Last session: 2026-11-13T00:17:42.913Z
+Stopped at: Phase 13 complete, ready to plan Phase 14
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
 ## Operator Next Steps
 
-- Start the next milestone, when the owner approves scope, with /gsd-new-milestone.
+- Milestone v2.1 is roadmapped (Phases 13 to 15). After the roadmap is approved and merged, the next step is /gsd-discuss-phase 13.
 - Owner hand-offs (batched, none is a gate): SEED-013 is done (v0.13.0); SEED-010 pad, Light Phaser and BIOS judges; SEED-009 scan thresholds.

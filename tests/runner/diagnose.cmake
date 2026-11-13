@@ -1,0 +1,100 @@
+# Fault prevented: a diagnose line that leaks a digest, an opcode or a path, or a frame-600 verdict
+# that drifts from --expect boots@600.
+if(CMAKE_SCRIPT_MODE_FILE)
+  file(MAKE_DIRECTORY "${OUT}")
+  file(CONFIGURE OUTPUT "${OUT}/boots600.expect" CONTENT "boots@600\n" NEWLINE_STYLE UNIX @ONLY)
+  set(num "([0-9]+|none)")
+  set(shape "^diagnose 1 verdict600=(pass|fail) first_display=${num} first_nonblank=${num}")
+  string(APPEND shape " first_change=${num} distinct600=[1-8] distinct1800=[1-8] ram=(live|still)")
+  string(APPEND shape " fault=[a-z_]+ dev=[a-z]+ pc=([0-9A-F][0-9A-F][0-9A-F][0-9A-F]|none)")
+  string(APPEND shape " pcslot=([0-4]|none) where=(rom|slot2|ram|mapper|port|cpu|vdp|unknown|none)")
+  string(APPEND shape " fault_frame=(0|1-9|10-99|100-599|600\\+|none)")
+  string(APPEND shape " order=(before|after|nopicture|none) mapper=[a-z0-9_]+ source=(none|db|header|heuristic|default)$")
+  set(checked 0)
+  set(want_checked 6)
+  function(diag path)
+    get_filename_component(name "${path}" NAME)
+    if(NOT EXISTS "${path}")
+      message(FATAL_ERROR "diagnose fixture missing: ${name}")
+    endif()
+    execute_process(COMMAND ${EMULATOR} "${RUN}" --diagnose "${path}" RESULT_VARIABLE rc
+      OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    # The ci-msvc lanes write stdout in text mode, so the line ends CRLF there.
+    string(REPLACE "\r" "" out "${out}")
+    string(REGEX REPLACE "\n$" "" out "${out}")
+    if(NOT rc STREQUAL "0" OR out MATCHES "\n" OR NOT out MATCHES "${shape}"
+        OR out MATCHES "observed_frame|op=|/|\\\\")
+      message(FATAL_ERROR "${name}: not one closed line (exit ${rc}): ${out}${err}")
+    endif()
+    execute_process(COMMAND ${EMULATOR} "${RUN}" --frames 600 --expect "${OUT}/boots600.expect"
+      "${path}" RESULT_VARIABLE expect_rc OUTPUT_QUIET ERROR_QUIET)
+    string(REGEX MATCH "verdict600=([a-z]+)" ignored "${out}")
+    set(verdict "${CMAKE_MATCH_1}")
+    if(NOT ((verdict STREQUAL "pass" AND expect_rc STREQUAL "0")
+        OR (verdict STREQUAL "fail" AND expect_rc STREQUAL "3")))
+      message(FATAL_ERROR "${name}: verdict600=${verdict} but --expect boots@600 exits ${expect_rc}")
+    endif()
+    set(parts fail)
+    if(out MATCHES "first_display=([0-9]+) ")
+      if(CMAKE_MATCH_1 LESS_EQUAL 600 AND out MATCHES "distinct600=[2-8] "
+          AND out MATCHES "fault_frame=(none|600\\+) ")
+        set(parts pass)
+      endif()
+    endif()
+    if(NOT verdict STREQUAL parts)
+      message(FATAL_ERROR "${name}: verdict600=${verdict} disagrees with its parts: ${out}")
+    endif()
+    foreach(fact IN LISTS ARGN)
+      string(FIND "${out}" "${fact}" at)
+      if(at EQUAL -1)
+        message(FATAL_ERROR "${name}: expected ${fact} in: ${out}")
+      endif()
+    endforeach()
+    math(EXPR checked "${checked} + 1")
+    set(checked "${checked}" PARENT_SCOPE)
+  endfunction()
+  string(REPEAT v 32768 halt_bytes)
+  file(WRITE "${OUT}/halt.sms" "${halt_bytes}")
+  set(none "fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none")
+  diag("${OUT}/halt.sms" "verdict600=fail" "first_display=none first_nonblank=none first_change=none"
+    "distinct600=1 distinct1800=1" "${none}")
+  diag("${SEEDS}/di-halt.sms" "verdict600=fail" "first_display=none" "${none}")
+  diag("${SEEDS}/in-a-00.sms" "verdict600=fail" "first_nonblank=none"
+    "fault=unmapped_read dev=ctrl pc=0002 pcslot=0 where=port fault_frame=0 order=nopicture")
+  diag("${SEEDS}/ld-8000.sms" "fault=rom_write dev=cart" "where=slot2 fault_frame=0")
+  diag("${SEEDS}/ed-00.sms" "fault=ed_undefined dev=cpu" "where=cpu fault_frame=0")
+  diag("${SEEDS}/static-display.sms" "verdict600=fail" "first_nonblank=none" "distinct600=1"
+    "ram=still" "${none}")
+  if(DEFINED FIXTURES)
+    diag("${FIXTURES}/boot_to_play.sms" "verdict600=pass" "${none}")
+    diag("${FIXTURES}/vdp_lines_192.sms" "verdict600=pass" "${none}")
+    diag("${FIXTURES}/mapper_korean.sms" "verdict600=fail" "mapper=korean" "${none}")
+    set(want_checked 9)
+  endif()
+  if(NOT checked EQUAL want_checked)
+    message(FATAL_ERROR "diagnose fixture count: ${checked}")
+  endif()
+  set(halt "${SEEDS}/di-halt.sms")
+  foreach(refused IN ITEMS "--frames;5;${halt}" "--bench;5;${halt}" "--probe;${halt}"
+      "--expect;x;${halt}" "--hash;${halt}" "--hash-audio;${halt}" "--png;1:x.png;${halt}"
+      "--trace;first-fault;${halt}" "--mailbox;${halt}" "--eyes;${halt}" "--input;x;${halt}"
+      "--save-dir;x;${halt}" "--save-interval;5;${halt}" "--boot;fast;${halt}" "--bios;x;${halt}" "")
+    execute_process(COMMAND ${EMULATOR} "${RUN}" --diagnose ${refused} RESULT_VARIABLE rc
+      OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "2" OR NOT err MATCHES "usage" OR NOT out STREQUAL "")
+      message(FATAL_ERROR "--diagnose ${refused} must exit 2 and run nothing: ${rc} ${out}${err}")
+    endif()
+  endforeach()
+  return()
+endif()
+set(diagnose_fixtures)
+if(COGMASTER_FIXTURES)
+  set(diagnose_fixtures -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures)
+endif()
+string(REPLACE ";" "$<SEMICOLON>" diagnose_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
+# Timeout: 633 s; 2 x 316.11 s (be32), slowest of 1 run, run 43334476928.
+cogmaster_add_test(NAME runner.diagnose
+  COMMAND ${CMAKE_COMMAND} -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${diagnose_emulator}"
+    -DOUT=${PROJECT_BINARY_DIR}/tests/diagnose ${diagnose_fixtures}
+    -DSEEDS=${PROJECT_BINARY_DIR}/tests/seeds -P ${CMAKE_CURRENT_LIST_FILE}
+  LABELS portable runner TIMEOUT 633)
