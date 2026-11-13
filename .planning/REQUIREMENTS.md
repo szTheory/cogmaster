@@ -71,28 +71,28 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MODE-01 | TBD | Pending |
-| MODE-02 | TBD | Pending |
-| MODE-03 | TBD | Pending |
-| MODE-04 | TBD | Pending |
-| MODE-05 | TBD | Pending |
-| MODE-06 | TBD | Pending |
-| MODE-07 | TBD | Pending |
-| MODE-08 | TBD | Pending |
-| RUN-03 | TBD | Pending |
-| RUN-04 | TBD | Pending |
-| TUNE-12 | TBD | Pending |
-| TUNE-13 | TBD | Pending |
-| TUNE-14 | TBD | Pending |
-| TUNE-15 | TBD | Pending |
-| TUNE-16 | TBD | Pending |
-| TUNE-17 | TBD | Pending |
+| MODE-01 | Phase 16 | Pending |
+| MODE-02 | Phase 16 | Pending |
+| MODE-03 | Phase 16 | Pending |
+| MODE-04 | Phase 16 | Pending |
+| MODE-05 | Phase 16 | Pending |
+| MODE-06 | Phase 16 | Pending |
+| MODE-07 | Phase 16 | Pending |
+| MODE-08 | Phase 16 | Pending |
+| RUN-03 | Phase 17 | Pending |
+| RUN-04 | Phase 17 | Pending |
+| TUNE-12 | Phase 16 | Pending |
+| TUNE-13 | Phase 16 | Pending |
+| TUNE-14 | Phase 16 | Pending |
+| TUNE-15 | Phase 17 | Pending |
+| TUNE-16 | Phase 17 | Pending |
+| TUNE-17 | Phase 17 | Pending |
 
 **Coverage:**
 - v2.2 requirements: 16 total
-- Mapped to phases: 0
-- Unmapped: 16 ⚠️
+- Mapped to phases: 16 (Phase 16: 11, Phase 17: 5)
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-11-13*
-*Last updated: 2026-11-13 after initial definition*
+*Last updated: 2026-11-13 after roadmap creation (phases 16 and 17)*

@@ -55,7 +55,7 @@ the 46 failing default-profile rows that wait on these modes (graphics1 13, grap
 the unsupported-mode leaf; fewer than 46 will flip, because earlier rounds sent 5 to 8 percent of rows on to a next
 fault and a static correct picture still fails the `distinct >= 2` boots predicate.
 
-- **Rider PR before phase 16** (a `docs:`/`fix:` PR, not a phase): the false `docs/audio.md:77` and stale
+- **Riders, the first plan of phase 16** (a docs-only PR would cut no release, so they ride inside the phase): the false `docs/audio.md:77` and stale
   `docs/embedding.md` lines, the library run path refusing a dirty tree for the `core=` stamp, `curl --retry` on the
   assembler fetch.
 - **Phase 16 `feat(vdp)`**: Graphics I and II (modes 0000 and 0010) on SMS1, SMS2 and Game Gear in SMS video, in a new

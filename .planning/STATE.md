@@ -6,7 +6,7 @@ status: planning
 last_updated: "2026-11-13T23:54:22.451Z"
 last_activity: 2026-11-13
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-13)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Planning next milestone
+**Current focus:** Phase 16 — Graphics I and II draw (milestone v2.2 Legacy video modes)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 16 of 17 (Graphics I and II draw); v2.2 runs phases 16 and 17
 Plan: —
-Status: Defining requirements
-Last activity: 2026-11-13 — Milestone v2.2 started
+Status: Ready to plan
+Last activity: 2026-11-13 — v2.2 roadmap created (2 phases, 16 of 16 requirements mapped)
+
+Progress: [░░░░░░░░░░] 0%
 
 
 ## Performance Metrics
@@ -475,4 +477,4 @@ Milestone v2.1 pull requests: #40, #42 and #44 (phases 13 to 15) and releases #4
 ## Operator Next Steps
 
 
-- Milestone v2.2 is being defined; after the roadmap is approved run /gsd-discuss-phase 16
+- v2.2 roadmap written (phases 16 and 17); after the owner approves it, run /gsd-discuss-phase 16

@@ -57,7 +57,7 @@ faulting and the docs say so. Do not make a MAME screenshot a gate (no BIOS byte
 
 ## Debt and CI riders
 
-Rider PR before phase 16: false `docs/audio.md:77`, stale `docs/embedding.md` lines, dirty-tree refusal in the library
+Riders (the first plan of phase 16, so the phase still ends in a release): false `docs/audio.md:77`, stale `docs/embedding.md` lines, dirty-tree refusal in the library
 run path, `curl --retry` on the assembler fetch. Phase 17: prune the dead diagnose vocabulary once, re-run the library
 on `main` so the ledger stamp is an ancestor, re-derive timeouts. Other findings: raise `quality.json` floors and an
 absolute `ir_per_frame` ceiling, trim `runner.diagnose` on the emulated lanes (3 to 5 min of wall time), and a
