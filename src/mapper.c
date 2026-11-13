@@ -116,9 +116,10 @@ void cogmaster__mapper_write(cogmaster *m, uint16_t addr, uint8_t v)
         } else if (addr >= 0x8000u && (p->ctrl & SEGA_RAM_ON) != 0u) {
             uint32_t base = (p->ctrl & SEGA_RAM_BANK) != 0u ? 0x4000u : 0u;
             cogmaster__battery_write(m, (base | (addr & SLOT_MASK)) & (m->cart.ram_size - 1u), v);
-        } else {
-            cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_CART, COGMASTER__FAULT_ROM_WRITE);
         }
+        /* A write that hits no register and no enabled cartridge RAM changes
+           nothing: the mapper tables name exact registers only
+           (SMS-CARTRIDGES sections 2.1 and 2.2). */
         break;
     case COGMASTER__BOARD_CODEMASTERS:
         /* The registers sit at $0000, $4000 and $8000 exactly (section 2.2). */

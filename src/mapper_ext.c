@@ -189,9 +189,6 @@ void cogmaster__mapext_write(cogmaster *m, uint16_t addr, uint8_t v)
         /* The no-bank Korean board has no register (MAME rom.cpp,
            sega8_korean_nb_device, same pin). Writes to ROM change nothing.
            $FFFC-$FFFF are work RAM only. */
-        if (addr < 0xC000u) {
-            cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_CART, COGMASTER__FAULT_ROM_WRITE);
-        }
         break;
     }
 }

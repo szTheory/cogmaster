@@ -67,7 +67,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
   diag("${SEEDS}/in-a-00.sms" "verdict600=fail" "first_nonblank=none"
     "fault=unmapped_read dev=ctrl pc=0002 pcslot=0 where=port fault_frame=0 order=nopicture"
     "faddr=none" "pclass=00-06")
-  diag("${SEEDS}/ld-8000.sms" "fault=rom_write dev=cart" "where=slot2 fault_frame=0" "wclass=reg-cm")
+  diag("${SEEDS}/ld-8000.sms" "fault=none dev=none" "where=none" "fault_frame=none")
   diag("${SEEDS}/ed-00.sms" "fault=ed_undefined dev=cpu" "where=cpu fault_frame=0" "vdpmode=none")
   diag("${SEEDS}/static-display.sms" "verdict600=fail" "first_nonblank=none" "distinct600=1"
     "ram=still" "${none}")

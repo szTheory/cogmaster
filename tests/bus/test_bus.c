@@ -345,17 +345,21 @@ static void test_fault_unmapped_write(void)
 }
 
 /* A write to $0000-$BFFF that is neither a mapper register nor cartridge
-   RAM records rom_write (3) on the cartridge (2): LD ($2000),A on a Sega
-   image after LD ($FFFF),A, which records nothing, and LD ($2000),A on an
-   image with no mapper. Cartridge RAM mapped by $FFFC b3 takes writes.
+   RAM records nothing and changes no bank: LD ($2000),A on a Sega image
+   after LD ($FFFF),A, which sets bank 2, and LD ($2000),A on an image with no
+   mapper. Cartridge RAM mapped by $FFFC b3 takes writes.
      $0000  LD A,$12; LD ($FFFF),A; LD ($2000),A; HALT
      $0000  LD A,$08; LD ($FFFC),A; LD ($8000),A; HALT */
 static void test_fault_rom_write(void)
 {
     static const uint8_t sega[] = {0x3Eu, 0x12u, 0x32u, 0xFFu, 0xFFu, 0x32u, 0x00u, 0x20u, 0x76u};
-    expect_fault(load_sega(sega, sizeof sega, 128u * 1024u), 3u, 2u, 0x2000u, 0x0005u, 0x32u);
-    expect_fault(load_on(sega + 5, sizeof sega - 5u, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO),
-                 3u, 2u, 0x2000u, 0x0000u, 0x32u);
+    cogmaster *m = load_sega(sega, sizeof sega, 128u * 1024u);
+    (void)run(m);
+    CHECK_EQ_U64(fault_of(m).present, 0);
+    CHECK_EQ_U64(m->mapper.bank[2], 0x12u % m->cart.pages);
+    cogmaster_destroy(m);
+    expect_none("write to ROM, no mapper",
+                load_on(sega + 5, sizeof sega - 5u, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_AUTO));
     static const uint8_t ram[] = {0x3Eu, 0x08u, 0x32u, 0xFCu, 0xFFu, 0x32u, 0x00u, 0x80u, 0x76u};
     expect_none("cartridge RAM", load_sega(ram, sizeof ram, 128u * 1024u));
 }
