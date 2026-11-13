@@ -110,6 +110,10 @@ int cogmaster__diag_print(const cogmaster__diag *d, const cogmaster *m, const ui
     if (cogmaster_get_fault(m, &fault) != COGMASTER_STATUS_OK ||
         cogmaster_probe(image, image_size, &cart) != COGMASTER_STATUS_OK)
         return COGMASTER__EXIT_FAILURE;
+    /* The class words read the fault only when one was recorded, and the body the core would run. */
+    uint32_t kind = fault.present ? fault.kind : 0u;
+    uint32_t addr = fault.present ? fault.addr : 0u;
+    uint32_t body = cart.image_size - cart.body_offset;
     char display[12], nonblank[12], change[12];
     number(display, d->first_display);
     number(nonblank, d->first_nonblank);
@@ -123,7 +127,8 @@ int cogmaster__diag_print(const cogmaster__diag *d, const cogmaster *m, const ui
         snprintf(slot_text, sizeof slot_text, "%lu", (unsigned long)slot);
     printf("diagnose 1 verdict600=%s first_display=%s first_nonblank=%s first_change=%s "
            "distinct600=%lu distinct1800=%lu ram=%s fault=%s dev=%s pc=%s pcslot=%s where=%s "
-           "fault_frame=%s order=%s mapper=%s source=%s vdpmode=%s\n",
+           "fault_frame=%s order=%s mapper=%s source=%s vdpmode=%s faddr=%s pow2=%s wclass=%s "
+           "pclass=%s size=%s header=%s\n",
            d->verdict600 ? "pass" : "fail", display, nonblank, change,
            (unsigned long)d->distinct600, (unsigned long)d->held, d->live ? "live" : "still",
            fault.present ? cogmaster__fault_kind_name(fault.kind) : "none",
@@ -132,6 +137,9 @@ int cogmaster__diag_print(const cogmaster__diag *d, const cogmaster *m, const ui
            fault.present ? cogmaster__diag_bucket((uint32_t)fault.frame) : "none",
            cogmaster__diag_order(fault.present, (uint32_t)fault.frame, d->first_nonblank),
            cogmaster__board_name(cart.board), cogmaster__board_source_name(cart.board_source),
-           cogmaster__diag_vdpmode(fault.present ? fault.kind : 0u, (uint32_t)fault.addr));
+           cogmaster__diag_vdpmode(kind, addr), cogmaster__diag_faddr(kind, addr),
+           cogmaster__diag_pow2(body), cogmaster__diag_wclass(kind, addr),
+           cogmaster__diag_pclass(kind, fault.device, addr), cogmaster__diag_size(body),
+           cogmaster__diag_header(cart.header_at, cart.checksum_ok));
     return COGMASTER__EXIT_OK;
 }

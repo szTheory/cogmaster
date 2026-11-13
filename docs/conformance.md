@@ -31,7 +31,8 @@ guarantees support. The existing protected-base ratchet still judges a PR.
 `unknown`, pad and pad) under its first NTSC profile with `cogmaster-run --diagnose` and prints, for each failing row, the catalog
 title, the cause group, the first non-blank frame, the first fault kind, device and PC, and the board chosen, then group counts
 and totals. The groups are fixed before any run. It never writes the ledger or the page, never prints an image byte, digest,
-file name or path, and keeps only `build/library/diag/diagnose.txt`.
+file name or path, and keeps only `build/library/diag/diagnose.txt`. Under each group it counts the evidence classes of the
+runner line (video mode, mapper address, write address, port, size and header), as class words only, never a value.
 
 The [compatibility ledger](compatibility.md) reports accepted predicates, never general support.
 `runner.expect.predicates` exercises independent frame/RAM values, mismatch/usage/refusal/I/O

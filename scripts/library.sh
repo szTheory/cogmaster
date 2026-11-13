@@ -121,12 +121,15 @@ $1 == "rec" {
   d6 = kv($14, "distinct600"); d18 = kv($15, "distinct1800"); ram = kv($16, "ram"); fk = kv($17, "fault"); dev = kv($18, "dev")
   pc = kv($19, "pc"); ps = kv($20, "pcslot"); wh = kv($21, "where"); ff = kv($22, "fault_frame"); ord = kv($23, "order")
   mp = kv($24, "mapper"); src = kv($25, "source"); vm = kv($26, "vdpmode")
-  if (NF != 26 || !hex40($2) || !ok($3, "sms sms1 gg") || !ok($4, "export japan") || $5 != "ntsc" || !ok($6, "on off") || !ok($7, boards) ||
+  fa = kv($27, "faddr"); p2 = kv($28, "pow2"); wc = kv($29, "wclass"); pcl = kv($30, "pclass"); sz = kv($31, "size"); hd = kv($32, "header")
+  if (NF != 32 || !hex40($2) || !ok($3, "sms sms1 gg") || !ok($4, "export japan") || $5 != "ntsc" || !ok($6, "on off") || !ok($7, boards) ||
       $8 != "diagnose" || $9 != "1" || !ok(v, "pass fail") || !isnn(fd) || !isnn(fnb) || !isnn(fc) || d6 !~ /^[1-8]$/ || d18 !~ /^[1-8]$/ ||
       !ok(ram, "live still") || !ok(fk, kinds) || !ok(dev, devs) || !(pc == "none" || pc ~ /^[0-9A-F][0-9A-F][0-9A-F][0-9A-F]$/) ||
       !(ps == "none" || ps ~ /^[0-4]$/) || !ok(wh, wheres) || !ok(ff, "0 1-9 10-99 100-599 600+ none") ||
       !ok(ord, "before after nopicture none") || !ok(mp, boards) || !ok(src, "none db header heuristic default") ||
-      !ok(vm, "none graphics1 text graphics2 mixed multicolor mode4 invalid sms2only")) { bad++; next }
+      !ok(vm, "none graphics1 text graphics2 mixed multicolor mode4 invalid sms2only") || !ok(fa, "fffc fffd-f other none") || !ok(p2, "y n") ||
+      !ok(wc, "reg-0 reg-zm reg-cm reg-korean reg-4pak lt100 rom slot2 high none") || !ok(pcl, "00-06 3e-3f lt40 40-bf high none") ||
+      !ok(sz, "le16k le32k le48k le64k le128k le256k le512k gt512k") || !ok(hd, "none valid bad")) { bad++; next }
   evaluated++
   key = $2 SUBSEP $3 SUBSEP $4 SUBSEP $5 SUBSEP $6
   if (v == "pass") {
@@ -156,7 +159,11 @@ $1 == "rec" {
   if (wh != "none") subs[g SUBSEP 2 SUBSEP wh]++
   if (pc != "none") subs[g SUBSEP 3 SUBSEP pc]++
   # The class sub-rows join their parts with a colon: a dot before a machine name would read as a file name to the leak scan.
+  if (fa != "none") subs[g SUBSEP 4 SUBSEP (fa ":" p2)]++
   if (vm != "none") subs[g SUBSEP 5 SUBSEP (vm ":" $3 ":" mp)]++
+  if (wc != "none") subs[g SUBSEP 6 SUBSEP (wc ":" mp)]++
+  if (pcl != "none") subs[g SUBSEP 7 SUBSEP (pcl ":" $3 ":" $4)]++
+  subs[g SUBSEP 8 SUBSEP (sz ":" hd ":" mp)]++
   mc[mp SUBSEP cls]++; sl[src SUBSEP g]++
   t = title[$2]
   if (length(t) > 80 || t !~ tre) { t = "-"; withheld++ }

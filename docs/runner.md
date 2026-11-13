@@ -215,7 +215,7 @@ reason: the unsupported board's name and reason, or the scan's candidate and its
 first such fault the run stops after that frame and prints one line:
 
 ```text
-fault frame=0 line=192 dot=329 pc=$0002 op=$DB addr=$0000 width=8 dev=ctrl kind=unmapped_read
+fault frame=0 line=192 dot=315 pc=$0000 op=$00 addr=$0001 width=8 dev=cpu kind=ed_undefined
 ```
 
 With no fault by the last frame it prints `fault none`. Either way the exit status is 0: the fault is data about
@@ -414,7 +414,7 @@ numbers and the fault pc; the fault's own frame is bucketed. Frames are run call
 when its event never happened.
 
 ```text
-diagnose 1 verdict600=pass first_display=2 first_nonblank=2 first_change=2 distinct600=3 distinct1800=3 ram=still fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=header
+diagnose 1 verdict600=pass first_display=2 first_nonblank=2 first_change=2 distinct600=3 distinct1800=3 ram=still fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=header vdpmode=none faddr=none pow2=y wclass=none pclass=none size=le32k header=valid
 ```
 
 | Field | Value |
@@ -431,6 +431,12 @@ diagnose 1 verdict600=pass first_display=2 first_nonblank=2 first_change=2 disti
 | `fault_frame` | the bucket of the fault's frame, counted from 0: `0`, `1-9`, `10-99`, `100-599` or `600+`; a fault below 600 is one `verdict600` sees |
 | `order` | `before` when the fault was recorded during or before the first non-blank call, `after` when later, `nopicture` when no non-blank picture showed, `none` without a fault |
 | `mapper`, `source` | the board the core chose and how, as under [Probe](#probe) |
+| `vdpmode` | for an `unsupported_video_mode` fault, the class of the mode its record names: `graphics1`, `text`, `graphics2`, `multicolor`, `mixed`, `mode4`, `invalid` or `sms2only`; else `none` |
+| `faddr` | for a `mapper_range` fault, the class of the mapper address: `fffc`, `fffd-f` or `other`; else `none` |
+| `pow2` | `y` when the image body is a power-of-two count of 16 KiB pages, else `n` |
+| `wclass` | for a `rom_write` fault, the class of the address: `reg-0`, `reg-zm`, `reg-cm`, `reg-korean`, `reg-4pak`, `lt100`, `rom`, `slot2` or `high`; else `none` |
+| `pclass` | for an unmapped port access, the class of the port: `00-06`, `3e-3f`, `lt40`, `40-bf` or `high`; else `none` |
+| `size`, `header` | the body size class, `le16k` up to `le512k` or `gt512k`, never a byte count; and `none`, `valid` or `bad` for a header the probe found |
 
 The 1800 frames always run: a signal before the last one exits 1 with one line on standard error and prints no
 fact. A usage error, exit 2, is any run option beyond the ones named above or a missing file; a cartridge the

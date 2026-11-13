@@ -191,11 +191,14 @@ elseif(CASE STREQUAL taxonomy)  # canned runner lines through the real library.s
   string(REPEAT A 80 t80)
   set(t81 "${t80}A")
   set(f1 "first_display=none first_nonblank=none first_change=none distinct600=1 distinct1800=1 ram=live")
-  set(tail " vdpmode=none")  # the words every canned line ends with; the three malformed rows keep their own fault
+  set(tail " vdpmode=none faddr=none pow2=y wclass=none pclass=none size=le32k header=none")  # the words every canned line ends with
+  string(REPLACE "pclass=none" "pclass=00-06" tail_port "${tail}")
+  string(REPLACE "wclass=none" "wclass=rom" tail_rom "${tail}")
+  string(REPLACE "faddr=none" "faddr=fffc" tail_map "${tail}")
   set(rows  # sub dir|rows|id digit|catalog board|title|canned line
-    "main|5|1|none|Shared title|diagnose 1 verdict600=fail ${f1} fault=unmapped_read dev=ctrl pc=0002 pcslot=0 where=port fault_frame=1-9 order=nopicture mapper=none source=db${tail}"
-    "main|4|2|none|T2|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=1 distinct1800=1 ram=live fault=rom_write dev=cart pc=0100 pcslot=1 where=rom fault_frame=10-99 order=after mapper=none source=db${tail}"
-    "main|1|3|none|T3|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=3 distinct1800=3 ram=live fault=mapper_range dev=mapper pc=FFFC pcslot=4 where=mapper fault_frame=100-599 order=after mapper=none source=default${tail}"
+    "main|5|1|none|Shared title|diagnose 1 verdict600=fail ${f1} fault=unmapped_read dev=ctrl pc=0002 pcslot=0 where=port fault_frame=1-9 order=nopicture mapper=none source=db${tail_port}"
+    "main|4|2|none|T2|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=1 distinct1800=1 ram=live fault=rom_write dev=cart pc=0100 pcslot=1 where=rom fault_frame=10-99 order=after mapper=none source=db${tail_rom}"
+    "main|1|3|none|T3|diagnose 1 verdict600=fail first_display=100 first_nonblank=100 first_change=100 distinct600=3 distinct1800=3 ram=live fault=mapper_range dev=mapper pc=FFFC pcslot=4 where=mapper fault_frame=100-599 order=after mapper=none source=default${tail_map}"
     "main|1|4|none|${t80}|diagnose 1 verdict600=fail first_display=none first_nonblank=300 first_change=300 distinct600=1 distinct1800=1 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=heuristic${tail}"
     "main|1|5|none|${t81}|diagnose 1 verdict600=fail first_display=none first_nonblank=900 first_change=900 distinct600=1 distinct1800=1 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db${tail}"
     "main|1|6|none|T6|diagnose 1 verdict600=fail ${f1} fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db${tail}"
@@ -224,7 +227,9 @@ elseif(CASE STREQUAL taxonomy)  # canned runner lines through the real library.s
   diag_call("${OUT}/main" "COGMASTER_LIBRARY_RUN=${OUT}/wrapper.sh" COGMASTER_LIBRARY_EMULATOR=sh)
   set(l1 "diag-group: leaf=fault_no_display.unmapped_read.ctrl")
   diag_expect("rc=${diag_rc}\n${diag_out}" "rc=0\nlibrary-diagnose 1 core=" "${l1} rows=5\n${l1} pcslot=0 rows=5\n${l1} where=port rows=5\n${l1} pc=0002 rows=5\n"
-    "diag-group: leaf=fault_static.rom_write.cart rows=4\ndiag-group: leaf=fault_static.rom_write.cart pcslot=1 rows=4\ndiag-group: leaf=fault_static.rom_write.cart where=rom rows=4\ndiag-group: leaf=dark_no_fault.never_draws rows=2\n"
+    "diag-group: leaf=fault_static.rom_write.cart rows=4\ndiag-group: leaf=fault_static.rom_write.cart pcslot=1 rows=4\ndiag-group: leaf=fault_static.rom_write.cart where=rom rows=4\n"
+    "diag-group: leaf=fault_static.rom_write.cart wclass=rom:none rows=4\ndiag-group: leaf=fault_static.rom_write.cart size=le32k:none:none rows=4\ndiag-group: leaf=dark_no_fault.never_draws rows=2\n"
+    "${l1} pclass=00-06:sms:export rows=5\n${l1} size=le32k:none:none rows=5\n" "diag-group: leaf=fault_alive.mapper_range.mapper faddr=fffc:y rows=1\n"
     "candidates=22 attempted=22 evaluated=19 malformed=3 malformed_io=0 uncatalogued=0 skipped_excluded=0 noprofile=0 unsupported=0 infrastructure_error=0 title_withheld=1"
     "judged=19 run_fail=18 ledger_fail=3 matched=1 ledger_fail_not_in_run=1 ledger_fail_now_pass=1 run_fail_not_in_ledger=17 groups_total=18 fail_total=18"
     "diag: title=${t80} group=dark_no_fault.latch_miss " "diag: title=- group=dark_no_fault.late "
@@ -268,7 +273,7 @@ elseif(CASE STREQUAL leak_title)  # the real library.sh, library.cmake and awk w
   string(REPEAT 6 40 id)
   file(WRITE "${imgdir}/one.sms" "x")
   file(WRITE "${imgdir}/one.sms.probe" "identity_sha1=${id}\nregion_guess=ntsc-u\n")
-  file(WRITE "${imgdir}/one.sms.line" "diagnose 1 verdict600=fail first_display=none first_nonblank=none first_change=none distinct600=1 distinct1800=1 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db vdpmode=none\n")
+  file(WRITE "${imgdir}/one.sms.line" "diagnose 1 verdict600=fail first_display=none first_nonblank=none first_change=none distinct600=1 distinct1800=1 ram=live fault=none dev=none pc=none pcslot=none where=none fault_frame=none order=none mapper=none source=db vdpmode=none faddr=none pow2=y wclass=none pclass=none size=le32k header=none\n")
   file(WRITE "${OUT}/catalog.tsv" "${id}\tsms\tnone\t-\t${name_canary}\tunknown\t-\texport\tpad\tpad\n")  # legal under the title charset, so the awk prints it
   diag_call("${imgdir}" COGMASTER_LIBRARY_RUN=${OUT}/wrapper.sh COGMASTER_LIBRARY_EMULATOR=sh)
   diag_need("the planted title is not printed" "${diag_out}" "diag: title=${name_canary} group=dark_no_fault.never_draws ")
