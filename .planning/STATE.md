@@ -4,17 +4,17 @@ milestone: v2.1
 milestone_name: Fewer failing cartridges
 current_phase: 14
 current_phase_name: Fix the causes
-status: executing
-stopped_at: Completed 14-07-PLAN.md (runtime claude-code, model Sonnet 5.5)
-last_updated: "2026-11-13T05:33:40.355Z"
+status: verifying
+stopped_at: Completed 14-08-PLAN.md
+last_updated: "2026-11-13T05:54:57.032Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 14 execution started
-state_head: b1655ad635756893f824ea859acb52ec0cc1d1b1
+state_head: 4bd7aec93974bc99f2bb43877a2506754d807125
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
   percent: 33
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-11-12)
 
 Phase: 14 (Fix the causes) — EXECUTING
 Plan: 8 of 8
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-12 — Phase 14 execution started
 
 ## Performance Metrics
@@ -236,6 +236,7 @@ Last activity: 2026-11-12 — Phase 14 execution started
 | Phase 14 P05 | 40 min | 3 tasks | 8 files |
 | Phase 14 P06 | 75 min | 3 tasks | 10 files |
 | Phase 14 P07 | 35 min | 2 tasks | 1 files |
+| Phase 14 P08 | 75 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -261,6 +262,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 14]: 14-05: the ROM_WRITE raise is removed on every board (constant kept); rank 3 keeps open: D-04 needs new evidence for plan 08's gap round
 - [Phase 14]: Plan 06: D-11 trigger not met (rank 4 pclass is 3e-3f:gg:export only), so port writes nothing decodes and port reads nothing drives record no fault; run_fail 69 to 49
 - [Phase 14]: Plan 07: D-08 shape absent (rank 6 order=before 6, order=after 0, all graphics1 M4=0), so no latch move and no core edit; rank 6 closes in plan 08 with the D-07 reason
+- [Phase 14]: Plan 08: ranks 2 and 6 closed as not emulated by design (46 legacy-mode rows, SEED-006); boots check recorded sound over 3 no-fault rows; rank 3 open on D-04 is the single gap round entry, so FIX-01 and FIX-03 stay open
 
 ### Pending Todos
 
@@ -448,8 +450,8 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 
 ## Session Continuity
 
-Last session: 2026-11-13T05:33:40.282Z
-Stopped at: Completed 14-07-PLAN.md (runtime claude-code, model Sonnet 5.5)
+Last session: 2026-11-13T05:54:56.986Z
+Stopped at: Completed 14-08-PLAN.md
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
