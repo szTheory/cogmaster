@@ -163,6 +163,8 @@ The macOS builds, then the release rehearsal, are the critical path of a pull re
 
 Never run two macOS-using workflows at once (CI and Nightly).
 
+Open a pull request once, at the end, because every push to an open pull request and every edit of its title or body reruns the matrix. An edit of `ci.yml`, a release script or a release config also runs the release rehearsal, about six more minutes per run. A hand dispatch of CI compares the ledger with itself, because the protected comparison takes its base from the dispatched commit, so prove the base judge locally against `origin/main` as [conformance.md](conformance.md#whole-list-ledger) describes.
+
 Whenever CI runs or finishes, look for a cheap speed-up that costs no quality; measured jobs and open items are in the whole-list follow-up seed under `.planning/seeds/`. The ledger and its exit command are in [conformance.md](conformance.md#whole-list-ledger).
 
 A job that fails at an `apt` step with "Temporary failure resolving" hit a runner DNS fault: `gh run rerun <id> --failed`

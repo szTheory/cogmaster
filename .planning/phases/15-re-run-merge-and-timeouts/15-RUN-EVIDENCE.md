@@ -91,6 +91,35 @@ Run on the commit that carries the merged ledger and page, from the repository r
 | the old base judge (the origin/main copies of the ratchet and the common script) over the merged ledger, behaviour revisions 18 and 18, printing the protected-comparison pass line | `sh "$t/scripts/compat-ratchet.sh" "$t/base.csv" tests/compat/ledger.csv tests/compat/allow.txt "$(date -u +%F)" 18 18 build/ci/tests/compat-fixtures/results.csv`, with `t="$TMPDIR/p15-base"` holding those `git show origin/main:` copies | 0 |
 | nothing outside .planning changed on the branch but the ledger and the page | `git diff --quiet origin/main...HEAD -- . ':(exclude).planning' ':(exclude)docs/compatibility.md' ':(exclude)tests/compat/ledger.csv'` | 0 |
 
+## Timeouts
+
+Read at 2026-11-13T19:04Z, immediately before the edit, from the repository root with no change of directory. No workflow was dispatched. The saved reads live under `$TMPDIR` as `p15-durations-<file>.tsv`, and the edited comments cite those reads, so a run that finishes later changes nothing.
+
+| check | command | exit status |
+| ----- | ------- | ----------- |
+| read, CI | `sh scripts/ci-durations.sh ci.yml 40 > "$TMPDIR/p15-durations-ci.yml.tsv"` | 0 |
+| read, Nightly | `sh scripts/ci-durations.sh nightly.yml 40 > "$TMPDIR/p15-durations-nightly.yml.tsv"` | 0 |
+| read, Digest | `sh scripts/ci-durations.sh digest.yml 40 > "$TMPDIR/p15-durations-digest.yml.tsv"` | 0 |
+| hygiene arithmetic check | `cmake -DDIR="$PWD/.github/workflows" -DCHECK=timeouts -P tests/cmake/repository.cmake` | 0 |
+| cross-check against the saved reads | the loop of the plan's verify command: for the seven edited lines, minutes (the script's minutes, at least the floor where the line has one), seconds and run ID equal the saved row | 0 |
+| only timeout lines changed | `git diff -U0 origin/main -- .github/workflows` with every changed line that is not a `timeout-minutes:` line filtered out, the filter's output empty | 0 |
+
+| workflow | job | before | after | slowest s | runs | run |
+| -------- | --- | ------ | ----- | --------- | ---- | --- |
+| CI | asan | 5 | 9 | 243 | 37 | https://github.com/szTheory/cogmaster/actions/runs/43462502049 |
+| CI | build | 9 | 12 | 332 | 37 | https://github.com/szTheory/cogmaster/actions/runs/43460663238 |
+| CI | be32 | 15 | 21 | 609 | 37 | https://github.com/szTheory/cogmaster/actions/runs/43458609482 |
+| Nightly | bench | 10 | 13 | 368 | 40 | https://github.com/szTheory/cogmaster/actions/runs/42764095033 |
+| Nightly | bench-wasm32 | 15 | 16 | 456 | 40 | https://github.com/szTheory/cogmaster/actions/runs/42768407261 |
+| Nightly | fuzz | 5 | 5 | 144 | 40 | https://github.com/szTheory/cogmaster/actions/runs/43020467034 |
+| Digest | digest | 5 | 5 | 55 | 1 | https://github.com/szTheory/cogmaster/actions/runs/42769805382 |
+
+The fuzz and digest rows change their comment only: the 5-minute floor still sets the minutes (twice 144 s is 288 s, twice 55 s is 110 s). The fuzz comment named 90 s (26 runs) and now names 144 s of the 40-run window; the digest comment read `no runs yet` and now names the one dispatch run. No job's minutes fell; every edit loosens a limit. No outlier was trimmed and no ceiling was added.
+
+build and be32 were corrected in the same edit, because both were below twice the fresh slowest (build: 9 minutes, 540 s, against 664 s; be32: 15 minutes, 900 s, against 1218 s). The cause is test growth, not the runner: the runner and library diagnose tests arrived after those limits were set.
+
+Left alone, with run IDs that are not the fresh slowest but the rule holding against the fresh read: wasm32 (300 s against 282 s), retroarch (300 s against 124 s), perf (360 s against 212 s), hygiene (300 s against 276 s) and nofp (120 s against 106 s). The other CI and Nightly jobs also hold; the rehearsal is the narrowest margin (780 s against 770 s) and is untouched.
+
 ## Hand-off
 
 The judged commit above becomes reachable on the remote once the branch is pushed at /gsd-ship; the verifier then runs `gh api repos/szTheory/cogmaster/commits/0b4ae67b7f14c3d997c24ca719fb18f1d3cd29a4` and records its status (the run's stamp must be a public commit). The CI run URL for the pushed head is recorded at ship. Plan 2 makes the workflow commit after the ledger commit.
