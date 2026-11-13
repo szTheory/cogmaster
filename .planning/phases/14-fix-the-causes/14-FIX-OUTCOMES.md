@@ -102,14 +102,14 @@ Counts of failing rows by class, per leaf, as printed by the reducer: `leaf | cl
 
 | rank | leaf | rows (13 note) | outcome | evidence | residual leaf counts |
 | ---- | ---- | -------------- | ------- | -------- | ------------------- |
-| 1 | fault_alive.mapper_range.mapper | 109 | pending | pending | pending |
+| 1 | fault_alive.mapper_range.mapper | 109 | fixed, unconfirmed on dumps | D-05 stop not met: faddr=fffc:y 109, faddr=fffd-f:n 0, faddr=fffd-f:y 0 in the baseline (13 note rank 1); the `$FFFC` raise is gone and the value is stored. D-06: trace not taken (dumps absent), shift left as it is | before 109, after not measured; the kept odd-size marker would show as faddr=fffd-f:n, expected 0; Phase 15 re-run is the confirmation |
 | 2 | fault_static.unsupported_video_mode.vdp | 36 | pending | pending | pending |
 | 3 | fault_alive.rom_write.cart | 32 | pending | pending | pending |
 | 4 | fault_alive.unmapped_write.none | 8 | pending | pending | pending |
 | 5 | fault_alive.unmapped_read.ctrl | 7 | pending | pending | pending |
 | 6 | fault_alive.unsupported_video_mode.vdp | 6 | pending | pending | pending |
 | 7 | fault_static.rom_write.cart | 4 | pending | pending | pending |
-| 8 | fault_no_display.mapper_range.mapper | 1 | pending | pending | pending |
+| 8 | fault_no_display.mapper_range.mapper | 1 | fixed, unconfirmed on dumps | inherits rank 1: faddr=fffc:y 1 in the baseline (13 note rank 8) | before 1, after not measured; Phase 15 re-run is the confirmation |
 | 9 | dark_no_fault.never_draws | 1 | pending | pending | pending |
 | 10 | static_no_fault.frozen | 1 | pending | pending | pending |
 | 11 | input_mismatch | 0 | pending | pending | pending |
@@ -121,3 +121,5 @@ Work order: code groups in rank order: ranks 1 and 8 (plan 03), rank 2's gates a
 ## Pins
 
 The base hashes file `build/p14-base-hashes.txt` was taken from origin/main at commit 81a9cc9761873f20910738e393bed8b3558822b6, before any edit of the phase (plan 01).
+
+Plan 03: no pin moved. The Sega bank shift was left as it is (D-06 trace not taken), so no gate was added and the hashes of the 512 KiB shift fixtures are unchanged.
