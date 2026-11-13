@@ -4,16 +4,16 @@ milestone: v2.1
 milestone_name: Fewer failing cartridges
 current_phase: 14
 current_phase_name: Fix the causes
-status: planning
+status: executing
 stopped_at: Phase 14 context gathered
-last_updated: "2026-11-13T01:21:03.783Z"
+last_updated: "2026-11-13T03:15:35.949Z"
 last_activity: 2026-11-12
 last_activity_desc: "Phase 13 shipped as PR #40"
-state_head: 46574aadb11f2746fdb84664744282d71df060eb
+state_head: 3bba43bd8dee8c40971eb0f49f58d4ea3270fd1a
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 5
+  total_plans: 13
   completed_plans: 5
   percent: 33
 ---
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-11-12)
 
 ## Current Position
 
-Phase: 14 — Fix the causes
+Phase: 14 (Fix the causes) — READY TO EXECUTE
 Plan: Not started
-Status: Ready to plan
+Status: Ready to execute
 Last activity: 2026-11-12 -- Phase 13 shipped as PR #40
 
 ## Performance Metrics
@@ -398,6 +398,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-12 | Execute phase 13 close-out (gsd-execute-phase 13); code review 0 critical, 3 warnings (WR-01 and WR-03 fixed in one fix round, WR-02 left open for the owner), verifier passed 4 of 4, phase marked complete; 13-REVIEW-DISPOSITION.md records every finding | Claude Code | claude-sonnet-5-5 (reviewer, fixer and verifier claude-sonnet-5-5) |
 | 2026-11-12 | Discuss phase 14 (gsd-discuss-phase 14); five advisor agents (fault policy and boots check, mapper_range, video modes, mapper families and ports, phase shape) and an orchestrator reconciliation; 15 decisions; branch phase/14-fix-the-causes cut from origin/main | Claude Code | claude-sonnet-5-5 (advisors claude-sonnet-5-5) |
 | 2026-11-12 | Ship phase 13 (gsd-ship 13); branch pushed, PR #40 opened with a Conventional Commit title, no external review command configured, TDD audit skipped (no gate-status trailers) | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Plan phase 14 (gsd-plan-phase 14); researcher sonnet-5-5, planner opus-5-5, checker haiku-5-5; 8 plans in 8 sequential waves; three checker rounds, 0 blockers at the end, one final targeted fix applied without a fourth checker pass | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 

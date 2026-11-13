@@ -83,7 +83,31 @@ Plans:
   3. The `zemina`, `korean_nb` and `korean` fail rows each have a stated cause and are fixed or refused with a closed reason
   4. Every core fix has a test that `cmake --workflow --preset ci` runs, and any shipped frame or audio pin that moves is named, justified and recorded with a behaviour revision bump
   5. `cmake --workflow --preset ci` passes on the phase head and no existing `pass` row's fixture result changes without a named pin
-**Plans**: TBD
+**Plans**: 8 plans
+Plans:
+**Wave 1**
+- [ ] 14-01-PLAN.md — Diagnose evidence classes: seven closed words on the diagnose line, `:`-joined counts-only sub-rows, base hashes taken
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 14-02-PLAN.md — The video mode nibble with behaviour revision 18, baseline counts and the outcomes note with the fault decision table
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 14-03-PLAN.md — Rank 1 and 8: `$FFFC` unused-bit writes stop faulting, the bank-shift trace decides any gate, outcome rows
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 14-04-PLAN.md — Rank 2's decision and the board-family gates: M4=1 decode, family mapper and header-rule fixes only if the counts show them
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 14-05-PLAN.md — Ranks 3 and 7: writes to non-register ROM addresses stop faulting on every board, outcome rows
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 14-06-PLAN.md — Ranks 4 and 5: undriven port reads and undecoded port writes stop faulting, seeds repointed, outcome rows
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [ ] 14-07-PLAN.md — Rank 6: the latch decision by counts, the core change only if the counts show it
+
+**Wave 8** *(blocked on Wave 7 completion)*
+- [ ] 14-08-PLAN.md — Closures, family causes, gap round list, boots check over the post-fix population, pin proof, seed breadcrumbs, full gates
 
 ### Phase 15: Re-run, merge and timeouts
 **Goal**: The rows the fixes flipped to `pass` are in the ledger and the compatibility page, and the CI job timeouts that drifted from the twice-the-slowest rule are re-derived from live runs.
@@ -105,4 +129,4 @@ Plans:
 | v2.0 | 8/8 | 94/94 | Complete | 2026-11-12 |
 | v2.1 | 0/3 | 0/? | In progress | - |
 
-v2.1 phases: 13 Why carts fail (0/5 plans, not started), 14 Fix the causes (0/? plans, not started), 15 Re-run, merge and timeouts (0/? plans, not started).
+v2.1 phases: 13 Why carts fail (0/5 plans, not started), 14 Fix the causes (0/8 plans, not started), 15 Re-run, merge and timeouts (0/? plans, not started).
