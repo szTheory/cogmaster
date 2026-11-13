@@ -122,4 +122,69 @@ Left alone, with run IDs that are not the fresh slowest but the rule holding aga
 
 ## Hand-off
 
-The judged commit above becomes reachable on the remote once the branch is pushed at /gsd-ship; the verifier then runs `gh api repos/szTheory/cogmaster/commits/0b4ae67b7f14c3d997c24ca719fb18f1d3cd29a4` and records its status (the run's stamp must be a public commit). The CI run URL for the pushed head is recorded at ship. Plan 2 makes the workflow commit after the ledger commit.
+The judged commit above becomes reachable on the remote once the branch is pushed at /gsd-ship; the verifier then runs `gh api repos/szTheory/cogmaster/commits/0b4ae67b7f14c3d997c24ca719fb18f1d3cd29a4` and records its status (the run's stamp must be a public commit). The CI run URL for the pushed head is recorded at ship. Plan 2 made the workflow commit after the ledger commit (afd413e); it is the newest commit on the branch that touches anything outside `.planning/`.
+
+## Final gates
+
+Run on the head that carries the timeouts commit, from the repository root; nothing is pushed.
+
+| check | command | exit status |
+| ----- | ------- | ----------- |
+| the ci workflow (676 tests in its test step and 5 in its release test step passed) | `cmake --workflow --preset ci` | 0 |
+| the hygiene workflow (84 tests passed) | `cmake --workflow --preset hygiene` | 0 |
+| the timeouts commit is the newest commit touching anything outside `.planning/` | `w=$(git log -1 --format=%H origin/main..HEAD -- .github/workflows/ci.yml) && l=$(git log -1 --format=%H origin/main..HEAD -- . ':(exclude).planning') && test -n "$w" && test "$w" = "$l"` | 0 |
+| exactly one commit touches the first workflow file, and it also touches the other two | `git log --format=%H origin/main..HEAD -- .github/workflows/ci.yml` counted (1), then `git show --name-only` of it | 0 |
+| the branch's non-planning changes are the ledger, the page, the three workflows and the maintaining guide | `git diff --quiet origin/main...HEAD -- . ':(exclude).planning'` with the six paths excluded | 0 |
+| each of those six paths changed | `git diff --quiet origin/main...HEAD -- <path>` is false for each | 0 |
+| no test `TIMEOUT` line changed | `git diff origin/main...HEAD -- tests CMakeLists.txt` filtered for added or removed `TIMEOUT` lines, none found | 0 |
+| nothing pushed | `git ls-remote --heads origin phase/15-re-run-merge-and-timeouts` printed nothing | 0 |
+
+## Ship hand-off
+
+The title and body below are written once, here, and are used unchanged by the ship step (every edit of a pull request's title or body reruns the matrix). The body becomes the squash message, so it carries counts only.
+
+### Title
+
+fix(compat): publish the post-fix library results and re-derive job timeouts
+
+### Body
+
+Publishes the compatibility results judged at the fix head and re-derives the CI job timeouts that had drifted from the twice-the-slowest rule.
+
+- rows flipped (fail to pass): 285
+- newly judged: 0 (no row moved from unknown or absent, and 0 rows were added)
+- other transitions: none
+- page totals: pass 1029 and fail 96 (the earlier page read pass 744 and fail 381); 1986 rows, 1125 evaluated
+- judged on the page: 512 PAL rows and 53 FM rows
+- merge: rows_added=0, ratchet=ok, page_bytes=13813
+- no pass row lost (the transition count exited 0)
+- judged-cart floors: met (554 cart passes against 20, 511 PAL rows judged against 1, 51 FM rows judged against 1)
+- fail rows left: 50 with ntsc (48 with fm off, 2 with fm on) and 46 with pal; the earlier diagnose read 49 default-profile fails
+- expected churn: 1116 re-judged rows carry a new evidence stamp and date, passes included
+
+Job timeouts, each twice the slowest successful run of the last 40 runs, rounded up to whole minutes, with the 5-minute floor kept where one applied:
+
+| workflow | job | before | after | slowest s | runs | run |
+| -------- | --- | ------ | ----- | --------- | ---- | --- |
+| CI | asan | 5 | 9 | 243 | 37 | https://github.com/szTheory/cogmaster/actions/runs/43462502049 |
+| CI | build | 9 | 12 | 332 | 37 | https://github.com/szTheory/cogmaster/actions/runs/43460663238 |
+| CI | be32 | 15 | 21 | 609 | 37 | https://github.com/szTheory/cogmaster/actions/runs/43458609482 |
+| Nightly | bench | 10 | 13 | 368 | 40 | https://github.com/szTheory/cogmaster/actions/runs/42764095033 |
+| Nightly | bench-wasm32 | 15 | 16 | 456 | 40 | https://github.com/szTheory/cogmaster/actions/runs/42768407261 |
+| Nightly | fuzz | 5 | 5 | 144 | 40 | https://github.com/szTheory/cogmaster/actions/runs/43020467034 |
+| Digest | digest | 5 | 5 | 55 | 1 | https://github.com/szTheory/cogmaster/actions/runs/42769805382 |
+
+The fuzz and digest rows only re-cite a run in their comment. build and be32 were below the rule and are corrected in the same edit; the cause is test growth in the diagnose tests, not the runner. The jobs wasm32, retroarch, perf, hygiene and nofp keep their limits and their older run references, because the rule holds for them against the same read.
+
+### Next steps
+
+code review: pending (/gsd-code-review 15 runs next and records run or not applicable in its own review record, D-19)
+
+These lines are not part of the squash text.
+
+1. `/gsd-code-review 15`, first, because review runs before verification (D-19).
+2. `/gsd-verify-work 15`.
+3. `/gsd-ship 15`, which pushes once and opens the pull request non-draft with the title and body above.
+4. As separate shell steps after `/gsd-ship` returns (rule 10): `gh pr merge --auto --squash`, then check that a CI run exists on the head commit with `gh run list --commit <sha>` (D-14).
+5. Once the branch is pushed, the core-commit reachability check of D-06: `gh api repos/szTheory/cogmaster/commits/0b4ae67b7f14c3d997c24ca719fb18f1d3cd29a4` must answer 200; record the command and its status.
+6. After the merge, confirm the release pull request is green and that no pull request labelled `autorelease: pending` is left: `gh pr list --label 'autorelease: pending'` prints nothing, as `docs/maintaining.md` describes (D-14 step 6, rule 10). Only then is the phase's release done.
