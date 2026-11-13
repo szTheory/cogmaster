@@ -22,8 +22,8 @@ Requirements for this milestone. Each maps to one roadmap phase. Scope decisions
 
 ### Library run
 
-- [ ] **RUN-01**: The library judge is re-run over the owner's library after the fixes, and the rows that flipped to `pass` are merged by pull request through the existing ledger ratchet, with no `pass` row becoming `fail`
-- [ ] **RUN-02**: The compatibility page and its counts agree with the merged ledger, and `compat.exit` stays green
+- [x] **RUN-01**: The library judge is re-run over the owner's library after the fixes, and the rows that flipped to `pass` are merged by pull request through the existing ledger ratchet, with no `pass` row becoming `fail`
+- [x] **RUN-02**: The compatibility page and its counts agree with the merged ledger, and `compat.exit` stays green
 
 ### CI timeouts
 
@@ -66,8 +66,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FIX-02 | Phase 14 | Complete |
 | FIX-03 | Phase 14 | Complete |
 | FIX-04 | Phase 14 | Complete |
-| RUN-01 | Phase 15 | Pending |
-| RUN-02 | Phase 15 | Pending |
+| RUN-01 | Phase 15 | Complete |
+| RUN-02 | Phase 15 | Complete |
 | TUNE-11 | Phase 15 | Pending |
 
 **Coverage:**

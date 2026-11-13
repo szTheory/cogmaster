@@ -5,16 +5,16 @@ milestone_name: Fewer failing cartridges
 current_phase: 15
 current_phase_name: Re-run, merge and timeouts
 status: executing
-stopped_at: Phase 15 planned
-last_updated: "2026-11-13T17:46:12.371Z"
+stopped_at: Completed 15-01-PLAN.md
+last_updated: "2026-11-13T18:59:39.017Z"
 last_activity: 2026-11-13
-last_activity_desc: "Phase 14 shipped as PR #42"
-state_head: f2a60942c7c80b15449ebd38ebc10dd30dac3d44
+last_activity_desc: "Phase 15 plan 01 complete (post-fix library results merged)"
+state_head: 60d8a7fe38ffbbff4efe760e14f088249e2cbe20
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 15
-  completed_plans: 13
+  completed_plans: 14
   percent: 67
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-12)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 14 — Fix the causes
+**Current focus:** Phase 15 — Re-run, merge and timeouts
 
 ## Current Position
 
-Phase: 15 (Re-run, merge and timeouts) — READY TO EXECUTE
-Plan: Not started
+Phase: 15 (Re-run, merge and timeouts) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-11-13 -- Phase 14 shipped as PR #42
+Last activity: 2026-11-13 -- Phase 15 plan 01 complete (post-fix library results merged)
 
 ## Performance Metrics
 
@@ -238,6 +238,7 @@ Last activity: 2026-11-13 -- Phase 14 shipped as PR #42
 | Phase 14 P06 | 75 min | 3 tasks | 10 files |
 | Phase 14 P07 | 35 min | 2 tasks | 1 files |
 | Phase 14 P08 | 75 min | 3 tasks | 8 files |
+| Phase 15 P01 | 7 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -264,6 +265,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 14]: Plan 06: D-11 trigger not met (rank 4 pclass is 3e-3f:gg:export only), so port writes nothing decodes and port reads nothing drives record no fault; run_fail 69 to 49
 - [Phase 14]: Plan 07: D-08 shape absent (rank 6 order=before 6, order=after 0, all graphics1 M4=0), so no latch move and no core edit; rank 6 closes in plan 08 with the D-07 reason
 - [Phase 14]: Plan 08: ranks 2 and 6 closed as not emulated by design (46 legacy-mode rows, SEED-006); boots check recorded sound over 3 no-fault rows; rank 3 open on D-04 is the single gap round entry, so FIX-01 and FIX-03 stay open
+- [Phase 15]: 15-01: the owner's library run at 0b4ae67 was accepted on the merge line (ratchet ok, 0 rows added, 1116 rewritten), the two-file status check and the single full-length core stamp; page pass 744 to 1029 and fail 381 to 96 (285 fail-to-pass, no pass row lost); the library: counts were not pasted and are recorded as not reported
 
 ### Pending Todos
 
@@ -455,12 +457,12 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 
 ## Session Continuity
 
-Last session: 2026-11-13T16:39:08.032Z
-Stopped at: Phase 15 planned; next /gsd-execute-phase 15 (stops at the owner library run)
+Last session: 2026-11-13T18:59:23.837Z
+Stopped at: Completed 15-01-PLAN.md
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
 ## Operator Next Steps
 
-- Phase 14 is complete and verified (UAT passed, the pad press was run on the owner's dump directory with counts-only output). The next step is /gsd-ship 14, then /gsd-discuss-phase 15 on a fresh branch off origin/main. The library run reads the dump directory from the ignored local settings, so no export is needed.
+- Phase 15 plan 01 is complete (the owner's library run merged: pass 744 to 1029, fail 381 to 96, no pass row lost; ci workflow and old base judge exit 0). The next step is /gsd-execute-phase 15 for plan 02 (the job timeouts).
 - Owner hand-offs (batched, none is a gate): SEED-013 is done (v0.13.0); SEED-010 pad, Light Phaser and BIOS judges; SEED-009 scan thresholds.
