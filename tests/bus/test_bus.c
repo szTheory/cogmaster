@@ -315,19 +315,19 @@ static void expect_none(const char *what, cogmaster *m)
     cogmaster_destroy(m);
 }
 
-/* On the full-decode consoles a write to a port nothing latches records
-   unmapped_write (2) with device none (0): OUT ($3E),A on the Game Gear,
-   which has no $3E in its own mode, and OUT ($00),A on the Japanese
-   console. On the export console $00 latches as $3E.
+/* On the full-decode consoles a write to a port nothing latches has no
+   documented effect and is no fault: OUT ($3E),A on the Game Gear, which has
+   no $3E in its own mode, and OUT ($00),A on the Japanese console. On the
+   export console $00 latches as $3E.
      $0000  LD A,$AB; OUT (n),A; HALT */
 static void test_fault_unmapped_write(void)
 {
     static const uint8_t to_3e[] = {0x3Eu, 0xABu, 0xD3u, 0x3Eu, 0x76u};
     static const uint8_t to_00[] = {0x3Eu, 0xABu, 0xD3u, 0x00u, 0x76u};
-    expect_fault(load_on(to_3e, sizeof to_3e, COGMASTER_MACHINE_GG, COGMASTER_REGION_AUTO), 2u, 0u,
-                 0xAB3Eu, 0x0002u, 0xD3u);
-    expect_fault(load_on(to_00, sizeof to_00, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_JAPAN), 2u,
-                 0u, 0xAB00u, 0x0002u, 0xD3u);
+    expect_none("Game Gear OUT ($3E)",
+                load_on(to_3e, sizeof to_3e, COGMASTER_MACHINE_GG, COGMASTER_REGION_AUTO));
+    expect_none("Japanese OUT ($00)",
+                load_on(to_00, sizeof to_00, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_JAPAN));
     expect_none("export OUT ($00)",
                 load_on(to_00, sizeof to_00, COGMASTER_MACHINE_SMS2, COGMASTER_REGION_EXPORT));
 }

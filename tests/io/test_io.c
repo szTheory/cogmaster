@@ -233,10 +233,10 @@ static void test_gg_sms_mode(void)
     cogmaster__bus_out(m, 0x003Fu, 0x55u);
     CHECK_EQ_HEX(m->io.io_ctrl, 0x55);
     CHECK_EQ_U64(fault_of(m).present, 0);
-    /* Full decode: a mirror of $3E latches nothing. */
+    /* Full decode: a mirror of $3E latches nothing and is no fault. */
     cogmaster__bus_out(m, 0x0002u, 0xABu);
     CHECK_EQ_HEX(m->io.mem_ctrl, 0xAF);
-    CHECK_EQ_U64(fault_of(m).kind, COGMASTER__FAULT_UNMAPPED_WRITE);
+    CHECK_EQ_U64(fault_of(m).present, 0);
     cogmaster__bus_out(m, 0x003Eu, 0xABu);
 
     /* $00-$06 read open bus, and a write to $06 changes nothing. */

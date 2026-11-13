@@ -464,8 +464,9 @@ uint8_t cogmaster__io_in(cogmaster *m, uint16_t port)
 }
 
 /* The bus sends every port but the VDP's and the sound chip's here. Writes
-   to the I/O chip ($C0-$FF) latch nothing and are no fault; on a
-   full-decode console a write nothing else latches is unmapped_write. */
+   to the I/O chip ($C0-$FF) and to ports nothing decodes latch nothing and are
+   no fault: no document describes an effect, let alone a fault, for such a
+   write (SMS-SYSTEM section 4). */
 void cogmaster__io_out(cogmaster *m, uint16_t port, uint8_t v)
 {
     struct cogmaster__io *io = &m->io;
@@ -500,9 +501,5 @@ void cogmaster__io_out(cogmaster *m, uint16_t port, uint8_t v)
             io->mem_ctrl = v;
             cogmaster__bus_decode(m);
         }
-        return;
-    }
-    if (p < 0xC0u) {
-        cogmaster__bus_fault(m, port, COGMASTER__DEVICE_NONE, COGMASTER__FAULT_UNMAPPED_WRITE);
     }
 }
