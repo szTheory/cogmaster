@@ -83,7 +83,7 @@ Plans:
   3. The `zemina`, `korean_nb` and `korean` fail rows each have a stated cause and are fixed or refused with a closed reason
   4. Every core fix has a test that `cmake --workflow --preset ci` runs, and any shipped frame or audio pin that moves is named, justified and recorded with a behaviour revision bump
   5. `cmake --workflow --preset ci` passes on the phase head and no existing `pass` row's fixture result changes without a named pin
-**Plans**: 4/8 plans executed
+**Plans**: 5/8 plans executed
 Plans:
 **Wave 1**
 - [x] 14-01-PLAN.md — Diagnose evidence classes: seven closed words on the diagnose line, `:`-joined counts-only sub-rows, base hashes taken
@@ -98,7 +98,7 @@ Plans:
 - [x] 14-04-PLAN.md — Rank 2's decision and the board-family gates: M4=1 decode, family mapper and header-rule fixes only if the counts show them
 
 **Wave 5** *(blocked on Wave 4 completion)*
-- [ ] 14-05-PLAN.md — Ranks 3 and 7: writes to non-register ROM addresses stop faulting on every board, outcome rows
+- [x] 14-05-PLAN.md — Ranks 3 and 7: writes to non-register ROM addresses stop faulting on every board, outcome rows
 
 **Wave 6** *(blocked on Wave 5 completion)*
 - [ ] 14-06-PLAN.md — Ranks 4 and 5: undriven port reads and undecoded port writes stop faulting, seeds repointed, outcome rows
