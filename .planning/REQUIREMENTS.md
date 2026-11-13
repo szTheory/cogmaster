@@ -11,7 +11,7 @@ Requirements for this milestone. Each maps to one roadmap phase. Scope decisions
 
 - [x] **DIAG-01**: The library judge has a diagnostic mode that, for each default-profile `fail` row, reports the frames to the first non-blank sample, the first fault kind and PC, and the mapper chosen, and prints only counts, kinds and catalog titles, never ROM bytes, file names or paths
 - [x] **DIAG-02**: A test with synthetic fixtures proves the diagnostic output holds no image bytes or file names, and a negative control that leaks one makes the test fail
-- [ ] **DIAG-03**: The failing rows are grouped by cause with a count per group, and the grouping (counts only, no dump content) is recorded in a planning note that the fixes cite
+- [x] **DIAG-03**: The failing rows are grouped by cause with a count per group, and the grouping (counts only, no dump content) is recorded in a planning note that the fixes cite
 
 ### Fixes
 
@@ -61,7 +61,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | DIAG-01 | Phase 13 | Complete |
 | DIAG-02 | Phase 13 | Complete |
-| DIAG-03 | Phase 13 | Pending |
+| DIAG-03 | Phase 13 | Complete |
 | FIX-01 | Phase 14 | Pending |
 | FIX-02 | Phase 14 | Pending |
 | FIX-03 | Phase 14 | Pending |

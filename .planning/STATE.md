@@ -4,17 +4,17 @@ milestone: v2.1
 milestone_name: Fewer failing cartridges
 current_phase: 13
 current_phase_name: Why carts fail
-status: executing
-stopped_at: "Completed 13-04-PLAN.md (runtime: Claude Code, model: claude-sonnet-5-5)"
-last_updated: "2026-11-12T23:43:42.066Z"
+status: verifying
+stopped_at: "Completed 13-05-PLAN.md (runtime: Claude Code, model: claude-sonnet-5-5)"
+last_updated: "2026-11-13T00:17:42.951Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 13 execution started
-state_head: 2bbe0f76679f5fb1489bab387f0973ad47e5374b
+state_head: 1585be862eca4c6ff754f357d342e00228d1381d
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-11-12)
 
 Phase: 13 (Why carts fail) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-12 — Phase 13 execution started
 
 ## Performance Metrics
@@ -227,6 +227,7 @@ Last activity: 2026-11-12 — Phase 13 execution started
 | Phase 13 P02 | 11 min | 2 tasks | 6 files |
 | Phase 13 P03 | 15min | 2 tasks | 5 files |
 | Phase 13 P04 | 13 min | 3 tasks | 10 files |
+| Phase 13 P05 | about 1h (owner run and hosted CI included) | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -243,6 +244,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 13]: ledger cross-check keys a fail row as id, machine, region, tv, fm via compat-common.sh cases; matched wins over now-pass, remainder is not-in-run
 - [Phase 13]: Plan 04: a catalog title with an escape or RLO byte never reaches the awk (file(STRINGS) ends a row at the first non-printable byte, the cart is excluded); the hostile case pins skipped_excluded=1 beside a withheld printable hostile title
 - [Phase 13]: Plan 04: the leak controls plant into real captured output of an empty library, and a dirty baseline fails with text that carries no leak class, so it cannot satisfy a control's regex
+- [Phase 13]: 13-05: leaves reported as printed, the groups-under-5 line counts the empty input_mismatch leaf, runner.diagnose timeout 633 s from the be32 raw 316.11 s
 
 ### Pending Todos
 
@@ -391,6 +393,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-12 | Roadmap v2.1 (gsd-new-milestone); 3 phases, 10 requirements; roadmapper claude-opus-5-5 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Discuss phase 13 (gsd-discuss-phase 13); four advisor agents (plumbing, leak contract, cause taxonomy, run protocol) and an orchestrator adversarial pass; 25 decisions | Claude Code | claude-sonnet-5-5 (advisors claude-sonnet-5-5) |
 | 2026-11-12 | Plan phase 13 (gsd-plan-phase 13); researcher, planner and checker agents, 3 checker rounds then one owner-approved narrow retry; 5 plans in 5 waves; decision coverage 25 of 25; the phase branch phase/13-why-carts-fail is cut from the milestone branch tip by the first execute task (rule 10 deviation, owner may override) | Claude Code | claude-sonnet-5-5 (researcher claude-sonnet-5-5, planner claude-opus-5-5, checker claude-haiku-5-5) |
+| 2026-11-13 | Execute phase 13 plan 13-05 (gsd-execute-phase 13); diagnose run over the owner library exit 0, counts-only note .planning/phases/13-why-carts-fail/13-CAUSE-GROUPS.md, ledger and page unchanged, four diagnose test timeouts settled from hosted run https://github.com/szTheory/cogmaster/actions/runs/43334476928 | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -419,8 +422,8 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 
 ## Session Continuity
 
-Last session: 2026-11-12T23:43:42.021Z
-Stopped at: Completed 13-04-PLAN.md (runtime: Claude Code, model: claude-sonnet-5-5)
+Last session: 2026-11-13T00:17:42.913Z
+Stopped at: Completed 13-05-PLAN.md (runtime: Claude Code, model: claude-sonnet-5-5)
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 

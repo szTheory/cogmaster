@@ -55,7 +55,7 @@ Full phase details: `.planning/milestones/v2.0-ROADMAP.md`. Requirements: `.plan
   2. A test over synthetic fixtures shows the diagnostic output holds no image bytes and no file names or paths, and a negative control that leaks one makes the same test fail
   3. A planning note records the failing rows grouped by cause with a count per group, counts only and no dump content, ordered by descending group size, so the next phase can cite it
   4. `cmake --workflow --preset ci` passes and the committed ledger and compatibility page are unchanged
-**Plans**: 4/5 plans executed
+**Plans**: 5/5 plans executed
 Plans:
 **Wave 1**
 - [x] 13-01-PLAN.md — Runner `--diagnose` mode: one closed line per cart, frame-600 verdict shared with `--expect boots@600`
@@ -70,7 +70,7 @@ Plans:
 - [x] 13-04-PLAN.md — Leak test: canary scan over every channel, negative controls, hostile inputs, docs
 
 **Wave 5** *(blocked on Wave 4 completion)*
-- [ ] 13-05-PLAN.md — Run over the owner's library, the counts-only cause-groups note, timeouts settled from a hosted run
+- [x] 13-05-PLAN.md — Run over the owner's library, the counts-only cause-groups note, timeouts settled from a hosted run
 **Note**: The owner passes `COGMASTER_ROM_DIR` in the shell where the agent runs the diagnostic; the agent reads counts, kinds and catalog titles only and commits nothing from the dumps.
 
 ### Phase 14: Fix the causes
