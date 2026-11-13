@@ -21,10 +21,6 @@
 #define CM_RAM_ON 0x80u
 #define CM_RAM_BASE 0xA000u
 
-/* $FFFC b7 (ROM write enable), b4 (RAM over work RAM) and the bank shift
-   b1-0: no shipped game uses them (section 2.1). */
-#define SEGA_UNUSED 0x93u
-
 /* The bank a written value selects: the value plus the Sega shift, modulo
    the page count. */
 static uint8_t bank_of(const cogmaster *m, uint32_t v)
@@ -108,10 +104,8 @@ void cogmaster__mapper_write(cogmaster *m, uint16_t addr, uint8_t v)
     case COGMASTER__BOARD_SEGA:
         if (addr >= 0xFFFCu) {
             if (addr == 0xFFFCu) {
-                if ((v & SEGA_UNUSED) != 0u) {
-                    cogmaster__bus_fault(m, addr, COGMASTER__DEVICE_MAPPER,
-                                         COGMASTER__FAULT_MAPPER_RANGE);
-                }
+                /* Bits 7, 4 and 1-0 are stored: no shipped game uses them, and
+                   a write to them is not a fault (SMS-CARTRIDGES section 2.1). */
                 p->ctrl = v;
             } else {
                 /* Shift codes 1, 2 and 3 add $18, $10 and $08. */

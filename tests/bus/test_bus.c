@@ -361,13 +361,15 @@ static void test_fault_rom_write(void)
 }
 
 /* mapper_range (4) on the mapper (4): a bank at or past the page count of
-   a 384 KiB (24-page) image, and a $FFFC write setting b7, b4 or b1-0. On
-   a 512 KiB image a bank past the end wraps, as on hardware, and $FFFC b3
-   and b2 are cartridge RAM controls: neither is a fault.
+   a 384 KiB (24-page) image. On a 512 KiB image a bank past the end wraps, as
+   on hardware, and every $FFFC value is stored with no fault, the unused bits
+   b7, b4 and b1-0 included.
      $0000  LD A,v; LD (addr),A; HALT */
 static void test_fault_mapper_range(void)
 {
     uint8_t prog[] = {0x3Eu, 0x1Eu, 0x32u, 0xFFu, 0xFFu, 0x76u};
+    expect_fault(load_sega(prog, sizeof prog, 384u * 1024u), 4u, 4u, 0xFFFFu, 0x0002u, 0x32u);
+    prog[1] = 0x18u;
     expect_fault(load_sega(prog, sizeof prog, 384u * 1024u), 4u, 4u, 0xFFFFu, 0x0002u, 0x32u);
     prog[1] = 0x17u;
     expect_none("bank 23 of 24", load_sega(prog, sizeof prog, 384u * 1024u));
@@ -377,7 +379,11 @@ static void test_fault_mapper_range(void)
     static const uint8_t bad[] = {0x80u, 0x10u, 0x01u, 0x02u, 0x03u};
     for (size_t i = 0; i < sizeof bad; i++) {
         prog[1] = bad[i];
-        expect_fault(load_sega(prog, sizeof prog, BIG_MAX), 4u, 4u, 0xFFFCu, 0x0002u, 0x32u);
+        cogmaster *m = load_sega(prog, sizeof prog, BIG_MAX);
+        (void)run(m);
+        CHECK_EQ_U64(fault_of(m).present, 0);
+        CHECK_EQ_HEX(m->mapper.ctrl, bad[i]);
+        cogmaster_destroy(m);
     }
     prog[1] = 0x0Cu;
     expect_none("$FFFC = $0C", load_sega(prog, sizeof prog, BIG_MAX));

@@ -58,7 +58,7 @@ API version 12 appends the axis fields `x1`, `y1`, `x2` and `y2` to `cogmaster_i
 API version 13 appends `COGMASTER_DEVICE_LIGHT_PHASER`, with behaviour revision 15 and state format 15, so older state bytes are refused. A phaser port reads its aim from `x1` `y1` (port 1) or `x2` `y2` (port 2) as 1-based field dots; the last call wins and `0 0` means no aim.
 API version 14 appends `bios` and `bios_size` to `cogmaster_media` (72 bytes), with behaviour revision 16 and state format 16, so older state bytes are refused.
 Behaviour revision 17 refuses the Sega Graphic Board dump, which read as a plain pad before, so state bytes saved at revision 16 are refused.
-Behaviour revision 18 makes the unsupported-video-mode fault record the mode select nibble in `addr`, so state bytes saved at revision 17 are refused.
+Behaviour revision 18 makes the unsupported-video-mode fault record the mode select nibble in `addr` and stops recording writes to the unused bits of `$FFFC` as faults, so state bytes saved at revision 17 are refused.
 
 ## Getting it
 
@@ -341,7 +341,7 @@ The record is part of the instance's saved state.
 | 1 | `COGMASTER_FAULT_KIND_UNMAPPED_READ` | a read nothing drives returns open bus: a port in `$00`–`$3F` other than the Game Gear's `$00`–`$06`, the cartridge slots with the cartridge disabled by port `$3E` and no BIOS answering (and, with a BIOS attached, not an enabled empty card or expansion slot), or work RAM disabled by port `$3E` |
 | 2 | `COGMASTER_FAULT_KIND_UNMAPPED_WRITE` | a write nothing takes: on the Japanese console or the Game Gear, which decode every port address, a port in `$00`–`$3F` or `$80`–`$BF` that nothing latches, such as `$3E` on the Game Gear; the cartridge slots with the cartridge disabled by port `$3E`, which also hides `$FFFC`–`$FFFF` from its mapper; or work RAM disabled by port `$3E`, except a write to `$FFFC`–`$FFFF` the enabled cartridge takes |
 | 3 | `COGMASTER_FAULT_KIND_ROM_WRITE` | a write to `$0000`–`$BFFF` that is neither a register of the cartridge's mapper nor cartridge RAM |
-| 4 | `COGMASTER_FAULT_KIND_MAPPER_RANGE` | a bank number at or past the end of an image whose page count is not a power of two, or a write to `$FFFC` that sets bit 7, bit 4 or bits 1–0 |
+| 4 | `COGMASTER_FAULT_KIND_MAPPER_RANGE` | a bank number at or past the end of an image whose page count is not a power of two |
 | 5 | `COGMASTER_FAULT_KIND_ED_UNDEFINED` | the CPU ran an opcode after `$ED` that the Z80 does not define, as an 8 T-state no-operation; `opcode` is that second byte and `pc` the address of the `$ED` |
 | 6 | `COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE` | an enabled display selects an unsupported TMS or invalid text mode; output is backdrop and frame delivery stays bounded |
 
@@ -363,7 +363,7 @@ those prefixes.
 Things shipped games do are never faults, so the record stays free for the real one: reads of `$C0`–`$FF` while
 port `$3E` has the I/O chip disabled, ports `$F0`–`$F2`, `$DE` and `$DF`, writes to the I/O chip's ports, the Game
 Gear's link ports `$01`–`$05`, a bank number past the end of an image whose page count is a power of two (it
-wraps), toggling port `$3E`, and undocumented CPU instructions. An undriven read returns `$FF` and counts in the
+wraps), writes to the unused bits of `$FFFC`, toggling port `$3E`, and undocumented CPU instructions. An undriven read returns `$FF` and counts in the
 instance's open-bus counter instead. SMS1 undriven memory/port reads retain the
 last byte driven by a CPU fetch, read or write; SMS2/GG pull it to `$FF`.
 Peeks observe it without changing it or the counter. The selected model follows
