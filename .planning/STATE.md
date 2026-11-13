@@ -298,6 +298,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-10-20 | Ship phase 2 (gsd-ship) | Codex | GPT-6 |
 | 2026-10-20 | Plan phase 3 (gsd-plan-phase) | Codex | GPT-6 |
 | 2026-10-20 | Execute phase 3 through plan 03-18; ready for code review (gsd-execute-phase) | Codex | GPT-6 |
+| 2026-11-13 | Code review and fix phase 15 (gsd-code-review --fix) | Claude Code | claude-sonnet-5-5 |
 
 | 2026-10-20 | Code review phase 3 (gsd-code-review); standard, 152 files, 1 blocker and 1 warning | Codex | GPT-6 |
 | 2026-10-20 | Code review fixes phase 3 (gsd-code-review 03 --fix); both findings fixed, round 1 | Codex | GPT-6 |
