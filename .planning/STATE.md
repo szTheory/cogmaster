@@ -5,11 +5,11 @@ milestone_name: Fewer failing cartridges
 current_phase: 15
 current_phase_name: Re-run, merge and timeouts
 status: planning
-stopped_at: Phase 14 complete, ready to plan Phase 15
-last_updated: "2026-11-13T16:02:06.748Z"
+stopped_at: Phase 15 context gathered
+last_updated: "2026-11-13T16:39:08.200Z"
 last_activity: 2026-11-13
 last_activity_desc: "Phase 14 shipped as PR #42"
-state_head: dfddee36a849f5ddb05205ae6778bd048d89b65a
+state_head: 82457001fdeea42ec9d27de7c35d18f3d63664f2
 progress:
   total_phases: 3
   completed_phases: 2
@@ -424,6 +424,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-13 | Execute phase 14 plan 14-07 (gsd-execute-phase 14); D-08 shape absent (rank 6: order=before 6, after 0, all M4=0), no core edit, rank 6 recorded as close per D-07 for plan 08; 2 tasks, 2 commits | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Execute phase 14 plan 14-08 (gsd-execute-phase 14); final diagnose run_fail 205 to 49 with not in ledger 0, ranks 2 and 6 closed as not emulated by design, families and gap round recorded (rank 3 open on D-04), boots check sound over 3 no-fault rows, pin compare exit 0, SEED-006 and SEED-016 breadcrumbs; 3 tasks | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Verify work phase 14 (gsd-verify-work 14); pad press for the one frozen no-fault cart run by the owner from a counts-only scratch script (0 of 1 changed), UAT complete, verification passed, phase transitioned | Claude Code | claude-sonnet-5-5 |
+| 2026-11-13 | Discuss phase 15 (gsd-discuss-phase 15); three advisor lenses (ledger and ratchet, CI timeouts, sequencing), 19 decisions, no code changed | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -452,8 +453,8 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 
 ## Session Continuity
 
-Last session: 2026-11-13T05:54:56.986Z
-Stopped at: Phase 14 complete, ready to plan Phase 15
+Last session: 2026-11-13T16:39:08.032Z
+Stopped at: Phase 15 context gathered
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
