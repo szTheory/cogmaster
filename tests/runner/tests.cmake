@@ -1015,11 +1015,10 @@ if(CMAKE_SCRIPT_MODE_FILE)
     endforeach()
     expect_exit(2 "usage" --frames 2 --region eu ${SEEDS}/di-halt.sms)
   elseif(CASE STREQUAL "trace_fault")
-    # LD A,$00 then IN A,($00): port $00 is undriven on the export console,
-    # so the first fault is that read, with A * 256 + n on the bus.
-    set(hex "[0-9A-F]")
-    expect_exit(0 "^fault frame=[0-9]+ line=[0-9]+ dot=[0-9]+ pc=[$]${hex}${hex}${hex}${hex} op=[$]DB addr=[$]0000 width=8 dev=ctrl kind=unmapped_read\n$"
-      ${SEEDS}/in-a-00.sms --frames 10 --trace first-fault)
+    # ED 00: an undefined ED opcode, so the first fault is on the CPU, with the
+    # address of the ED prefix as pc and of the second byte as addr.
+    expect_exit(0 "^fault frame=[0-9]+ line=[0-9]+ dot=[0-9]+ pc=[$]0000 op=[$]00 addr=[$]0001 width=8 dev=cpu kind=ed_undefined\n$"
+      ${SEEDS}/ed-00.sms --frames 10 --trace first-fault)
     # Enable display without Mode 4: the VDP fault must keep its public names.
     string(ASCII 243 62 64 211 191 62 129 211 191 118 code)
     string(REPEAT "v" 1014 padding)
@@ -1041,7 +1040,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     # output holds only the fault, and the exit status stays 0. A --png for
     # a frame that ran is still written.
     file(REMOVE "${OUT}.10.png" "${OUT}.1.png")
-    execute_process(COMMAND ${EMULATOR} ${RUN} ${SEEDS}/in-a-00.sms --frames 10
+    execute_process(COMMAND ${EMULATOR} ${RUN} ${SEEDS}/ed-00.sms --frames 10
       --trace first-fault --png "1:${OUT}.1.png" --png "10:${OUT}.10.png"
       RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
     if(NOT rc STREQUAL "0" OR NOT out MATCHES "^fault frame=[0-9]+ [^\n]*\n$"

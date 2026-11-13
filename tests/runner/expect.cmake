@@ -76,7 +76,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
     message(FATAL_ERROR "missing expectation file is infrastructure failure")
   endif()
   check(77 "unsupported" "boots@20\n" --machine gg --region pal)
-  check(3 "first_fault=1.*fault frame=.*kind=unmapped_read" "boots@20\n" "${SEEDS}/in-a-00.sms")
+  check(3 "first_fault=1.*fault frame=.*kind=ed_undefined" "boots@20\n" "${SEEDS}/ed-00.sms")
   check(3 "display=1 distinct_at_least=1 first_fault=0" "boots@20\n" "${SEEDS}/static-display.sms")
   if(EXISTS "${FIXTURES}/vdp_lines_192.sms")
     check(0 "display=1 distinct_at_least=2 first_fault=0" "boots@20\nmailbox@20\n"

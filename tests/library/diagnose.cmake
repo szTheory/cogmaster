@@ -105,7 +105,7 @@ if(CASE STREQUAL main)
   string(REPEAT "v" 1014 mode0_pad)
   file(WRITE "${OUT}/mode0.sms" "${mode0_code}${mode0_pad}")  # the display on with mode select 0: an unsupported video mode fault
   set(images "never.sms|${OUT}/halt.sms|unknown|-|Synthetic never draws" "pass.sms|${FIXTURES}/boot_to_play.sms|unknown|-|Synthetic pass"
-    "port.sms|${SEEDS}/in-a-00.sms|unknown|-|Synthetic port fault" "static.sms|${SEEDS}/static-display.sms|unknown|-|Synthetic static"
+    "port.sms|${SEEDS}/ed-00.sms|unknown|-|Synthetic port fault" "static.sms|${SEEDS}/static-display.sms|unknown|-|Synthetic static"
     "mode0.sms|${OUT}/mode0.sms|unknown|-|Synthetic mode zero"
     "skipped.sms|${SEEDS}/jr-self.sms|skipped|mame_no|Synthetic skipped")  # name|source|catalog status|reason|title
   foreach(row IN LISTS images)
@@ -119,7 +119,7 @@ if(CASE STREQUAL main)
     file(SHA1 "${imgdir}/${name}" sha)
     file(APPEND "${OUT}/catalog.tsv" "${sha}\tsms\tnone\t-\t${title}\t${status}\t${reason}\texport\tpad\tpad\n")
   endforeach()
-  file(COPY_FILE "${SEEDS}/ed-00.sms" "${imgdir}/${name_canary} ${home_path}.sms")  # not in the catalog, so never run
+  file(COPY_FILE "${SEEDS}/in-a-00.sms" "${imgdir}/${name_canary} ${home_path}.sms")  # not in the catalog, so never run
   file(WRITE "${OUT}/header.csv" "id,title,machine,region,tv,mapper,predicate,status,evidence,date\n")
   execute_process(COMMAND sh "${ROOT}/scripts/compat-seed.sh" "${OUT}/header.csv" "${OUT}/catalog.tsv" 2026-11-10
     OUTPUT_FILE "${OUT}/standin/ledger.csv" ERROR_QUIET COMMAND_ERROR_IS_FATAL ANY)
@@ -153,10 +153,10 @@ if(CASE STREQUAL main)
     message(FATAL_ERROR "diagnose line outside the closed grammar: ${lines}")
   endif()
   diag_expect("${diag_out}" "diag: title=Synthetic never draws group=dark_no_fault.never_draws "
-    "diag: title=Synthetic port fault group=fault_no_display.unmapped_read.ctrl " "diag: title=Synthetic static group=static_no_fault.frozen "
-    "diag-group: leaf=dark_no_fault.never_draws rows=1" "diag-group: leaf=fault_no_display.unmapped_read.ctrl rows=1"
+    "diag: title=Synthetic port fault group=fault_no_display.ed_undefined.cpu " "diag: title=Synthetic static group=static_no_fault.frozen "
+    "diag-group: leaf=dark_no_fault.never_draws rows=1" "diag-group: leaf=fault_no_display.ed_undefined.cpu rows=1"
     "diag-group: leaf=static_no_fault.frozen rows=1" "diag-group: leaf=input_mismatch rows=0"
-    "leaf=fault_no_display.unmapped_read.ctrl pcslot=0 rows=1" "leaf=fault_no_display.unmapped_read.ctrl where=port rows=1"
+    "leaf=fault_no_display.ed_undefined.cpu pcslot=0 rows=1" "leaf=fault_no_display.ed_undefined.cpu where=cpu rows=1"
     "vdpmode=graphics1:sms:none rows=1"
     "candidates=7 attempted=5 evaluated=5 malformed=0 malformed_io=0 uncatalogued=1 skipped_excluded=1 noprofile=0 unsupported=0 infrastructure_error=0 title_withheld=0"
     "judged=5 run_fail=4 " "groups_total=4 fail_total=4" "diag-other: pass mapper=none first_change=")

@@ -64,9 +64,7 @@ if(CMAKE_SCRIPT_MODE_FILE)
   diag("${OUT}/halt.sms" "verdict600=fail" "first_display=none first_nonblank=none first_change=none"
     "distinct600=1 distinct1800=1" "${none}" "vdpmode=none" "pow2=y wclass=none pclass=none size=le32k header=none")
   diag("${SEEDS}/di-halt.sms" "verdict600=fail" "first_display=none" "${none}")
-  diag("${SEEDS}/in-a-00.sms" "verdict600=fail" "first_nonblank=none"
-    "fault=unmapped_read dev=ctrl pc=0002 pcslot=0 where=port fault_frame=0 order=nopicture"
-    "faddr=none" "pclass=00-06")
+  diag("${SEEDS}/in-a-00.sms" "verdict600=fail" "first_nonblank=none" "${none}")
   diag("${SEEDS}/ld-8000.sms" "fault=none dev=none" "where=none" "fault_frame=none")
   diag("${SEEDS}/ed-00.sms" "fault=ed_undefined dev=cpu" "where=cpu fault_frame=0" "vdpmode=none")
   diag("${SEEDS}/static-display.sms" "verdict600=fail" "first_nonblank=none" "distinct600=1"

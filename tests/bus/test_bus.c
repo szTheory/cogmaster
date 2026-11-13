@@ -272,26 +272,14 @@ static cogmaster_fault fault_of(const cogmaster *m)
 }
 
 /* LD A,0; IN A,($00); HALT on the export console: nothing drives a read of
-   $00-$3F, so the read returns open bus, is counted, and records the first
-   fault: kind unmapped_read (1), device ctrl (5), the bus address A<<8|n,
-   the IN's own address and opcode, and the beam at the I/O cycle's data
-   T-state, 7 + 10 T-states after the origin. */
+   $00-$3F, so the read returns open bus ($FF) and is counted, and it is no
+   fault (SMS-SYSTEM C5 and section 4): a shipped game may read such a port. */
 static void test_fault_unmapped_read(void)
 {
     static const uint8_t prog[] = {0x3Eu, 0x00u, 0xDBu, 0x00u, 0x76u};
     cogmaster *m = load(prog, sizeof prog);
     (void)run(m);
-    cogmaster_fault f = fault_of(m);
-    CHECK_EQ_U64(f.present, 1);
-    CHECK_EQ_U64(f.kind, 1);
-    CHECK_EQ_U64(f.device, 5);
-    CHECK_EQ_HEX(f.addr, 0x0000);
-    CHECK_EQ_HEX(f.pc, 0x0002);
-    CHECK_EQ_HEX(f.opcode, 0xDB);
-    CHECK_EQ_U64(f.width, 8);
-    CHECK_EQ_U64(f.frame, 0);
-    CHECK_EQ_U64(f.line, ORIGIN_LINE);
-    CHECK_EQ_U64(f.dot, (ORIGIN_TICK + 3u * 17u) / 2u);
+    CHECK_EQ_U64(fault_of(m).present, 0);
     CHECK_EQ_HEX(m->z80.reg[COGMASTER__Z80_A], 0xFF);
     CHECK_EQ_U64(m->counters.open_bus_reads, 1);
     cogmaster_destroy(m);

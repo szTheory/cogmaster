@@ -458,10 +458,8 @@ uint8_t cogmaster__io_in(cogmaster *m, uint16_t port)
         }
         return p == 0u ? cogmaster__io_open_bus(m) : m->io.gg[p - 1u];
     }
-    if (p < 0x40u) {
-        /* $3E and $3F are write-only; nothing drives a read there. */
-        cogmaster__bus_fault(m, port, COGMASTER__DEVICE_CTRL, COGMASTER__FAULT_UNMAPPED_READ);
-    }
+    /* A read of $00-$3F nothing drives (the memory and I/O control ports are write-only) returns
+       the open bus and is no fault: shipped games read such ports (SMS-SYSTEM C5 and section 4). */
     return cogmaster__io_open_bus(m);
 }
 
