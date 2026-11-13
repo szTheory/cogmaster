@@ -1,5 +1,5 @@
 #!/bin/sh
-# Local operation only: never print filenames, probes or guest observations to CI/evidence.
+# Local operation only: never print filenames, paths, probe values or digests; diagnose prints counts, enum words, frame numbers, fault pcs and catalog titles.
 set -eu
 export LC_ALL=C
 root=$(git rev-parse --show-toplevel)
@@ -9,7 +9,7 @@ if [ -z "${COGMASTER_ROM_DIR-}" ] && [ -f "$root/.env.local" ]; then
   export COGMASTER_ROM_DIR
 fi
 case ${1-} in run | diagnose) ;; *) exec cmake --workflow --preset library ;; esac
-# Fault prevented: a diagnose call that reads the owner's local settings or an absent directory and reports an empty library as zero failures.
+# Fault prevented: a diagnose call over an unset or absent directory reporting an empty library as zero failures.
 if [ "$1" = diagnose ]; then
   { [ -n "${COGMASTER_ROM_DIR-}" ] && [ -d "$COGMASTER_ROM_DIR" ]; } ||
     { echo 'library: diagnose needs COGMASTER_ROM_DIR to name an existing directory' >&2; exit 2; }
@@ -38,10 +38,14 @@ if [ "$1" = diagnose ]; then
     echo 'library: diagnose could not build the runner' >&2
     exit 1
   fi
-  # All scratch lives in one private directory that is removed on exit; a killed process can skip the trap.
+  # All scratch lives in one private directory that is removed on exit. A shell such as dash skips the EXIT trap on a
+  # signal, so INT, TERM and HUP exit explicitly; only SIGKILL leaves the directory behind.
   mkdir -p "$root/build/library"
   tmp=$(mktemp -d "$root/build/library/diag.XXXXXX")
   trap 'rm -rf "$tmp"' EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  trap 'exit 129' HUP
   # core is the first 7 characters of the commit id; dirty means a tracked file outside .planning differs from HEAD.
   core=$(git -C "$root" rev-parse HEAD | cut -c1-7)
   git -C "$root" diff --quiet HEAD -- . ':(exclude).planning' || core=$core+dirty
