@@ -92,9 +92,9 @@ if(COGMASTER_FIXTURES)
   set(diagnose_fixtures -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures)
 endif()
 string(REPLACE ";" "$<SEMICOLON>" diagnose_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
-# Timeout: 120 s provisional; about 15 s on one arm64 macOS host, re-derived from the first hosted run.
+# Timeout: 633 s; 2 x 316.11 s (be32), slowest of 1 run, run 43334476928.
 cogmaster_add_test(NAME runner.diagnose
   COMMAND ${CMAKE_COMMAND} -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${diagnose_emulator}"
     -DOUT=${PROJECT_BINARY_DIR}/tests/diagnose ${diagnose_fixtures}
     -DSEEDS=${PROJECT_BINARY_DIR}/tests/seeds -P ${CMAKE_CURRENT_LIST_FILE}
-  LABELS portable runner TIMEOUT 120)
+  LABELS portable runner TIMEOUT 633)

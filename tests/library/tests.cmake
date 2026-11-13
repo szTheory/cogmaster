@@ -300,15 +300,15 @@ if(COGMASTER_FIXTURES)
   set(diag ${CMAKE_CURRENT_LIST_DIR}/diagnose.cmake)
   set(diag_args -DROOT=${PROJECT_SOURCE_DIR} -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures -DSEEDS=${PROJECT_BINARY_DIR}/tests/seeds
     -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${library_emulator}" -P ${diag})
-  # Timeout: 120 s provisional; about 15 s on one arm64 macOS host, re-derived from the first hosted run.
+  # Timeout: 206 s; 2 x 102.97 s (macos-x64), slowest of 1 run, run 43334476928.
   cogmaster_add_test(NAME library.diagnose COMMAND ${CMAKE_COMMAND} -DCASE=main
-    -DOUT=${PROJECT_BINARY_DIR}/tests/library-diagnose/main ${diag_args} LABELS library TIMEOUT 120)
-  # Timeout: 60 s provisional; about 2 s on one arm64 macOS host, re-derived from the first hosted run.
+    -DOUT=${PROJECT_BINARY_DIR}/tests/library-diagnose/main ${diag_args} LABELS library TIMEOUT 206)
+  # Timeout: 35 s; 2 x 17.5 s (windows-arm64), slowest of 1 run, run 43334476928.
   cogmaster_add_test(NAME library.diagnose.taxonomy COMMAND ${CMAKE_COMMAND} -DCASE=taxonomy
-    -DOUT=${PROJECT_BINARY_DIR}/tests/library-diagnose/taxonomy ${diag_args} LABELS library TIMEOUT 60)
-  # Timeout: 60 s provisional; two real runner calls on one image, re-derived from the first hosted run.
+    -DOUT=${PROJECT_BINARY_DIR}/tests/library-diagnose/taxonomy ${diag_args} LABELS library TIMEOUT 35)
+  # Timeout: 34 s; 2 x 16.82 s (macos-x64), slowest of 1 run, run 43334476928.
   cogmaster_add_test(NAME library.diagnose.hostile COMMAND ${CMAKE_COMMAND} -DCASE=hostile
-    -DOUT=${PROJECT_BINARY_DIR}/tests/library-diagnose/hostile ${diag_args} LABELS library TIMEOUT 60)
+    -DOUT=${PROJECT_BINARY_DIR}/tests/library-diagnose/hostile ${diag_args} LABELS library TIMEOUT 34)
   # Fault prevented: a leak scan with no teeth.
   foreach(leak name path bytes digest title)
     set(re "diagnose leak: leak_${leak}")
