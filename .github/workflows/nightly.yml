@@ -95,7 +95,7 @@ jobs:
           persist-credentials: false
       - name: WASI sysroot and runtime
         run: |
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends wasi-libc libclang-rt-21-dev-wasm32
+          sudo apt-get -o Acquire::Retries=3 update && sudo apt-get -o Acquire::Retries=3 install -y --no-install-recommends wasi-libc libclang-rt-21-dev-wasm32
           scripts/fetch-pin.sh wasmtime-x86_64-linux build/pins/wasmtime
       - name: Build the runner
         run: |
@@ -134,7 +134,7 @@ jobs:
           persist-credentials: false
       # clang-21 is on the image; its sanitizer and libFuzzer runtimes may not be.
       - name: Sanitizer and libFuzzer runtimes
-        run: dpkg -s libclang-rt-21-dev > /dev/null 2>&1 || { sudo apt-get update && sudo apt-get install -y libclang-rt-21-dev; }
+        run: dpkg -s libclang-rt-21-dev > /dev/null 2>&1 || { sudo apt-get -o Acquire::Retries=3 update && sudo apt-get -o Acquire::Retries=3 install -y libclang-rt-21-dev; }
       - run: cmake --workflow --preset fuzz
       - name: Every test ran
         run: cmake -DJUNIT=build/fuzz/junit.xml -DINVENTORY=tests/inventory/fuzz.txt -DCHECK=check_junit -P tests/cmake/repository.cmake
