@@ -119,7 +119,7 @@ void cogmaster__mapper_write(cogmaster *m, uint16_t addr, uint8_t v)
         }
         /* A write that hits no register and no enabled cartridge RAM changes
            nothing: the mapper tables name exact registers only
-           (SMS-CARTRIDGES sections 2.1 and 2.2). */
+           (SMS-CARTRIDGES section 2.1 and section 2.2). */
         break;
     case COGMASTER__BOARD_CODEMASTERS:
         /* The registers sit at $0000, $4000 and $8000 exactly (section 2.2). */

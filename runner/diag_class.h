@@ -150,12 +150,16 @@ static inline const char *cogmaster__diag_wclass(uint32_t kind, uint32_t addr)
    $3E and $3F the memory and I/O control ports, $40 to $BF the counters, PSG and VDP. */
 static inline const char *cogmaster__diag_pclass(uint32_t kind, uint32_t device, uint32_t addr)
 {
-    if ((kind != COGMASTER_FAULT_KIND_UNMAPPED_READ && kind != COGMASTER_FAULT_KIND_UNMAPPED_WRITE) ||
+    if ((kind != COGMASTER_FAULT_KIND_UNMAPPED_READ &&
+         kind != COGMASTER_FAULT_KIND_UNMAPPED_WRITE) ||
         (device != COGMASTER_FAULT_DEVICE_CTRL && device != COGMASTER_FAULT_DEVICE_NONE))
         return "none";
     uint32_t port = addr & 0xFFu;
-    return port <= 0x06u ? "00-06" : port >= 0xC0u ? "high" : port >= 0x40u ? "40-bf"
-           : port >= 0x3Eu ? "3e-3f" : "lt40";
+    return port <= 0x06u   ? "00-06"
+           : port >= 0xC0u ? "high"
+           : port >= 0x40u ? "40-bf"
+           : port >= 0x3Eu ? "3e-3f"
+                           : "lt40";
 }
 
 /* The image body size as a class: the smallest listed limit that holds it. */

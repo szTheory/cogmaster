@@ -110,7 +110,7 @@ int cogmaster__diag_print(const cogmaster__diag *d, const cogmaster *m, const ui
     if (cogmaster_get_fault(m, &fault) != COGMASTER_STATUS_OK ||
         cogmaster_probe(image, image_size, &cart) != COGMASTER_STATUS_OK)
         return COGMASTER__EXIT_FAILURE;
-    /* The class words read the fault only when one was recorded, and the body the core would run. */
+    /* The class words read the fault only when one was recorded, and the body the core runs. */
     uint32_t kind = fault.present ? fault.kind : 0u;
     uint32_t addr = fault.present ? fault.addr : 0u;
     uint32_t body = cart.image_size - cart.body_offset;
