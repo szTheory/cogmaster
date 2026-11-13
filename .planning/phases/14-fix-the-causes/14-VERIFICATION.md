@@ -1,7 +1,7 @@
 ---
 phase: 14-fix-the-causes
 verified: 2026-11-13T00:00:00Z
-status: human_needed
+status: passed
 score: 5/6 must-haves verified
 covered_files:
   - ".planning/phases/14-fix-the-causes/14-01-PLAN.md"

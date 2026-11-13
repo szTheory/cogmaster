@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v2.1
 milestone_name: Fewer failing cartridges
-current_phase: 14
-current_phase_name: Fix the causes
-status: verifying
-stopped_at: Completed 14-08-PLAN.md
-last_updated: "2026-11-13T05:54:57.032Z"
-last_activity: 2026-11-12
-last_activity_desc: Phase 14 execution started
-state_head: 4bd7aec93974bc99f2bb43877a2506754d807125
+current_phase: 15
+current_phase_name: Re-run, merge and timeouts
+status: planning
+stopped_at: Phase 14 complete, ready to plan Phase 15
+last_updated: "2026-11-13T15:54:19.329Z"
+last_activity: 2026-11-13
+last_activity_desc: Phase 14 complete, transitioned to Phase 15
+state_head: 64b62fd33a00b8f0d08bb56491cc9eed6dbf3d65
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 13
   completed_plans: 13
-  percent: 33
+  percent: 67
 ---
 
 # Project State
@@ -29,15 +29,15 @@ See: .planning/PROJECT.md (updated 2026-11-12)
 
 ## Current Position
 
-Phase: 14 (Fix the causes) — EXECUTING
-Plan: 8 of 8
-Status: Phase complete — ready for verification
-Last activity: 2026-11-12 — Phase 14 execution started
+Phase: 15 — Re-run, merge and timeouts
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-13 — Phase 14 complete, transitioned to Phase 15
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 161
+- Total plans completed: 169
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -58,6 +58,7 @@ Last activity: 2026-11-12 — Phase 14 execution started
 | 11 | 9 | - | - |
 | 12 | 10 | - | - |
 | 13 | 5 | - | - |
+| 14 | 8 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -447,15 +448,16 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 | seeds | SEED-008 | dormant | 2026-11-10 | v1.0 |
 | deferred_items | 02/deferred-items.md: hygiene.format and hygiene.no_float findings found during 02-09 | acknowledged (resolved by commits 3834dff and 2cceac5) | 2026-11-10 | v1.0 |
 | deferred_items | 03/deferred-items.md: local actionlint does not know the Ubuntu 26.04 runner labels | acknowledged (local linter metadata limitation) | 2026-11-10 | v1.0 |
+| 2026-11-13 | Verify work phase 14 (gsd-verify-work 14); pad press for the one frozen no-fault cart run by the owner from a counts-only scratch script (0 of 1 changed), UAT complete, verification passed, phase transitioned | Claude Code | claude-sonnet-5-5 |
 
 ## Session Continuity
 
 Last session: 2026-11-13T05:54:56.986Z
-Stopped at: Completed 14-08-PLAN.md
+Stopped at: Phase 14 complete, ready to plan Phase 15
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
 ## Operator Next Steps
 
-- Phase 14 plans 14-01 to 14-07 are done; plan 14-08 remains. The next step is /gsd-execute-phase 14 (it runs the first plan without a summary). The library run reads the dump directory from the ignored local settings, so no export is needed.
+- Phase 14 is complete and verified (UAT passed, the pad press was run on the owner's dump directory with counts-only output). The next step is /gsd-ship 14, then /gsd-discuss-phase 15 on a fresh branch off origin/main. The library run reads the dump directory from the ignored local settings, so no export is needed.
 - Owner hand-offs (batched, none is a gate): SEED-013 is done (v0.13.0); SEED-010 pad, Light Phaser and BIOS judges; SEED-009 scan thresholds.

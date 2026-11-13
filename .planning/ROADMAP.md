@@ -41,7 +41,7 @@ Full phase details: `.planning/milestones/v2.0-ROADMAP.md`. Requirements: `.plan
 **Milestone goal:** find out why a third of the checked cartridges fail the boots check, fix the causes the evidence names, and merge the rows that flip to `pass`. The milestone is SEED-016 plus the CI timeout drift from SEED-015. No phase sets a target number of flipped rows: the causes decide the count.
 
 - [x] **Phase 13: Why carts fail** - A counts-only diagnostic in the library judge, run over the owner's library, grouped by cause (completed 2026-11-12)
-- [ ] **Phase 14: Fix the causes** - Each cause group of 5 or more rows fixed in the core or the boots check, or closed with a stated reason
+- [x] **Phase 14: Fix the causes** - Each cause group of 5 or more rows fixed in the core or the boots check, or closed with a stated reason (completed 2026-11-13)
 - [ ] **Phase 15: Re-run, merge and timeouts** - Flipped rows merged through the ratchet, the page agrees, and the drifted CI timeouts re-derived
 
 ## Phase Details
@@ -83,7 +83,7 @@ Plans:
   3. The `zemina`, `korean_nb` and `korean` fail rows each have a stated cause and are fixed or refused with a closed reason
   4. Every core fix has a test that `cmake --workflow --preset ci` runs, and any shipped frame or audio pin that moves is named, justified and recorded with a behaviour revision bump
   5. `cmake --workflow --preset ci` passes on the phase head and no existing `pass` row's fixture result changes without a named pin
-**Plans**: 8/8 plans executed
+**Plans**: 8/8 plans complete
 Plans:
 **Wave 1**
 - [x] 14-01-PLAN.md — Diagnose evidence classes: seven closed words on the diagnose line, `:`-joined counts-only sub-rows, base hashes taken
