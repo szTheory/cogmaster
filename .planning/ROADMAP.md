@@ -83,10 +83,10 @@ Plans:
   3. The `zemina`, `korean_nb` and `korean` fail rows each have a stated cause and are fixed or refused with a closed reason
   4. Every core fix has a test that `cmake --workflow --preset ci` runs, and any shipped frame or audio pin that moves is named, justified and recorded with a behaviour revision bump
   5. `cmake --workflow --preset ci` passes on the phase head and no existing `pass` row's fixture result changes without a named pin
-**Plans**: 8 plans
+**Plans**: 1/8 plans executed
 Plans:
 **Wave 1**
-- [ ] 14-01-PLAN.md — Diagnose evidence classes: seven closed words on the diagnose line, `:`-joined counts-only sub-rows, base hashes taken
+- [x] 14-01-PLAN.md — Diagnose evidence classes: seven closed words on the diagnose line, `:`-joined counts-only sub-rows, base hashes taken
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 14-02-PLAN.md — The video mode nibble with behaviour revision 18, baseline counts and the outcomes note with the fault decision table

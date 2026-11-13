@@ -5,16 +5,16 @@ milestone_name: Fewer failing cartridges
 current_phase: 14
 current_phase_name: Fix the causes
 status: executing
-stopped_at: Phase 14 context gathered
-last_updated: "2026-11-13T03:15:35.949Z"
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-11-13T03:28:32.181Z"
 last_activity: 2026-11-12
-last_activity_desc: "Phase 13 shipped as PR #40"
-state_head: 3bba43bd8dee8c40971eb0f49f58d4ea3270fd1a
+last_activity_desc: Phase 14 execution started
+state_head: e4356365e7637b29c163af6aac599542e92a568d
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 13
-  completed_plans: 5
+  completed_plans: 6
   percent: 33
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-12)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 13 — Why carts fail
+**Current focus:** Phase 14 — Fix the causes
 
 ## Current Position
 
-Phase: 14 (Fix the causes) — READY TO EXECUTE
-Plan: Not started
+Phase: 14 (Fix the causes) — EXECUTING
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-11-12 -- Phase 13 shipped as PR #40
+Last activity: 2026-11-12 — Phase 14 execution started
 
 ## Performance Metrics
 
@@ -229,6 +229,7 @@ Last activity: 2026-11-12 -- Phase 13 shipped as PR #40
 | Phase 13 P03 | 15min | 2 tasks | 5 files |
 | Phase 13 P04 | 13 min | 3 tasks | 10 files |
 | Phase 13 P05 | about 1h (owner run and hosted CI included) | 3 tasks | 4 files |
+| Phase 14 P01 | 10min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -246,6 +247,8 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 13]: Plan 04: a catalog title with an escape or RLO byte never reaches the awk (file(STRINGS) ends a row at the first non-printable byte, the cart is excluded); the hostile case pins skipped_excluded=1 beside a withheld printable hostile title
 - [Phase 13]: Plan 04: the leak controls plant into real captured output of an empty library, and a dirty baseline fails with text that carries no leak class, so it cannot satisfy a control's regex
 - [Phase 13]: 13-05: leaves reported as printed, the groups-under-5 line counts the empty input_mismatch leaf, runner.diagnose timeout 633 s from the be32 raw 316.11 s
+- [Phase 14]: 14-01: pow2 rounds the body up to 16 KiB pages before the power-of-two test (16385 bytes is two pages, y; 0 bytes is n); size and pow2 read image_size minus body_offset
+- [Phase 14]: 14-01: new reducer sub-rows (faddr, vdpmode, wclass, pclass, size) key on the class value itself joined by colon, never a dot, so the leak scan name pattern cannot fire; base hashes file build/p14-base-hashes.txt taken from origin/main 81a9cc9
 
 ### Pending Todos
 
@@ -399,6 +402,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-12 | Discuss phase 14 (gsd-discuss-phase 14); five advisor agents (fault policy and boots check, mapper_range, video modes, mapper families and ports, phase shape) and an orchestrator reconciliation; 15 decisions; branch phase/14-fix-the-causes cut from origin/main | Claude Code | claude-sonnet-5-5 (advisors claude-sonnet-5-5) |
 | 2026-11-12 | Ship phase 13 (gsd-ship 13); branch pushed, PR #40 opened with a Conventional Commit title, no external review command configured, TDD audit skipped (no gate-status trailers) | Claude Code | claude-sonnet-5-5 |
 | 2026-11-12 | Plan phase 14 (gsd-plan-phase 14); researcher sonnet-5-5, planner opus-5-5, checker haiku-5-5; 8 plans in 8 sequential waves; three checker rounds, 0 blockers at the end, one final targeted fix applied without a fourth checker pass | Claude Code | claude-sonnet-5-5 |
+| 2026-11-12 | Execute phase 14 plan 14-01 (gsd-execute-phase 14); seven closed-vocabulary diagnose words (vdpmode, faddr, pow2, wclass, pclass, size, header), colon-joined counts-only reducer sub-rows, base hashes file taken from origin/main 81a9cc9, local ci workflow exit 0; 2 tasks, 2 code commits | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -427,12 +431,12 @@ Items acknowledged and deferred, most recent first (v2.0 rows are owner hand-off
 
 ## Session Continuity
 
-Last session: 2026-11-13T01:21:03.733Z
-Stopped at: Phase 14 context gathered
+Last session: 2026-11-13T03:28:21.235Z
+Stopped at: Completed 14-01-PLAN.md
 Resume file: None
 Phase 12 ship pull requests: #33 (phase) and #34 (release v0.12.0, published with 19 assets)
 
 ## Operator Next Steps
 
-- Phase 14 context is gathered. The next step is /gsd-plan-phase 14. For the execute step the owner exports COGMASTER_ROM_DIR once.
+- Phase 14 plan 14-01 is done; plans 14-02 to 14-08 remain. The next step is /gsd-execute-phase 14 (it runs the first plan without a summary). For the library run the owner exports COGMASTER_ROM_DIR once.
 - Owner hand-offs (batched, none is a gate): SEED-013 is done (v0.13.0); SEED-010 pad, Light Phaser and BIOS judges; SEED-009 scan thresholds.
