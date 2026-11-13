@@ -126,7 +126,7 @@ the Z80 vectors, the assembled fixtures and their mailbox, and fuzzing; testing 
 
 `cmake -DLEDGER=tests/compat/ledger.csv -DINFO=libretro/cogmaster_libretro.info.in -P tests/compat/exit.cmake` (or `ctest --preset ci -R compat.exit -V`) is the exit command. It refuses a ledger no parser reads, a reasonless `unsupported` or `skipped` row, a fixture `fail` and a count that drifts from the pin. It then judges three floors in `quality.json`: 20 cart images with a judged pass, one PAL row and one Japanese FM row. They show a real library run reached the ledger and are not a pass rate. A cart `fail` row prints and never blocks.
 
-A judged row's `core=` stamp names the commit the run judged. When a run judged a commit on a phase branch, a squash merge leaves that commit outside `main`, so fetch it with `git fetch origin pull/<n>/head`; its tree equals the merge commit's outside `.planning/`. Judge a commit already on `main` where the run allows it.
+A judged row's `core=` stamp names the commit the run judged. When a run judged a commit on a phase branch, a squash merge leaves that commit outside `main`, so fetch it with `git fetch origin pull/<n>/head`; its sources equal the merge commit's, and only the ledger, the page, the docs and the workflows differ. Judge a commit already on `main` where the run allows it.
 
 ## Z80 vectors
 
