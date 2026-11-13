@@ -11,41 +11,32 @@ researchers who need frame-exact, reproducible runs; and porters who need an int
 handhelds and in the browser. The owner tries every release on a Mac in RetroArch and tests with a large
 collection of physical cartridges.
 
-## Current Milestone: v2.1 Fewer failing cartridges
-
-**Goal:** Find out why about a third of the checked cartridges (210 default-profile `fail` rows of 603 judged) fail the
-boots check, fix the biggest shared causes, and publish the rows that flip to `pass`.
-
-**Target features:**
-- A per-cart diagnostic in the library judge (frames to first non-blank, first fault kind and PC, mapper chosen) that
-  prints counts and kinds only, never ROM bytes (SEED-016).
-- Fixes in order of group size: check strictness first, then mapper families (`zemina`, `korean_nb`, `korean`), then
-  individual faults.
-- A re-run of the library judge over the owner's library, with the flipped rows merged by pull request. The agent runs
-  it in a shell where the owner passes `COGMASTER_ROM_DIR`, reads counts and catalog titles only, and commits nothing
-  from the dumps (owner decision 2026-11-12).
-- The CI timeout drift (SEED-015): asan, the nightly bench, bench-wasm32 and the fuzz comment re-measured and edited in
-  one workflow change.
-
 ## Current State
 
-**v0.13.0 is shipped** (milestone v2.0 "The whole library", phases 5 to 12, releases v0.5.0 to v0.13.0). The public
-surface is API 14, behaviour revision 17 and state format 16. The core plays Sega, Codemasters and Korean-board
-cartridges (Korean `$A000`, Hicom, Zemina, Nemesis, `korean_nb` and 4 PAK), keeps battery and 93C46 EEPROM saves across
-restarts, supports the Sports Pad, Paddle, 3-D glasses and Light Phaser, boots from the user's own BIOS dump on request,
-and runs the PAL and Japanese FM profiles. The compatibility ledger holds a row with an honest status for every
-Master System and Game Gear entry at the MAME pin. The owner's own-library run is merged (v0.13.0): 396 default-profile
-passes and 210 `fail` rows, and the libretro core's `is_experimental` flag is gone. The milestone audit
-(`.planning/milestones/v2.0-MILESTONE-AUDIT.md`) found 49 of 49 requirements satisfied, status tech_debt and no
-blockers.
+**v0.14.2 is shipped** (milestone v2.1 "Fewer failing cartridges", phases 13 to 15, releases v0.14.0 to v0.14.2; before it
+v2.0 "The whole library", phases 5 to 12, releases v0.5.0 to v0.13.0). The public surface is API 14, behaviour revision
+18 and state format 16. The core plays Sega, Codemasters and Korean-board cartridges (Korean `$A000`, Hicom, Zemina,
+Nemesis, `korean_nb` and 4 PAK), keeps battery and 93C46 EEPROM saves across restarts, supports the Sports Pad, Paddle,
+3-D glasses and Light Phaser, boots from the user's own BIOS dump on request, and runs the PAL and Japanese FM profiles.
+The compatibility ledger holds a row with an honest status for every Master System and Game Gear entry at the MAME pin.
+The v2.1 diagnostic found why a third of the checked cartridges failed: routine cartridge writes and unused port
+accesses were recorded as faults, and the boots check itself is sound. With those faults dropped, the default-profile
+failing rows went from 205 to 49 in the diagnose, 285 ledger rows flipped from `fail` to `pass` with none lost, and the
+page now reads pass 1029, fail 96, unknown 832, unsupported 5 and skipped 24 over 1,986 rows. Of the rows still failing, 46 use
+legacy TMS9918 video modes the core does not render (SEED-006) and 3 show no fault and no picture change. The v2.1 audit
+(`.planning/v2.1-MILESTONE-AUDIT.md`, archived with the milestone) found 10 of 10 requirements satisfied, status
+tech_debt and no blockers.
 
 ## Next Milestone Goals
 
 After v2.1, none of it a gate:
 
+- The legacy video modes (SEED-006) cause 46 of the 49 remaining default-profile `fail` rows; the board question for the reg-0
+  cartridges (11 to 12 rows at the baseline, none failing now) needs new evidence before it is more than a seed.
 - The pad, Light Phaser and BIOS judges (SEED-010) and the scan-threshold measurement (SEED-009) can ride in the next
   owner sitting.
-- The rest of SEED-015 and SEED-007 (ledger rows, review leftovers).
+- The rest of SEED-015 and SEED-007 (ledger rows, review leftovers), and the v2.1 documentation debt listed in the
+  audit (stale fault-vocabulary lines in `docs/audio.md`, `docs/embedding.md` and `docs/runner.md`).
 - Later horizons (states and movies, measured accuracy, tools, ports, the browser, SG-1000) stay seeds in
   `.planning/seeds/` and horizons in `.planning/PRODUCT-ROADMAP.md`; each needs the owner's approval at
   `/gsd-new-milestone`.
@@ -72,14 +63,15 @@ MIT-licensed C library that any host can embed.
 - ✓ PAL timing proven identical on every lane, FM judged by its sound on owned fixtures, and the library judge able to add PAL and Japanese FM rows through `compat-update.sh` — v2.0 (Phase 11)
 - ✓ The whole list in the ledger: one honest row per Master System and Game Gear entry at the pin, a bounded compatibility page, ratchet rules for unsupported rows, and `compat.exit` tying `is_experimental` to the judged-cart floors both ways (satisfied as amended: the flag stays until the owner's own-library run) — v2.0 (Phase 12)
 - ✓ The failing default-profile rows have a known cause: `cogmaster-run --diagnose` and `sh scripts/library.sh diagnose` print counts, kinds and catalog titles only, a canary scan with five negative controls proves nothing from a dump leaks, and 205 failing rows (of 209 in the ledger) are grouped by cause in `13-CAUSE-GROUPS.md`; no ledger row moved — v2.1 (Phase 13)
+- ✓ Every cause group of 5 or more failing rows is fixed or closed with a stated reason: the `$FFFC` unused-bit writes, writes to non-register ROM addresses and undriven or undecoded port accesses no longer record a fault, the legacy video modes are closed as not emulated by design, the boots check is shown sound, and the diagnose reads 205 failing rows down to 49 with none outside the ledger; behaviour revision 18 and no hash pin moved — v2.1 (Phase 14)
+- ✓ The owner's library re-run merged through the unchanged ratchet (285 rows from `fail` to `pass`, none lost), the page equals its regeneration, and the asan, build, be32, bench and bench-wasm32 timeouts were re-derived from a fresh 40-run read in one workflow commit — v2.1 (Phase 15)
 
 ### Active
 
-v2.1 (defined in `.planning/REQUIREMENTS.md`):
-
-- [ ] Fix the largest causes in group-size order and flip the rows they explain to `pass`
-- [ ] Re-run the library judge and merge the flipped rows
-- [ ] Re-measure and correct the drifted CI job timeouts in one workflow edit
+None defined. The next milestone's requirements are written at `/gsd-new-milestone`. Deferred candidates from v2.1:
+LEDG-06 (a catalog `video` column for the 50 Game Gear entries MAME runs in Master System mode), LEDG-07 (per-alias
+`supported` and a reason for `partial` entries) and PAD-08 (the pad, Light Phaser and BIOS judges and the scan
+thresholds on the owner's hardware).
 
 ### Out of Scope
 
@@ -112,6 +104,12 @@ v2.1 (defined in `.planning/REQUIREMENTS.md`):
   as `video=gg` (W3), and review leftovers in seeds SEED-007 and SEED-009 to SEED-015. Three owner hand-offs wait as
   `not_run` and never gate a release: the own-library run (SEED-013), the pad, Light Phaser and BIOS judges (SEED-010)
   and the scan thresholds (SEED-009).
+- **Shipped v2.1** (3 phases, 15 plans, 10 of 10 requirements; releases v0.14.0 to v0.14.2 in two days): 9,386 lines of
+  C in `src/`, 681 tests in the `ci` workflow, API 14, behaviour revision 18, state format 16. The milestone audit found
+  no gaps and recorded tech debt (`.planning/milestones/v2.1-MILESTONE-AUDIT.md`): stale fault-vocabulary lines in three
+  docs, dead port-class vocabulary in `runner/diag_class.h`, `requirements-completed` missing for FIX-01 and FIX-03 in
+  the Phase 14 SUMMARYs, a ledger stamp that names a pre-squash commit still reachable on GitHub, and an unverified
+  dirty-tree check on the `core=` stamp in `scripts/library.sh`.
 - **How releases are tried.** The owner installs the libretro core into RetroArch (Metal build) on an Apple
   Silicon Mac with the README's one line and plays a cartridge dump from their own collection.
 - **Reference material** (`.planning/preparation/`, index in `README.md` there): `SMS-SYSTEM.md` (clocks, memory,
@@ -147,7 +145,7 @@ v2.1 (defined in `.planning/REQUIREMENTS.md`):
 | Video is one 256×H RGB444 field with a crop rect; palettes and filters are host helpers | GG-native, SMS-lossless, hash-stable | ✓ Good — independent SMS/GG pixels, completed fields and eight-lane playing hashes (Phase 3) |
 | Audio hash on the transition stream; PCM secondary; exact rational samples per frame | Mixer-independent determinism | ✓ Good — transition and PCM hashes equal on the eight hosted lanes, 801 or 802 samples per frame (Phase 4) |
 | Every phase ends in an automated release; phase 1 is the ROM-free walking skeleton | Sibling velocity evidence | ✓ Good — v0.1.0 to v0.4.0, one per phase, each by merging a pull request |
-| One entrypoint: CMake workflow presets; one required CI check; SHA-pinned actions; measured timeouts | No script to keep in step with CI | ⚠️ Revisit the timeouts — phase 5 re-derived every timeout from live runs and the preset and required check held for eight more phases, but at the audit asan, the nightly bench and bench-wasm32 had drifted below twice their slowest run and CI cannot see it (SEED-015) |
+| One entrypoint: CMake workflow presets; one required CI check; SHA-pinned actions; measured timeouts | No script to keep in step with CI | ✓ Good — the preset and required check held for ten more phases; timeouts drift as jobs grow, so phase 15 re-derived the seven that had drifted from a 40-run read (asan 9, build 12, be32 21, bench 13, bench-wasm32 16 minutes) and `hygiene.timeout_comments` passes; the weekly digest names any later drift |
 | Cachegrind instructions per frame as the only per-PR speed gate | Wall-clock tails are noise on shared runners | ✓ Good — armed in phase 5 after two zero-spread control runs; a throwaway draft pull request with +4.87 percent failed it, and every later phase reported its delta (0 to -11 basis points) |
 | Proportional gates; real-host e2e ≤ 300 lines; no attempt quotas or ceremonies | Two siblings stalled on their own machinery | ✓ Good — 528 check / 5,298 core lines and 300 hosted helper lines (Phase 3) |
 | Pins are public and fetched with `gh api` | A sibling lost six plans to an unpushed pin | ✓ Good — the MAME pin was regenerated live at the audit and the catalog, table and counts came out byte-equal |
@@ -168,8 +166,11 @@ v2.1 (defined in `.planning/REQUIREMENTS.md`):
 | The Light Phaser senses the emitted pixel at the beam position with no per-title offset table | Hardware senses light, not titles; a table would hide model errors | ✓ Good — `policy.no_title_table`, a fixture judged at ten loop lengths; delay, edge rule and radius are model-derived and unmeasured (Phase 9) |
 | BIOS boot is opt-in from the user's own dump; fast boot stays the default; two firmware scans with negative controls keep every BIOS byte out of the tree and the releases | The legal rule is absolute and the default hashes must not move | ✓ Good — a BIOS-shaped image equals the fast-boot hand-off; the real-BIOS residue is an owner hand-off (Phase 10) |
 | The ledger has one row per catalog identity with closed reason tokens for `unsupported` and `skipped`, and the ratchet releases such a row only through a catalog change | An honest row beats a missing one, and a status cannot move by editing the ledger alone | ✓ Good — 1,472 rows, `compat.exit` and a bounded page proven in CI (Phase 12) |
-| `is_experimental` stays until the owner's own-library run meets the judged-cart floors; `compat.exit` ties the flag to the verdict both ways (owner decision 2026-11-12) | Only the owner's carts and consoles can show real behaviour, and no agent may read them | — Pending the own-library run (SEED-013); the test fails if the flag and the verdict disagree |
+| `is_experimental` stays until the owner's own-library run meets the judged-cart floors; `compat.exit` ties the flag to the verdict both ways (owner decision 2026-11-12) | Only the owner's carts and consoles can show real behaviour, and no agent may read them | ✓ Good — the own-library run merged in v0.13.0 and the flag is gone; the test fails if the flag and the verdict disagree |
 | Owner hand-offs are batched, `not_run` and never a gate; a requirement that named one is amended in the phase that builds what CI can prove | Rule 6: the owner verifies nothing by default | ✓ Good — 14 requirements amended with their code, 0 blockers at the audit, every VERIFICATION `human_needed: false` (v2.0) |
+| A routine cartridge write or an access to a port nothing decodes is not a fault; the first-fault rule keeps only events the hardware documents as errors | A third of the checked cartridges failed the boots check on writes real games make, and the sourced notes name no fault for them | ✓ Good — the diagnose reads 205 failing rows down to 49 with none outside the ledger and no pin moved; the undecoded-port write rests on the absence of a documented fault (v2.1, Phase 14) |
+| The boots check (a displayed picture that is not blank, and no first fault within 600 frames) stays as it is | The diagnostic found no cart the check rejects while it runs correctly; moving the cap would migrate every ledger row | ✓ Good — 3 no-fault failing rows remain, each closed by its own evidence (v2.1, Phase 14) |
+| Legacy TMS9918 video modes stay not emulated, so the rows that use them stay `fail` | The core renders mode 4 only; a pass would claim a rendering it does not do | — Pending SEED-006; 46 rows (40 and 6 in the two leaves) wait on it (v2.1, Phase 14) |
 
 The full list with sources is `.planning/preparation/DECISIONS.md`.
 
@@ -186,4 +187,4 @@ After each milestone:
 3. Lessons are exported to `.planning/LESSONS.md`.
 
 ---
-*Last updated: 2026-11-12 after Phase 13*
+*Last updated: 2026-11-13 after v2.1 milestone*

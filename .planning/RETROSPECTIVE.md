@@ -111,6 +111,56 @@ From `.planning/milestones/v2.0-MILESTONE-AUDIT.md` (status tech_debt, no gaps):
 
 ---
 
+## Milestone: v2.1 — Fewer failing cartridges
+
+**Shipped:** 2026-11-13 (releases v0.14.0 to v0.14.2; phase PRs #40, #42 and #44, release PRs #41, #43 and #45, audit on the milestone branch)
+**Phases:** 3 | **Plans:** 15 | **Sessions:** 22 Runtime Log rows in STATE.md since the v2.1 start, this close included
+
+### What Was Built
+- Phase 13: a counts-only boot diagnostic (`cogmaster-run --diagnose`, `sh scripts/library.sh diagnose`) with a canary leak scan and five negative controls, run over the owner's library, grouping the 205 failing default-profile rows by cause (v0.14.0).
+- Phase 14: the causes fixed or closed with a stated reason, in group-size order: `$FFFC` unused-bit writes, writes to non-register ROM addresses and undriven or undecoded port accesses stopped being recorded as faults; the legacy video-mode rows were closed as not emulated by design; the boots check was shown sound; behaviour revision 18 and no hash pin moved (v0.14.1).
+- Phase 15: the owner's library re-run merged through the unchanged ratchet (285 rows from `fail` to `pass`, none lost) and seven drifted CI timeouts re-derived from a fresh 40-run read in one workflow commit (v0.14.2).
+- 10 of 10 requirements, 681 of 681 tests in the `ci` workflow (671 at the v2.0 close); API 14 and state format 16 unchanged, behaviour revision 17 to 18.
+
+### What Worked
+- Measuring before fixing: the diagnostic grouped 205 rows into a handful of leaves, and one cause (`$FFFC` writes) explained 109 of them, so fixing in group-size order took the diagnose from 205 to 104 to 69 to 49 failing rows with no leaf growing.
+- A sourced decision table written before any core edit: each raise site had a decision and a document section, and count gates (D-04, D-07, D-08) meant plans 14-04 and 14-07 changed no code because the evidence did not call for it.
+- The leak test as the permission to look: with a canary scan and negative controls over every output channel, the agent ran the diagnostic on dumps it may not read and committed counts, kinds and catalog titles only.
+- The ratchet as the safety net for an unproven shift: the Sega bank-shift trace was not taken, and the Phase 15 run merged with no pass row lost, which is the evidence the trace would have been for.
+- No target number for flipped rows: the causes decided the count, and a stricter check was never needed.
+
+### What Was Inefficient
+- SUMMARY front matter drifted from the rule: `requirements-completed` is empty in 13-01, 13-02 and 14-01 to 14-07, so the three-source matrix read FIX-01 and FIX-03 as partial though both were satisfied.
+- Reports were not refreshed when their open item closed: `14-VERIFICATION.md` still reads `human_needed` for a pad press that `14-UAT.md` records as passed, and the Phase 13 verification went stale when Phase 14 changed five files it covers on purpose.
+- A fix that removes behaviour did not sweep the prose for it: `docs/audio.md`, `docs/embedding.md` and `docs/runner.md` still describe port faults the core no longer records, and the port classes in `runner/diag_class.h` are dead vocabulary.
+- The Phase 14 code-review step was skipped (denied by the auto-mode classifier) and is recorded only as advisory in its VERIFICATION.
+- The ledger stamp names the pre-squash commit of PR #44, which is not an ancestor of `main`; the recorded ancestry check held only before the squash.
+
+### Patterns Established
+- Counts-only diagnostics: a closed-vocabulary record per item, a reducer that validates every record against fixed patterns, and a leak scan with one negative control per channel.
+- A fix phase starts from a decision table (event, decision, document section) and gates every optional change on a measured count.
+- Ledger rows carry the core commit that produced them as one `core=` stamp, and a library run is judged by the ratchet, never by hand.
+- A timeout is re-derived from a fresh run read in one workflow commit per file, with `hygiene.timeout_comments` as the check.
+
+### Key Lessons
+1. When a core change removes a behaviour, grep the docs and the test vocabulary for its name in the same plan; the audit found three docs and a dead class list that the tests could not see.
+2. Write `requirements-completed` in the plan that completes the requirement; the audit matrix treats an empty field as partial and a manual read has to override it.
+3. Refresh the report when its open item closes: a UAT that passes should rewrite the VERIFICATION body in the same step, not leave `human_needed` for the audit to reconcile.
+4. A stamp written before a squash merge names a commit that is not on `main`; record the merge-base or keep the branch until the stamp is replaced.
+5. A third of the failing carts were one cause, not 200: group before fixing, and let the largest group set the order.
+
+### Cost Observations
+- Model mix by Runtime Log row since the v2.0 close: 17 claude-sonnet-5-5, 2 with sonnet advisors, 2 with a claude-opus-5-5 planner and a claude-haiku-5-5 plan checker (one also with a sonnet researcher), 1 with sonnet reviewer, fixer and verifier; every row ran under Claude Code.
+- Sessions: 22 Runtime Log rows, one GSD step per row.
+- Notable: token and dollar cost were not measured; no number is claimed.
+
+### Tech Debt Carried Forward
+From `.planning/milestones/v2.1-MILESTONE-AUDIT.md` (status tech_debt, no gaps):
+- Stale docs and dead vocabulary after the Phase 14 fault removals; empty `requirements-completed` in the Phase 13 and 14 SUMMARYs; the `14-VERIFICATION.md` body; the pre-squash `core=` stamp; the dirty-tree check on the run path of `scripts/library.sh`; advisory WR-02 (`ram=live|still`); the open Phase 15 review items; the reg-0 board question (needs new evidence).
+- Seeds: SEED-016 is done; SEED-006 now has the evidence its trigger names (46 failing rows need the legacy modes); SEED-007, SEED-009 to SEED-012, SEED-014 and SEED-015 stay dormant.
+
+---
+
 ---
 
 ## Cross-Milestone Trends
@@ -121,6 +171,7 @@ From `.planning/milestones/v2.0-MILESTONE-AUDIT.md` (status tech_debt, no gaps):
 |-----------|----------|--------|------------|
 | v1.0 | 37 | 4 | One phase, one pull request and one release each; automation-first verification |
 | v2.0 | 84 | 8 | Fan-out discuss with an adversarial pass; draft pull request early for CI changes; owner hand-offs batched as seeds and kept out of the gates |
+| v2.1 | 22 | 3 | Measure first: a counts-only diagnostic grouped the failures, a sourced decision table and count gates decided each fix, and the ratchet judged the re-run |
 
 ### Cumulative Quality
 
@@ -128,9 +179,10 @@ From `.planning/milestones/v2.0-MILESTONE-AUDIT.md` (status tech_debt, no gaps):
 |-----------|---------------------|--------------------------------|--------------|
 | v1.0 | 399 | about 7,700 | 8 hosted lanes, byte-identical |
 | v2.0 | 671 | 9,403 in `src` | 8 hosted lanes, byte-identical; no earlier pin moved |
+| v2.1 | 681 | 9,386 in `src` | no hash pin moved (behaviour revision 18) |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. Timeouts set before the code runs need a measurement afterwards, and the check must see the number, not only its comment (v1.0 lesson 1 and v2.0 lesson 1: seen twice).
-2. Triage review findings inside the phase that produced them (v1.0 lesson 2; v2.0 held it with one fix round per phase and no open untriaged finding).
+1. Timeouts set before the code runs need a measurement afterwards, and the check must see the number, not only its comment (v1.0 lesson 1, v2.0 lesson 1 and the v2.1 phase 15 re-derivation of seven drifted timeouts: seen three times).
+2. Triage review findings inside the phase that produced them (v1.0 lesson 2; v2.0 held it with one fix round per phase and no open untriaged finding; v2.1 skipped the Phase 14 code review, recorded as advisory).
 3. Not yet repeated across milestones: budgets raised in the plan that reaches them, the README moving with the scope, and a frozen digest of the original before a port.
