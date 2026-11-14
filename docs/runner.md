@@ -229,8 +229,8 @@ the guest, not a failure of the run. `--hash` and `--bench` output follows the l
 | `op` | the instruction's first byte after any prefix; for `ed_undefined`, the byte after `$ED` |
 | `addr` | the full 16-bit bus address; for `IN` and `OUT` with an immediate port, A × 256 + the port |
 | `width` | the access width in bits, 8 |
-| `dev` | `none`, `cpu`, `cart`, `ram`, `mapper`, `ctrl` (the memory and I/O control ports `$3E` and `$3F`) or `vdp` |
-| `kind` | `unmapped_read`, `unmapped_write`, `rom_write`, `mapper_range`, `ed_undefined` or `unsupported_video_mode` |
+| `dev` | `none`, `cpu`, `cart`, `ram`, `mapper`, `ctrl` (no longer recorded) or `vdp` |
+| `kind` | `unmapped_read`, `unmapped_write`, `rom_write` (no longer recorded), `mapper_range`, `ed_undefined` or `unsupported_video_mode` |
 
 [Embedding](embedding.md) says when each kind is recorded and which guest behaviour is never a fault. Later
 releases add kinds and devices; scripts should accept names they do not know.
@@ -427,15 +427,15 @@ diagnose 1 verdict600=pass first_display=2 first_nonblank=2 first_change=2 disti
 | `ram` | `live` when the 8 KiB of work RAM at `$C000..$DFFF` differs between calls 1740 and 1800, else `still` |
 | `fault`, `dev`, `pc` | the first fault's kind, device and address as under [First fault](#first-fault), `pc` as four uppercase hex digits |
 | `pcslot` | where `pc` sat: 0 for `$0000..$00FF`, 1 for `$0100..$3FFF`, 2 for `$4000..$7FFF`, 3 for `$8000..$BFFF`, 4 for `$C000..$FFFF` |
-| `where` | the kind of address the fault names, from its device: `rom` and `slot2` for the cartridge below and from `$8000`, `ram`, `mapper`, `port` (the control ports), `cpu`, `vdp` or `unknown` |
+| `where` | the kind of address the fault names, from its device: `rom` and `slot2` for the cartridge below and from `$8000`, `ram`, `mapper`, `port` (no fault names the control ports since behaviour revision 18), `cpu`, `vdp` or `unknown` |
 | `fault_frame` | the bucket of the fault's frame, counted from 0: `0`, `1-9`, `10-99`, `100-599` or `600+`; a fault below 600 is one `verdict600` sees |
 | `order` | `before` when the fault was recorded during or before the first non-blank call, `after` when later, `nopicture` when no non-blank picture showed, `none` without a fault |
 | `mapper`, `source` | the board the core chose and how, as under [Probe](#probe) |
 | `vdpmode` | for an `unsupported_video_mode` fault, the class of the mode its record names: `graphics1`, `text`, `graphics2`, `multicolor`, `mixed`, `mode4`, `invalid` or `sms2only`; else `none` |
 | `faddr` | for a `mapper_range` fault, the class of the mapper address: `fffc`, `fffd-f` or `other`; else `none` |
 | `pow2` | `y` when the image body is a power-of-two count of 16 KiB pages, else `n` |
-| `wclass` | for a `rom_write` fault, the class of the address: `reg-0`, `reg-zm`, `reg-cm`, `reg-korean`, `reg-4pak`, `lt100`, `rom`, `slot2` or `high`; else `none` |
-| `pclass` | for an unmapped port access, the class of the port: `00-06`, `3e-3f`, `lt40`, `40-bf` or `high`; else `none` |
+| `wclass` | always `none` since behaviour revision 18, which records no `rom_write` fault; it was the class of the address: `reg-0`, `reg-zm`, `reg-cm`, `reg-korean`, `reg-4pak`, `lt100`, `rom`, `slot2` or `high` |
+| `pclass` | always `none` since behaviour revision 18, which records no unmapped port access; it was the class of the port: `00-06`, `3e-3f`, `lt40`, `40-bf` or `high` |
 | `size`, `header` | the body size class, `le16k` up to `le512k` or `gt512k`, never a byte count; and `none`, `valid` or `bad` for a header the probe found |
 
 The 1800 frames always run: a signal before the last one exits 1 with one line on standard error and prints no

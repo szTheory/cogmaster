@@ -74,7 +74,7 @@ and $7F stay the VDP's beam counters.
   the mask: bit n + 4 sends channel n to the left and bit n to the right, so $FF sounds both sides, $0F the right
   only, $F0 the left only and $00 neither. The change is a record for source 4 at the write's tick, and the mask
   powers on at $FF. In Master System video mode a Game Gear does not decode $06 at all: a write latches nothing,
-  is recorded as the unmapped write a Japanese Master System records, and every channel reaches both outputs.
+  is no fault, and every channel reaches both outputs.
   That mode also decodes $3E and $3F as a Master System does ($3E powers on at $AB), and keeps its pad, its full
   decode and Start as Pause.
 - **Cost.** However fast a game writes the sound ports, a frame takes at most one PSG step per 48 ticks and a
