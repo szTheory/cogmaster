@@ -631,6 +631,7 @@ vdp.gg.ports	portable,vdp
 vdp.gg.profiles	portable,vdp
 vdp.gg.state	portable,vdp
 vdp.hcounter	portable,vdp
+vdp.legacy.oracle	portable,vdp
 vdp.pause_nmi	portable,vdp
 vdp.port_decode	portable,vdp
 vdp.sprites.bounds_state	portable,vdp

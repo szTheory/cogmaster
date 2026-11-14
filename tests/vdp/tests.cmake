@@ -58,3 +58,18 @@ foreach(case IN ITEMS shapes wrap_clip zoom sms1_zoom priority gg_slots interval
   cogmaster_add_test(NAME vdp.sprites.${case} COMMAND cogmaster-test-sprites ${case}
     LABELS portable vdp TIMEOUT 10)
 endforeach()
+
+# Fault prevented: an oracle for the Graphics I and II draw that disagrees with hand-computed dots, status
+# inputs or sprite rows, so that every later renderer comparison would be a comparison with a wrong answer.
+# The cases are added here as the legacy renderer lands.
+# Timeout: 10 s floor; the oracle case scans the field eleven times and runs in about a second, provisional.
+add_executable(cogmaster-test-legacy ${CMAKE_CURRENT_LIST_DIR}/test_legacy.c)
+target_include_directories(cogmaster-test-legacy PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-legacy PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-legacy PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-legacy)
+foreach(case IN ITEMS oracle)
+  cogmaster_add_test(NAME vdp.legacy.${case} COMMAND cogmaster-test-legacy ${case}
+    LABELS portable vdp TIMEOUT 10)
+endforeach()
