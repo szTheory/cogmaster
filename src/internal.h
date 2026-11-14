@@ -460,6 +460,37 @@ static inline struct cogmaster__profile cogmaster__profile(const cogmaster *m)
     return p;
 }
 
+/* The mode select nibble M4 M3 M2 M1: M4 and M2 in register 0 bits 2 and 1, M3 and M1 in
+   register 1 bits 3 and 4 (SMS-VDP section 2.5). */
+static inline uint32_t cogmaster__vdp_mode(const cogmaster *m)
+{
+    const uint8_t *r = m->vdp.reg;
+    return ((uint32_t)(r[0] & 4u) << 1) | ((r[1] & 8u) >> 1) | (r[0] & 2u) | ((r[1] & 16u) >> 4);
+}
+
+/* What the renderer does with the mode select nibble. Mode 4 is the nibble with M4 set; the
+   315-5124 also treats the extended heights as invalid text, so only 8, 10 and 12 draw there
+   (SMS-VDP section 2.5). The Graphics I and II nibbles, 0 and 2, are LEGACY everywhere except the
+   native Game Gear LCD, which has no such modes. Every other nibble is BLOCKED. */
+enum { COGMASTER__VDP_MODE4, COGMASTER__VDP_LEGACY, COGMASTER__VDP_BLOCKED };
+static inline uint32_t cogmaster__vdp_class(const cogmaster *m)
+{
+    uint32_t mode = cogmaster__vdp_mode(m);
+    int mode4 = cogmaster__profile(m).vdp_masks ? (mode == 8u || mode == 10u || mode == 12u)
+                                                : (mode >= 8u && mode != 9u && mode != 13u);
+    if (mode4) {
+        return COGMASTER__VDP_MODE4;
+    }
+    return (mode == 0u || mode == 2u) && !cogmaster__native_gg(m) ? COGMASTER__VDP_LEGACY
+                                                                  : COGMASTER__VDP_BLOCKED;
+}
+
+/* The six-bit CRAM colour as RGB444: each two-bit channel c becomes 5c (0, 5, 10, 15). */
+static inline uint16_t cogmaster__vdp_rgb444(uint32_t c)
+{
+    return (uint16_t)(((c & 3u) * 5u) | (((c >> 2) & 3u) * 5u << 4) | (((c >> 4) & 3u) * 5u << 8));
+}
+
 /* The public layouts, pinned on every target. P is the pointer size; on
    64-bit targets a pointer after a leading size field starts at P, leaving 4
    alignment bytes. */
