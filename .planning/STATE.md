@@ -6,10 +6,10 @@ current_phase: 16
 current_phase_name: Graphics I and II draw
 status: executing
 stopped_at: Completed 16-02-PLAN.md
-last_updated: "2026-11-14T03:55:07.281Z"
+last_updated: "2026-11-14T04:03:04.759Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 16 execution started
-state_head: 80e5fe9cc09c033e509407e5b5450f865037ec6c
+state_head: ca3540901c09c7d79b18774391e3e61d6e5522a2
 progress:
   total_phases: 2
   completed_phases: 0
@@ -279,6 +279,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 16]: 16-CONTEXT: branch phase/16-graphics-i-and-ii-draw cut from the milestone-branch tip, not origin/main, because the four milestone docs commits are not on main (rule 10 deviation as in 13-01; owner may override); Graphics II masks are a selected model (SMS1 masks, SMS2 and GG-in-SMS-mode do not), legacy backdrop gated on display, state format 17 and behaviour revision 19, draft PR right after the dispatch skeleton
 - [Phase 16]: 16-01: the nine rider controls are ci-lane tests with no platform guard; policy.pins.retry runs through expect_fail with CODE 0 because a pass expression makes CTest ignore the exit status; the library dirty-tree refusal is gated on the tracked ledger and the synthetic workflow step now uses a stand-in ledger so a dirty tree still passes — Rule 5 has no hygiene exception, ci-msvc shares ci.txt, and the plan's own test list needed the exit status checked
 - [Phase 16]: 16-02: each legacy_sprites scenario programs its own R7 so a picture names its scenario and a compare one frame off fails; the tail H counter row is 0000-0013 because ticks 600 to 683 wrap through the H counter jump, with the status read 45 ticks before the H read; every sprite status row is computed by legacy_status in tests/fixtures/legacy.c and re-derived by fixtures.legacy.oracle; g2_late switches at host frame 616 (16 load frames plus 600 counted), g2_switch switches in line 48, sprite scenario k is the completed picture at frame 9 + 2 (k - 1)
+- [Phase 16]: 16-03: the phase branch was cut from the milestone-branch tip because the milestone docs commits are not on origin/main, as Phase 13 did, so the draft pull request carries seven planning-only milestone commits; the owner may ask for a docs: pull request of the milestone branch first
 
 ### Pending Todos
 
