@@ -72,18 +72,18 @@ static uint16_t legacy_dot(const cogmaster *m, uint32_t nibble)
 }
 
 /* The sprites of one line, scanned in index order from the attribute table at (R5 & 127) << 7: 32
-   entries of Y, X, name and colour byte (TI TMS9918A manual 2.4.5, Sean Young's TMS9918A notes
-   section 4). A Y of $D0 ends the list before any other test, wherever it stands (every source
-   agrees). A sprite is on the line when the line is within its 8 or 16 lines, doubled by R1 bit 0,
-   below its top line, which is Y + 1. The first four fill the slots; the fifth match ends the scan.
-   Its attribute table index plus 1 stays in sprite_overflow, because the fifth sprite flag asserts
-   at the first dot of the line, up to 84 ticks after this scan, and a status read in between
-   clears the latched index but must not lose the candidate. Every Y match counts, a transparent
-   or off-screen sprite included. The slots keep the colour byte under the mask $8F (early clock and
-   colour): the bits between are ignored by the chip (Young), and a state with them set would not
-   load. Models, where the sources disagree: a Y of $E0 or more is negative (ares; MAME's
-   tms9928a.cpp tests above $E0 and its 315_5124.cpp $F0 or more, which differ from this only for
-   a 32 line sprite with Y in $E0 to $EF); the early clock is attribute bit 7 alone and R0 bit 3
+   entries of Y, X, name and colour byte (TI TMS9918A manual section 2.4.5, Sean Young's TMS9918A
+   notes section 4). A Y of $D0 ends the list before any other test, wherever it stands (every
+   source agrees). A sprite is on the line when the line is within its 8 or 16 lines, doubled by R1
+   bit 0, below its top line, which is Y + 1. The first four fill the slots; the fifth match ends
+   the scan. Its attribute table index plus 1 stays in sprite_overflow, because the fifth sprite
+   flag asserts at the first dot of the line, up to 84 ticks after this scan, and a status read in
+   between clears the latched index but must not lose the candidate. Every Y match counts, a
+   transparent or off-screen sprite included. The slots keep the colour byte under the mask $8F
+   (early clock and colour): the bits between are ignored by the chip (Young), and a state with them
+   set would not load. Models, where the sources disagree: a Y of $E0 or more is negative (ares;
+   MAME's tms9928a.cpp tests above $E0 and its 315_5124.cpp $F0 or more, which differ from this only
+   for a 32 line sprite with Y in $E0 to $EF); the early clock is attribute bit 7 alone and R0 bit 3
    does nothing (MAME and ares; msvdp says it shifts by 8); the fifth sprite is the fifth match
    whether or not it would draw. */
 void cogmaster__legacy_sprite_scan(cogmaster *m, uint32_t line)
@@ -129,11 +129,11 @@ void cogmaster__legacy_sprite_scan(cogmaster *m, uint32_t line)
 /* The sprite at dot x: the colour of the first selected slot whose pattern bit is set and whose
    colour is not 0, or 0 for none, and in *hits the number of slots with a pattern bit set there. A
    16 by 16 sprite is four 8 by 8 patterns, name + 0 top left, +1 bottom left, +2 top right, +3
-   bottom right, the name having its two low bits cleared at the scan (TI 2.4.5). The pattern
-   generator is at (R6 & 7) << 11. Magnification doubles every pattern dot both ways, with no slot
-   rule: the 315-5124 slot i + 4 rule of mode 4 does not apply here (model; MAME's 315_5124.cpp
-   applies it in every mode). X does not wrap: a sprite is clipped at the right edge, and the early
-   clock can put its left part off the left edge. */
+   bottom right, the name having its two low bits cleared at the scan (TI manual section 2.4.5). The
+   pattern generator is at (R6 & 7) << 11. Magnification doubles every pattern dot both ways, with
+   no slot rule: the 315-5124 slot i + 4 rule of mode 4 does not apply here (model; MAME's
+   315_5124.cpp applies it in every mode). X does not wrap: a sprite is clipped at the right edge,
+   and the early clock can put its left part off the left edge. */
 static uint32_t legacy_sprite_dot(const cogmaster *m, uint32_t x, uint32_t *hits)
 {
     const struct cogmaster__vdp *v = &m->vdp;
@@ -168,13 +168,13 @@ static uint32_t legacy_sprite_dot(const cogmaster *m, uint32_t x, uint32_t *hits
    latched 224 or 240 lines can hand over to these modes in mid-frame. Status, each at its dot:
    coincidence (bit 5) when two slots have a pattern bit set on one dot of 0 to 255, and the fifth
    sprite flag (bit 6) at the first dot of the line, with the index of the first fifth sprite since
-   the last status read in bits 4 to 0 (TI 2.3.2 and 2.3.3). Models: the backdrop of a legacy
-   picture is a palette entry of the legacy palette while the display is on, and the colour RAM
-   backdrop while it is off (cogmaster__vdp_backdrop); coincidence is decided by the pattern bits,
-   so a sprite of colour 0 collides (TI and Young; MAME's 315_5124.cpp counts opaque dots only and
-   ares only a dot over an earlier opaque sprite); the index of the first fifth sprite stays until
-   a read (Young; MAME's tms9928a.cpp keeps the first too), and the flag is not held back by the
-   frame flag (the manual sets it only while the frame flag is clear). */
+   the last status read in bits 4 to 0 (TI manual section 2.3.2 and section 2.3.3). Models: the
+   backdrop of a legacy picture is a palette entry of the legacy palette while the display is on,
+   and the colour RAM backdrop while it is off (cogmaster__vdp_backdrop); coincidence is decided by
+   the pattern bits, so a sprite of colour 0 collides (TI and Young; MAME's 315_5124.cpp counts
+   opaque dots only and ares only a dot over an earlier opaque sprite); the index of the first fifth
+   sprite stays until a read (Young; MAME's tms9928a.cpp keeps the first too), and the flag is not
+   held back by the frame flag (the manual sets it only while the frame flag is clear). */
 void cogmaster__legacy_span(cogmaster *m, uint32_t line, uint32_t x0, uint32_t x1)
 {
     const struct cogmaster__vdp *v = &m->vdp;
