@@ -1,9 +1,9 @@
-# Owned fixtures and registrations for the download retries and the library dirty-tree refusal; no policy logic lives
-# here. Included by the ci lane from tests/policy/tests.cmake, so every build leg and the wasm32 run register these
-# controls and none downloads anything real: a refused local port, missing or tampered file:// URLs, a fake curl and
-# throwaway repositories. Every byte a shell reads is written with file(CONFIGURE ... NEWLINE_STYLE UNIX) or by the
-# shell, never file(WRITE), which writes CRLF on Windows. Scripts handed to a shell through -c hold no semicolon, which
-# the command list would split.
+# Owned fixtures and registrations for the download retries, the library dirty-tree refusal and the milestone-close
+# check; no policy logic lives here. Included by the ci lane from tests/policy/tests.cmake, so every build leg and the
+# wasm32 run register these controls and none downloads anything real: a refused local port, missing or tampered file://
+# URLs, a fake curl, a fake gh and throwaway repositories. Every byte a shell reads is written with
+# file(CONFIGURE ... NEWLINE_STYLE UNIX) or by the shell, never file(WRITE), which writes CRLF on Windows. Scripts
+# handed to a shell through -c hold no semicolon, which the command list would split.
 find_program(tooling_sh sh REQUIRED)
 set(tooling ${PROJECT_BINARY_DIR}/policy/tooling)
 file(REMOVE_RECURSE ${tooling})
@@ -125,9 +125,10 @@ rc=$?
 echo "library exit $rc"
 exit "$rc"
 ]=])
-# The repositories hold copies, so an edit to either script must reconfigure before the controls run.
+# The repositories hold copies, so an edit to any of these scripts must reconfigure before the controls run.
 set_property(DIRECTORY ${PROJECT_SOURCE_DIR} APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-  ${PROJECT_SOURCE_DIR}/scripts/library.sh ${PROJECT_SOURCE_DIR}/scripts/compat-common.sh)
+  ${PROJECT_SOURCE_DIR}/scripts/library.sh ${PROJECT_SOURCE_DIR}/scripts/compat-common.sh
+  ${PROJECT_SOURCE_DIR}/scripts/milestone-close.sh)
 function(tooling_dirty case)
   set(repo ${tooling}/dirty_${case})
   file(COPY ${PROJECT_SOURCE_DIR}/scripts/library.sh ${PROJECT_SOURCE_DIR}/scripts/compat-common.sh DESTINATION ${repo}/scripts)
@@ -156,3 +157,79 @@ endfunction()
 foreach(tooling_case IN ITEMS refuses planning untracked clean)
   tooling_dirty(${tooling_case})
 endforeach()
+
+# Fault prevented: a milestone-close check that reports all ok over a dirty tree or an off remote state, or that turns a
+# failed gh call into ok. One throwaway repository holds a copy of the script, a notes file and the release manifest, with
+# a remote-tracking main at its commit. A fake gh outside it answers every request already filtered, so the filters the
+# real gh applies are not run here, and refuses a request it does not know, so a request the script adds without an
+# answer turns the baseline into unknown. The driver resets the tree, applies one change, runs the script with the fake
+# first on PATH and asserts the exit status and the row by tolerant pattern.
+# Timeout: 60 s; eleven cases of a few git and sh processes each, seconds on Windows; local measurement, no hosted run yet.
+set(tooling_close ${tooling}/close)
+set(tooling_close_gh [=[
+#!/bin/sh
+c=${CLOSE_CASE-}
+[ "$c" != offline ] || exit 1
+[ "$1" != repo ] || { echo o/r ; exit 0 ; }
+p=
+for a
+do
+  case $a in repos/* | search/*) p=$a ;; esac
+done
+case $p in
+  repos/o/r/commits/main) git rev-parse HEAD ;;
+  *) exit 1 ;;
+esac
+exit 0
+]=])
+set(tooling_close_run [=[
+cd "$1" && [ -d .git ] || exit 1
+PATH=$(cd "$2" && pwd):$PATH
+export PATH
+fail=0
+# check <case> <exit status> <row pattern> [second pattern]
+check() {
+  git checkout -q -- .
+  rm -f new.txt
+  case $1 in
+    tracked) echo changed >> notes.txt ;;
+    untracked) echo new > new.txt ;;
+  esac
+  rc=0
+  out=$(CLOSE_CASE=$1 sh scripts/milestone-close.sh 2>&1) || rc=$?
+  if [ "$rc" -eq "$2" ] && printf '%s\n' "$out" | grep -Eq "$3" && printf '%s\n' "$out" | grep -Eq "${4:-.}"
+  then
+    echo "case $1 ok"
+  else
+    echo "case $1 FAILED $rc"
+    printf '%s\n' "$out"
+    fail=1
+  fi
+}
+check baseline 0 '^close-check: all ok$'
+check tracked 1 '^tree +off'
+check untracked 1 '^tree +off'
+exit "$fail"
+]=])
+set(tooling_close_repo ${tooling_close}/repo)
+file(COPY ${PROJECT_SOURCE_DIR}/scripts/milestone-close.sh DESTINATION ${tooling_close_repo}/scripts)
+file(CONFIGURE OUTPUT ${tooling_close_repo}/notes.txt CONTENT "notes\n" @ONLY NEWLINE_STYLE UNIX)
+file(CONFIGURE OUTPUT ${tooling_close_repo}/.release-please-manifest.json CONTENT "{\n  \".\": \"0.1.0\"\n}\n"
+  @ONLY NEWLINE_STYLE UNIX)
+execute_process(COMMAND ${GIT_EXECUTABLE} init -q WORKING_DIRECTORY ${tooling_close_repo} COMMAND_ERROR_IS_FATAL ANY)
+execute_process(COMMAND ${GIT_EXECUTABLE} symbolic-ref HEAD refs/heads/main
+  WORKING_DIRECTORY ${tooling_close_repo} COMMAND_ERROR_IS_FATAL ANY)
+execute_process(COMMAND ${GIT_EXECUTABLE} config core.autocrlf false WORKING_DIRECTORY ${tooling_close_repo} COMMAND_ERROR_IS_FATAL ANY)
+execute_process(COMMAND ${GIT_EXECUTABLE} add -A WORKING_DIRECTORY ${tooling_close_repo} COMMAND_ERROR_IS_FATAL ANY)
+execute_process(COMMAND ${CMAKE_COMMAND} -E env ${tooling_id} ${GIT_EXECUTABLE} -c commit.gpgsign=false commit -qm base
+  WORKING_DIRECTORY ${tooling_close_repo} COMMAND_ERROR_IS_FATAL ANY)
+# A remote-tracking main at the commit lets git show origin/main:... answer without a remote.
+execute_process(COMMAND ${GIT_EXECUTABLE} update-ref refs/remotes/origin/main HEAD
+  WORKING_DIRECTORY ${tooling_close_repo} COMMAND_ERROR_IS_FATAL ANY)
+file(CONFIGURE OUTPUT ${tooling_close}/shim/gh CONTENT "${tooling_close_gh}" @ONLY NEWLINE_STYLE UNIX)
+file(CHMOD ${tooling_close}/shim/gh PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
+  WORLD_READ WORLD_EXECUTE)
+file(CONFIGURE OUTPUT ${tooling_close}/run.sh CONTENT "${tooling_close_run}" @ONLY NEWLINE_STYLE UNIX)
+cogmaster_add_test(NAME policy.milestone_close
+  COMMAND ${tooling_sh} ${tooling_close}/run.sh ${tooling_close_repo} ${tooling_close}/shim
+  LABELS policy TIMEOUT 60)
