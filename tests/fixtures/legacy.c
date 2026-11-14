@@ -151,6 +151,20 @@ static uint16_t pixel_mode4(void)
 #define SWITCH_IRQ_LINE 47u
 #define SWITCH_LINE (SWITCH_IRQ_LINE + 1u)
 
+/* The switch line of g2_switch after SWITCH_FRAME frames, pinned by the SHA-256 of its 256 RGB444
+   words (little-endian, the bytes digest_of hashes) because a mix of two modes has no closed form.
+   The literals were taken from the first renderer run, after the picture was viewed: lines 0 to 47
+   flat colour RAM entry 0, line 48 that colour up to dot 119 or 120 and the generated Graphics II
+   dots from there on (each dot of that line equals one or the other), lines 49 to 191 the
+   generated scene. The switch dot moves from frame to frame, so the pin names its frame. The
+   Master System 1 and 2 differ in nothing here (R3 7F and R4 07 mask nothing), the Game Gear
+   differs in the palette. */
+#define SWITCH_FRAME 30u
+static const char *const switch_line_hash[PROFILE_COUNT] = {
+    "dfdc6a00897d85e8ab4a5904eb5b30849d4609298563de08844d654c453433a2",
+    "dfdc6a00897d85e8ab4a5904eb5b30849d4609298563de08844d654c453433a2",
+    "9b8d29f272ba049c8050a4744bf88f14a3cd78d4447a8387281d50bf4b400036"};
+
 /* The sprite scenarios of legacy_sprites. The image clears and loads video memory with the display
    off (the first eight frames), then shows one scenario for two frames and reads the status once at
    the end of the first. SPRITES_FIRST_FRAME is the number of frames after which the first
@@ -621,6 +635,21 @@ static void digest_of(enum variant v, enum profile p, uint32_t scenario, char *h
         snprintf(hex + 2u * i, 3u, "%02x", digest[i]);
 }
 
+/* The SHA-256 of one rendered line of the field: the 256 words as little-endian bytes. */
+static void line_hash(const uint16_t *line, char *hex)
+{
+    cogmaster__sha256 hash;
+    cogmaster__sha256_init(&hash);
+    for (uint32_t x = 0u; x < FIELD_W; x++) {
+        uint8_t bytes[2] = {(uint8_t)line[x], (uint8_t)(line[x] >> 8)};
+        cogmaster__sha256_update(&hash, bytes, sizeof bytes);
+    }
+    uint8_t digest[32];
+    cogmaster__sha256_final(&hash, digest);
+    for (uint32_t i = 0u; i < 32u; i++)
+        snprintf(hex + 2u * i, 3u, "%02x", digest[i]);
+}
+
 /* Every legacy_sprites row of the csv equals what legacy_status computes, every record has a row
    and no row is left over, so no status expectation is a hand-typed value. */
 static void check_csv(const char *path)
@@ -751,6 +780,10 @@ static int compare(const char *path, enum variant v, enum profile p, uint32_t sc
                    uint32_t frames)
 {
     static uint8_t image[32768];
+    if (v == VARIANT_G2_SWITCH && frames != SWITCH_FRAME) {
+        fprintf(stderr, "g2_switch is pinned at frame %u, not %u\n", SWITCH_FRAME, frames);
+        return 2;
+    }
     FILE *file = fopen(path, "rb");
     if (file == NULL)
         return 1;
@@ -784,7 +817,7 @@ static int compare(const char *path, enum variant v, enum profile p, uint32_t sc
     CHECK_EQ_U64(frame.h, FIELD_H);
     CHECK_EQ_U64(frame.w, FIELD_W);
     int bad = check_failures;
-    /* The switch line is a mix of two modes: it is skipped here and only its hash is pinned. */
+    /* The switch line is a mix of two modes: the dot loop skips it and its hash is pinned below. */
     for (uint32_t y = 0u; y < FIELD_H && !bad; y++) {
         for (uint32_t x = 0u; x < FIELD_W && !(v == VARIANT_G2_SWITCH && y == SWITCH_LINE); x++) {
             uint16_t want = pixel(v, p, scenario, x, y);
@@ -793,6 +826,15 @@ static int compare(const char *path, enum variant v, enum profile p, uint32_t sc
                 bad = 1;
                 break;
             }
+        }
+    }
+    if (v == VARIANT_G2_SWITCH && !bad) {
+        char hex[65];
+        line_hash(pixels[SWITCH_LINE], hex);
+        if (strcmp(hex, switch_line_hash[p]) != 0) {
+            fprintf(stderr, "switch line %u: sha256 %s expected %s\n", SWITCH_LINE, hex,
+                    switch_line_hash[p]);
+            bad = 1;
         }
     }
     cogmaster_destroy(m);

@@ -888,15 +888,42 @@ cogmaster_add_test(NAME fixtures.boot_to_play.wrong_hash
   LABELS fixtures portable TIMEOUT 10)
 
 # Fault prevented: a legacy renderer that disagrees with the closed-form oracle on a dot of a Graphics I
-# or II image, or a runner hash that differs from the oracle digest.
-# Timeout: 10 s floor; provisional, the first hosted run sets it.
-cogmaster_add_test(NAME fixtures.legacy_modes.g1.sms2
-  COMMAND ${CMAKE_COMMAND} -DCASE=legacy -DNAME=legacy_modes_g1 -DVARIANT=g1 -DPROFILE=sms2
-    -DFRAMES=14 -DRUNNER=1
-    -DIMAGE=${COGMASTER_FIXTURES_DIR}/legacy_modes_g1.sms
-    -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
-    -DORACLE=$<TARGET_FILE:cogmaster-test-legacy-fixture> -DRUN=$<TARGET_FILE:cogmaster-run>
-    "-DEMULATOR=${fixtures_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
+# or II image, on any of the three profiles, or a runner hash that differs from the oracle digest. Each
+# row is <variant>:<frames>:<profiles that also compare the runner hash>; the static images are complete
+# from frame 17 (Graphics I from frame 3), the late image from frame 616 (16 load frames and 600 counted
+# ones), and the switch image is judged at the frame its switch line is pinned for, by dot, not by hash.
+# Timeout: 10 s floor; provisional, the first hosted run sets it (the late image runs 620 frames).
+foreach(spec IN ITEMS g1:20:all g2:20:all g2_masked:20:all g2_late:620:sms2 g2_switch:30:none)
+  string(REPLACE ":" ";" spec "${spec}")
+  list(GET spec 0 legacy_variant)
+  list(GET spec 1 legacy_frames)
+  list(GET spec 2 legacy_runner)
+  foreach(legacy_profile IN ITEMS sms1 sms2 gg_sms)
+    set(legacy_flag "")
+    if(legacy_runner STREQUAL "all" OR legacy_runner STREQUAL legacy_profile)
+      set(legacy_flag -DRUNNER=1)
+    endif()
+    cogmaster_add_test(NAME fixtures.legacy_modes.${legacy_variant}.${legacy_profile}
+      COMMAND ${CMAKE_COMMAND} -DCASE=legacy -DNAME=legacy_modes_${legacy_variant}
+        -DVARIANT=${legacy_variant} -DPROFILE=${legacy_profile} -DFRAMES=${legacy_frames} ${legacy_flag}
+        -DIMAGE=${COGMASTER_FIXTURES_DIR}/legacy_modes_${legacy_variant}.sms
+        -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+        -DORACLE=$<TARGET_FILE:cogmaster-test-legacy-fixture> -DRUN=$<TARGET_FILE:cogmaster-run>
+        "-DEMULATOR=${fixtures_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
+      LABELS fixtures portable TIMEOUT 10)
+  endforeach()
+endforeach()
+set(cmd ${CMAKE_COMMAND} -DCASE=legacy -DNAME=legacy_modes_g1 -DVARIANT=g1 -DPROFILE=sms2
+  -DFRAMES=20 -DRUNNER=1 -DWRONG=1
+  -DIMAGE=${COGMASTER_FIXTURES_DIR}/legacy_modes_g1.sms
+  -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+  -DORACLE=$<TARGET_FILE:cogmaster-test-legacy-fixture> -DRUN=$<TARGET_FILE:cogmaster-run>
+  "-DEMULATOR=${fixtures_inner_emulator}" -P ${CMAKE_CURRENT_LIST_FILE})
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+# Fault prevented: a legacy digest comparator accepting a digest that no frame has.
+cogmaster_add_test(NAME fixtures.legacy_modes.wrong_hash
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=legacy runner hash mismatch"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
   LABELS fixtures portable TIMEOUT 10)
 
 # Fault prevented: a fixture assembled to different bytes than the ones
