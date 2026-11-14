@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "internal.h"
+#include "z80.h"
 #include "../check.h"
 
 enum profile { PROFILE_SMS1, PROFILE_SMS2, PROFILE_GG, PROFILE_COUNT };
@@ -273,6 +274,14 @@ static const struct palette_case palette_cases[] = {
     {PROFILE_SMS2, 15u, 0xFFF}, {PROFILE_SMS2, 11u, 0x0FF}, {PROFILE_GG, 0u, 0x555},
     {PROFILE_GG, 1u, 0xA0A},    {PROFILE_GG, 7u, 0xF00},    {PROFILE_GG, 15u, 0x5A0},
 };
+
+/* The eleven (R3, R4) pairs of the Graphics II masks, and whether each changes the Master System 1
+   picture against the Master System 2 one (worked out from the mask arithmetic above: $FF and $03,
+   and $7F and $07, have every mask bit set). */
+static const uint8_t pairs[11][2] = {{0xFF, 0x03}, {0x7F, 0x07}, {0xFF, 0x00}, {0xFF, 0x01},
+                                     {0xFF, 0x02}, {0x80, 0x03}, {0x9F, 0x03}, {0xBF, 0x03},
+                                     {0xDF, 0x03}, {0xFE, 0x03}, {0xE0, 0x03}};
+static const uint32_t bites[11] = {0u, 0u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u};
 
 static const struct scene lone = {0u, 1u, {{39, 100, 1, 5}}};
 static const struct scene y_e0 = {3u, 1u, {{0xE0, 60, 8, 6}}};
@@ -605,6 +614,375 @@ static void backdrop(void)
     }
 }
 
+/* A register write at a dot, as the CPU would make it: the first control byte and the register byte
+   at the same beam position. The renderer catches up to that dot before the register changes. */
+static void write_reg(cogmaster *m, uint32_t line, uint32_t dot, uint32_t r, uint32_t v)
+{
+    m->bus.line = line;
+    m->bus.t = 2u * dot;
+    cogmaster__vdp_write(m, COGMASTER__VDP_CONTROL, (uint8_t)v);
+    cogmaster__vdp_write(m, COGMASTER__VDP_CONTROL, (uint8_t)(0x80u | r));
+}
+static const size_t picture_bytes = (size_t)FIELD_H * FIELD_W * sizeof(uint16_t);
+
+/* The eleven pairs of the Graphics II masks, a frame each on each profile: every dot equals the
+   oracle and the hand-computed literals (g2_frame), the Master System 1 picture differs from the
+   Master System 2 one for exactly the pairs that bite, and the Master System 2 and the Game Gear in
+   Master System video mode draw the picture of the all-ones pair for every pair. */
+static void masks(void)
+{
+    cogmaster *reference[PROFILE_COUNT];
+    for (size_t k = 0u; k < 11u; k++) {
+        cogmaster *frame[PROFILE_COUNT];
+        for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+            frame[p] = g2_frame(p, pairs[k][0], pairs[k][1]);
+            if (k == 0u)
+                reference[p] = frame[p];
+        }
+        CHECK_EQ_U64(
+            memcmp(frame[PROFILE_SMS1]->field, frame[PROFILE_SMS2]->field, picture_bytes) != 0,
+            bites[k]);
+        for (enum profile p = PROFILE_SMS2; p < PROFILE_COUNT; p++)
+            CHECK(memcmp(frame[p]->field, reference[p]->field, picture_bytes) == 0);
+        if (k != 0u)
+            for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++)
+                cogmaster_destroy(frame[p]);
+    }
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++)
+        cogmaster_destroy(reference[p]);
+}
+
+/* Rows, scroll and locks. A picture that latched 224 lines before the game selected Graphics II
+   shows the backdrop from line 192 on; the display bit clear shows the colour RAM backdrop; R8, R9
+   and R0 bits 5 to 7 change nothing. */
+static void rows(void)
+{
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+        cogmaster *m = make(p);
+        scene_g2(m, 0x0Eu, 0xFFu, 0x03u);
+        regs(m, 0x02u, 0x40u, 0x0Eu, 0xFFu, 0x03u);
+        /* The beam starts at line 192 and the first call ends at a wrap, which latches the height
+           from the registers, so the 224 lines are set after that call. The rows the 224 line
+           picture adds hold a marker that only the renderer can replace. */
+        run(m);
+        m->vdp.height = 224u;
+        for (uint32_t y = FIELD_H; y < 224u; y++)
+            for (uint32_t x = 0u; x < FIELD_W; x++)
+                m->field[y][x] = 0xABCDu;
+        run(m);
+        CHECK_EQ_U64(mismatches(m, p, 1, 0xFFu, 0x03u, 0u, FIELD_H), 0u);
+        uint32_t bad = 0u;
+        for (uint32_t y = FIELD_H; y < 224u; y++)
+            for (uint32_t x = 0u; x < FIELD_W; x++)
+                bad += m->field[y][x] != oracle_palette(p, BACKDROP_NIBBLE);
+        CHECK_EQ_U64(bad, 0u);
+        cogmaster_destroy(m);
+
+        m = make(p);
+        scene_g1(m, 0x0Eu, 0x80u, 0x00u);
+        regs(m, 0x00u, 0x00u, 0x0Eu, 0x80u, 0x00u);
+        run(m);
+        bad = 0u;
+        for (uint32_t y = 0u; y < FIELD_H; y++)
+            for (uint32_t x = 0u; x < FIELD_W; x++)
+                bad += m->field[y][x] != rgb444(cram_value(16u + BACKDROP_NIBBLE));
+        CHECK_EQ_U64(bad, 0u);
+        cogmaster_destroy(m);
+
+        /* Two frames, so that the line latch of R8 and the frame latch of R9 have both taken their
+           values: the horizontal scroll, the vertical scroll and the three R0 locks and masks
+           change no dot of either mode. */
+        for (uint32_t g2 = 0u; g2 < 2u; g2++) {
+            m = make(p);
+            if (g2 != 0u)
+                scene_g2(m, 0x0Eu, 0xFFu, 0x03u);
+            else
+                scene_g1(m, 0x0Eu, 0x80u, 0x00u);
+            regs(m, 0xE0u | (g2 << 1), 0x40u, 0x0Eu, g2 != 0u ? 0xFFu : 0x80u, g2 != 0u ? 3u : 0u);
+            m->vdp.reg[8] = 0x35u;
+            m->vdp.reg[9] = 0x2Bu;
+            run(m);
+            run(m);
+            CHECK_EQ_U64(mismatches(m, p, (int)g2, 0xFFu, 0x03u, 0u, FIELD_H), 0u);
+            cogmaster_destroy(m);
+        }
+    }
+}
+
+static cogmaster *picture_of(enum profile p, int g2)
+{
+    cogmaster *m = make(p);
+    if (g2 != 0) {
+        scene_g2(m, 0x0Eu, 0xFFu, 0x03u);
+        regs(m, 0x02u, 0x40u, 0x0Eu, 0xFFu, 0x03u);
+    } else {
+        scene_g1(m, 0x0Eu, 0x80u, 0x00u);
+        regs(m, 0x00u, 0x40u, 0x0Eu, 0x80u, 0x00u);
+    }
+    return m;
+}
+
+/* Calls in any pieces give one picture: a call per frame, a call per line, a call every 37 dots and
+   two instances rendered in turn all equal the oracle. A call to a dot already reached moves no
+   cursor and repaints nothing. */
+static void intervals(void)
+{
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+        for (int g2 = 0; g2 < 2; g2++) {
+            cogmaster *whole = picture_of(p, g2), *lines = picture_of(p, g2);
+            cogmaster *split = picture_of(p, g2), *twin = picture_of(p, g2);
+            cogmaster__vdp_render_to(whole, FIELD_H);
+            for (uint32_t y = 0u; y < FIELD_H; y++)
+                cogmaster__vdp_render_until(lines, y, FIELD_W);
+            for (uint32_t at = 37u; at < FIELD_H * FIELD_W; at += 37u) {
+                cogmaster__vdp_render_until(split, at / FIELD_W, at % FIELD_W);
+                /* The twin, another instance with the same inputs, is rendered in turn at other
+                   dots: nothing is shared between the two. */
+                if (at % 5u == 0u)
+                    cogmaster__vdp_render_until(twin, at / FIELD_W, at % FIELD_W);
+            }
+            cogmaster__vdp_render_to(split, FIELD_H);
+            cogmaster__vdp_render_to(twin, FIELD_H);
+            CHECK_EQ_U64(mismatches(whole, p, g2, 0xFFu, 0x03u, 0u, FIELD_H), 0u);
+            CHECK(memcmp(whole->field, lines->field, picture_bytes) == 0);
+            CHECK(memcmp(whole->field, split->field, picture_bytes) == 0);
+            CHECK(memcmp(whole->field, twin->field, picture_bytes) == 0);
+            CHECK_EQ_U64(split->render_line * FIELD_W + split->render_x, FIELD_H * FIELD_W);
+            cogmaster_destroy(whole);
+            cogmaster_destroy(lines);
+            cogmaster_destroy(split);
+            cogmaster_destroy(twin);
+
+            /* Idempotency: the cursor stops at (5, 100); calls to that dot or an earlier one leave
+               it there and leave the dots already painted, which a stamp shows. */
+            cogmaster *m = picture_of(p, g2);
+            cogmaster__vdp_render_until(m, 5u, 100u);
+            m->field[0][0] = 0x123u;
+            m->field[5][99] = 0x456u;
+            cogmaster__vdp_render_until(m, 5u, 100u);
+            cogmaster__vdp_render_until(m, 5u, 50u);
+            cogmaster__vdp_render_until(m, 0u, 0u);
+            CHECK_EQ_U64(m->render_line, 5u);
+            CHECK_EQ_U64(m->render_x, 100u);
+            CHECK_EQ_HEX(m->field[0][0], 0x123u);
+            CHECK_EQ_HEX(m->field[5][99], 0x456u);
+            cogmaster__vdp_render_until(m, 5u, 101u);
+            CHECK_EQ_U64(m->render_x, 101u);
+            CHECK_EQ_HEX(m->field[5][99], 0x456u);
+            CHECK_EQ_HEX(m->field[5][100], expect(p, g2, 0xFFu, 0x03u, 100u, 5u));
+            cogmaster_destroy(m);
+        }
+    }
+}
+
+/* A register write is exact to its dot: R0 from mode 4 (nibble 8) to Graphics II (nibble 2) at dot
+   100 of line 5. The dot before it draws mode 4, the write dot and every later one Graphics II, and
+   every line before the write is mode 4. The same scene is a picture in either mode, so the
+   reference frame in mode 4 differs from the oracle. */
+static void sw(void)
+{
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+        cogmaster *ref = make(p), *m = make(p);
+        scene_g2(ref, 0x0Eu, 0xFFu, 0x03u);
+        scene_g2(m, 0x0Eu, 0xFFu, 0x03u);
+        regs(ref, 0x04u, 0x40u, 0x0Eu, 0xFFu, 0x03u);
+        regs(m, 0x04u, 0x40u, 0x0Eu, 0xFFu, 0x03u);
+        cogmaster__vdp_render_to(ref, FIELD_H);
+        write_reg(m, 5u, 100u, 0u, 0x02u);
+        CHECK_EQ_U64(m->vdp.reg[0], 0x02u);
+        cogmaster__vdp_render_to(m, FIELD_H);
+        CHECK(memcmp(m->field, ref->field, 5u * FIELD_W * sizeof(uint16_t)) == 0);
+        CHECK(memcmp(m->field[5], ref->field[5], 100u * sizeof(uint16_t)) == 0);
+        CHECK_EQ_U64(mismatches(m, p, 1, 0xFFu, 0x03u, 6u, FIELD_H), 0u);
+        for (uint32_t x = 100u; x < FIELD_W; x++)
+            CHECK_EQ_HEX(m->field[5][x], oracle_g2(p, 0xFFu, 0x03u, x, 5u));
+        /* The switch is not vacuous: mode 4 draws other dots from the same memory. */
+        CHECK(ref->field[5][99] != oracle_g2(p, 0xFFu, 0x03u, 99u, 5u));
+        CHECK(ref->field[5][100] != oracle_g2(p, 0xFFu, 0x03u, 100u, 5u));
+        CHECK_EQ_U64(m->fault_present, 0u);
+        cogmaster_destroy(ref);
+        cogmaster_destroy(m);
+    }
+}
+
+/* Bring-up: a game turns the display on with the power-on mode, Graphics I, and writes R0 to select
+   mode 4 later. The transient dots draw Graphics I and record no fault; the dots from the R0 write
+   on equal a picture that was mode 4 throughout. */
+static void bringup(void)
+{
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+        cogmaster *ref = make(p), *m = make(p);
+        scene_g1(ref, 0x0Eu, 0x80u, 0x00u);
+        scene_g1(m, 0x0Eu, 0x80u, 0x00u);
+        regs(ref, 0x04u, 0x40u, 0x0Eu, 0x80u, 0x00u);
+        regs(m, 0x00u, 0x40u, 0x0Eu, 0x80u, 0x00u);
+        cogmaster__vdp_render_to(ref, FIELD_H);
+        write_reg(m, 7u, 40u, 0u, 0x04u);
+        cogmaster__vdp_render_to(m, FIELD_H);
+        CHECK_EQ_U64(m->fault_present, 0u);
+        CHECK_EQ_U64(mismatches(m, p, 0, 0u, 0u, 0u, 7u), 0u);
+        for (uint32_t x = 0u; x < 40u; x++)
+            CHECK_EQ_HEX(m->field[7][x], oracle_g1(p, x, 7u));
+        CHECK(memcmp(&m->field[7][40], &ref->field[7][40], (FIELD_W - 40u) * sizeof(uint16_t)) ==
+              0);
+        CHECK(memcmp(m->field[8], ref->field[8], (FIELD_H - 8u) * FIELD_W * sizeof(uint16_t)) == 0);
+        /* Not vacuous: the reference is mode 4 from the first dot. */
+        CHECK(memcmp(m->field[0], ref->field[0], 7u * FIELD_W * sizeof(uint16_t)) != 0);
+        cogmaster_destroy(ref);
+        cogmaster_destroy(m);
+    }
+}
+
+/* A hostile program: every frame writes registers that select Graphics I or II (or, one frame in
+   seven, text) with video memory full of garbage. Each frame ends within the 69-tick overshoot, and
+   within a frame the cursor moves forward to exactly the dot asked for and never back. */
+static void hostile(void)
+{
+    uint32_t seed = 0x2545F491u;
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+        cogmaster *m = make(p);
+        for (uint32_t i = 0u; i < 60u; i++) {
+            for (uint32_t j = 0u; j < sizeof m->vdp.vram; j++) {
+                seed = seed * 1664525u + 1013904223u;
+                m->vdp.vram[j] = (uint8_t)(seed >> 24);
+            }
+            uint32_t value[8];
+            for (uint32_t r = 0u; r < 8u; r++) {
+                seed = seed * 1664525u + 1013904223u;
+                value[r] = seed >> 24;
+            }
+            value[0] &= 0xFBu;
+            value[1] = 0xC0u | ((i % 7u) == 6u ? 0x10u : 0u);
+            for (uint32_t r = 0u; r < 8u; r++) {
+                cogmaster__bus_out(m, 0xBFu, (uint8_t)value[r]);
+                cogmaster__bus_out(m, 0xBFu, (uint8_t)(0x80u | r));
+            }
+            cogmaster_run_result res = {0};
+            res.size = sizeof res;
+            CHECK_EQ_U64(cogmaster_run_frame(m, &res), COGMASTER_STATUS_OK);
+            CHECK(res.overshoot_ticks <= 69u);
+            uint32_t cursor = m->render_line * FIELD_W + m->render_x;
+            cogmaster__vdp_render_until(m, 0u, 0u);
+            CHECK_EQ_U64(m->render_line * FIELD_W + m->render_x, cursor);
+            m->vdp.display = 1u;
+            for (uint32_t at = 0u; at < 40u * 1237u; at += 1237u) {
+                cogmaster__vdp_render_until(m, at / FIELD_W, at % FIELD_W);
+                CHECK_EQ_U64(m->render_line * FIELD_W + m->render_x, at);
+            }
+            cogmaster__vdp_render_to(m, m->vdp.height);
+            CHECK_EQ_U64(m->render_line * FIELD_W + m->render_x, (uint32_t)m->vdp.height * FIELD_W);
+            m->render_line = 0u;
+            m->render_x = 0u;
+        }
+        cogmaster_destroy(m);
+    }
+}
+
+/* ---- the modes that still record the unsupported-video-mode fault ---- */
+
+/* Master System 1, Master System 2, Game Gear in Master System video mode and native Game Gear. */
+static const struct {
+    uint32_t machine, video;
+} unsupported_profiles[4] = {{COGMASTER_MACHINE_SMS1, COGMASTER_VIDEO_AUTO},
+                             {COGMASTER_MACHINE_SMS2, COGMASTER_VIDEO_AUTO},
+                             {COGMASTER_MACHINE_GG, COGMASTER_VIDEO_SMS},
+                             {COGMASTER_MACHINE_GG, COGMASTER_VIDEO_AUTO}};
+
+/* An instance in the mode select nibble M4 M3 M2 M1 (R0 bit 2, R1 bit 3, R0 bit 1, R1 bit 4) with
+   the display on, before it has rendered anything. */
+static cogmaster *in_mode(uint32_t profile, uint32_t mode)
+{
+    cogmaster *m =
+        make_video(unsupported_profiles[profile].machine, unsupported_profiles[profile].video);
+    m->vdp.reg[0] = (uint8_t)(((mode & 8u) >> 1) | (mode & 2u));
+    m->vdp.reg[1] = (uint8_t)(0x40u | ((mode & 4u) << 1) | ((mode & 1u) << 4));
+    m->vdp.display = 1u;
+    return m;
+}
+
+/* Whether a frame in the mode records the fault, as typed literals: kind 6 (unsupported video
+   mode), device 6 (the VDP), the nibble as the address, and the Light Phaser's check true before
+   the run. */
+static void faults(uint32_t profile, uint32_t mode, uint32_t want)
+{
+    cogmaster *m = in_mode(profile, mode);
+    CHECK_EQ_U64(cogmaster__vdp_render_blocked(m), want);
+    cogmaster_run_result r = {0};
+    r.size = sizeof r;
+    CHECK_EQ_U64(cogmaster_run_frame(m, &r), COGMASTER_STATUS_OK);
+    CHECK(r.overshoot_ticks <= 69u);
+    cogmaster_fault f = {0};
+    f.size = sizeof f;
+    CHECK_EQ_U64(cogmaster_get_fault(m, &f), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(f.present, want);
+    if (want != 0u) {
+        CHECK_EQ_U64(f.device, 6u);
+        CHECK_EQ_U64(f.kind, 6u);
+        CHECK_EQ_HEX(f.addr, mode);
+    }
+    cogmaster_destroy(m);
+}
+
+static void unsupported_text(void)
+{
+    for (uint32_t profile = 0u; profile < 4u; profile++)
+        faults(profile, 1u, 1u);
+}
+
+static void unsupported_multicolour(void)
+{
+    for (uint32_t profile = 0u; profile < 4u; profile++)
+        faults(profile, 4u, 1u);
+}
+
+/* Text with Graphics II (3) and the three mixes of multicolour with other bits (5, 6, 7). When a
+   game passes through two of these the first fault stays: after nibble 3 is recorded, a write that
+   selects text records nothing and the saved address still holds 3. */
+static void unsupported_mixed(void)
+{
+    static const uint32_t modes[4] = {3u, 5u, 6u, 7u};
+    for (uint32_t profile = 0u; profile < 4u; profile++) {
+        for (size_t k = 0u; k < 4u; k++)
+            faults(profile, modes[k], 1u);
+        cogmaster *m = in_mode(profile, 3u);
+        CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(m->fault_present, 1u);
+        CHECK_EQ_U64(m->fault.addr, 3u);
+        struct cogmaster__fault first = m->fault;
+        cogmaster__bus_out(m, 0xBFu, 0x00u);
+        cogmaster__bus_out(m, 0xBFu, 0x80u);
+        CHECK_EQ_U64(cogmaster__vdp_mode(m), 1u);
+        CHECK_EQ_U64(cogmaster__vdp_render_blocked(m), 1u);
+        CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(m->fault_present, 1u);
+        CHECK(memcmp(&m->fault, &first, sizeof first) == 0);
+        cogmaster_fault f = {0};
+        f.size = sizeof f;
+        CHECK_EQ_U64(cogmaster_get_fault(m, &f), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(f.addr, 3u);
+        cogmaster_destroy(m);
+    }
+}
+
+/* The invalid text modes: 9 and 13 everywhere, and 11, 14 and 15 on the Master System 1, where the
+   extended heights are invalid text; the other profiles draw those as mode 4. */
+static void unsupported_invalid_text(void)
+{
+    static const uint32_t modes[5] = {9u, 13u, 11u, 14u, 15u};
+    for (uint32_t profile = 0u; profile < 4u; profile++)
+        for (size_t k = 0u; k < 5u; k++)
+            faults(profile, modes[k], k < 2u || profile == 0u);
+}
+
+/* The native Game Gear has no Graphics I or II: nibbles 0 and 2 fault there and nowhere else. */
+static void unsupported_native_gg(void)
+{
+    for (uint32_t profile = 0u; profile < 4u; profile++) {
+        faults(profile, 0u, profile == 3u);
+        faults(profile, 2u, profile == 3u);
+    }
+}
+
 static void oracle(void)
 {
     for (size_t i = 0u; i < sizeof palette_cases / sizeof palette_cases[0]; i++) {
@@ -653,10 +1031,6 @@ static void oracle(void)
        same picture for every pair, because the scene is generated per index. The Master System 1
        differs from the Master System 2 for nine pairs; $FF and $03, and $7F and $07, have all the
        mask bits set and change nothing (worked out from the mask arithmetic above). */
-    static const uint8_t pairs[11][2] = {{0xFF, 0x03}, {0x7F, 0x07}, {0xFF, 0x00}, {0xFF, 0x01},
-                                         {0xFF, 0x02}, {0x80, 0x03}, {0x9F, 0x03}, {0xBF, 0x03},
-                                         {0xDF, 0x03}, {0xFE, 0x03}, {0xE0, 0x03}};
-    static const uint32_t bites[11] = {0u, 0u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u};
     for (size_t k = 0u; k < 11u; k++) {
         uint32_t differ = 0u, sms2_moves = 0u, gg_moves = 0u;
         for (uint32_t y = 0u; y < FIELD_H; y++) {
@@ -689,6 +1063,28 @@ int main(int argc, char **argv)
         palette();
     else if (strcmp(argv[1], "backdrop") == 0)
         backdrop();
+    else if (strcmp(argv[1], "masks") == 0)
+        masks();
+    else if (strcmp(argv[1], "rows") == 0)
+        rows();
+    else if (strcmp(argv[1], "intervals") == 0)
+        intervals();
+    else if (strcmp(argv[1], "switch") == 0)
+        sw();
+    else if (strcmp(argv[1], "bringup") == 0)
+        bringup();
+    else if (strcmp(argv[1], "hostile") == 0)
+        hostile();
+    else if (strcmp(argv[1], "text") == 0)
+        unsupported_text();
+    else if (strcmp(argv[1], "multicolour") == 0)
+        unsupported_multicolour();
+    else if (strcmp(argv[1], "mixed") == 0)
+        unsupported_mixed();
+    else if (strcmp(argv[1], "invalid_text") == 0)
+        unsupported_invalid_text();
+    else if (strcmp(argv[1], "native_gg") == 0)
+        unsupported_native_gg();
     else
         return 2;
     CHECK_DONE();

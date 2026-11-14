@@ -72,7 +72,15 @@ cogmaster_warnings(cogmaster-test-legacy)
 foreach(case IN ITEMS oracle
     # Fault prevented: a Graphics I or II dot, palette entry or backdrop that differs from the oracle,
     # which a picture that merely looks plausible would hide.
-    g1 g2 palette backdrop)
+    g1 g2 palette backdrop
+    # Fault prevented: a mask, row limit, interval split, mode switch, bring-up or hostile input that
+    # moves a dot, repaints an emitted one or makes a call unbounded.
+    masks rows intervals switch bringup hostile)
   cogmaster_add_test(NAME vdp.legacy.${case} COMMAND cogmaster-test-legacy ${case}
+    LABELS portable vdp TIMEOUT 10)
+endforeach()
+# Fault prevented: a mode that should still fault drawing silently, or recording the wrong fault.
+foreach(case IN ITEMS text multicolour mixed invalid_text native_gg)
+  cogmaster_add_test(NAME vdp.unsupported.${case} COMMAND cogmaster-test-legacy ${case}
     LABELS portable vdp TIMEOUT 10)
 endforeach()

@@ -1,10 +1,10 @@
 /* Graphics I and Graphics II backgrounds: the mode select nibbles 0000 and 0010 (SMS-VDP section 7,
-   docs/hardware/video.md). The table addresses are those of the TI TMS9918A data manual, section
-   2.4.1 and table 3-2, which the Master System video chips keep. Both modes are 192 lines of 32 by
-   24 cells with no scroll and no left-column mask, so R0 bits 5 to 7, R8 and R9 change nothing.
-   Every address is a 32-bit value masked to 14 bits here; the mode 4 address helpers are never
-   used, because their 315-5124 masks apply register bits that mean something else in these modes.
- */
+   docs/hardware/video.md). The table addresses are those of the TI TMS9918A data manual,
+   section 2.4.1 and table 3-2, which the Master System video chips keep. Both modes are 192 lines
+   of 32 by 24 cells with no scroll and no left-column mask, so R0 bits 5 to 7, R8 and R9 change
+   nothing. Every address is a 32-bit value masked to 14 bits here; the mode 4 address helpers are
+   never used, because their 315-5124 masks apply register bits that mean something else in these
+   modes. */
 #include "internal.h"
 
 #define LEGACY_LINES 192u
