@@ -771,7 +771,7 @@ endforeach()
 # Fault prevented: an oracle that disagrees with hand-computed pixels or status bytes, which would make
 # every later comparison against it a comparison with a wrong answer, and a legacy_sprites row of
 # tests/diag/expected.csv that is typed by hand instead of computed by legacy_status.
-# Timeout: 10 s floor; the literal check runs in well under a second, provisional.
+# Timeout: 10 s floor; 2 x 0.12 s, slowest of 1 run (9 lanes), run 43562888383.
 cogmaster_add_test(NAME fixtures.legacy.oracle
   COMMAND cogmaster-test-legacy-fixture - all all literals
     ${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
@@ -897,12 +897,17 @@ cogmaster_add_test(NAME fixtures.boot_to_play.wrong_hash
 # row is <variant>:<frames>:<profiles that also compare the runner hash>; the static images are complete
 # from frame 17 (Graphics I from frame 3), the late image from frame 616 (16 load frames and 600 counted
 # ones), and the switch image is judged at the frame its switch line is pinned for, by dot, not by hash.
-# Timeout: 10 s floor; provisional, the first hosted run sets it (the late image runs 620 frames).
+# Timeout: 10 s floor for the static and switch images, 2 x 0.51 s; 29 s for the late image, 2 x 14.02 s
+# (g2_late.sms2 on be32), slowest of 1 run (9 lanes), run 43562888383.
 foreach(spec IN ITEMS g1:20:all g2:20:all g2_masked:20:all g2_late:620:sms2 g2_switch:30:none)
   string(REPLACE ":" ";" spec "${spec}")
   list(GET spec 0 legacy_variant)
   list(GET spec 1 legacy_frames)
   list(GET spec 2 legacy_runner)
+  set(legacy_timeout 10)
+  if(legacy_variant STREQUAL "g2_late")
+    set(legacy_timeout 29)
+  endif()
   foreach(legacy_profile IN ITEMS sms1 sms2 gg_sms)
     set(legacy_flag "")
     if(legacy_runner STREQUAL "all" OR legacy_runner STREQUAL legacy_profile)
@@ -915,7 +920,7 @@ foreach(spec IN ITEMS g1:20:all g2:20:all g2_masked:20:all g2_late:620:sms2 g2_s
         -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
         -DORACLE=$<TARGET_FILE:cogmaster-test-legacy-fixture> -DRUN=$<TARGET_FILE:cogmaster-run>
         "-DEMULATOR=${fixtures_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
-      LABELS fixtures portable TIMEOUT 10)
+      LABELS fixtures portable TIMEOUT ${legacy_timeout})
   endforeach()
 endforeach()
 set(cmd ${CMAKE_COMMAND} -DCASE=legacy -DNAME=legacy_modes_g1 -DVARIANT=g1 -DPROFILE=sms2
@@ -1148,7 +1153,7 @@ endforeach()
 # picture (frame 47, then held) that differs from the oracle's digest. One run steps through the whole list
 # and compares every dot through the public API; the runner hash is a second, independent judgement of the
 # same picture. The status records are judged by the mailbox tests below.
-# Timeout: 10 s floor; provisional, the first hosted run sets it (48 frames, about 2 million dots compared).
+# Timeout: 10 s floor; 2 x 1.24 s (sms2 on be32), slowest of 1 run (9 lanes), run 43562888383.
 foreach(legacy_profile IN ITEMS sms1 sms2 gg_sms)
   cogmaster_add_test(NAME fixtures.legacy_sprites.${legacy_profile}
     COMMAND ${CMAKE_COMMAND} -DCASE=legacy -DNAME=legacy_sprites -DVARIANT=sprites
@@ -1165,7 +1170,7 @@ endforeach()
 # scan of the line and its first dot. Every record is judged against its row in tests/diag/expected.csv,
 # which legacy_status computes, on the Master System 1, the Master System 2 and the Game Gear in Master
 # System video mode.
-# Timeout: 10 s floor; provisional, the first hosted run sets it (the image reports after 49 frames).
+# Timeout: 10 s floor; 2 x 0.44 s (the three profiles), slowest of 1 run (9 lanes), run 43562888383.
 foreach(spec IN ITEMS sms1:sms1 sms2:sms gg_sms:gg)
   string(REPLACE ":" ";" spec "${spec}")
   list(GET spec 0 legacy_profile)

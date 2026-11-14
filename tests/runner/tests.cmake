@@ -1636,13 +1636,13 @@ set(runner_fixtures "")
 if(COGMASTER_FIXTURES)
   set(runner_fixtures -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures)
 endif()
-# Timeout: 107 s; 2 x 53.07 s (be32 lane), slowest of 6 runs, run 43115877197.
+# Timeout: 130 s; 2 x 64.72 s (be32 lane), slowest of 1 run (9 lanes), run 43562888383.
 cogmaster_add_test(NAME runner.hashes_file
   COMMAND ${CMAKE_COMMAND} -DCASE=hash_matrix -DRUN=$<TARGET_FILE:cogmaster-run>
     "-DEMULATOR=${runner_emulator}" -DOUT=${PROJECT_BINARY_DIR} ${runner_fixtures}
     -DHASHES=${runner_hashes} -DPINS=${PROJECT_SOURCE_DIR}/tests/audio
     -P ${CMAKE_CURRENT_LIST_FILE}
-  LABELS runner portable TIMEOUT 107)
+  LABELS runner portable TIMEOUT 130)
 
 # Fault prevented: a comparison that passes lanes which differ, or a lane
 # that silently drops out. Two files one hex digit apart must fail, and two
