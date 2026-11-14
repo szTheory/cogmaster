@@ -1,6 +1,7 @@
 /* The words the --diagnose line derives from a fault: the frame bucket, the order against the
-   first picture, the program-counter slot and the address class. Pure functions of their
-   arguments, so tests/runner/test_runner.c calls them with chosen values. */
+   first picture, the program-counter slot, the address kind, the video mode, the mapper address,
+   the image size and the header. Pure functions of their arguments, so tests/runner/test_runner.c
+   calls them with chosen values. */
 #ifndef COGMASTER_RUNNER_DIAG_CLASS_H
 #define COGMASTER_RUNNER_DIAG_CLASS_H
 
@@ -41,8 +42,9 @@ static inline uint32_t cogmaster__diag_pcslot(uint32_t pc)
 
 /* The kind of address a fault names, from the faulting device first. The cartridge answers
    $0000-$7FFF from slots 0 and 1 (rom) and $8000-$BFFF from slot 2 (slot2); the mapper class
-   covers every mapper register, the Codemasters ones at $0000, $4000 and $8000 included; the
-   controller and an unnamed device are both port accesses. */
+   covers every mapper register, the Codemasters ones at $0000, $4000 and $8000 included. Any
+   other device, the controller and an unnamed one included, answers unknown: no fault names them
+   since behaviour revision 18. */
 static inline const char *cogmaster__diag_where(uint32_t device, uint32_t addr)
 {
     switch (device) {
@@ -52,9 +54,6 @@ static inline const char *cogmaster__diag_where(uint32_t device, uint32_t addr)
         return "ram";
     case COGMASTER_FAULT_DEVICE_MAPPER:
         return "mapper";
-    case COGMASTER_FAULT_DEVICE_CTRL:
-    case COGMASTER_FAULT_DEVICE_NONE:
-        return "port";
     case COGMASTER_FAULT_DEVICE_CPU:
         return "cpu";
     case COGMASTER_FAULT_DEVICE_VDP:
@@ -119,47 +118,6 @@ static inline const char *cogmaster__diag_pow2(uint32_t bytes)
 {
     uint32_t pages = (uint32_t)(((uint64_t)bytes + 16383u) / 16384u);
     return pages != 0u && (pages & (pages - 1u)) == 0u ? "y" : "n";
-}
-
-/* The class of the address a rom-write fault names. The other mappers answer writes in the
-   cartridge area at their own registers (.planning/preparation/SMS-CARTRIDGES-AND-PERIPHERALS.md
-   sections 2.1 and 2.2): $0000 is shared by the Codemasters and Zemina boards, $0001 to $0003 are
-   more Zemina registers, $4000 and $8000 the other Codemasters ones, $A000 the Korean one and
-   $3FFE, $7FFF and $BFFF the 4 Pak All Action ones. The register classes come before the plain
-   address ranges, which split the rest at $0100, the end of slot 0's vectors, $8000 and $C000. */
-static inline const char *cogmaster__diag_wclass(uint32_t kind, uint32_t addr)
-{
-    if (kind != COGMASTER_FAULT_KIND_ROM_WRITE)
-        return "none";
-    addr &= 0xFFFFu;
-    if (addr == 0x0000u)
-        return "reg-0";
-    if (addr <= 0x0003u)
-        return "reg-zm";
-    if (addr == 0x4000u || addr == 0x8000u)
-        return "reg-cm";
-    if (addr == 0xA000u)
-        return "reg-korean";
-    if (addr == 0x3FFEu || addr == 0x7FFFu || addr == 0xBFFFu)
-        return "reg-4pak";
-    return addr < 0x0100u ? "lt100" : addr < 0x8000u ? "rom" : addr < 0xC000u ? "slot2" : "high";
-}
-
-/* The class of the port an unmapped access names: the port is the low byte of the address bus
-   (.planning/preparation/SMS-SYSTEM.md section 4). $00 to $06 are below the memory control port,
-   $3E and $3F the memory and I/O control ports, $40 to $BF the counters, PSG and VDP. */
-static inline const char *cogmaster__diag_pclass(uint32_t kind, uint32_t device, uint32_t addr)
-{
-    if ((kind != COGMASTER_FAULT_KIND_UNMAPPED_READ &&
-         kind != COGMASTER_FAULT_KIND_UNMAPPED_WRITE) ||
-        (device != COGMASTER_FAULT_DEVICE_CTRL && device != COGMASTER_FAULT_DEVICE_NONE))
-        return "none";
-    uint32_t port = addr & 0xFFu;
-    return port <= 0x06u   ? "00-06"
-           : port >= 0xC0u ? "high"
-           : port >= 0x40u ? "40-bf"
-           : port >= 0x3Eu ? "3e-3f"
-                           : "lt40";
 }
 
 /* The image body size as a class: the smallest listed limit that holds it. */
