@@ -107,15 +107,26 @@ struct cogmaster__vdp {
     uint8_t line_counter, line_pending; /* R10 reload counter and independent IE1 source */
     uint8_t hcounter, hheld;            /* captured TH count; live until first capture */
     uint8_t hscroll, vscroll, display;  /* line / frame / line latches, docs/hardware/video.md */
-    /* Selected line slots; pattern bytes remain live until each dot emits. */
+    /* Selected line slots; pattern bytes remain live until each dot emits. attr is the SAT colour
+       byte of a Graphics I or II sprite (bit 7 the early clock, bits 3-0 the colour) and 0 in
+       mode 4. */
     struct {
-        uint8_t x, tile, row;
+        uint8_t x, tile, row, attr;
     } sprite[8];
     uint8_t sprite_line, sprite_count, sprite_scanned;
+    /* sprite_overflow is a 0 or 1 flag in mode 4 (an overflow is pending for the line). In Graphics
+       I and II it is 0 when the line has no fifth match and otherwise the SAT index of the fifth
+       match plus 1 (1 to 32), which the line's first dot copies into fifth_index. */
     uint8_t sprite_zoom, sprite_shift, sprite_overflow;
     uint8_t cram[COGMASTER__CRAM_SIZE];
     uint8_t cram_latch;
     uint8_t vram[COGMASTER__VRAM_SIZE];
+    /* Appended after vram so the colour and video RAM offsets of a saved state stay where they
+       were. sprite_legacy is the mode class at scan time (1 for Graphics I and II) and sprite_size
+       the Graphics I and II sprite size then (0 for 8x8, 1 for 16x16), so a save after a mid-line
+       switch still loads. fifth_index is the SAT index of the first fifth sprite latched since the
+       last status read, 31 when nothing is latched. */
+    uint8_t sprite_legacy, sprite_size, fifth_index;
 };
 
 /* The VDP's ports after the bus has decoded an address. */

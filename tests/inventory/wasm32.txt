@@ -115,6 +115,7 @@ core.no_alloc_after_load	perf,portable
 core.peek.args	core,portable
 core.peek.no_side_effects	core,portable
 core.state.frame_counter	core,portable
+core.state.legacy_roundtrip	core,portable
 core.state.mapper	core,portable
 core.state.record_sweep	core,portable
 core.state.rejects_header	core,portable

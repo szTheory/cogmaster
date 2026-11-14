@@ -1334,6 +1334,111 @@ static void test_error_changes_nothing(void)
     cogmaster_destroy(e);
 }
 
+/* A Master System instance running the 1 KiB image with Graphics I selected and the display on
+   (R0 is 0 from reset and R1 is $40, so the mode select nibble is 0: SMS-VDP section 2.5), run
+   to the middle of a line. The first SAT entry ends the sprite list, so each line's scan finds
+   no sprite and the sprite fields stay as a test sets them between runs. */
+static cogmaster *legacy_instance(void)
+{
+    fill_images();
+    cogmaster *m = make_image(img_loop);
+    cogmaster__bus_out(m, 0xBFu, 0x40u);
+    cogmaster__bus_out(m, 0xBFu, 0x81u);
+    m->vdp.vram[0] = 0xD0u;
+    run_frames(m, 3u);
+    for (uint32_t i = 0; i < 1000u; i++) {
+        cogmaster__z80_step(m);
+    }
+    CHECK_EQ_U64(m->vdp.display, 1u);
+    CHECK_EQ_U64(cogmaster__vdp_class(m), COGMASTER__VDP_LEGACY);
+    CHECK_EQ_U64(fault_of(m).present, 0u);
+    return m;
+}
+
+/* The sprite fields as a Graphics I or II scan with a fifth match leaves them: four selected
+   slots, the fifth match's SAT index plus 1 in sprite_overflow and six SAT reads, nothing
+   latched for the status read. Rows run to 15 with 16x16 sprites and to 6 with 8x8 ones; every
+   colour byte has the early clock bit and a colour. */
+static void set_legacy_slots(cogmaster *m, uint8_t size)
+{
+    struct cogmaster__vdp *v = &m->vdp;
+    v->sprite_legacy = 1u;
+    v->sprite_size = size;
+    v->sprite_count = 4u;
+    v->sprite_scanned = 6u;
+    v->sprite_overflow = 6u;
+    v->fifth_index = 31u;
+    v->status = (uint8_t)(v->status & ~0x40u);
+    for (uint32_t i = 0u; i < 4u; i++) {
+        v->sprite[i].x = (uint8_t)(40u * i + 7u);
+        v->sprite[i].tile = (uint8_t)(0x10u + 4u * i);
+        v->sprite[i].row = (uint8_t)((size != 0u ? 5u : 2u) * i);
+        v->sprite[i].attr = (uint8_t)(0x80u | (6u + i));
+    }
+}
+
+/* Saves a, loads the bytes into a fresh instance of the same image and saves again: the two
+   buffers are equal, and two more frames of each leave them equal. */
+static void legacy_round_trip(const char *what, cogmaster *a)
+{
+    size_t size = save(a, good);
+    cogmaster *b = make_image(img_loop);
+    run_frames(b, 1u);
+    if (size != 0u) {
+        CHECK_EQ_U64(cogmaster__state_size(b), size);
+        CHECK_EQ_U64(cogmaster__state_load(b, good, size), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(save(b, after), size);
+        if (memcmp(good, after, size) != 0) {
+            fprintf(stderr, "%s: the loaded state saves other bytes\n", what);
+            check_failures++;
+        }
+        /* Equal saved bytes also hold when a field is in neither state, so the instances are
+           compared as well: the loaded one took every sprite field. */
+        if (memcmp(a->vdp.sprite, b->vdp.sprite, sizeof a->vdp.sprite) != 0 ||
+            a->vdp.sprite_count != b->vdp.sprite_count ||
+            a->vdp.sprite_scanned != b->vdp.sprite_scanned ||
+            a->vdp.sprite_overflow != b->vdp.sprite_overflow ||
+            a->vdp.sprite_legacy != b->vdp.sprite_legacy ||
+            a->vdp.sprite_size != b->vdp.sprite_size || a->vdp.fifth_index != b->vdp.fifth_index) {
+            fprintf(stderr, "%s: the loaded instance holds other sprite fields\n", what);
+            check_failures++;
+        }
+        run_frames(a, 2u);
+        run_frames(b, 2u);
+        CHECK_EQ_U64(save(a, good), size);
+        CHECK_EQ_U64(save(b, after), size);
+        if (memcmp(good, after, size) != 0) {
+            fprintf(stderr, "%s: two frames after the load the instances differ\n", what);
+            check_failures++;
+        }
+    }
+    cogmaster_destroy(b);
+}
+
+/* A state taken in Graphics I saves and reloads byte for byte: with no sprite selected and no
+   overflow, with four selected 16x16 slots and a fifth match, and with a fifth sprite latched
+   for the status read, so every field a legacy scan writes is in the record. */
+static void test_legacy_roundtrip(void)
+{
+    cogmaster *a = legacy_instance();
+    CHECK_EQ_U64(a->vdp.sprite_count, 0u);
+    CHECK_EQ_U64(a->vdp.sprite_overflow, 0u);
+    legacy_round_trip("a Graphics I picture without sprites", a);
+    cogmaster_destroy(a);
+
+    a = legacy_instance();
+    set_legacy_slots(a, 1u);
+    legacy_round_trip("four 16x16 slots and a fifth match", a);
+    cogmaster_destroy(a);
+
+    a = legacy_instance();
+    set_legacy_slots(a, 0u);
+    a->vdp.status = (uint8_t)(a->vdp.status | 0x40u);
+    a->vdp.fifth_index = 4u;
+    legacy_round_trip("a latched fifth sprite", a);
+    cogmaster_destroy(a);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
@@ -1344,6 +1449,7 @@ static const struct {
     {"fault.reset_clears", test_fault_reset_clears},
     {"fault.state_round_trip", test_fault_state_round_trip},
     {"state.frame_counter", test_frame_counter},
+    {"state.legacy_roundtrip", test_legacy_roundtrip},
     {"state.mapper", test_state_mapper},
     {"state.record_sweep", test_record_sweep},
     {"state.rejects_header", test_rejects_header},

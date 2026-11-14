@@ -46,8 +46,10 @@ set_target_properties(cogmaster-test-state PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
 cogmaster_warnings(cogmaster-test-state)
 
+# Fault prevented: a legacy-mode state that does not save and reload to the same bytes, so a
+# field the legacy sprite scan writes is missing from the record.
 foreach(case IN ITEMS state.round_trip state.record_sweep state.rejects_header state.frame_counter
-    state.mapper
+    state.legacy_roundtrip state.mapper
     fault.empty_after_create fault.first_wins fault.reset_clears fault.state_round_trip
     api.error_changes_nothing)
   # Timeout: 10 s floor; 2 x 0.26 s, slowest of 2 runs, run 39376644025, provisional.

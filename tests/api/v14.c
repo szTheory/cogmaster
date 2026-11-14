@@ -11,14 +11,14 @@ int main(void)
     CHECK_EQ_U64(COGMASTER_API_VERSION, 14u);
     CHECK_EQ_U64(COGMASTER_ABI_VERSION, 1u);
     CHECK(COGMASTER_BEHAVIOUR_REVISION >= 16u);
-    CHECK_EQ_U64(COGMASTER_STATE_FORMAT_VERSION, 16u);
+    CHECK_EQ_U64(COGMASTER_STATE_FORMAT_VERSION, 17u);
 
     cogmaster_versions v = {0};
     v.size = (uint32_t)sizeof v;
     CHECK(cogmaster_get_versions(&v) == COGMASTER_STATUS_OK);
     CHECK_EQ_U64(v.api, 14u);
     CHECK(v.behaviour >= 16u);
-    CHECK_EQ_U64(v.state, 16u);
+    CHECK_EQ_U64(v.state, 17u);
 
     const size_t p = sizeof(void *);
     CHECK_EQ_U64(offsetof(cogmaster_media, video_mode), p == 8u ? 40u : 24u);
