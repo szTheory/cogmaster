@@ -4,16 +4,16 @@ milestone: v2.2
 milestone_name: Legacy video modes
 current_phase: 16
 current_phase_name: Graphics I and II draw
-status: planning
+status: executing
 stopped_at: Phase 16 context gathered
-last_updated: "2026-11-14T00:24:03.930Z"
+last_updated: "2026-11-14T02:47:44.659Z"
 last_activity: 2026-11-13
 last_activity_desc: v2.2 roadmap created (2 phases, 16 of 16 requirements mapped)
-state_head: df5208f4795c47521dc4241550172c7c3fa3bafe
+state_head: b42967148b25ae9bf38cad8878353012dd4ec4ab
 progress:
   total_phases: 2
   completed_phases: 0
-  total_plans: 0
+  total_plans: 9
   completed_plans: 0
   percent: 0
 ---
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-11-13)
 
 ## Current Position
 
-Phase: 16 of 17 (Graphics I and II draw); v2.2 runs phases 16 and 17
+Phase: 16 (Graphics I and II draw) — READY TO EXECUTE
 Plan: —
-Status: Ready to plan
+Status: Ready to execute
 Last activity: 2026-11-13 — v2.2 roadmap created (2 phases, 16 of 16 requirements mapped)
 
 Progress: [░░░░░░░░░░] 0%
@@ -447,6 +447,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-13 | Ship milestone v2.1 close (gsd-ship; branch milestone/v2.1-fewer-failing-cartridges pushed, PR #46 opened non-draft with title docs: complete milestone v2.1, no external review command configured; auto-merge and the head-commit CI check are the next shell steps) | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | New milestone v2.2 Legacy video modes (gsd-new-milestone); nine-lens fan-out plus adversarial pass, scope approved by the owner | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Discuss phase 16 (gsd-discuss-phase 16); five research agents plus an adversarial pass against the code, 33 decisions, no owner prompts (standing fan-out instruction) | Claude Code | claude-sonnet-5-5 |
+| 2026-11-13 | Plan phase 16 (gsd-plan-phase 16); researcher, planner and checker subagents, nine plans in nine sequential waves after two revision rounds (16 issues, then 3 warnings, then 3 text fixes applied by the orchestrator at the cap), decision coverage 33 of 33, all 11 requirements claimed; D-26 order refined (state 17 before sprites) and recorded in CONTEXT; no owner prompts (standing instruction) | Claude Code | claude-sonnet-5-5 (planner claude-opus-5-5, checker claude-haiku-5-5) |
 
 ## Deferred Items
 

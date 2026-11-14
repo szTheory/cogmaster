@@ -347,6 +347,7 @@ Read-outs the planner should carry into the docs and fixtures:
 **What goes wrong:** D-25 names `vdp.background.unsupported`, `fault_run` in `tests/ports/test_gun.c` and the Light Phaser table. Two runner tests also use "display on, R0 = 0" as their unsupported-mode seed and fail the moment Graphics I stops faulting.
 **Where:** `tests/runner/diagnose.cmake:72-82` builds `mode0.sms` (`LD A,$40; OUT ($BF),A; LD A,$81; OUT ($BF),A`, R1=$40, R0=0) expecting `fault=unsupported_video_mode dev=vdp` and `vdpmode=graphics1`, and `mode2.sms` (R0=2) expecting `vdpmode=graphics2`. `tests/runner/tests.cmake:1022-1028` (`CASE trace_fault`) writes the same R1=$40 image and expects `kind=unsupported_video_mode`. `tests/ports/test_gun.c:889` sets `m->vdp.reg[0] = 0u` with display on.
 **Fix (same commit as the renderer):** keep the images' byte counts and change the selected mode: R1=$50 gives the text nibble 1 (`vdpmode=text`); a multicolour seed is R1=$48 (nibble 4, `vdpmode=multicolor`); in `fault_run` also set the text bit in `reg[1]`. `diag(...)` count `want_checked 11` stays if both seeds stay. Canned diagnose lines in `tests/library/diagnose.cmake` do not run the core and are unaffected. Phase 17 owns the vocabulary prune; do not touch `runner/diag_class.h`.
+**Correction (planning):** `tests/library/diagnose.cmake` `CASE=main` is not canned: it runs a real `mode0.sms` (R1=$40) and expects a Graphics I fault group, so `library.diagnose` goes red too; see Open Questions (RESOLVED), plan-level deviations.
 **Warning signs:** `runner.diagnose`, `runner.trace.fault`, `ports.gun.fault_neutral` (name per its registration) fail; `vdp.background.unsupported` fails for modes 0 and 2 on every profile except native Game Gear.
 
 ### Pitfall 2: new state field names break the BIOS equivalence test
@@ -559,28 +560,39 @@ Not a rename or migration phase. The one persisted-state change is state format 
 | A5 | Hosted curl behaves like local curl 8.7.1 for `--retry` semantics and exit codes 6, 7, 18, 28, 35, 52, 55, 56 | TUNE-14 | A runner whose curl returns another code for a transient failure would still fail first try; D-29's list is fixed. |
 | A6 | Registering the dirty-tree test in the hygiene lane (rather than ci) is acceptable to the owner's lane layout | Pitfall 7 | Only the inventory file changes; either placement works. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Where does the fifth-sprite candidate live between the scan and dot 0?**
+1. **Where does the fifth-sprite candidate live between the scan and dot 0?** RESOLVED
    - What we know: D-18 lists `fifth_index` only; the status read resets it; the flag asserts at dot 0 (Pitfall 3).
    - What is unclear: whether the owner wants a second byte or the `1 + index` encoding.
    - Recommendation: encode `1 + SAT index` in the legacy `sprite_overflow`, bound 0..32 for legacy, and add the tail-read fixture row.
+   - Resolution: adopted as recommended. The legacy scan stores `1 + index` in `sprite_overflow` (loader bound 0..32 for legacy, plan 16-06), the dot-0 assertion copies it into `fifth_index` (plan 16-07, `vdp.legacy.sprites.fifth_carry`), and the tail-read fixture row is mandatory: the line-interrupt delay is calibrated until the recorded H counter lands in ticks 600 to 683 (plan 16-02, judged in plan 16-08). No second saved byte.
 
-2. **Does the fixture pin `>= $E0` against `> $E0`?**
+2. **Does the fixture pin `>= $E0` against `> $E0`?** RESOLVED
    - What we know: the Y=$E8 row separates `$E0..$EF` negative from MAME-SMS's `>= $F0` only; `>= $E0` and `> $E0` differ at exactly Y=$E0 for a 32-line sprite (16x16 magnified, line 0 shows pattern row 15 if Y=$E0 is negative).
    - Recommendation: add that one row to the sprite scenario list and say in the docs that the TI manual's range reads like `> $E0`.
+   - Resolution: adopted. The Y=$E0 row is in the scenario list (plan 16-02) and in `vdp.legacy.sprites.y_wrap` (plan 16-07); the docs quote the TI range only after checking the page image (A2), otherwise they say it fits both readings (plan 16-09).
 
-3. **Which fixture is MODE-06's "mode 4 bring-up dots that wrote registers 0 and 1 transiently"?**
+3. **Which fixture is MODE-06's "mode 4 bring-up dots that wrote registers 0 and 1 transiently"?** RESOLVED
    - What we know: no fixture here writes R1 before R0 with display on in a hashed frame (the compare will show); `bios_shape.asm:147-154` writes R0=0 then R1=0 with display latched on, yet the BIOS equivalence test passes today with the fault record compared.
    - Recommendation: add an in-process `vdp.legacy.bringup` case (R1 display on while the nibble is 0, then R0 gets M4) asserting no fault, transient dots equal to the Graphics I oracle and later dots mode 4; treat the subset compare as the "still hash as before" evidence for shipped fixtures.
+   - Resolution: adopted. `vdp.legacy.bringup` lands with the renderer (plan 16-04) and the subset compare runs after the skeleton, the renderer, the legacy_modes fixtures, the state change, the sprites and on the phase head (plans 16-03 to 16-09).
 
-4. **Is D-30's budget guard needed?**
+4. **Is D-30's budget guard needed?** RESOLVED
    - What we know: the three rider files are classified `operation` or `build`, not `check` (`tests/policy/repository-checks.txt:21,28,53`); only new files in `tests/cmake`, `scripts`, `cmake`, `.githooks`, `tests/compat` need a classification and count only if classed `check`.
    - Recommendation: measure with `cmake -DROOT=$PWD -P tests/cmake/budgets.cmake` after each rider; the cap rises by one line per ten `src/` lines the legacy module adds.
+   - Resolution: not needed. Plan 16-01 measures before and after each rider with `budgets.cmake`, adds no `check`-classified file and does not raise the cap.
 
-5. **Should the two shell-only rider tests run in every lane?**
+5. **Should the two shell-only rider tests run in every lane?** RESOLVED (plan-level deviation)
    - What we know: lane placement decides where CI minutes are spent (hygiene lane is one Linux job; fixtures tests run in every build leg).
    - Recommendation: dirty-tree and fake-curl tests in the hygiene lane (precedent `policy.pins.self_test`); the WlaDx retry test beside `fixtures.wla_pin.self_test`.
+   - Resolution: all nine rider tests, the WlaDx retry tests included, go in the hygiene lane (plan 16-01). They download nothing real, and keeping them out of `tests/fixtures/tests.cmake` keeps the rider plan's files disjoint from the fixture plan's. `docs/testing.md` records why (plan 16-01).
+
+**Plan-level deviations from this research, recorded here so nothing stays open:**
+- Pitfall 1, `mode2.sms`: R1=$48 alone with R0=2 selects nibble 6 (`mixed`), not multicolour. The plans change R0 $02 to $00 and R1 $40 to $48 (nibble 4, `vdpmode=multicolor`).
+- Pitfall 1, `tests/library/diagnose.cmake`: the research said its lines are canned and unaffected. `CASE=main` (`library.diagnose`, ci and wasm32 lanes) builds a real `mode0.sms` (R1=$40, R0=0) and runs it through the runner, expecting a Graphics I fault group. Plan 16-03 retargets that seed to R1=$50 (text) and its group expectation with the other seeds.
+- Pitfall 1, timing: the runner and library seeds are retargeted to the text and multicolour nibbles in plan 16-03, before the renderer, because those nibbles fault both before and after it; `vdp.background.unsupported` and `fault_run` still change in the renderer commit, as D-25 says.
+- Pitfall 10: the base hashes file is written from the branch after plan 16-01 (riders change no code that builds the runner or the images), not from an `origin/main` worktree.
 
 ## Sources
 
