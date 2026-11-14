@@ -12,7 +12,7 @@ a promise: a row also needs a changing picture to pass the boots check, and some
 
 ### Legacy video modes
 
-- [ ] **MODE-01**: With register 0 and 1 selecting Graphics I (M1=0, M2=0, M3=0, M4=0), the core draws the name table, the pattern table, the colour table (one byte per eight patterns) and the register 7 backdrop with the fixed TMS9918 palette, on the Master System 1, Master System 2 and Game Gear in Master System video mode; an owned fixture proves the pixels against a closed-form oracle written before the renderer
+- [x] **MODE-01**: With register 0 and 1 selecting Graphics I (M1=0, M2=0, M3=0, M4=0), the core draws the name table, the pattern table, the colour table (one byte per eight patterns) and the register 7 backdrop with the fixed TMS9918 palette, on the Master System 1, Master System 2 and Game Gear in Master System video mode; an owned fixture proves the pixels against a closed-form oracle written before the renderer
 - [ ] **MODE-02**: With Graphics II selected (M3=1), the core draws the three-section pattern and colour tables with the documented address masks (registers 3 and 4); a fixture with each mask combination proves the pixels, and the masks that the sources disagree on are named in the hardware notes with the choice and its reason
 - [ ] **MODE-03**: Sprites in the legacy modes follow the documented legacy rules (4 per line, 8x8 and 16x16, magnification, early clock bit, fifth-sprite flag, coincidence flag, the end-of-list Y value), proven by a fixture with closed-form pixels and status-register checks, and the Mode 4 sprite engine is untouched
 - [ ] **MODE-04**: Text, multicolour, the mixed modes, the invalid text modes and native Game Gear video keep recording the unsupported-video-mode fault, each with a test, and the documentation says which modes render and which fault; the Light Phaser's "would this fault" check agrees with the supported-mode test
@@ -71,7 +71,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MODE-01 | Phase 16 | Pending |
+| MODE-01 | Phase 16 | Complete |
 | MODE-02 | Phase 16 | Pending |
 | MODE-03 | Phase 16 | Pending |
 | MODE-04 | Phase 16 | Pending |
