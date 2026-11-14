@@ -212,7 +212,12 @@ if(CMAKE_SCRIPT_MODE_FILE)
     # (sms1, sms2 or gg_sms, the Game Gear in Master System video mode) after FRAMES frames. The oracle
     # compares every dot through the public API; with RUNNER the runner's --hash must also contain the
     # oracle's digest, so a renderer and the digest it prints are judged by one independent answer.
-    # WRONG swaps in a digest that cannot match, so the comparison must refuse it.
+    # WRONG swaps in a digest that cannot match, so the comparison must refuse it. For the sprite image
+    # COMPARE is all (every scenario, on both frames it is on screen, in one run) and SCENARIO names the
+    # scenario whose picture the runner hash at FRAMES must equal; the other images leave both unset.
+    if(NOT COMPARE)
+      set(COMPARE ${FRAMES})
+    endif()
     if(PROFILE STREQUAL "sms1")
       set(oracle_profile sms1)
       set(machine sms1)
@@ -225,13 +230,13 @@ if(CMAKE_SCRIPT_MODE_FILE)
     else()
       message(FATAL_ERROR "legacy: unknown PROFILE '${PROFILE}'")
     endif()
-    execute_process(COMMAND ${EMULATOR} ${ORACLE} ${IMAGE} ${VARIANT} ${oracle_profile} compare ${FRAMES}
+    execute_process(COMMAND ${EMULATOR} ${ORACLE} ${IMAGE} ${VARIANT} ${oracle_profile} compare ${COMPARE}
       RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
     if(NOT rc STREQUAL "0")
-      message(FATAL_ERROR "legacy image mismatch: ${VARIANT} on ${PROFILE} after ${FRAMES} frames, exit ${rc}: ${out}${err}")
+      message(FATAL_ERROR "legacy image mismatch: ${VARIANT} on ${PROFILE}, compare ${COMPARE}, exit ${rc}: ${out}${err}")
     endif()
     if(RUNNER)
-      execute_process(COMMAND ${EMULATOR} ${ORACLE} ${IMAGE} ${VARIANT} ${oracle_profile} digest
+      execute_process(COMMAND ${EMULATOR} ${ORACLE} ${IMAGE} ${VARIANT} ${oracle_profile} digest ${SCENARIO}
         RESULT_VARIABLE rc OUTPUT_VARIABLE want ERROR_VARIABLE err)
       string(STRIP "${want}" want)
       if(NOT rc STREQUAL "0" OR NOT want MATCHES "^[0-9a-f]+$")
@@ -1136,6 +1141,42 @@ foreach(tv IN ITEMS ntsc pal)
         -DOUT=${fixtures_out}/vdp_lines.${tv}.${height}.txt -P ${CMAKE_CURRENT_LIST_FILE}
       LABELS fixtures portable TIMEOUT 10)
   endforeach()
+endforeach()
+
+# Fault prevented: a legacy sprite engine that draws a wrong dot in any of the 20 scenarios, on either of
+# the two frames each is on screen, on any of the three profiles, or a runner hash of the last scenario's
+# picture (frame 47, then held) that differs from the oracle's digest. One run steps through the whole list
+# and compares every dot through the public API; the runner hash is a second, independent judgement of the
+# same picture. The status records are judged by the mailbox tests below.
+# Timeout: 10 s floor; provisional, the first hosted run sets it (48 frames, about 2 million dots compared).
+foreach(legacy_profile IN ITEMS sms2)
+  cogmaster_add_test(NAME fixtures.legacy_sprites.${legacy_profile}
+    COMMAND ${CMAKE_COMMAND} -DCASE=legacy -DNAME=legacy_sprites -DVARIANT=sprites
+      -DPROFILE=${legacy_profile} -DCOMPARE=all -DSCENARIO=20 -DFRAMES=47 -DRUNNER=1
+      -DIMAGE=${COGMASTER_FIXTURES_DIR}/legacy_sprites.sms
+      -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+      -DORACLE=$<TARGET_FILE:cogmaster-test-legacy-fixture> -DRUN=$<TARGET_FILE:cogmaster-run>
+      "-DEMULATOR=${fixtures_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures portable TIMEOUT 10)
+endforeach()
+# Fault prevented: sprite status flags that are measured by the guest but never judged: the fifth sprite
+# flag with its index, the coincidence flag, the end-of-list Y value, the early clock, both sizes and
+# magnification, and the tail read of a line, where the fifth index must survive a status read between the
+# scan of the line and its first dot. Every record is judged against its row in tests/diag/expected.csv,
+# which legacy_status computes, on the Master System 1, the Master System 2 and the Game Gear in Master
+# System video mode.
+# Timeout: 10 s floor; provisional, the first hosted run sets it (the image reports after 49 frames).
+foreach(spec IN ITEMS sms2:sms)
+  string(REPLACE ":" ";" spec "${spec}")
+  list(GET spec 0 legacy_profile)
+  list(GET spec 1 legacy_machine)
+  cogmaster_add_test(NAME fixtures.legacy_sprites.mailbox.${legacy_profile}
+    COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=legacy_sprites -DMACHINE=${legacy_machine}
+      -DVIDEO=sms -DREGION=ntsc-u -DPROFILE=${legacy_profile}
+      -DIMAGE=${COGMASTER_FIXTURES_DIR}/legacy_sprites.sms -DFRAMES=200
+      -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+      -DOUT=${fixtures_out}/legacy_sprites.${legacy_profile}.txt -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures portable TIMEOUT 10)
 endforeach()
 
 # Fault prevented: V counter records that are measured but never judged, an expectation table with a

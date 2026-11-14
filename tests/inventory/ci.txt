@@ -201,6 +201,8 @@ fixtures.legacy_modes.g2_switch.gg_sms	fixtures,portable
 fixtures.legacy_modes.g2_switch.sms1	fixtures,portable
 fixtures.legacy_modes.g2_switch.sms2	fixtures,portable
 fixtures.legacy_modes.wrong_hash	fixtures,portable
+fixtures.legacy_sprites.mailbox.sms2	fixtures,portable
+fixtures.legacy_sprites.sms2	fixtures,portable
 fixtures.light_phaser.control.left	fixtures,portable
 fixtures.light_phaser.control.pad	fixtures,portable
 fixtures.light_phaser.control.parked	fixtures,portable

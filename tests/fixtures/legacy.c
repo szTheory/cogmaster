@@ -15,8 +15,9 @@
                (0BBBBGGGGRRRR) per dot, the bytes cogmaster-run --hash hashes for this crop, so the
                two digests compare the same bytes
      compare   runs the image through the public API and compares every dot
-   argv: image variant profile mode [frames, or the scenario number for sprites]. literals and
-   rows ignore the first three. */
+   argv: image variant profile mode [frames, or the scenario number for sprites, or "all" to compare
+   every scenario of the sprite image on both frames it is on screen]. literals and rows ignore
+   the first three. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -776,6 +777,47 @@ static void release(void *u, void *p, size_t n)
     free(p);
 }
 
+/* Every dot of the frame the instance last completed against the oracle's picture for the variant
+   and scenario. Returns 1 after printing the first difference. */
+static int compare_frame(cogmaster *m, enum variant v, enum profile p, uint32_t scenario)
+{
+    static uint16_t pixels[240][256];
+    cogmaster_frame frame = {0};
+    frame.size = sizeof frame;
+    frame.pixels = &pixels[0][0];
+    frame.pitch_bytes = 512u;
+    CHECK_EQ_U64(cogmaster_get_frame(m, &frame), COGMASTER_STATUS_OK);
+    CHECK_EQ_U64(frame.h, FIELD_H);
+    CHECK_EQ_U64(frame.w, FIELD_W);
+    int bad = check_failures;
+    /* The switch line is a mix of two modes: the dot loop skips it and its hash is pinned below. */
+    for (uint32_t y = 0u; y < FIELD_H && !bad; y++) {
+        for (uint32_t x = 0u; x < FIELD_W && !(v == VARIANT_G2_SWITCH && y == SWITCH_LINE); x++) {
+            uint16_t want = pixel(v, p, scenario, x, y);
+            if (pixels[y][x] != want) {
+                fprintf(stderr, "pixel %u,%u: %03x expected %03x (scenario %u)\n", x, y,
+                        pixels[y][x], want, scenario + 1u);
+                bad = 1;
+                break;
+            }
+        }
+    }
+    if (v == VARIANT_G2_SWITCH && !bad) {
+        char hex[65];
+        line_hash(pixels[SWITCH_LINE], hex);
+        if (strcmp(hex, switch_line_hash[p]) != 0) {
+            fprintf(stderr, "switch line %u: sha256 %s expected %s\n", SWITCH_LINE, hex,
+                    switch_line_hash[p]);
+            bad = 1;
+        }
+    }
+    return bad || check_failures != 0 ? 1 : 0;
+}
+
+/* Runs the image on the profile and judges its pictures. scenario is SCENARIOS_ALL to step through
+   the whole sprite list in one run and judge every scenario on both frames it is on screen;
+   otherwise frames is the count to run before the one comparison. */
+#define SCENARIOS_ALL 0xFFFFFFFFu
 static int compare(const char *path, enum variant v, enum profile p, uint32_t scenario,
                    uint32_t frames)
 {
@@ -806,36 +848,19 @@ static int compare(const char *path, enum variant v, enum profile p, uint32_t sc
     media.tv = COGMASTER_TV_NTSC;
     media.video_mode = COGMASTER_VIDEO_SMS;
     CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
-    for (uint32_t i = 0u; i < frames; i++)
-        CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
-    static uint16_t pixels[240][256];
-    cogmaster_frame frame = {0};
-    frame.size = sizeof frame;
-    frame.pixels = &pixels[0][0];
-    frame.pitch_bytes = 512u;
-    CHECK_EQ_U64(cogmaster_get_frame(m, &frame), COGMASTER_STATUS_OK);
-    CHECK_EQ_U64(frame.h, FIELD_H);
-    CHECK_EQ_U64(frame.w, FIELD_W);
-    int bad = check_failures;
-    /* The switch line is a mix of two modes: the dot loop skips it and its hash is pinned below. */
-    for (uint32_t y = 0u; y < FIELD_H && !bad; y++) {
-        for (uint32_t x = 0u; x < FIELD_W && !(v == VARIANT_G2_SWITCH && y == SWITCH_LINE); x++) {
-            uint16_t want = pixel(v, p, scenario, x, y);
-            if (pixels[y][x] != want) {
-                fprintf(stderr, "pixel %u,%u: %03x expected %03x\n", x, y, pixels[y][x], want);
-                bad = 1;
-                break;
-            }
+    int bad = 0;
+    if (scenario == SCENARIOS_ALL) {
+        /* Scenario k is the picture after host frames 9 + 2 k and 10 + 2 k. */
+        uint32_t end = SPRITES_FIRST_FRAME + SCENARIO_FRAMES * (uint32_t)SCENARIO_COUNT - 1u;
+        for (uint32_t frame = 1u; frame <= end; frame++) {
+            CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+            if (frame >= SPRITES_FIRST_FRAME && !bad)
+                bad = compare_frame(m, v, p, (frame - SPRITES_FIRST_FRAME) / SCENARIO_FRAMES);
         }
-    }
-    if (v == VARIANT_G2_SWITCH && !bad) {
-        char hex[65];
-        line_hash(pixels[SWITCH_LINE], hex);
-        if (strcmp(hex, switch_line_hash[p]) != 0) {
-            fprintf(stderr, "switch line %u: sha256 %s expected %s\n", SWITCH_LINE, hex,
-                    switch_line_hash[p]);
-            bad = 1;
-        }
+    } else {
+        for (uint32_t i = 0u; i < frames; i++)
+            CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+        bad = compare_frame(m, v, p, scenario);
     }
     cogmaster_destroy(m);
     return bad || check_failures != 0 ? 1 : 0;
@@ -869,10 +894,15 @@ int main(int argc, char **argv)
     int p = find(profile_names, PROFILE_COUNT, argv[3]);
     if (v < 0 || p < 0)
         return 2;
-    /* argv[5] is the scenario number (1 to the count) for sprites and the frame count otherwise. */
+    /* argv[5] is the scenario number (1 to the count, or "all" to compare every one) for sprites
+       and the frame count otherwise. */
     uint32_t arg = argc > 5 ? (uint32_t)strtoul(argv[5], NULL, 10) : 0u;
     uint32_t scenario = 0u, frames = arg;
-    if (v == VARIANT_SPRITES) {
+    if (v == VARIANT_SPRITES && argc > 5 && strcmp(argv[5], "all") == 0 &&
+        strcmp(mode, "compare") == 0) {
+        scenario = SCENARIOS_ALL;
+        frames = 1u;
+    } else if (v == VARIANT_SPRITES) {
         if (arg < 1u || arg > SCENARIO_COUNT)
             return 2;
         scenario = arg - 1u;
