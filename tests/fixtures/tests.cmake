@@ -1149,7 +1149,7 @@ endforeach()
 # and compares every dot through the public API; the runner hash is a second, independent judgement of the
 # same picture. The status records are judged by the mailbox tests below.
 # Timeout: 10 s floor; provisional, the first hosted run sets it (48 frames, about 2 million dots compared).
-foreach(legacy_profile IN ITEMS sms2)
+foreach(legacy_profile IN ITEMS sms1 sms2 gg_sms)
   cogmaster_add_test(NAME fixtures.legacy_sprites.${legacy_profile}
     COMMAND ${CMAKE_COMMAND} -DCASE=legacy -DNAME=legacy_sprites -DVARIANT=sprites
       -DPROFILE=${legacy_profile} -DCOMPARE=all -DSCENARIO=20 -DFRAMES=47 -DRUNNER=1
@@ -1166,7 +1166,7 @@ endforeach()
 # which legacy_status computes, on the Master System 1, the Master System 2 and the Game Gear in Master
 # System video mode.
 # Timeout: 10 s floor; provisional, the first hosted run sets it (the image reports after 49 frames).
-foreach(spec IN ITEMS sms2:sms)
+foreach(spec IN ITEMS sms1:sms1 sms2:sms gg_sms:gg)
   string(REPLACE ":" ";" spec "${spec}")
   list(GET spec 0 legacy_profile)
   list(GET spec 1 legacy_machine)

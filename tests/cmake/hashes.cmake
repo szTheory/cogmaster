@@ -130,6 +130,22 @@ if(MODE STREQUAL "write")
             ${legacy_frames})
         endforeach()
       endif()
+      # Fault prevented: a legacy sprite picture that differs between lanes. Two pictures of the sprite
+      # image: the magnified 16 by 16 scenario (frame 15) and the last scenario, which the image holds
+      # from frame 47, on the three Master System profiles and the export NTSC console only. The
+      # pixels are judged against the closed-form oracle by tests/fixtures, so these rows only have to
+      # agree across lanes.
+      if(name STREQUAL "legacy_sprites")
+        foreach(legacy_frames IN ITEMS 15 47)
+          foreach(legacy_profile IN ITEMS sms:sms sms1:sms1 gg-sms:gg)
+            string(REPLACE ":" ";" legacy_profile "${legacy_profile}")
+            list(GET legacy_profile 0 legacy_label)
+            list(GET legacy_profile 1 legacy_machine)
+            hashes_playing(${filename} "${image}" ${legacy_label} ${legacy_machine} sms ntsc-u legacy
+              ${legacy_frames})
+          endforeach()
+        endforeach()
+      endif()
       # Fault prevented: a device frame that differs between lanes. A row is <file>|<script>|<arguments>;
       # the frames are the script's lines, since the runner takes one record per frame.
       # A row may end in |<region> (default ntsc-j).

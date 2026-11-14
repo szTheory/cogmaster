@@ -109,6 +109,16 @@ if(CMAKE_SCRIPT_MODE_FILE)
     if(NOT hashes MATCHES "(^|\n)${row} frame 620 sha256 [0-9a-f]+\n")
       message(FATAL_ERROR "playing matrix missing ${row} frame 620")
     endif()
+    # The sprite image has two pictures on each Master System profile: the magnified 16 by 16 scenario
+    # at frame 15 and the held last scenario at frame 47.
+    foreach(legacy_frames IN ITEMS 15 47)
+      foreach(legacy_profile IN ITEMS sms sms1 gg-sms)
+        set(row "playing legacy_sprites.sms ${legacy_profile} ntsc-u legacy")
+        if(NOT hashes MATCHES "(^|\n)${row} frame ${legacy_frames} sha256 [0-9a-f]+\n")
+          message(FATAL_ERROR "playing matrix missing ${row} frame ${legacy_frames}")
+        endif()
+      endforeach()
+    endforeach()
     # The V and Pause fixtures print and judge their records on both TVs, and the Pause images also run
     # as device rows on PAL (one frame per line of the script).
     foreach(row IN ITEMS "mailbox vdp_vtable_192.sms ntsc ntsc-u" "mailbox vdp_vtable_224.sms pal pal"
