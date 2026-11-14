@@ -76,7 +76,7 @@ the dirty-tree stamp and the assembler fetch retry land first, inside this phase
   3. The base-versus-head hashes comparison is equal for every shipped frame, audio and state pin; behaviour revision 19 and state format 17 are recorded; a legacy-mode state round trip is byte-equal and a state whose legacy sprite slots break the new bounds is refused; the fixture that enters Graphics II after frame 600 and the mid-frame mode-switch fixture each have a pinned hash, and the mode 4 bring-up fixtures hash as before
   4. The instructions-per-frame gate reports green with no new allow line, first read from a draft pull request opened before the phase is complete; the legacy-mode hardware notes are rewritten from sources with the note that MAME contradicts corrected and the open model choices (Graphics II masks, sprite Y threshold, colour-0 collision) stated with their reasons, the permissive files consulted have provenance rows, and the docs byte-cap check passes
   5. The docs state the current fault vocabulary (`docs/audio.md`, `docs/embedding.md` and `docs/runner.md` corrected) and the docs checks pass; the library run path refuses or marks a tree with tracked changes outside `.planning`, proven by a test with a dirty-tree control; the tool fetch script retries a transient DNS or TLS error and a test shows a permanent failure still fails; `cmake --workflow --preset ci` exits 0 on the phase head
-**Plans**: 3/9 plans executed
+**Plans**: 4/9 plans executed
 
 Plans:
 **Wave 1**
@@ -89,7 +89,7 @@ Plans:
 - [x] 16-03-PLAN.md — Once-per-call class dispatch skeleton, faulting-mode seeds retargeted to text and multicolour, draft pull request and first perf read (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 16-04-PLAN.md — Graphics I and II renderer with the fault narrowed, the unsupported-mode literal table and the in-process background, switch and hostile cases (wave 4)
+- [x] 16-04-PLAN.md — Graphics I and II renderer with the fault narrowed, the unsupported-mode literal table and the in-process background, switch and hostile cases (wave 4)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 - [ ] 16-05-PLAN.md — legacy_modes fixtures against the oracle on three profiles, switch-line pin and cross-lane hash rows from a frame-count parameter (wave 5)
@@ -135,5 +135,5 @@ before a milestone-close pull request.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 16. Graphics I and II draw | 3/9 | In Progress | - |
+| 16. Graphics I and II draw | 4/9 | In Progress | - |
 | 17. Re-run, merge and clean state | 0/TBD | Not started | - |

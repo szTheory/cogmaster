@@ -5,16 +5,16 @@ milestone_name: Legacy video modes
 current_phase: 16
 current_phase_name: Graphics I and II draw
 status: executing
-stopped_at: Completed 16-03-PLAN.md
-last_updated: "2026-11-14T04:09:41.031Z"
+stopped_at: Completed 16-04-PLAN.md
+last_updated: "2026-11-14T04:37:09.535Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 16 execution started
-state_head: 3b47f73a15404721a4cef96837f277a9fd06999c
+state_head: c0b1d10dd8c4ee2cf7d0c63c0d8468065ab7b347
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 9
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-13)
 ## Current Position
 
 Phase: 16 (Graphics I and II draw) — EXECUTING
-Plan: 4 of 9
+Plan: 5 of 9
 Status: Ready to execute
 Last activity: 2026-11-13 — Phase 16 execution started
 
@@ -247,6 +247,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 16 P01 | 13 min | 3 tasks | 13 files |
 | Phase 16 P02 | 42 min | 3 tasks | 13 files |
 | Phase 16 P03 | 14 min | 3 tasks | 6 files |
+| Phase 16 P04 | 20 min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -282,6 +283,8 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 16]: 16-02: each legacy_sprites scenario programs its own R7 so a picture names its scenario and a compare one frame off fails; the tail H counter row is 0000-0013 because ticks 600 to 683 wrap through the H counter jump, with the status read 45 ticks before the H read; every sprite status row is computed by legacy_status in tests/fixtures/legacy.c and re-derived by fixtures.legacy.oracle; g2_late switches at host frame 616 (16 load frames plus 600 counted), g2_switch switches in line 48, sprite scenario k is the completed picture at frame 9 + 2 (k - 1)
 - [Phase 16]: 16-03: the phase branch was cut from the milestone-branch tip because the milestone docs commits are not on origin/main, as Phase 13 did, so the draft pull request carries seven planning-only milestone commits; the owner may ask for a docs: pull request of the milestone branch first
 - [Phase 16]: 16-03: render_until reads the mode class once and returns first when the cursor is at the end; the faulting case runs a backdrop-only loop and the mode 4 loop has no mode test, which took the hosted boot_to_play read from 12288947 to 9893026 instructions per frame (verdict PASS); the multicolour seed clears R0 with XOR A because string(ASCII) cannot spell a zero byte
+- [Phase 16]: 16-04: a legacy line is drawn only when the display latch is on and the class is legacy (otherwise the colour RAM backdrop as before), the legacy branch keeps the mode 4 per-line sprite scan call and draws no sprite until plans 07 and 08, and the span converts the two colours of each cell because gun and status reads ask for spans of a few dots
+- [Phase 16]: 16-04: release.firmware_scan read the 262656 byte macOS arm64 libcogmaster.a as a copier-headered image (a size rule on a static library); the per-cell colour refactor moved it to 262024 and the scan is left for the owner or a later plan (deferred-items.md); hygiene.tree timed out at 60 s only while unrelated processes held the load at 30 to 40 and passes with COGMASTER_TIMEOUT_SCALE=4
 
 ### Pending Todos
 
@@ -487,8 +490,8 @@ Items acknowledged and deferred, most recent first (v2.1 closed SEED-016 as done
 
 ## Session Continuity
 
-Last session: 2026-11-14T04:09:40.976Z
-Stopped at: Completed 16-03-PLAN.md
+Last session: 2026-11-14T04:37:09.499Z
+Stopped at: Completed 16-04-PLAN.md
 Resume file: None
 Milestone v2.1 pull requests: #40, #42 and #44 (phases 13 to 15) and releases #41, #43 and #45 (v0.14.0 to v0.14.2)
 
