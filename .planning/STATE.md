@@ -4,17 +4,17 @@ milestone: v2.2
 milestone_name: Legacy video modes
 current_phase: 16
 current_phase_name: Graphics I and II draw
-status: executing
-stopped_at: Completed 16-08-PLAN.md
-last_updated: "2026-11-14T05:55:45.836Z"
+status: verifying
+stopped_at: Completed 16-09-PLAN.md
+last_updated: "2026-11-14T06:20:16.732Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 16 execution started
-state_head: 8616ddd9baec19b9edfbe92fc4feeb468ac68d78
+state_head: 323ad14241954c4e47050b6956d0caaee660688a
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-11-13)
 
 Phase: 16 (Graphics I and II draw) — EXECUTING
 Plan: 9 of 9
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-13 — Phase 16 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -252,6 +252,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 16 P06 | 13 min | 2 tasks | 11 files |
 | Phase 16 P07 | 18 min | 2 tasks | 8 files |
 | Phase 16 P08 | 23 min | 3 tasks | 8 files |
+| Phase 16 P09 | 21 min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -296,6 +297,8 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 16]: 16-07: the fifth sprite candidate is stored as 1 + table index in sprite_overflow and copied to fifth_index at dot 0 only while status bit 6 is clear (a gate on fifth_index being 31 would overwrite a latched 31); lines from 192 on in a legacy picture draw the backdrop and assert no sprite flag, the scan still runs so the saved fields stay inside the loader bounds; mode 4 scans store sprite_legacy 0 and attr 0
 - [Phase 16]: 16-07: the class-change rescan sits in render_until after the class is computed and before the fault check, skipped for the blocked class; its test case was committed failing and the rescan after it; the sprite tests keep the generator at 0x1800 (R6 3) and the table at 0x3F80; hygiene.no_float reads a citation such as 2.4.5 as a decimal number unless the word section precedes it; MODE-03 and MODE-06 stay out of requirements-completed until plan 08
 - [Phase 16]: 16-08: the sprite image is judged by one compare-all run per profile (scenario k on frames 9 + 2 (k - 1) and 10 + 2 (k - 1)) and the runner hash of the last scenario at frame 47, which the image holds; the hashes file takes two pictures per profile (frames 15 and 47); vdp.legacy.hostile asserts the sprite bounds at every step and that the garbage reaches them; the second push (d7da071 to fba1e24) has hosted run 43562888383 green, perf boot_to_play head 10089912 base 12288947 PASS with no allow line, be32 runner.hashes_file 64.72 s; MODE-03 and MODE-06 complete, MODE-05 and MODE-07 wait for plan 09
+- [Phase 16]: 16-09: video.md and SMS-VDP section 7 call every legacy choice a model with its disagreeing sources and correct the MAME attribution (315_5124.cpp masks Graphics II on every revision, the SMS2 and Game Gear no-mask statement is msvdp's, tms9928a.cpp tests above $E0); the TI manual's range is not quoted because the page image was not checked; the Young notes row VDP.28 carries capture 20260307023015 found from the web/2026/ redirect; PROVENANCE names MAME tms9928a and ares tms9918 at pins 1d7a454ed79e and 9408cb43d494, both answering 200, with no seed row — Plan 16-09 rationale: every reference consulted for a model choice has a traceable row, fixtures are read as fidelity to the notes and never to silicon, and the timeouts are twice a measured hosted lane
+- [Phase 16]: 16-09: runner.hashes_file is 130 s (2 x 64.72 s on be32, run 43562888383) and the three g2_late tests 29 s (2 x 14.02 s); core.state.legacy_sprite_bounds keeps its 60 s tier; the third push 6e8984e has hosted run 43564813364 green with CI required success, perf PASS (10089912 against base 12288947, no allow line), ci workflow 737 of 737, hygiene 84 of 84, subset compare empty (173 base lines, 198 head); MODE-02, MODE-04, MODE-05, MODE-07 and MODE-08 complete; the pull request stays a draft for /gsd-ship — Plan 16-09 rationale: every reference consulted for a model choice has a traceable row, fixtures are read as fidelity to the notes and never to silicon, and the timeouts are twice a measured hosted lane
 
 ### Pending Todos
 
@@ -475,6 +478,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-14 | Execute phase 16 plan 16-05 (gsd-execute-phase 16); every legacy_modes image equal to the closed-form oracle on three profiles through the API and the runner hash (16 fixtures.legacy_modes tests), g2_switch line pinned by hash after the dots were checked, 13 legacy rows in the hashes file from a frame-count parameter with the subset compare exit 0; 3 tasks, 3 commits, nothing pushed, cmake --workflow --preset ci 718 of 718 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-14 | Execute phase 16 plan 16-06 (gsd-execute-phase 16); state format 17 and behaviour revision 19: widened sprite slots and three fields after vram (pin 16520), the status read low bits with the latched fifth index, class-dependent loader bounds on the selected slots, byte-equal legacy round trip and 32 bounds sub-cases with 11 loader mutations controlled, 73 classified fields, subset compare exit 0, core.info literal 18 fixed; 2 tasks, 4 commits, nothing pushed, cmake --workflow --preset ci 720 of 720 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-14 | Execute phase 16 plan 16-08 (gsd-execute-phase 16); legacy_sprites image equal to the sprite oracle on three profiles (pixels on every scenario and both frames, runner hash, 22 mailbox records with the tail read), six cross-lane hash rows, sprite bounds under hostile input and a legacy program seed, second push d7da071 to fba1e24 with hosted run 43562888383 green, perf PASS (10089912 against base 12288947, no allow line), be32 runner.hashes_file 64.72 s; 3 tasks, 3 commits, MODE-03 and MODE-06 complete, ctest ci 737 of 737 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-14 | Execute phase 16 plan 16-09 (gsd-execute-phase 16); legacy video notes in docs/hardware/video.md with every choice a model and its disagreeing sources, SMS-VDP section 7 rewritten with the MAME attribution corrected, PROVENANCE rows for MAME tms9928a and ares tms9918 (both pins 200), embedding and conformance guides within the cap, runner.hashes_file 130 s and the g2_late tests 29 s from run 43562888383, third push fba1e24 to 6e8984e with hosted run 43564813364 green (CI required success, perf PASS 10089912 against base 12288947, no allow line); 3 tasks, 3 commits, MODE-02, MODE-04, MODE-05, MODE-07 and MODE-08 complete, ctest ci 737 of 737, hygiene 84 of 84, subset compare empty | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -504,8 +508,8 @@ Items acknowledged and deferred, most recent first (v2.1 closed SEED-016 as done
 
 ## Session Continuity
 
-Last session: 2026-11-14T05:55:45.803Z
-Stopped at: Completed 16-08-PLAN.md
+Last session: 2026-11-14T06:20:16.700Z
+Stopped at: Completed 16-09-PLAN.md
 Resume file: None
 Milestone v2.1 pull requests: #40, #42 and #44 (phases 13 to 15) and releases #41, #43 and #45 (v0.14.0 to v0.14.2)
 

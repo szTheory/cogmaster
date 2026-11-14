@@ -13,13 +13,13 @@ a promise: a row also needs a changing picture to pass the boots check, and some
 ### Legacy video modes
 
 - [x] **MODE-01**: With register 0 and 1 selecting Graphics I (M1=0, M2=0, M3=0, M4=0), the core draws the name table, the pattern table, the colour table (one byte per eight patterns) and the register 7 backdrop with the fixed TMS9918 palette, on the Master System 1, Master System 2 and Game Gear in Master System video mode; an owned fixture proves the pixels against a closed-form oracle written before the renderer
-- [ ] **MODE-02**: With Graphics II selected (M3=1), the core draws the three-section pattern and colour tables with the documented address masks (registers 3 and 4); a fixture with each mask combination proves the pixels, and the masks that the sources disagree on are named in the hardware notes with the choice and its reason
+- [x] **MODE-02**: With Graphics II selected (M3=1), the core draws the three-section pattern and colour tables with the documented address masks (registers 3 and 4); a fixture with each mask combination proves the pixels, and the masks that the sources disagree on are named in the hardware notes with the choice and its reason
 - [x] **MODE-03**: Sprites in the legacy modes follow the documented legacy rules (4 per line, 8x8 and 16x16, magnification, early clock bit, fifth-sprite flag, coincidence flag, the end-of-list Y value), proven by a fixture with closed-form pixels and status-register checks, and the Mode 4 sprite engine is untouched
-- [ ] **MODE-04**: Text, multicolour, the mixed modes, the invalid text modes and native Game Gear video keep recording the unsupported-video-mode fault, each with a test, and the documentation says which modes render and which fault; the Light Phaser's "would this fault" check agrees with the supported-mode test
-- [ ] **MODE-05**: No shipped frame, audio or state pin moves (the base-versus-head hashes comparison from the previous milestone is equal for every pin), behaviour revision 19 and state format 17 are recorded, a legacy-mode state round trip is equal, and the state loader refuses a state whose legacy sprite slots break the new bounds
+- [x] **MODE-04**: Text, multicolour, the mixed modes, the invalid text modes and native Game Gear video keep recording the unsupported-video-mode fault, each with a test, and the documentation says which modes render and which fault; the Light Phaser's "would this fault" check agrees with the supported-mode test
+- [x] **MODE-05**: No shipped frame, audio or state pin moves (the base-versus-head hashes comparison from the previous milestone is equal for every pin), behaviour revision 19 and state format 17 are recorded, a legacy-mode state round trip is equal, and the state loader refuses a state whose legacy sprite slots break the new bounds
 - [x] **MODE-06**: Mode switches during a run draw correctly: a fixture that enters Graphics II after frame 600 and one that switches modes mid-frame each have a pinned hash, and the mode 4 bring-up dots that wrote registers 0 and 1 transiently still hash as before
-- [ ] **MODE-07**: The legacy renderer is selected once per line, and the instructions-per-frame gate stays green with no new allow line; the first hosted read of the gate comes from a draft pull request opened before the phase is complete
-- [ ] **MODE-08**: The hardware notes on the legacy modes are rewritten from sources (the earlier note that MAME contradicts is corrected), the permissive reference files consulted have rows in the provenance document, and the docs stay inside their byte caps
+- [x] **MODE-07**: The legacy renderer is selected once per line, and the instructions-per-frame gate stays green with no new allow line; the first hosted read of the gate comes from a draft pull request opened before the phase is complete
+- [x] **MODE-08**: The hardware notes on the legacy modes are rewritten from sources (the earlier note that MAME contradicts is corrected), the permissive reference files consulted have rows in the provenance document, and the docs stay inside their byte caps
 
 ### Library run
 
@@ -72,13 +72,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | MODE-01 | Phase 16 | Complete |
-| MODE-02 | Phase 16 | Pending |
+| MODE-02 | Phase 16 | Complete |
 | MODE-03 | Phase 16 | Complete |
-| MODE-04 | Phase 16 | Pending |
-| MODE-05 | Phase 16 | Pending |
+| MODE-04 | Phase 16 | Complete |
+| MODE-05 | Phase 16 | Complete |
 | MODE-06 | Phase 16 | Complete |
-| MODE-07 | Phase 16 | Pending |
-| MODE-08 | Phase 16 | Pending |
+| MODE-07 | Phase 16 | Complete |
+| MODE-08 | Phase 16 | Complete |
 | RUN-03 | Phase 17 | Pending |
 | RUN-04 | Phase 17 | Pending |
 | TUNE-12 | Phase 16 | Complete |

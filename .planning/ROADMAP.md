@@ -76,7 +76,7 @@ the dirty-tree stamp and the assembler fetch retry land first, inside this phase
   3. The base-versus-head hashes comparison is equal for every shipped frame, audio and state pin; behaviour revision 19 and state format 17 are recorded; a legacy-mode state round trip is byte-equal and a state whose legacy sprite slots break the new bounds is refused; the fixture that enters Graphics II after frame 600 and the mid-frame mode-switch fixture each have a pinned hash, and the mode 4 bring-up fixtures hash as before
   4. The instructions-per-frame gate reports green with no new allow line, first read from a draft pull request opened before the phase is complete; the legacy-mode hardware notes are rewritten from sources with the note that MAME contradicts corrected and the open model choices (Graphics II masks, sprite Y threshold, colour-0 collision) stated with their reasons, the permissive files consulted have provenance rows, and the docs byte-cap check passes
   5. The docs state the current fault vocabulary (`docs/audio.md`, `docs/embedding.md` and `docs/runner.md` corrected) and the docs checks pass; the library run path refuses or marks a tree with tracked changes outside `.planning`, proven by a test with a dirty-tree control; the tool fetch script retries a transient DNS or TLS error and a test shows a permanent failure still fails; `cmake --workflow --preset ci` exits 0 on the phase head
-**Plans**: 8/9 plans executed
+**Plans**: 9/9 plans executed
 
 Plans:
 **Wave 1**
@@ -104,7 +104,7 @@ Plans:
 - [x] 16-08-PLAN.md — legacy_sprites fixture and mailbox rows on three profiles, hash rows, hostile sprite input, fuzz seed, second push (wave 8)
 
 **Wave 9** *(blocked on Wave 8 completion)*
-- [ ] 16-09-PLAN.md — Hardware notes and provenance rewritten, embedding and conformance docs, timeouts re-derived, phase-head evidence and last push (wave 9)
+- [x] 16-09-PLAN.md — Hardware notes and provenance rewritten, embedding and conformance docs, timeouts re-derived, phase-head evidence and last push (wave 9)
 **Note**: The first plan carries TUNE-12, TUNE-13 and TUNE-14 (a docs- or CI-only pull request cuts no release, and every phase ends in one). Oracles and owned fixtures come before the renderer; a draft pull request opens early so the hosted perf gate is read before the renderer is final. The renderer is its own module, selected once per line, with the fixed TMS palette and a 4-slot legacy sprite engine; the mode 4 sprite engine is untouched. No MAME screenshot is a gate (no firmware bytes here and `mame` is not installed).
 
 ### Phase 17: Re-run, merge and clean state
@@ -135,5 +135,5 @@ before a milestone-close pull request.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 16. Graphics I and II draw | 8/9 | In Progress | - |
+| 16. Graphics I and II draw | 9/9 | In Progress | - |
 | 17. Re-run, merge and clean state | 0/TBD | Not started | - |
