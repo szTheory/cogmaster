@@ -5,16 +5,16 @@ milestone_name: Legacy video modes
 current_phase: 16
 current_phase_name: Graphics I and II draw
 status: executing
-stopped_at: Completed 16-06-PLAN.md
-last_updated: "2026-11-14T05:07:11.599Z"
+stopped_at: Completed 16-07-PLAN.md
+last_updated: "2026-11-14T05:31:37.267Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 16 execution started
-state_head: d4977f3106370721307e41e00ebd925081f417cc
+state_head: 5ae5ff6d3e8be7a31e7f1565e1dcdd468df35fe1
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 9
-  completed_plans: 6
+  completed_plans: 7
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-13)
 ## Current Position
 
 Phase: 16 (Graphics I and II draw) — EXECUTING
-Plan: 7 of 9
+Plan: 8 of 9
 Status: Ready to execute
 Last activity: 2026-11-13 — Phase 16 execution started
 
@@ -250,6 +250,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 16 P04 | 20 min | 2 tasks | 10 files |
 | Phase 16 P05 | 13 min | 3 tasks | 6 files |
 | Phase 16 P06 | 13 min | 2 tasks | 11 files |
+| Phase 16 P07 | 18 min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -291,6 +292,8 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 16]: 16-05: hashes_playing takes the frame count so the 13 legacy_modes playing rows (sms, sms1, gg-sms at 20 or 30 frames, g2_late on sms at 620) sit beside the unchanged 14 frame rows; they add 890 frames to runner.hashes_file (not 826), the head hashes file is 192 lines against 173 with comm -23 empty, and the 107 s timeout and the g2_late test timeouts are left for plan 09 to re-derive from a hosted run
 - [Phase 16]: 16-06: the loader bounds rows and colour bytes of the slots below sprite_count only and takes the class from sprite_legacy (the class at scan time), because a legacy scan followed by a mode 4 scan leaves legacy colour bytes and 16-row values in the slots past the new count and nothing reads them; a latched fifth index with status bit 6 clear is refused in both classes
 - [Phase 16]: 16-06: behaviour revision 19 and state format 17 land before the sprite engine (the record, the 16520 pin, the status read low bits, 73 classified fields); tests/core/test_core.c held a literal 18 beside the header macro that the plan's list missed, and core.state.legacy_sprite_bounds runs a whole record sweep so it takes the provisional 60 s tier; MODE-05 stays out of requirements-completed until plan 09
+- [Phase 16]: 16-07: the fifth sprite candidate is stored as 1 + table index in sprite_overflow and copied to fifth_index at dot 0 only while status bit 6 is clear (a gate on fifth_index being 31 would overwrite a latched 31); lines from 192 on in a legacy picture draw the backdrop and assert no sprite flag, the scan still runs so the saved fields stay inside the loader bounds; mode 4 scans store sprite_legacy 0 and attr 0
+- [Phase 16]: 16-07: the class-change rescan sits in render_until after the class is computed and before the fault check, skipped for the blocked class; its test case was committed failing and the rescan after it; the sprite tests keep the generator at 0x1800 (R6 3) and the table at 0x3F80; hygiene.no_float reads a citation such as 2.4.5 as a decimal number unless the word section precedes it; MODE-03 and MODE-06 stay out of requirements-completed until plan 08
 
 ### Pending Todos
 
@@ -498,8 +501,8 @@ Items acknowledged and deferred, most recent first (v2.1 closed SEED-016 as done
 
 ## Session Continuity
 
-Last session: 2026-11-14T05:07:11.548Z
-Stopped at: Completed 16-06-PLAN.md
+Last session: 2026-11-14T05:31:37.218Z
+Stopped at: Completed 16-07-PLAN.md
 Resume file: None
 Milestone v2.1 pull requests: #40, #42 and #44 (phases 13 to 15) and releases #41, #43 and #45 (v0.14.0 to v0.14.2)
 

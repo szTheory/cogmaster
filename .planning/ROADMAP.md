@@ -76,7 +76,7 @@ the dirty-tree stamp and the assembler fetch retry land first, inside this phase
   3. The base-versus-head hashes comparison is equal for every shipped frame, audio and state pin; behaviour revision 19 and state format 17 are recorded; a legacy-mode state round trip is byte-equal and a state whose legacy sprite slots break the new bounds is refused; the fixture that enters Graphics II after frame 600 and the mid-frame mode-switch fixture each have a pinned hash, and the mode 4 bring-up fixtures hash as before
   4. The instructions-per-frame gate reports green with no new allow line, first read from a draft pull request opened before the phase is complete; the legacy-mode hardware notes are rewritten from sources with the note that MAME contradicts corrected and the open model choices (Graphics II masks, sprite Y threshold, colour-0 collision) stated with their reasons, the permissive files consulted have provenance rows, and the docs byte-cap check passes
   5. The docs state the current fault vocabulary (`docs/audio.md`, `docs/embedding.md` and `docs/runner.md` corrected) and the docs checks pass; the library run path refuses or marks a tree with tracked changes outside `.planning`, proven by a test with a dirty-tree control; the tool fetch script retries a transient DNS or TLS error and a test shows a permanent failure still fails; `cmake --workflow --preset ci` exits 0 on the phase head
-**Plans**: 6/9 plans executed
+**Plans**: 7/9 plans executed
 
 Plans:
 **Wave 1**
@@ -98,7 +98,7 @@ Plans:
 - [x] 16-06-PLAN.md — State format 17 and behaviour revision 19: widened sprite slots, legacy round trip and loader bounds (wave 6)
 
 **Wave 7** *(blocked on Wave 6 completion)*
-- [ ] 16-07-PLAN.md — Legacy sprite engine: scan, pixel, fifth-sprite and coincidence flags, class-change rescan (wave 7)
+- [x] 16-07-PLAN.md — Legacy sprite engine: scan, pixel, fifth-sprite and coincidence flags, class-change rescan (wave 7)
 
 **Wave 8** *(blocked on Wave 7 completion)*
 - [ ] 16-08-PLAN.md — legacy_sprites fixture and mailbox rows on three profiles, hash rows, hostile sprite input, fuzz seed, second push (wave 8)
@@ -135,5 +135,5 @@ before a milestone-close pull request.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 16. Graphics I and II draw | 6/9 | In Progress | - |
+| 16. Graphics I and II draw | 7/9 | In Progress | - |
 | 17. Re-run, merge and clean state | 0/TBD | Not started | - |
