@@ -667,6 +667,26 @@ foreach(spec IN ITEMS bios_probe:sms:PROBE=1 bios_shape:bin:FULL=1 bios_shape_ba
     DEPENDS ${fixtures_src}/bios_shape.asm ${fixtures_src}/bios_shape.link VERBATIM)
   list(APPEND fixtures_images ${image})
 endforeach()
+# One function builds every Graphics I and II image from two sources, as vdp_lines builds its three: the
+# image name, the source (legacy_modes or legacy_sprites) and the -D define that picks the variant. Each
+# image gets its own link file, because the linker names the object it reads.
+function(fixtures_legacy_image name source define)
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${fixtures_src}/${source}.link)
+  file(READ ${fixtures_src}/${source}.link legacy_link)
+  string(REPLACE "${source}.o" "${name}.o" legacy_link "${legacy_link}")
+  set(image ${COGMASTER_FIXTURES_DIR}/${name}.sms)
+  file(GENERATE OUTPUT ${COGMASTER_FIXTURES_DIR}/${name}.link CONTENT "${legacy_link}")
+  add_custom_command(OUTPUT ${image}
+    COMMAND ${COGMASTER_WLA_Z80} -q -D ${define} -o ${COGMASTER_FIXTURES_DIR}/${name}.o ${source}.asm
+    COMMAND ${CMAKE_COMMAND} -E chdir ${COGMASTER_FIXTURES_DIR}
+      ${COGMASTER_WLALINK} -r ${name}.link ${image}
+    WORKING_DIRECTORY ${fixtures_src}
+    DEPENDS ${fixtures_src}/${source}.asm ${fixtures_src}/${source}.link
+      ${fixtures_src}/header.inc ${fixtures_src}/mailbox.inc VERBATIM)
+  list(APPEND fixtures_images ${image})
+  set(fixtures_images ${fixtures_images} PARENT_SCOPE)
+endfunction()
+fixtures_legacy_image(legacy_modes_g1 legacy_modes V_G1=1)
 add_custom_target(cogmaster-fixtures ALL DEPENDS ${fixtures_images})
 
 add_executable(cogmaster-test-lines ${CMAKE_CURRENT_LIST_DIR}/lines.c
@@ -681,6 +701,14 @@ target_include_directories(cogmaster-test-play PRIVATE ${PROJECT_SOURCE_DIR}/run
 target_link_libraries(cogmaster-test-play PRIVATE cogmaster::cogmaster)
 cogmaster_warnings(cogmaster-test-play)
 
+# The closed-form oracle for the Graphics I and II images: it prints the expected digest and compares
+# a run with it. A later test registers the comparisons; this one checks the oracle itself.
+add_executable(cogmaster-test-legacy-fixture ${CMAKE_CURRENT_LIST_DIR}/legacy.c
+  ${PROJECT_SOURCE_DIR}/runner/sha256.c)
+target_include_directories(cogmaster-test-legacy-fixture PRIVATE ${PROJECT_SOURCE_DIR}/runner)
+target_link_libraries(cogmaster-test-legacy-fixture PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-legacy-fixture)
+
 # Fault prevented: guest-only rendering regressions across both TV standards and every height.
 foreach(tv IN ITEMS ntsc pal)
   foreach(height IN ITEMS 192 224 240)
@@ -689,6 +717,13 @@ foreach(tv IN ITEMS ntsc pal)
       LABELS fixtures portable TIMEOUT 10)
   endforeach()
 endforeach()
+
+# Fault prevented: an oracle that disagrees with hand-computed pixels, which would make every later
+# comparison against it a comparison with a wrong answer.
+# Timeout: 10 s floor; the literal check runs in well under a second, provisional.
+cogmaster_add_test(NAME fixtures.legacy.oracle
+  COMMAND cogmaster-test-legacy-fixture - all all literals
+  LABELS fixtures portable TIMEOUT 10)
 
 string(REPLACE ";" "$<SEMICOLON>" fixtures_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
 
