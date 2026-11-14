@@ -92,6 +92,23 @@ if(CMAKE_SCRIPT_MODE_FILE)
         message(FATAL_ERROR "playing matrix missing ${row}")
       endif()
     endforeach()
+    # Every Graphics I and II image has its row on each Master System profile at the frame count its
+    # picture is judged at, the late image on the Master System 2 only, so a silent omission fails.
+    foreach(spec IN ITEMS g1:20 g2:20 g2_masked:20 g2_switch:30)
+      string(REPLACE ":" ";" spec "${spec}")
+      list(GET spec 0 legacy_variant)
+      list(GET spec 1 legacy_frames)
+      foreach(legacy_profile IN ITEMS sms sms1 gg-sms)
+        set(row "playing legacy_modes_${legacy_variant}.sms ${legacy_profile} ntsc-u legacy")
+        if(NOT hashes MATCHES "(^|\n)${row} frame ${legacy_frames} sha256 [0-9a-f]+\n")
+          message(FATAL_ERROR "playing matrix missing ${row} frame ${legacy_frames}")
+        endif()
+      endforeach()
+    endforeach()
+    set(row "playing legacy_modes_g2_late.sms sms ntsc-u legacy")
+    if(NOT hashes MATCHES "(^|\n)${row} frame 620 sha256 [0-9a-f]+\n")
+      message(FATAL_ERROR "playing matrix missing ${row} frame 620")
+    endif()
     # The V and Pause fixtures print and judge their records on both TVs, and the Pause images also run
     # as device rows on PAL (one frame per line of the script).
     foreach(row IN ITEMS "mailbox vdp_vtable_192.sms ntsc ntsc-u" "mailbox vdp_vtable_224.sms pal pal"
