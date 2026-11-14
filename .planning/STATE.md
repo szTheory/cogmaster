@@ -2,9 +2,14 @@
 gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Legacy video modes
+current_phase: 16
+current_phase_name: Graphics I and II draw
 status: planning
-last_updated: "2026-11-13T23:54:22.451Z"
+stopped_at: Phase 16 context gathered
+last_updated: "2026-11-14T00:24:03.930Z"
 last_activity: 2026-11-13
+last_activity_desc: v2.2 roadmap created (2 phases, 16 of 16 requirements mapped)
+state_head: df5208f4795c47521dc4241550172c7c3fa3bafe
 progress:
   total_phases: 2
   completed_phases: 0
@@ -269,6 +274,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 15]: Plan 15-02: each non-floor timeout comment is the ci-durations script's comment alone; fuzz and digest keep the 5-minute floor phrase because the floor still sets their minutes; asan drops it because the rule now gives 9
 - [Phase 15]: Plan 15-02: build (9 to 12) and be32 (15 to 21) were corrected in the same workflow commit, being below twice the fresh slowest; cause is test growth, not the runner
 - [Phase 15]: Plan 15-02: the ship body names workflows by display name (CI, Nightly, Digest), never by file name; the title stays fix(compat) for a patch release
+- [Phase 16]: 16-CONTEXT: branch phase/16-graphics-i-and-ii-draw cut from the milestone-branch tip, not origin/main, because the four milestone docs commits are not on main (rule 10 deviation as in 13-01; owner may override); Graphics II masks are a selected model (SMS1 masks, SMS2 and GG-in-SMS-mode do not), legacy backdrop gated on display, state format 17 and behaviour revision 19, draft PR right after the dispatch skeleton
 
 ### Pending Todos
 
@@ -440,6 +446,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-13 | Complete milestone v2.1 (gsd-complete-milestone v2.1; branch milestone/v2.1-fewer-failing-cartridges; SEED-016 closed as done, closeout override_closeout for the stale Phase 13 verification the audit accepted, roadmap, requirements, audit and phases 13 to 15 archived, PROJECT.md evolved, retrospective and product roadmap refreshed, no tag because release-please owns them) | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Ship milestone v2.1 close (gsd-ship; branch milestone/v2.1-fewer-failing-cartridges pushed, PR #46 opened non-draft with title docs: complete milestone v2.1, no external review command configured; auto-merge and the head-commit CI check are the next shell steps) | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | New milestone v2.2 Legacy video modes (gsd-new-milestone); nine-lens fan-out plus adversarial pass, scope approved by the owner | Claude Code | claude-sonnet-5-5 |
+| 2026-11-13 | Discuss phase 16 (gsd-discuss-phase 16); five research agents plus an adversarial pass against the code, 33 decisions, no owner prompts (standing fan-out instruction) | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -469,8 +476,8 @@ Items acknowledged and deferred, most recent first (v2.1 closed SEED-016 as done
 
 ## Session Continuity
 
-Last session: 2026-11-13T19:12:44.976Z
-Stopped at: Milestone v2.1 complete and archived
+Last session: 2026-11-14T00:24:03.870Z
+Stopped at: Phase 16 context gathered
 Resume file: None
 Milestone v2.1 pull requests: #40, #42 and #44 (phases 13 to 15) and releases #41, #43 and #45 (v0.14.0 to v0.14.2)
 
