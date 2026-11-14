@@ -51,6 +51,6 @@ behavior|tests/compat/whole_list_common.cmake|Shared comparison legs of the whol
 check|scripts/compat-ratchet.sh|Trusted compatibility judge entry point with adjacent parser dependency
 check|scripts/compat-update.sh|Explicit public ledger projection reuses the fully counted CSV parser and immutable CC0 identities
 operation|scripts/compat-seed.sh|Writes the ledger from the catalog through the shared parser and never judges, though it exits 1 on a stray id
-operation|scripts/library.sh|Enumerates private local files and orchestrates bounded executable observations without asserting repository content
+operation|scripts/library.sh|Enumerates private local files and orchestrates bounded executable observations without asserting repository content, and refuses a run against the tracked ledger from a tree with tracked changes
 operation|scripts/library.cmake|Probes and executes each local image against accepted expectations and writes private local results
 operation|scripts/digest.sh|Formats remote run data for the weekly digest and reads workflow timeouts; never fails on repository content

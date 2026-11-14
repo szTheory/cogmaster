@@ -125,6 +125,9 @@ rc=$?
 echo "library exit $rc"
 exit "$rc"
 ]=])
+# The repositories hold copies, so an edit to either script must reconfigure before the controls run.
+set_property(DIRECTORY ${PROJECT_SOURCE_DIR} APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+  ${PROJECT_SOURCE_DIR}/scripts/library.sh ${PROJECT_SOURCE_DIR}/scripts/compat-common.sh)
 function(tooling_dirty case)
   set(repo ${tooling}/dirty_${case})
   file(COPY ${PROJECT_SOURCE_DIR}/scripts/library.sh ${PROJECT_SOURCE_DIR}/scripts/compat-common.sh DESTINATION ${repo}/scripts)

@@ -12,6 +12,8 @@ For private dumps, put a literal directory in `COGMASTER_ROM_DIR` in ignored `.e
 workflow; an exported variable takes precedence. Direct `cmake --workflow --preset library` needs the
 variable already exported. CI runs `library.synthetic` with owned temporary images, never `library.local`.
 No library build directory is uploaded. Local per-file results stay in ignored `build/library/results/`.
+The run path refuses, with exit status 2, a tree with tracked changes outside `.planning`, so the ledger's `core=`
+stamp always names a commit.
 
 `sh scripts/library.sh diagnose` groups the failing carts by cause (see [conformance.md](conformance.md)). It reads
 `COGMASTER_ROM_DIR` as above, writes only `build/library/diag/diagnose.txt` (`COGMASTER_LIBRARY_OUT` moves that
@@ -416,6 +418,11 @@ apart from the host's: `docker run --rm -v "$PWD:/src" -v /src/build -w /src ubu
 anything else happens; only then does it unpack an archive into `DEST` or copy the file there. `policy.pins`
 requires four fields per row, a unique name, an `https://` URL and a 64-digit digest. Packages installed with apt
 stay unpinned: they are signed, and drift fails loudly as a build failure or a hash change.
+
+A transient network error (curl exit 6, 7, 18, 28, 35, 52, 55 or 56) is retried up to three calls, in `fetch-pin.sh` and in
+the assembler download of `cmake/WlaDx.cmake`; any other error fails on the first. The fetch-retry and dirty-tree tests run in
+the ci lane on every build leg against a refused local port, missing or tampered `file://` URLs, a fake `curl` and
+throwaway repositories, so none of them downloads anything real.
 
 The in-process presentation cases exercise RGB565 and XRGB8888, all active heights,
 native GG and SMS compatibility, default and square pixels, full field, rejected
