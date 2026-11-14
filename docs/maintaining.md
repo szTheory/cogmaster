@@ -87,6 +87,15 @@ Every phase ends in a release, and the release pull request is never held. Befor
 - the latest release is the expected version with 19 assets:
   `gh release view --json tagName,assets --jq '.tagName, (.assets | length)'`.
 
+**Closing a milestone.** After the last phase's pull request and its release pull request have merged, switch to
+`main`, run `git pull`, and run `sh scripts/milestone-close.sh` before the milestone-close pull request is opened. It
+prints one row per check (open pull requests, `CI required` on the head of `main`, the latest release with its tag and
+drafts, a merged release pull request still pending, the work tree, and releasable commits since the latest tag) and
+exits 0 when every row is ok, 1 when one is off and 2 when none is off but one could not be read. It is a check to
+run, not a release gate, and it does not run in CI. An off or unknown row is something to look at and re-run, for
+instance while a release pull request is still in flight. The two checks above still apply: the script reads open
+pull requests and a merged one still pending, but it does not count release assets.
+
 ## Withdrawing a release
 
 A published release is immutable, so a bad one is withdrawn and fixed forward:
