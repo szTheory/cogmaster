@@ -69,17 +69,19 @@ if(CMAKE_SCRIPT_MODE_FILE)
   diag("${SEEDS}/ed-00.sms" "fault=ed_undefined dev=cpu" "where=cpu fault_frame=0" "vdpmode=none")
   diag("${SEEDS}/static-display.sms" "verdict600=fail" "first_nonblank=none" "distinct600=1"
     "ram=still" "${none}")
-  # DI; LD A,$40; OUT ($BF),A; LD A,$81; OUT ($BF),A; HALT: the display on with mode select 0.
-  string(ASCII 243 62 64 211 191 62 129 211 191 118 mode0_code)
+  # DI; LD A,$50; OUT ($BF),A; LD A,$81; OUT ($BF),A; HALT: register 1 = $50, the display on with
+  # the text bit, so the mode select nibble is 1.
+  string(ASCII 243 62 80 211 191 62 129 211 191 118 mode0_code)
   string(REPEAT "v" 1014 mode0_pad)
   file(WRITE "${OUT}/mode0.sms" "${mode0_code}${mode0_pad}")
-  diag("${OUT}/mode0.sms" "fault=unsupported_video_mode dev=vdp" "vdpmode=graphics1")
-  # The same with register 0 = 2 first (DI; LD A,$02; OUT ($BF),A; LD A,$80; OUT ($BF),A; then
-  # register 1 = $40 and HALT): mode select 2, which the fault record names.
-  string(ASCII 243 62 2 211 191 62 128 211 191 62 64 211 191 62 129 211 191 118 mode2_code)
-  string(REPEAT "v" 1006 mode2_pad)
+  diag("${OUT}/mode0.sms" "fault=unsupported_video_mode dev=vdp" "vdpmode=text")
+  # The same with register 0 = 0 first (DI; XOR A, which string(ASCII) cannot spell as a zero
+  # operand; OUT ($BF),A; LD A,$80; OUT ($BF),A; then register 1 = $48 and HALT): the display on
+  # with the multicolour bit, so the mode select nibble is 4, which the fault record names.
+  string(ASCII 243 175 211 191 62 128 211 191 62 72 211 191 62 129 211 191 118 mode2_code)
+  string(REPEAT "v" 1007 mode2_pad)
   file(WRITE "${OUT}/mode2.sms" "${mode2_code}${mode2_pad}")
-  diag("${OUT}/mode2.sms" "fault=unsupported_video_mode dev=vdp" "vdpmode=graphics2")
+  diag("${OUT}/mode2.sms" "fault=unsupported_video_mode dev=vdp" "vdpmode=multicolor")
   if(DEFINED FIXTURES)
     diag("${FIXTURES}/boot_to_play.sms" "verdict600=pass" "${none}")
     diag("${FIXTURES}/vdp_lines_192.sms" "verdict600=pass" "${none}")

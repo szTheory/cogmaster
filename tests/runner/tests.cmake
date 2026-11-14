@@ -1019,8 +1019,9 @@ if(CMAKE_SCRIPT_MODE_FILE)
     # address of the ED prefix as pc and of the second byte as addr.
     expect_exit(0 "^fault frame=[0-9]+ line=[0-9]+ dot=[0-9]+ pc=[$]0000 op=[$]00 addr=[$]0001 width=8 dev=cpu kind=ed_undefined\n$"
       ${SEEDS}/ed-00.sms --frames 10 --trace first-fault)
-    # Enable display without Mode 4: the VDP fault must keep its public names.
-    string(ASCII 243 62 64 211 191 62 129 211 191 118 code)
+    # Enable display with the text bit and without Mode 4 (register 1 = $50, nibble 1), which has
+    # no renderer: the VDP fault must keep its public names.
+    string(ASCII 243 62 80 211 191 62 129 211 191 118 code)
     string(REPEAT "v" 1014 padding)
     set(rom "${SEEDS}/../unsupported-video.sms")
     file(WRITE "${rom}" "${code}${padding}")
