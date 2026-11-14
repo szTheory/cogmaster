@@ -5,16 +5,16 @@ milestone_name: Legacy video modes
 current_phase: 16
 current_phase_name: Graphics I and II draw
 status: executing
-stopped_at: Phase 16 context gathered
-last_updated: "2026-11-14T02:47:44.659Z"
+stopped_at: Completed 16-01-PLAN.md
+last_updated: "2026-11-14T03:13:02.979Z"
 last_activity: 2026-11-13
-last_activity_desc: v2.2 roadmap created (2 phases, 16 of 16 requirements mapped)
-state_head: b42967148b25ae9bf38cad8878353012dd4ec4ab
+last_activity_desc: Phase 16 execution started
+state_head: b8b74e3c19e6cca8d7a9f25adbbfbc0b1b29aff8
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 9
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-13)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 16 — Graphics I and II draw (milestone v2.2 Legacy video modes)
+**Current focus:** Phase 16 — Graphics I and II draw
 
 ## Current Position
 
-Phase: 16 (Graphics I and II draw) — READY TO EXECUTE
-Plan: —
+Phase: 16 (Graphics I and II draw) — EXECUTING
+Plan: 2 of 9
 Status: Ready to execute
-Last activity: 2026-11-13 — v2.2 roadmap created (2 phases, 16 of 16 requirements mapped)
+Last activity: 2026-11-13 — Phase 16 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -244,6 +244,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 14 P08 | 75 min | 3 tasks | 8 files |
 | Phase 15 P01 | 7 min | 3 tasks | 4 files |
 | Phase 15 P02 | 10min | 2 tasks | 8 files |
+| Phase 16 P01 | 13 min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -275,6 +276,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 15]: Plan 15-02: build (9 to 12) and be32 (15 to 21) were corrected in the same workflow commit, being below twice the fresh slowest; cause is test growth, not the runner
 - [Phase 15]: Plan 15-02: the ship body names workflows by display name (CI, Nightly, Digest), never by file name; the title stays fix(compat) for a patch release
 - [Phase 16]: 16-CONTEXT: branch phase/16-graphics-i-and-ii-draw cut from the milestone-branch tip, not origin/main, because the four milestone docs commits are not on main (rule 10 deviation as in 13-01; owner may override); Graphics II masks are a selected model (SMS1 masks, SMS2 and GG-in-SMS-mode do not), legacy backdrop gated on display, state format 17 and behaviour revision 19, draft PR right after the dispatch skeleton
+- [Phase 16]: 16-01: the nine rider controls are ci-lane tests with no platform guard; policy.pins.retry runs through expect_fail with CODE 0 because a pass expression makes CTest ignore the exit status; the library dirty-tree refusal is gated on the tracked ledger and the synthetic workflow step now uses a stand-in ledger so a dirty tree still passes — Rule 5 has no hygiene exception, ci-msvc shares ci.txt, and the plan's own test list needed the exit status checked
 
 ### Pending Todos
 
@@ -448,6 +450,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-13 | New milestone v2.2 Legacy video modes (gsd-new-milestone); nine-lens fan-out plus adversarial pass, scope approved by the owner | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Discuss phase 16 (gsd-discuss-phase 16); five research agents plus an adversarial pass against the code, 33 decisions, no owner prompts (standing fan-out instruction) | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Plan phase 16 (gsd-plan-phase 16); researcher, planner and checker subagents, nine plans in nine sequential waves after two revision rounds (16 issues, then 3 warnings, then 3 text fixes applied by the orchestrator at the cap), decision coverage 33 of 33, all 11 requirements claimed; D-26 order refined (state 17 before sprites) and recorded in CONTEXT; no owner prompts (standing instruction) | Claude Code | claude-sonnet-5-5 (planner claude-opus-5-5, checker claude-haiku-5-5) |
+| 2026-11-14 | Execute phase 16 plan 16-01 (gsd-execute-phase 16); riders: assembler and pin download retries, library dirty-tree refusal, fault-vocabulary docs, nine ci-lane controls; 3 tasks, 4 commits, cmake --workflow --preset ci 685 of 685 | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -477,8 +480,8 @@ Items acknowledged and deferred, most recent first (v2.1 closed SEED-016 as done
 
 ## Session Continuity
 
-Last session: 2026-11-14T00:24:03.870Z
-Stopped at: Phase 16 context gathered
+Last session: 2026-11-14T03:13:02.942Z
+Stopped at: Completed 16-01-PLAN.md
 Resume file: None
 Milestone v2.1 pull requests: #40, #42 and #44 (phases 13 to 15) and releases #41, #43 and #45 (v0.14.0 to v0.14.2)
 

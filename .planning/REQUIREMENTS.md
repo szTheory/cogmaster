@@ -28,9 +28,9 @@ a promise: a row also needs a changing picture to pass the boots check, and some
 
 ### Debt and tooling
 
-- [ ] **TUNE-12**: The documentation states the current fault vocabulary: the false line in `docs/audio.md` about unmapped-port faults and the stale lines in `docs/embedding.md` and `docs/runner.md` are corrected, and the docs checks pass
-- [ ] **TUNE-13**: The library run path refuses to stamp `core=` from a tree with tracked changes outside `.planning`, or stamps `+dirty` and the ratchet rejects that stamp; a test with a dirty-tree control proves it
-- [ ] **TUNE-14**: A transient DNS or TLS failure while fetching a pinned assembler or tool no longer fails a hosted job on its first attempt; the fetch script retries those errors, with a test that a permanent failure still fails
+- [x] **TUNE-12**: The documentation states the current fault vocabulary: the false line in `docs/audio.md` about unmapped-port faults and the stale lines in `docs/embedding.md` and `docs/runner.md` are corrected, and the docs checks pass
+- [x] **TUNE-13**: The library run path refuses to stamp `core=` from a tree with tracked changes outside `.planning`, or stamps `+dirty` and the ratchet rejects that stamp; a test with a dirty-tree control proves it
+- [x] **TUNE-14**: A transient DNS or TLS failure while fetching a pinned assembler or tool no longer fails a hosted job on its first attempt; the fetch script retries those errors, with a test that a permanent failure still fails
 - [ ] **TUNE-15**: The diagnose vocabulary that nothing raises any more (`pclass`, `wclass`, `where=port`, `rom_write`, `vdpmode`) is removed in one change, the line shape changes once, and the diagnose tests and docs agree
 - [ ] **TUNE-16**: The job timeouts that drifted again (the be32 lane, the diagnose test, the hygiene tree check) are re-derived from live runs by the twice-the-slowest rule, with run IDs, in one workflow commit
 - [ ] **TUNE-17**: A milestone-close check script reports open pull requests, main CI on the latest commit, the latest release and its release pull request, and a clean work tree on `main`, exits non-zero when any is off, is described in `docs/maintaining.md`, and has a test with a dirty-tree control; it is a check to run, not a release gate
@@ -81,9 +81,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MODE-08 | Phase 16 | Pending |
 | RUN-03 | Phase 17 | Pending |
 | RUN-04 | Phase 17 | Pending |
-| TUNE-12 | Phase 16 | Pending |
-| TUNE-13 | Phase 16 | Pending |
-| TUNE-14 | Phase 16 | Pending |
+| TUNE-12 | Phase 16 | Complete |
+| TUNE-13 | Phase 16 | Complete |
+| TUNE-14 | Phase 16 | Complete |
 | TUNE-15 | Phase 17 | Pending |
 | TUNE-16 | Phase 17 | Pending |
 | TUNE-17 | Phase 17 | Pending |
