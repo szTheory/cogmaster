@@ -5,16 +5,16 @@ milestone_name: Legacy video modes
 current_phase: 16
 current_phase_name: Graphics I and II draw
 status: executing
-stopped_at: Completed 16-07-PLAN.md
-last_updated: "2026-11-14T05:31:37.267Z"
+stopped_at: Completed 16-08-PLAN.md
+last_updated: "2026-11-14T05:55:45.836Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 16 execution started
-state_head: 5ae5ff6d3e8be7a31e7f1565e1dcdd468df35fe1
+state_head: 8616ddd9baec19b9edfbe92fc4feeb468ac68d78
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-13)
 ## Current Position
 
 Phase: 16 (Graphics I and II draw) — EXECUTING
-Plan: 8 of 9
+Plan: 9 of 9
 Status: Ready to execute
 Last activity: 2026-11-13 — Phase 16 execution started
 
@@ -251,6 +251,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 16 P05 | 13 min | 3 tasks | 6 files |
 | Phase 16 P06 | 13 min | 2 tasks | 11 files |
 | Phase 16 P07 | 18 min | 2 tasks | 8 files |
+| Phase 16 P08 | 23 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -294,6 +295,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 16]: 16-06: behaviour revision 19 and state format 17 land before the sprite engine (the record, the 16520 pin, the status read low bits, 73 classified fields); tests/core/test_core.c held a literal 18 beside the header macro that the plan's list missed, and core.state.legacy_sprite_bounds runs a whole record sweep so it takes the provisional 60 s tier; MODE-05 stays out of requirements-completed until plan 09
 - [Phase 16]: 16-07: the fifth sprite candidate is stored as 1 + table index in sprite_overflow and copied to fifth_index at dot 0 only while status bit 6 is clear (a gate on fifth_index being 31 would overwrite a latched 31); lines from 192 on in a legacy picture draw the backdrop and assert no sprite flag, the scan still runs so the saved fields stay inside the loader bounds; mode 4 scans store sprite_legacy 0 and attr 0
 - [Phase 16]: 16-07: the class-change rescan sits in render_until after the class is computed and before the fault check, skipped for the blocked class; its test case was committed failing and the rescan after it; the sprite tests keep the generator at 0x1800 (R6 3) and the table at 0x3F80; hygiene.no_float reads a citation such as 2.4.5 as a decimal number unless the word section precedes it; MODE-03 and MODE-06 stay out of requirements-completed until plan 08
+- [Phase 16]: 16-08: the sprite image is judged by one compare-all run per profile (scenario k on frames 9 + 2 (k - 1) and 10 + 2 (k - 1)) and the runner hash of the last scenario at frame 47, which the image holds; the hashes file takes two pictures per profile (frames 15 and 47); vdp.legacy.hostile asserts the sprite bounds at every step and that the garbage reaches them; the second push (d7da071 to fba1e24) has hosted run 43562888383 green, perf boot_to_play head 10089912 base 12288947 PASS with no allow line, be32 runner.hashes_file 64.72 s; MODE-03 and MODE-06 complete, MODE-05 and MODE-07 wait for plan 09
 
 ### Pending Todos
 
@@ -472,6 +474,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-14 | Execute phase 16 plan 16-03 (gsd-execute-phase 16); mode class decided once per render call with every shipped pin unchanged (subset compare exit 0), four faulting seeds moved to the text and multicolour nibbles, branch pushed once and draft PR 47 opened, hosted perf job PASS (boot_to_play 12288947 to 9893026 instructions per frame); 3 tasks, 3 commits, cmake --workflow --preset ci 687 of 687 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-14 | Execute phase 16 plan 16-05 (gsd-execute-phase 16); every legacy_modes image equal to the closed-form oracle on three profiles through the API and the runner hash (16 fixtures.legacy_modes tests), g2_switch line pinned by hash after the dots were checked, 13 legacy rows in the hashes file from a frame-count parameter with the subset compare exit 0; 3 tasks, 3 commits, nothing pushed, cmake --workflow --preset ci 718 of 718 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-14 | Execute phase 16 plan 16-06 (gsd-execute-phase 16); state format 17 and behaviour revision 19: widened sprite slots and three fields after vram (pin 16520), the status read low bits with the latched fifth index, class-dependent loader bounds on the selected slots, byte-equal legacy round trip and 32 bounds sub-cases with 11 loader mutations controlled, 73 classified fields, subset compare exit 0, core.info literal 18 fixed; 2 tasks, 4 commits, nothing pushed, cmake --workflow --preset ci 720 of 720 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-14 | Execute phase 16 plan 16-08 (gsd-execute-phase 16); legacy_sprites image equal to the sprite oracle on three profiles (pixels on every scenario and both frames, runner hash, 22 mailbox records with the tail read), six cross-lane hash rows, sprite bounds under hostile input and a legacy program seed, second push d7da071 to fba1e24 with hosted run 43562888383 green, perf PASS (10089912 against base 12288947, no allow line), be32 runner.hashes_file 64.72 s; 3 tasks, 3 commits, MODE-03 and MODE-06 complete, ctest ci 737 of 737 | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -501,8 +504,8 @@ Items acknowledged and deferred, most recent first (v2.1 closed SEED-016 as done
 
 ## Session Continuity
 
-Last session: 2026-11-14T05:31:37.218Z
-Stopped at: Completed 16-07-PLAN.md
+Last session: 2026-11-14T05:55:45.803Z
+Stopped at: Completed 16-08-PLAN.md
 Resume file: None
 Milestone v2.1 pull requests: #40, #42 and #44 (phases 13 to 15) and releases #41, #43 and #45 (v0.14.0 to v0.14.2)
 
