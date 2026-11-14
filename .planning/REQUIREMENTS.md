@@ -33,7 +33,7 @@ a promise: a row also needs a changing picture to pass the boots check, and some
 - [x] **TUNE-14**: A transient DNS or TLS failure while fetching a pinned assembler or tool no longer fails a hosted job on its first attempt; the fetch script retries those errors, with a test that a permanent failure still fails
 - [ ] **TUNE-15**: The diagnose vocabulary that nothing raises any more (`pclass`, `wclass`, `where=port`, `rom_write`) is removed in one change, the line shape changes once, and the diagnose tests and docs agree; `vdpmode` stays because the blocked-mode fault in `src/vdp_render.c` (`cogmaster__bus_fault` with `COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE`, around lines 213-215) still raises it for the text, multicolour, mixed, invalid and native Game Gear modes
 - [ ] **TUNE-16**: The job timeouts that drifted again (the be32 lane, the diagnose test, the hygiene tree check) are re-derived from live runs by the twice-the-slowest rule, with run IDs, in one workflow commit
-- [ ] **TUNE-17**: A milestone-close check script reports open pull requests, main CI on the latest commit, the latest release and its release pull request, and a clean work tree on `main`, exits non-zero when any is off, is described in `docs/maintaining.md`, and has a test with a dirty-tree control; it is a check to run, not a release gate
+- [x] **TUNE-17**: A milestone-close check script reports open pull requests, main CI on the latest commit, the latest release and its release pull request, and a clean work tree on `main`, exits non-zero when any is off, is described in `docs/maintaining.md`, and has a test with a dirty-tree control; it is a check to run, not a release gate
 
 ## Future Requirements
 
@@ -86,7 +86,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TUNE-14 | Phase 16 | Complete |
 | TUNE-15 | Phase 17 | Pending |
 | TUNE-16 | Phase 17 | Pending |
-| TUNE-17 | Phase 17 | Pending |
+| TUNE-17 | Phase 17 | Complete |
 
 **Coverage:**
 - v2.2 requirements: 16 total
