@@ -183,6 +183,7 @@ fixtures.judge.wrong_value	fixtures,portable
 fixtures.korean_probe	fixtures,portable
 fixtures.korean_probe_control	fixtures,portable
 fixtures.legacy.oracle	fixtures,portable
+fixtures.legacy_modes.g1.sms2	fixtures,portable
 fixtures.light_phaser.control.left	fixtures,portable
 fixtures.light_phaser.control.pad	fixtures,portable
 fixtures.light_phaser.control.parked	fixtures,portable

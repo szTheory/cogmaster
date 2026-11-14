@@ -207,6 +207,46 @@ if(CMAKE_SCRIPT_MODE_FILE)
         message(FATAL_ERROR "content host exit ${rc}: ${out} ${err}")
       endif()
     endif()
+  elseif(CASE STREQUAL "legacy")
+    # A Graphics I or II image against the closed-form oracle (legacy.c), for VARIANT on PROFILE
+    # (sms1, sms2 or gg_sms, the Game Gear in Master System video mode) after FRAMES frames. The oracle
+    # compares every dot through the public API; with RUNNER the runner's --hash must also contain the
+    # oracle's digest, so a renderer and the digest it prints are judged by one independent answer.
+    # WRONG swaps in a digest that cannot match, so the comparison must refuse it.
+    if(PROFILE STREQUAL "sms1")
+      set(oracle_profile sms1)
+      set(machine sms1)
+    elseif(PROFILE STREQUAL "sms2")
+      set(oracle_profile sms2)
+      set(machine sms)
+    elseif(PROFILE STREQUAL "gg_sms")
+      set(oracle_profile gg)
+      set(machine gg)
+    else()
+      message(FATAL_ERROR "legacy: unknown PROFILE '${PROFILE}'")
+    endif()
+    execute_process(COMMAND ${EMULATOR} ${ORACLE} ${IMAGE} ${VARIANT} ${oracle_profile} compare ${FRAMES}
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "0")
+      message(FATAL_ERROR "legacy image mismatch: ${VARIANT} on ${PROFILE} after ${FRAMES} frames, exit ${rc}: ${out}${err}")
+    endif()
+    if(RUNNER)
+      execute_process(COMMAND ${EMULATOR} ${ORACLE} ${IMAGE} ${VARIANT} ${oracle_profile} digest
+        RESULT_VARIABLE rc OUTPUT_VARIABLE want ERROR_VARIABLE err)
+      string(STRIP "${want}" want)
+      if(NOT rc STREQUAL "0" OR NOT want MATCHES "^[0-9a-f]+$")
+        message(FATAL_ERROR "legacy oracle digest: exit ${rc}: ${want}${err}")
+      endif()
+      if(WRONG)
+        set(want "deliberately-wrong-pixel-digest")
+      endif()
+      execute_process(COMMAND ${EMULATOR} ${RUN} ${IMAGE} --machine ${machine} --video-mode sms
+          --region ntsc-u --frames ${FRAMES} --hash
+        RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+      if(NOT rc STREQUAL "0" OR NOT out MATCHES "${want}")
+        message(FATAL_ERROR "legacy runner hash mismatch: ${VARIANT} on ${PROFILE}, exit ${rc}, ${out} ${err}")
+      endif()
+    endif()
   elseif(CASE STREQUAL "audio")
     # The runner hashes FRAMES frames of the image's sound for MACHINE (sms or gg); the in-process
     # host must deliver the same PCM through each way a frontend registers its audio callbacks.
@@ -845,6 +885,18 @@ string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
 cogmaster_add_test(NAME fixtures.boot_to_play.wrong_hash
   COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=native frame mismatch"
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+  LABELS fixtures portable TIMEOUT 10)
+
+# Fault prevented: a legacy renderer that disagrees with the closed-form oracle on a dot of a Graphics I
+# or II image, or a runner hash that differs from the oracle digest.
+# Timeout: 10 s floor; provisional, the first hosted run sets it.
+cogmaster_add_test(NAME fixtures.legacy_modes.g1.sms2
+  COMMAND ${CMAKE_COMMAND} -DCASE=legacy -DNAME=legacy_modes_g1 -DVARIANT=g1 -DPROFILE=sms2
+    -DFRAMES=14 -DRUNNER=1
+    -DIMAGE=${COGMASTER_FIXTURES_DIR}/legacy_modes_g1.sms
+    -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+    -DORACLE=$<TARGET_FILE:cogmaster-test-legacy-fixture> -DRUN=$<TARGET_FILE:cogmaster-run>
+    "-DEMULATOR=${fixtures_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
   LABELS fixtures portable TIMEOUT 10)
 
 # Fault prevented: a fixture assembled to different bytes than the ones
