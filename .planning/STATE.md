@@ -5,16 +5,16 @@ milestone_name: Legacy video modes
 current_phase: 17
 current_phase_name: Re-run, merge and clean state
 status: executing
-stopped_at: Phase 17 context gathered
-last_updated: "2026-11-14T17:08:38.627Z"
+stopped_at: Completed 17-01-PLAN.md
+last_updated: "2026-11-14T17:20:02.850Z"
 last_activity: 2026-11-14
-last_activity_desc: Phase 16 complete, transitioned to Phase 17
-state_head: 7a3445ec9dfea524bbbb5c631ecfc0b1e57bdfd4
+last_activity_desc: Phase 17 execution started
+state_head: 26a185b1a189e30061575851eb6a41a5d100a335
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 13
-  completed_plans: 9
+  completed_plans: 10
   percent: 50
 ---
 
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-11-14)
 
 ## Current Position
 
-Phase: 17 (Re-run, merge and clean state) — READY TO EXECUTE
-Plan: Not started
+Phase: 17 (Re-run, merge and clean state) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-11-14 — Phase 16 complete, transitioned to Phase 17
+Last activity: 2026-11-14 — Phase 17 execution started
 
 Progress: [█████░░░░░] 50%
 
@@ -254,6 +254,7 @@ Progress: [█████░░░░░] 50%
 | Phase 16 P07 | 18 min | 2 tasks | 8 files |
 | Phase 16 P08 | 23 min | 3 tasks | 8 files |
 | Phase 16 P09 | 21 min | 3 tasks | 7 files |
+| Phase 17 P01 | 5 min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -300,6 +301,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 16]: 16-08: the sprite image is judged by one compare-all run per profile (scenario k on frames 9 + 2 (k - 1) and 10 + 2 (k - 1)) and the runner hash of the last scenario at frame 47, which the image holds; the hashes file takes two pictures per profile (frames 15 and 47); vdp.legacy.hostile asserts the sprite bounds at every step and that the garbage reaches them; the second push (d7da071 to fba1e24) has hosted run 43562888383 green, perf boot_to_play head 10089912 base 12288947 PASS with no allow line, be32 runner.hashes_file 64.72 s; MODE-03 and MODE-06 complete, MODE-05 and MODE-07 wait for plan 09
 - [Phase 16]: 16-09: video.md and SMS-VDP section 7 call every legacy choice a model with its disagreeing sources and correct the MAME attribution (315_5124.cpp masks Graphics II on every revision, the SMS2 and Game Gear no-mask statement is msvdp's, tms9928a.cpp tests above $E0); the TI manual's range is not quoted because the page image was not checked; the Young notes row VDP.28 carries capture 20260307023015 found from the web/2026/ redirect; PROVENANCE names MAME tms9928a and ares tms9918 at pins 1d7a454ed79e and 9408cb43d494, both answering 200, with no seed row — Plan 16-09 rationale: every reference consulted for a model choice has a traceable row, fixtures are read as fidelity to the notes and never to silicon, and the timeouts are twice a measured hosted lane
 - [Phase 16]: 16-09: runner.hashes_file is 130 s (2 x 64.72 s on be32, run 43562888383) and the three g2_late tests 29 s (2 x 14.02 s); core.state.legacy_sprite_bounds keeps its 60 s tier; the third push 6e8984e has hosted run 43564813364 green with CI required success, perf PASS (10089912 against base 12288947, no allow line), ci workflow 737 of 737, hygiene 84 of 84, subset compare empty (173 base lines, 198 head); MODE-02, MODE-04, MODE-05, MODE-07 and MODE-08 complete; the pull request stays a draft for /gsd-ship — Plan 16-09 rationale: every reference consulted for a model choice has a traceable row, fixtures are read as fidelity to the notes and never to silicon, and the timeouts are twice a measured hosted lane
+- [Phase 17]: 17-01: the runner token is diagnose 2 and the reducer needs 30 fields, so a stale runner reads as malformed; vdpmode (mode4 canary) and faddr stay, the name tables keep the ROM-write and controller names, and TUNE-15's text now keeps vdpmode with its raise site in src/vdp_render.c
 
 ### Pending Todos
 
@@ -513,8 +515,8 @@ Items acknowledged and deferred, most recent first (v2.1 closed SEED-016 as done
 
 ## Session Continuity
 
-Last session: 2026-11-14T15:54:55.425Z
-Stopped at: Phase 17 context gathered
+Last session: 2026-11-14T17:20:02.780Z
+Stopped at: Completed 17-01-PLAN.md
 Resume file: .planning/phases/17-re-run-merge-and-clean-state/17-CONTEXT.md
 Milestone v2.1 pull requests: #40, #42 and #44 (phases 13 to 15) and releases #41, #43 and #45 (v0.14.0 to v0.14.2)
 
