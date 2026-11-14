@@ -833,12 +833,29 @@ static void bringup(void)
     }
 }
 
+/* The sprite state a legacy line leaves, whatever the attribute table holds: at most four slots,
+   never more than 32 entries read, and a fifth sprite index that names one of them. full counts the
+   lines that filled all four slots and fifth the lines that latched a fifth sprite index, so a
+   caller can tell the bound was reached and not merely never tested. */
+static void sprite_bounds(const cogmaster *m, uint32_t *full, uint32_t *fifth)
+{
+    CHECK(m->vdp.sprite_count <= 4u);
+    CHECK(m->vdp.sprite_scanned <= 32u);
+    CHECK(m->vdp.fifth_index <= 31u);
+    *full += m->vdp.sprite_count == 4u;
+    *fifth += m->vdp.fifth_index != 31u;
+}
+
 /* A hostile program: every frame writes registers that select Graphics I or II (or, one frame in
-   seven, text) with video memory full of garbage. Each frame ends within the 69-tick overshoot, and
-   within a frame the cursor moves forward to exactly the dot asked for and never back. */
+   seven, text) with video memory full of garbage, the attribute table and the sprite patterns
+   included, and the sprite size and magnification bits vary. Each frame ends within the 69-tick
+   overshoot, and within a frame the cursor moves forward to exactly the dot asked for and never
+   back. After every legacy frame, and at every step inside it, the sprite state stays inside the
+   bounds the saved record is loaded with. */
 static void hostile(void)
 {
     uint32_t seed = 0x2545F491u;
+    uint32_t full = 0u, fifth = 0u;
     for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
         cogmaster *m = make(p);
         for (uint32_t i = 0u; i < 60u; i++) {
@@ -861,6 +878,9 @@ static void hostile(void)
             res.size = sizeof res;
             CHECK_EQ_U64(cogmaster_run_frame(m, &res), COGMASTER_STATUS_OK);
             CHECK(res.overshoot_ticks <= 69u);
+            int legacy = (i % 7u) != 6u;
+            if (legacy)
+                sprite_bounds(m, &full, &fifth);
             uint32_t cursor = m->render_line * FIELD_W + m->render_x;
             cogmaster__vdp_render_until(m, 0u, 0u);
             CHECK_EQ_U64(m->render_line * FIELD_W + m->render_x, cursor);
@@ -868,6 +888,8 @@ static void hostile(void)
             for (uint32_t at = 0u; at < 40u * 1237u; at += 1237u) {
                 cogmaster__vdp_render_until(m, at / FIELD_W, at % FIELD_W);
                 CHECK_EQ_U64(m->render_line * FIELD_W + m->render_x, at);
+                if (legacy)
+                    sprite_bounds(m, &full, &fifth);
             }
             cogmaster__vdp_render_to(m, m->vdp.height);
             CHECK_EQ_U64(m->render_line * FIELD_W + m->render_x, (uint32_t)m->vdp.height * FIELD_W);
@@ -876,6 +898,9 @@ static void hostile(void)
         }
         cogmaster_destroy(m);
     }
+    /* Not vacuous: the garbage fills all four slots and latches a fifth sprite on some lines. */
+    CHECK(full != 0u);
+    CHECK(fifth != 0u);
 }
 
 /* ---- legacy sprites, the renderer driven in process and compared with oracle_sprites ---- */
