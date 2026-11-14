@@ -620,6 +620,16 @@ vdp.legacy.oracle	portable,vdp
 vdp.legacy.palette	portable,vdp
 vdp.legacy.rows	portable,vdp
 vdp.legacy.sprites.basic	portable,vdp
+vdp.legacy.sprites.class_switch	portable,vdp
+vdp.legacy.sprites.collision	portable,vdp
+vdp.legacy.sprites.early_clock	portable,vdp
+vdp.legacy.sprites.fifth	portable,vdp
+vdp.legacy.sprites.fifth_carry	portable,vdp
+vdp.legacy.sprites.sizes	portable,vdp
+vdp.legacy.sprites.status_low	portable,vdp
+vdp.legacy.sprites.terminator	portable,vdp
+vdp.legacy.sprites.y_wrap	portable,vdp
+vdp.legacy.sprites.zoom	portable,vdp
 vdp.legacy.switch	portable,vdp
 vdp.pause_nmi	portable,vdp
 vdp.port_decode	portable,vdp

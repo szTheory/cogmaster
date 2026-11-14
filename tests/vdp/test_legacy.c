@@ -111,7 +111,7 @@ struct sprite {
 };
 struct scene {
     uint32_t r1, count;
-    struct sprite e[8];
+    struct sprite e[12];
 };
 struct sprite_dot {
     uint32_t colour;      /* the winning colour, 0 for none */
@@ -852,7 +852,7 @@ static void hostile(void)
                 value[r] = seed >> 24;
             }
             value[0] &= 0xFBu;
-            value[1] = 0xC0u | ((i % 7u) == 6u ? 0x10u : 0u);
+            value[1] = 0xC0u | (value[1] & 3u) | ((i % 7u) == 6u ? 0x10u : 0u);
             for (uint32_t r = 0u; r < 8u; r++) {
                 cogmaster__bus_out(m, 0xBFu, (uint8_t)value[r]);
                 cogmaster__bus_out(m, 0xBFu, (uint8_t)(0x80u | r));
@@ -881,13 +881,16 @@ static void hostile(void)
 /* ---- legacy sprites, the renderer driven in process and compared with oracle_sprites ---- */
 
 /* R5 $7F puts the attribute table at $3F80 (32 entries of four bytes to the end of video memory);
-   R6 = 1 puts the sprite generator at $0800, clear of the Graphics I scene's tables. The frame
-   flag is bit 7 of the status after a frame. */
+   R6 = 3 puts the sprite generator at $1800, clear of the Graphics I and II scenes' tables (the
+   Graphics II pattern and colour tables end at $37FF). The frame flag is bit 7 of the status after
+   a frame. */
 #define SAT_BASE 0x3F80u
-#define GENERATOR_R6 1u
+#define GENERATOR_R6 3u
 #define STATUS_FRAME 0x80u
 #define STATUS_FIFTH 0x40u
 #define STATUS_COINCIDENCE 0x20u
+
+enum background { BG_BLANK, BG_G1, BG_G2 };
 
 /* The status a program reads at a tick of a line; the read clears the flags. */
 static uint8_t status_at(cogmaster *m, uint32_t line, uint32_t tick)
@@ -906,13 +909,15 @@ static void sprite_patterns(cogmaster *m, uint32_t r6)
             put(m, ((r6 & 7u) << 11) + 8u * n + r, pattern_byte(n, r));
 }
 
-/* The scene's attribute table, the last entry written first: the list is the table order, not the
-   order a program wrote it in. Y $D0 follows the last entry, which ends the list. */
-static void sprite_table(cogmaster *m, const struct scene *s)
+/* The scene's attribute table: Y $D0 follows the last entry, which ends the list, and the entries
+   are written last to first, or first to last when ascending: the list is the table order, not
+   the order a program wrote it in. */
+static void sprite_table(cogmaster *m, const struct scene *s, int ascending)
 {
     if (s->count < 32u)
         put(m, SAT_BASE + 4u * s->count, 0xD0u);
-    for (uint32_t i = s->count; i-- > 0u;) {
+    for (uint32_t k = 0u; k < s->count; k++) {
+        uint32_t i = ascending ? k : s->count - 1u - k;
         put(m, SAT_BASE + 4u * i, s->e[i].y);
         put(m, SAT_BASE + 4u * i + 1u, s->e[i].x);
         put(m, SAT_BASE + 4u * i + 2u, s->e[i].name);
@@ -920,38 +925,46 @@ static void sprite_table(cogmaster *m, const struct scene *s)
     }
 }
 
-/* A frame of the scene on a blank background, or on the Graphics I scene. r0 is R0, whose bit 3
-   must change nothing. */
-static cogmaster *sprite_frame(enum profile p, const struct scene *s, int on_g1, uint32_t r0)
+/* A frame of the scene on a blank background, on the Graphics I scene or on the Graphics II one. r0
+   is R0 apart from the Graphics II bit; its bit 3 must change nothing. */
+static cogmaster *sprite_frame(enum profile p, const struct scene *s, enum background bg,
+                               uint32_t r0, int ascending)
 {
     cogmaster *m = make(p);
-    if (on_g1)
+    if (bg == BG_G1)
         scene_g1(m, 0x0Eu, 0x80u, 0x00u);
+    if (bg == BG_G2)
+        scene_g2(m, 0x0Eu, 0xFFu, 0x03u);
     sprite_patterns(m, GENERATOR_R6);
-    sprite_table(m, s);
+    sprite_table(m, s, ascending);
     m->vdp.reg[6] = GENERATOR_R6;
-    regs(m, r0, 0x40u | s->r1, 0x0Eu, 0x80u, 0x00u);
+    regs(m, (bg == BG_G2 ? 0x02u : 0x00u) | r0, 0x40u | s->r1, 0x0Eu, bg == BG_G2 ? 0xFFu : 0x80u,
+         bg == BG_G2 ? 0x03u : 0x00u);
     return m;
 }
 
 /* The dot the oracles give: the sprite colour where there is one, the background otherwise. */
-static uint16_t sprite_expect(enum profile p, const struct scene *s, int on_g1, uint32_t x,
+static uint16_t sprite_expect(enum profile p, const struct scene *s, enum background bg, uint32_t x,
                               uint32_t y)
 {
     uint32_t colour = oracle_sprites(s, y, x).colour;
     if (colour != 0u)
         return oracle_palette(p, colour);
-    return on_g1 ? oracle_g1(p, x, y) : oracle_palette(p, BACKDROP_NIBBLE);
+    if (bg == BG_G1)
+        return oracle_g1(p, x, y);
+    if (bg == BG_G2)
+        return oracle_g2(p, 0xFFu, 0x03u, x, y);
+    return oracle_palette(p, BACKDROP_NIBBLE);
 }
 
 /* The dots of lines 0 to 191 that differ from the oracles; the first is printed. */
 static uint32_t sprite_mismatches(const cogmaster *m, enum profile p, const struct scene *s,
-                                  int on_g1)
+                                  enum background bg)
 {
     uint32_t bad = 0u;
     for (uint32_t y = 0u; y < FIELD_H; y++) {
         for (uint32_t x = 0u; x < FIELD_W; x++) {
-            uint16_t want = sprite_expect(p, s, on_g1, x, y);
+            uint16_t want = sprite_expect(p, s, bg, x, y);
             if (m->field[y][x] != want && bad++ == 0u)
                 fprintf(stderr, "profile %d (%u,%u) is %03x, expected %03x\n", (int)p, x, y,
                         m->field[y][x], want);
@@ -987,6 +1000,28 @@ static uint32_t scene_status(const struct scene *s)
            (fifth >= 0 ? STATUS_FIFTH | (uint32_t)fifth : 0x1Fu);
 }
 
+/* One frame of the scene on the three profiles: every dot of lines 0 to 191 equals the oracles,
+   nothing is a fault, and the status read at the end of the frame is the hand-computed want, which
+   the oracles also give. */
+static void sprite_scene(const struct scene *s, enum background bg, uint32_t r0, uint32_t want)
+{
+    CHECK_EQ_HEX(scene_status(s), want);
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+        cogmaster *m = sprite_frame(p, s, bg, r0, 0);
+        run(m);
+        CHECK_EQ_U64(sprite_mismatches(m, p, s, bg), 0u);
+        CHECK_EQ_U64(m->fault_present, 0u);
+        CHECK_EQ_HEX(status_at(m, 192u, 608u), want);
+        cogmaster_destroy(m);
+    }
+}
+
+/* A dot against a palette entry; colour 0 is the backdrop of a blank background. */
+static void dot_is(const cogmaster *m, enum profile p, uint32_t x, uint32_t y, uint32_t colour)
+{
+    CHECK_EQ_HEX(m->field[y][x], oracle_palette(p, colour != 0u ? colour : BACKDROP_NIBBLE));
+}
+
 /* Colour 5 of the scenes: fixed entry 5 is F00; colour RAM entry 21 is (13 * 21 + 5) & 63 = 22 =
    010110, blue 1, green 1, red 2: 55A. */
 static const uint16_t colour5[PROFILE_COUNT] = {0xF00, 0xF00, 0x55A};
@@ -1002,9 +1037,9 @@ static void sprites_basic(void)
     for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
         for (uint32_t k = 0u; k < 2u; k++) {
             const struct scene *s = k == 0u ? &lone : &patterned;
-            cogmaster *m = sprite_frame(p, s, 1, 0x00u);
+            cogmaster *m = sprite_frame(p, s, BG_G1, 0x00u, 0);
             run(m);
-            CHECK_EQ_U64(sprite_mismatches(m, p, s, 1), 0u);
+            CHECK_EQ_U64(sprite_mismatches(m, p, s, BG_G1), 0u);
             CHECK_EQ_U64(m->fault_present, 0u);
             /* Not vacuous: the picture without the sprite has other dots on its lines. */
             uint32_t differ = 0u;
@@ -1020,6 +1055,391 @@ static void sprites_basic(void)
             }
             cogmaster_destroy(m);
         }
+    }
+}
+
+/* A 16 by 16 sprite at Y 39, X 100 with name 13: the name's two low bits are cleared, so the four
+   quadrants are the patterns 12 (top left), 13 (bottom left), 14 (top right) and 15 (bottom right).
+   Row 0 of those patterns is 7D, B2, E7 and 1C. */
+static const struct scene big = {2u, 1u, {{39, 100, 13, 6}}};
+/* Two solid sprites at one X, the lower index first in the table and the higher colour second. */
+static const struct scene same_x = {0u, 2u, {{59, 100, 1, 5}, {59, 100, 1, 6}}};
+
+/* Sizes and order. 8 by 8 sprites are the patterns of their name; 16 by 16 ones are four, whose
+   quadrants are checked with the dots that tell the order apart (a top left, top right, bottom
+   left, bottom right order puts E7 where B2 belongs). Two opaque sprites on one dot show the lower
+   index, whether the program wrote its entry first or last, at a different X or the same one. */
+static void sprites_sizes(void)
+{
+    sprite_scene(&big, BG_BLANK, 0x00u, 0x9Fu);
+    sprite_scene(&big, BG_G2, 0x00u, 0x9Fu);
+    sprite_scene(&opaque, BG_BLANK, 0x00u, 0xBFu);
+    sprite_scene(&same_x, BG_BLANK, 0x00u, 0xBFu);
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+        cogmaster *m = sprite_frame(p, &big, BG_BLANK, 0x00u, 0);
+        run(m);
+        dot_is(m, p, 100u, 40u, 0u); /* 7D is 01111101: bit 7 clear, bit 6 set */
+        dot_is(m, p, 101u, 40u, 6u);
+        dot_is(m, p, 100u, 48u, 6u); /* B2 is 10110010: bit 7 set, bit 6 clear */
+        dot_is(m, p, 101u, 48u, 0u);
+        dot_is(m, p, 109u, 40u, 6u); /* E7 is 11100111: bit 6 set; B2 has it clear */
+        dot_is(m, p, 111u, 40u, 0u);
+        dot_is(m, p, 111u, 48u, 6u); /* 1C is 00011100: bit 4 set, bit 7 clear */
+        dot_is(m, p, 108u, 48u, 0u);
+        dot_is(m, p, 115u, 55u, 6u); /* the last dot of the last line: 15 row 7 is 93, bit 0 set */
+        dot_is(m, p, 116u, 40u, 0u);
+        dot_is(m, p, 100u, 56u, 0u);
+        cogmaster_destroy(m);
+
+        cogmaster *down = sprite_frame(p, &same_x, BG_BLANK, 0x00u, 0);
+        cogmaster *up = sprite_frame(p, &same_x, BG_BLANK, 0x00u, 1);
+        run(down);
+        run(up);
+        CHECK(memcmp(down->field, up->field, picture_bytes) == 0);
+        for (uint32_t x = 100u; x < 108u; x++)
+            dot_is(down, p, x, 60u, 5u);
+        dot_is(down, p, 108u, 60u, 0u);
+        cogmaster_destroy(down);
+        cogmaster_destroy(up);
+    }
+}
+
+/* Magnification doubles every pattern dot both ways, with no slot rule: a lone magnified sprite is
+   16 dots wide on the Master System 1 too (in mode 4 that chip doubles it only with a populated
+   slot four places on). Name 12 row 0 is 7D and row 1 is 8E, row 7 is F4. */
+static const struct scene lone_zoom = {1u, 1u, {{39, 100, 12, 5}}};
+static const struct scene big_zoom = {3u, 1u, {{39, 100, 13, 6}}};
+
+static void sprites_zoom(void)
+{
+    sprite_scene(&lone_zoom, BG_BLANK, 0x00u, 0x9Fu);
+    sprite_scene(&big_zoom, BG_G1, 0x00u, 0x9Fu);
+    sprite_scene(&doubled, BG_BLANK, 0x00u, 0xBFu);
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+        cogmaster *m = sprite_frame(p, &lone_zoom, BG_BLANK, 0x00u, 0);
+        run(m);
+        dot_is(m, p, 100u, 40u, 0u); /* column 0 of 7D is clear: dots 100 and 101 */
+        dot_is(m, p, 101u, 41u, 0u);
+        dot_is(m, p, 102u, 40u, 5u); /* column 1 is set: dots 102 and 103, lines 40 and 41 */
+        dot_is(m, p, 103u, 41u, 5u);
+        dot_is(m, p, 100u, 42u, 5u); /* row 1 is 8E, bit 7 set: lines 42 and 43 */
+        dot_is(m, p, 101u, 43u, 5u);
+        dot_is(m, p, 100u, 41u, 0u);
+        dot_is(m, p, 115u, 40u, 5u); /* column 7 of 7D is set: dots 114 and 115 */
+        dot_is(m, p, 116u, 40u, 0u);
+        dot_is(m, p, 100u, 55u, 5u); /* row 7 is F4: bit 7 set, line 54 and 55 */
+        dot_is(m, p, 100u, 56u, 0u);
+        cogmaster_destroy(m);
+    }
+}
+
+/* The early clock bit of the colour byte moves a sprite 32 dots left, with the part before dot 0
+   not drawn; R0 bit 3, which moves a mode 4 sprite, changes nothing here. */
+static const struct scene early_edge = {0u, 1u, {{19, 30, 1, 0x85}}};
+
+static void sprites_early_clock(void)
+{
+    sprite_scene(&early, BG_BLANK, 0x00u, 0x9Fu);
+    sprite_scene(&early, BG_BLANK, 0x08u, 0x9Fu);
+    sprite_scene(&early_edge, BG_BLANK, 0x08u, 0x9Fu);
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+        cogmaster *m = sprite_frame(p, &early, BG_BLANK, 0x08u, 0);
+        cogmaster *plain = sprite_frame(p, &early, BG_BLANK, 0x00u, 0);
+        run(m);
+        run(plain);
+        CHECK(memcmp(m->field, plain->field, picture_bytes) == 0);
+        for (uint32_t x = 8u; x < 16u; x++)
+            dot_is(m, p, x, 20u, 4u);
+        dot_is(m, p, 7u, 20u, 0u);
+        dot_is(m, p, 16u, 20u, 0u);
+        dot_is(m, p, 40u, 20u, 0u);
+        cogmaster_destroy(m);
+        cogmaster_destroy(plain);
+        m = sprite_frame(p, &early_edge, BG_BLANK, 0x00u, 0);
+        run(m);
+        dot_is(m, p, 0u, 20u, 5u); /* X 30 less 32 is -2: dots 0 to 5 show columns 2 to 7 */
+        dot_is(m, p, 5u, 20u, 5u);
+        dot_is(m, p, 6u, 20u, 0u);
+        cogmaster_destroy(m);
+    }
+}
+
+/* A Y of $D0 ends the list wherever it stands: the entries after it do not exist, and at entry 0 no
+   sprite is drawn, no flag is set and the low bits of the status read $1F. The list ends in a
+   picture whose height a mode 4 frame latched as 224 too (mode 4 ends it only on a 192 line one).
+ */
+static const struct scene empty = {0u,
+                                   7u,
+                                   {{0xD0, 0, 0, 0},
+                                    {39, 10, 1, 2},
+                                    {39, 30, 1, 3},
+                                    {39, 50, 1, 4},
+                                    {39, 70, 1, 5},
+                                    {39, 90, 1, 6},
+                                    {39, 110, 1, 7}}};
+static const struct scene ended_at_two = {
+    0u, 4u, {{19, 20, 1, 2}, {19, 40, 1, 3}, {0xD0, 0, 0, 0}, {19, 60, 1, 4}}};
+
+static void sprites_terminator(void)
+{
+    sprite_scene(&empty, BG_BLANK, 0x00u, 0x9Fu);
+    sprite_scene(&ended, BG_BLANK, 0x00u, 0x9Fu);
+    sprite_scene(&ended_at_two, BG_BLANK, 0x00u, 0x9Fu);
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+        cogmaster *m = sprite_frame(p, &ended_at_two, BG_BLANK, 0x00u, 0);
+        run(m);
+        dot_is(m, p, 20u, 20u, 2u);
+        dot_is(m, p, 40u, 20u, 3u);
+        dot_is(m, p, 60u, 20u, 0u);
+        cogmaster_destroy(m);
+
+        m = sprite_frame(p, &empty, BG_BLANK, 0x00u, 0);
+        run(m);
+        CHECK_EQ_U64(m->vdp.sprite_count, 0u);
+        CHECK_EQ_U64(m->vdp.sprite_overflow, 0u);
+        CHECK_EQ_HEX(status_at(m, 192u, 608u), 0x9Fu);
+        CHECK_EQ_HEX(status_at(m, 192u, 608u), 0x1Fu);
+        /* The height latched as 224: the second frame draws lines 0 to 191 as before. */
+        m->vdp.height = 224u;
+        run(m);
+        CHECK_EQ_U64(sprite_mismatches(m, p, &empty, BG_BLANK), 0u);
+        CHECK_EQ_U64(m->vdp.status & (STATUS_FIFTH | STATUS_COINCIDENCE), 0u);
+        cogmaster_destroy(m);
+    }
+}
+
+/* Y is the line above the top: $FF is the top line 0 (row 0 shows there), and Y $E0 or more is
+   negative. A 16 by 16 magnified sprite at Y $E0 starts at line -31 and shows source row 15 on
+   line 0; at Y $E8 it starts at -23 and shows rows 11 to 15 on lines 0 to 8, which the $F0 limit
+   of other sources would not (model, see cogmaster__legacy_sprite_scan). */
+static const struct scene y_e8 = {3u, 1u, {{0xE8, 60, 8, 6}}};
+
+static void sprites_y_wrap(void)
+{
+    sprite_scene(&y_ff, BG_BLANK, 0x00u, 0x9Fu);
+    sprite_scene(&y_e0, BG_BLANK, 0x00u, 0x9Fu);
+    sprite_scene(&y_e8, BG_BLANK, 0x00u, 0x9Fu);
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+        cogmaster *m = sprite_frame(p, &y_ff, BG_BLANK, 0x00u, 0);
+        run(m);
+        dot_is(m, p, 60u, 0u, 0u); /* name 12 row 0 is 7D: dot 60 clear, dot 61 set */
+        dot_is(m, p, 61u, 0u, 4u);
+        dot_is(m, p, 60u, 7u, 4u); /* row 7 is F4: bit 7 set */
+        dot_is(m, p, 60u, 8u, 0u);
+        cogmaster_destroy(m);
+
+        m = sprite_frame(p, &y_e0, BG_BLANK, 0x00u, 0);
+        run(m);
+        dot_is(m, p, 62u, 0u, 6u); /* row 15: name 9 row 7 is 55, source column 1 set */
+        dot_is(m, p, 60u, 0u, 0u);
+        dot_is(m, p, 62u, 1u, 0u);
+        cogmaster_destroy(m);
+
+        m = sprite_frame(p, &y_e8, BG_BLANK, 0x00u, 0);
+        run(m);
+        dot_is(m, p, 66u, 0u, 6u); /* row 11: name 9 row 3 is 11, source column 3 set */
+        dot_is(m, p, 68u, 0u, 0u);
+        dot_is(m, p, 74u, 0u, 6u); /* ... and source column 7 */
+        dot_is(m, p, 78u, 0u, 6u); /* name 11 row 3 is 7B: source column 9 set */
+        dot_is(m, p, 76u, 0u, 0u);
+        dot_is(m, p, 62u, 8u, 6u); /* row 15: name 9 row 7 is 55 */
+        dot_is(m, p, 60u, 8u, 0u);
+        dot_is(m, p, 62u, 9u, 0u); /* line 9 is past the sprite */
+        cogmaster_destroy(m);
+    }
+}
+
+/* Five Y matches on a line, in table order, set the flag at the line's first dot and name the fifth
+   in bits 4 to 0; four do not. Every match counts: a blank sprite of colour 0 at the right edge
+   is a fifth match, though nothing of it shows. The first fifth sprite since a read stays: line 40
+   has its fifth match at entry 9, line 100 at entry 4, and the frame-end read says 9; a read in
+   between clears it and the next line that overflows names its own. */
+static const struct scene four_sprites = {
+    0u, 4u, {{39, 20, 1, 2}, {39, 40, 1, 3}, {39, 60, 1, 4}, {39, 80, 1, 5}}};
+static const struct scene five_hidden = {
+    0u, 5u, {{39, 20, 1, 2}, {39, 40, 1, 3}, {39, 60, 1, 4}, {39, 80, 1, 5}, {39, 255, 0, 0}}};
+static const struct scene two_lines = {0u,
+                                       10u,
+                                       {{99, 10, 1, 2},
+                                        {99, 30, 1, 3},
+                                        {99, 50, 1, 4},
+                                        {99, 70, 1, 5},
+                                        {99, 90, 1, 6},
+                                        {39, 10, 1, 2},
+                                        {39, 30, 1, 3},
+                                        {39, 50, 1, 4},
+                                        {39, 70, 1, 5},
+                                        {39, 90, 1, 6}}};
+
+static void sprites_fifth(void)
+{
+    sprite_scene(&four_sprites, BG_BLANK, 0x00u, 0x9Fu);
+    sprite_scene(&five, BG_BLANK, 0x00u, 0xC4u);
+    sprite_scene(&five_hidden, BG_BLANK, 0x00u, 0xC4u);
+    sprite_scene(&two_lines, BG_BLANK, 0x00u, 0xC9u);
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+        cogmaster *m = sprite_frame(p, &two_lines, BG_BLANK, 0x00u, 0);
+        /* Before line 40 nothing; after it the first fifth sprite; a read clears it, and the next
+           overflow, on line 100, names entry 4. */
+        CHECK_EQ_HEX(status_at(m, 39u, 400u), 0x1Fu);
+        CHECK_EQ_HEX(status_at(m, 60u, 0u), 0x49u);
+        CHECK_EQ_HEX(status_at(m, 60u, 0u), 0x1Fu);
+        CHECK_EQ_U64(m->vdp.fifth_index, 31u);
+        CHECK_EQ_HEX(status_at(m, 99u, 400u), 0x1Fu);
+        CHECK_EQ_HEX(status_at(m, 150u, 0u), 0x44u);
+        CHECK_EQ_HEX(status_at(m, 150u, 0u), 0x1Fu);
+        cogmaster_destroy(m);
+
+        /* Without a read in between the first stays when the second line asserts. */
+        m = sprite_frame(p, &two_lines, BG_BLANK, 0x00u, 0);
+        cogmaster__vdp_render_to(m, 150u);
+        CHECK_EQ_HEX(status_at(m, 150u, 0u), 0x49u);
+        cogmaster_destroy(m);
+    }
+}
+
+/* The fifth sprite flag asserts at dot 0 of a line, up to 84 ticks after the scan at tick 600 of
+   the line before, and a status read in between (tick 640 of the line before) clears the latched
+   index: the candidate waits in sprite_overflow as its entry plus 1, and the flag then asserts with
+   the index. The read in the tail sees nothing and takes nothing. */
+static void sprites_fifth_carry(void)
+{
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+        for (uint32_t read = 0u; read < 2u; read++) {
+            cogmaster *m = sprite_frame(p, &five, BG_BLANK, 0x00u, 0);
+            cogmaster__vdp_render_to(m, 40u);
+            CHECK_EQ_U64(m->vdp.sprite_overflow, 0u);
+            cogmaster__vdp_event(m, 39u, 600u);
+            CHECK_EQ_U64(m->vdp.sprite_line, 40u);
+            CHECK_EQ_U64(m->vdp.sprite_overflow, 5u);
+            if (read != 0u) {
+                CHECK_EQ_HEX(status_at(m, 39u, 640u), 0x1Fu);
+                CHECK_EQ_U64(m->vdp.sprite_overflow, 5u);
+                CHECK_EQ_U64(m->vdp.fifth_index, 31u);
+            }
+            CHECK_EQ_HEX(status_at(m, 40u, 0u), 0x44u);
+            CHECK_EQ_HEX(status_at(m, 40u, 0u), 0x1Fu);
+            cogmaster_destroy(m);
+        }
+    }
+}
+
+/* Overlapping set pattern bits collide, whatever their colour: the datasheet counts the pattern,
+   so two sprites of colour 0 collide too (model; one of the sources counts opaque dots only).
+   Sprites that only touch do not, nor ones whose overlap lies past dot 255 or before dot 0, nor a
+   sprite after the end of the list or dropped as the fifth. The flag asserts at the first shared
+   dot, not before. */
+static const struct scene ended_overlap = {
+    0u, 3u, {{59, 100, 1, 5}, {0xD0, 0, 0, 0}, {59, 100, 1, 6}}};
+static const struct scene fifth_overlap = {
+    0u, 5u, {{39, 20, 1, 2}, {39, 40, 1, 3}, {39, 60, 1, 4}, {39, 80, 1, 5}, {39, 80, 1, 6}}};
+static const struct scene left_off = {0u, 2u, {{59, 24, 1, 0x85}, {59, 24, 1, 0x86}}};
+static const struct scene left_part = {0u, 2u, {{59, 28, 1, 0x85}, {59, 28, 1, 0x86}}};
+
+static void sprites_collision(void)
+{
+    sprite_scene(&opaque, BG_BLANK, 0x00u, 0xBFu);
+    sprite_scene(&colour0, BG_BLANK, 0x00u, 0xBFu);
+    sprite_scene(&touching, BG_BLANK, 0x00u, 0x9Fu);
+    sprite_scene(&edge, BG_BLANK, 0x00u, 0x9Fu);
+    sprite_scene(&edge_in, BG_BLANK, 0x00u, 0xBFu);
+    sprite_scene(&left_off, BG_BLANK, 0x00u, 0x9Fu);
+    sprite_scene(&left_part, BG_BLANK, 0x00u, 0xBFu);
+    sprite_scene(&ended_overlap, BG_BLANK, 0x00u, 0x9Fu);
+    sprite_scene(&fifth_overlap, BG_BLANK, 0x00u, 0xC4u);
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+        cogmaster *m = sprite_frame(p, &opaque, BG_BLANK, 0x00u, 0);
+        CHECK_EQ_HEX(status_at(m, 60u, 206u), 0x1Fu); /* dots 0 to 103 drawn */
+        CHECK_EQ_HEX(status_at(m, 60u, 208u), 0x3Fu); /* dot 104 is the first shared one */
+        CHECK_EQ_HEX(status_at(m, 60u, 216u), 0x3Fu); /* dots 105 to 108: 105 to 107 are shared */
+        CHECK_EQ_HEX(status_at(m, 60u, 300u), 0x1Fu); /* dots 109 to 150: none */
+        cogmaster_destroy(m);
+    }
+}
+
+/* A register write between the scan of a line and its dots changes the class: the line is scanned
+   again under the class now, at the first render after the write, so the dots from the write dot on
+   draw the sprites of the class they are drawn in. A Graphics I sprite (a legacy table entry at Y
+   99, X 140) and a mode 4 one (Y 99 in the mode 4 table, whose X and tile are bytes 0 and 1 of the
+   legacy entry: X 99, tile 140, a solid pattern) share lines 100 to 107; R0 changes at line 102,
+   dot 70, from mode 4 to Graphics I and back. Lines and dots before the write equal a picture in
+   the old class throughout, the rest a picture in the new class throughout. */
+static const struct scene switch_sprite = {0u, 1u, {{99, 140, 1, 5}}};
+
+static cogmaster *switch_instance(enum profile p, uint32_t r0)
+{
+    cogmaster *m = make(p);
+    sprite_patterns(m, GENERATOR_R6);
+    sprite_table(m, &switch_sprite, 0);
+    put(m, 0x3F00u, 99u);
+    put(m, 0x3F01u, 0xD0u);
+    for (uint32_t i = 0u; i < 32u; i++)
+        put(m, 140u * 32u + i, 0xFFu);
+    m->vdp.reg[6] = GENERATOR_R6;
+    regs(m, r0, 0x40u, 0x0Eu, 0x80u, 0x00u);
+    return m;
+}
+
+static void sprites_class_switch(void)
+{
+    const uint32_t line = 102u, dot = 70u;
+    const size_t row = FIELD_W * sizeof(uint16_t);
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+        cogmaster *legacy = switch_instance(p, 0x00u), *mode4 = switch_instance(p, 0x04u);
+        cogmaster__vdp_render_to(legacy, FIELD_H);
+        cogmaster__vdp_render_to(mode4, FIELD_H);
+        CHECK_EQ_U64(legacy->vdp.sprite_legacy, 1u);
+        CHECK_EQ_U64(mode4->vdp.sprite_legacy, 0u);
+        /* Not vacuous: each picture has its own sprite on the line, where the other has none. */
+        CHECK(memcmp(&legacy->field[line][140], &mode4->field[line][140], 8u * 2u) != 0);
+        CHECK(memcmp(&legacy->field[line][99], &mode4->field[line][99], 8u * 2u) != 0);
+        for (uint32_t to_legacy = 0u; to_legacy < 2u; to_legacy++) {
+            cogmaster *m = switch_instance(p, to_legacy != 0u ? 0x04u : 0x00u);
+            const cogmaster *before = to_legacy != 0u ? mode4 : legacy;
+            const cogmaster *after = to_legacy != 0u ? legacy : mode4;
+            write_reg(m, line, dot, 0u, to_legacy != 0u ? 0x00u : 0x04u);
+            cogmaster__vdp_render_to(m, FIELD_H);
+            CHECK(memcmp(m->field, before->field, line * row) == 0);
+            CHECK(memcmp(m->field[line], before->field[line], dot * sizeof(uint16_t)) == 0);
+            CHECK(memcmp(&m->field[line][dot], &after->field[line][dot],
+                         (FIELD_W - dot) * sizeof(uint16_t)) == 0);
+            CHECK(memcmp(m->field[line + 1u], after->field[line + 1u],
+                         (FIELD_H - line - 1u) * row) == 0);
+            CHECK_EQ_U64(m->vdp.sprite_legacy, to_legacy);
+            CHECK_EQ_U64(m->fault_present, 0u);
+            cogmaster_destroy(m);
+        }
+        cogmaster_destroy(legacy);
+        cogmaster_destroy(mode4);
+    }
+}
+
+/* A status read returns the flags with the low bits $1F while the fifth sprite flag is clear and
+   the latched index while it is set, then clears the flags and the index: a second read returns $1F
+   and nothing else, and the latched index is 31 after any read. */
+static void sprites_status_low(void)
+{
+    static const struct {
+        const struct scene *scene;
+        uint32_t first, later;
+    } frames[3] = {{&lone, 0x9Fu, 0x1Fu}, {&opaque, 0xBFu, 0x1Fu}, {&five, 0xC4u, 0x1Fu}};
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+        for (size_t k = 0u; k < 3u; k++) {
+            cogmaster *m = sprite_frame(p, frames[k].scene, BG_BLANK, 0x00u, 0);
+            run(m);
+            CHECK_EQ_HEX(status_at(m, 192u, 608u), frames[k].first);
+            CHECK_EQ_U64(m->vdp.fifth_index, 31u);
+            CHECK_EQ_HEX(status_at(m, 192u, 608u), frames[k].later);
+            CHECK_EQ_U64(m->vdp.fifth_index, 31u);
+            cogmaster_destroy(m);
+        }
+        /* A read before any flag, in the middle of a picture, takes nothing either. */
+        cogmaster *m = sprite_frame(p, &five, BG_BLANK, 0x00u, 0);
+        CHECK_EQ_HEX(status_at(m, 10u, 0u), 0x1Fu);
+        CHECK_EQ_U64(m->vdp.fifth_index, 31u);
+        CHECK_EQ_HEX(status_at(m, 60u, 0u), 0x44u);
+        CHECK_EQ_U64(m->vdp.fifth_index, 31u);
+        cogmaster_destroy(m);
     }
 }
 
@@ -1222,6 +1642,26 @@ int main(int argc, char **argv)
         hostile();
     else if (strcmp(argv[1], "sprites.basic") == 0)
         sprites_basic();
+    else if (strcmp(argv[1], "sprites.sizes") == 0)
+        sprites_sizes();
+    else if (strcmp(argv[1], "sprites.zoom") == 0)
+        sprites_zoom();
+    else if (strcmp(argv[1], "sprites.early_clock") == 0)
+        sprites_early_clock();
+    else if (strcmp(argv[1], "sprites.terminator") == 0)
+        sprites_terminator();
+    else if (strcmp(argv[1], "sprites.y_wrap") == 0)
+        sprites_y_wrap();
+    else if (strcmp(argv[1], "sprites.fifth") == 0)
+        sprites_fifth();
+    else if (strcmp(argv[1], "sprites.fifth_carry") == 0)
+        sprites_fifth_carry();
+    else if (strcmp(argv[1], "sprites.collision") == 0)
+        sprites_collision();
+    else if (strcmp(argv[1], "sprites.class_switch") == 0)
+        sprites_class_switch();
+    else if (strcmp(argv[1], "sprites.status_low") == 0)
+        sprites_status_low();
     else if (strcmp(argv[1], "text") == 0)
         unsupported_text();
     else if (strcmp(argv[1], "multicolour") == 0)

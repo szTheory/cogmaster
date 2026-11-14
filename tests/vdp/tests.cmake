@@ -77,8 +77,11 @@ foreach(case IN ITEMS oracle
     # moves a dot, repaints an emitted one or makes a call unbounded.
     masks rows intervals switch bringup hostile
     # Fault prevented: a legacy sprite drawn from the mode 4 tables, rows or colours (a wrong pattern
-    # address, row, colour, position or priority over the background), or one that moves the status.
-    sprites.basic)
+    # address, row, colour, position or priority over the background), a wrong quadrant, zoom, early
+    # clock, terminator, Y wrap, fifth-sprite index or coincidence rule, a fifth-sprite index lost to
+    # a status read before its flag asserts, or a class change that keeps the old sprite list.
+    sprites.basic sprites.sizes sprites.zoom sprites.early_clock sprites.terminator sprites.y_wrap
+    sprites.fifth sprites.fifth_carry sprites.collision sprites.class_switch sprites.status_low)
   cogmaster_add_test(NAME vdp.legacy.${case} COMMAND cogmaster-test-legacy ${case}
     LABELS portable vdp TIMEOUT 10)
 endforeach()
