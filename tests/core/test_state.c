@@ -315,12 +315,16 @@ static void sweep(cogmaster *src, cogmaster *target, int fm_only)
     CHECK(swept >= 30u);
     CHECK_EQ_U64(ram, 8192);
     static const char *const named[] = {
-        "z80_pc",       "z80_sp",          "z80_wz",       "z80_im",    "z80_idx",   "z80_halted",
-        "z80_int_line", "z80_nmi_pending", "bus_deadline", "bus_at",    "bus_line",  "bus_t",
-        "bus_vdp_at",   "vdp_reg",         "vdp_status",   "vdp_latch", "vdp_code",  "vdp_addr",
-        "vdp_buffer",   "vdp_pause",       "vdp_cram",     "vdp_vram",  "machine",   "region",
-        "tv",           "io_mem_ctrl",     "io_ctrl",      "io_gg",     "bus_op_pc", "bus_op",
-        "fm_unit",      "synth_phase",     "boot",         "bios_crc32"};
+        "z80_pc",       "z80_sp",         "z80_wz",       "z80_im",
+        "z80_idx",      "z80_halted",     "z80_int_line", "z80_nmi_pending",
+        "bus_deadline", "bus_at",         "bus_line",     "bus_t",
+        "bus_vdp_at",   "vdp_reg",        "vdp_status",   "vdp_latch",
+        "vdp_code",     "vdp_addr",       "vdp_buffer",   "vdp_pause",
+        "vdp_cram",     "vdp_vram",       "machine",      "region",
+        "tv",           "io_mem_ctrl",    "io_ctrl",      "io_gg",
+        "bus_op_pc",    "bus_op",         "fm_unit",      "synth_phase",
+        "boot",         "bios_crc32",     "sprite_attr",  "sprite_legacy",
+        "sprite_size",  "vdp_fifth_index"};
     for (size_t i = 0; i < sizeof named / sizeof named[0]; i++) {
         (void)field(n, named[i]);
     }
@@ -1334,6 +1338,332 @@ static void test_error_changes_nothing(void)
     cogmaster_destroy(e);
 }
 
+/* A Master System instance running the 1 KiB image with Graphics I selected and the display on
+   (R0 is 0 from reset and R1 is $40, so the mode select nibble is 0: SMS-VDP section 2.5), run
+   to the middle of a line. The first SAT entry ends the sprite list, so each line's scan finds
+   no sprite and the sprite fields stay as a test sets them between runs. */
+static cogmaster *legacy_instance(void)
+{
+    fill_images();
+    cogmaster *m = make_image(img_loop);
+    cogmaster__bus_out(m, 0xBFu, 0x40u);
+    cogmaster__bus_out(m, 0xBFu, 0x81u);
+    m->vdp.vram[0] = 0xD0u;
+    run_frames(m, 3u);
+    for (uint32_t i = 0; i < 1000u; i++) {
+        cogmaster__z80_step(m);
+    }
+    CHECK_EQ_U64(m->vdp.display, 1u);
+    CHECK_EQ_U64(cogmaster__vdp_class(m), COGMASTER__VDP_LEGACY);
+    CHECK_EQ_U64(fault_of(m).present, 0u);
+    return m;
+}
+
+/* The sprite fields as a Graphics I or II scan with a fifth match leaves them: four selected
+   slots, the fifth match's SAT index plus 1 in sprite_overflow and six SAT reads, nothing
+   latched for the status read. Rows run to 15 with 16x16 sprites and to 6 with 8x8 ones; every
+   colour byte has the early clock bit and a colour. */
+static void set_legacy_slots(cogmaster *m, uint8_t size)
+{
+    struct cogmaster__vdp *v = &m->vdp;
+    v->sprite_legacy = 1u;
+    v->sprite_size = size;
+    v->sprite_count = 4u;
+    v->sprite_scanned = 6u;
+    v->sprite_overflow = 6u;
+    v->fifth_index = 31u;
+    v->status = (uint8_t)(v->status & ~0x40u);
+    for (uint32_t i = 0u; i < 4u; i++) {
+        v->sprite[i].x = (uint8_t)(40u * i + 7u);
+        v->sprite[i].tile = (uint8_t)(0x10u + 4u * i);
+        v->sprite[i].row = (uint8_t)((size != 0u ? 5u : 2u) * i);
+        v->sprite[i].attr = (uint8_t)(0x80u | (6u + i));
+    }
+}
+
+/* Saves a, loads the bytes into a fresh instance of the same image and saves again: the two
+   buffers are equal. A status read of each then returns the same byte with expect_low in bits 4
+   to 0 (the latched fifth sprite's index while bit 6 is set, 31 otherwise: SMS-VDP section 7) and
+   resets the index, and two more frames of each leave the saved bytes equal. */
+static void legacy_round_trip(const char *what, cogmaster *a, uint8_t expect_low)
+{
+    size_t size = save(a, good);
+    cogmaster *b = make_image(img_loop);
+    run_frames(b, 1u);
+    if (size != 0u) {
+        CHECK_EQ_U64(cogmaster__state_size(b), size);
+        CHECK_EQ_U64(cogmaster__state_load(b, good, size), COGMASTER_STATUS_OK);
+        CHECK_EQ_U64(save(b, after), size);
+        if (memcmp(good, after, size) != 0) {
+            fprintf(stderr, "%s: the loaded state saves other bytes\n", what);
+            check_failures++;
+        }
+        /* Equal saved bytes also hold when a field is in neither state, so the instances are
+           compared as well: the loaded one took every sprite field. */
+        if (memcmp(a->vdp.sprite, b->vdp.sprite, sizeof a->vdp.sprite) != 0 ||
+            a->vdp.sprite_count != b->vdp.sprite_count ||
+            a->vdp.sprite_scanned != b->vdp.sprite_scanned ||
+            a->vdp.sprite_overflow != b->vdp.sprite_overflow ||
+            a->vdp.sprite_legacy != b->vdp.sprite_legacy ||
+            a->vdp.sprite_size != b->vdp.sprite_size || a->vdp.fifth_index != b->vdp.fifth_index) {
+            fprintf(stderr, "%s: the loaded instance holds other sprite fields\n", what);
+            check_failures++;
+        }
+        uint8_t read_a = cogmaster__bus_in(a, 0xBFu);
+        uint8_t read_b = cogmaster__bus_in(b, 0xBFu);
+        CHECK_EQ_U64(read_a, read_b);
+        CHECK_EQ_U64(read_a & 0x1Fu, expect_low);
+        CHECK_EQ_U64(a->vdp.fifth_index, 31u);
+        CHECK_EQ_U64(b->vdp.fifth_index, 31u);
+        CHECK_EQ_U64(cogmaster__bus_in(a, 0xBFu) & 0x5Fu, 0x1Fu);
+        run_frames(a, 2u);
+        run_frames(b, 2u);
+        CHECK_EQ_U64(save(a, good), size);
+        CHECK_EQ_U64(save(b, after), size);
+        if (memcmp(good, after, size) != 0) {
+            fprintf(stderr, "%s: two frames after the load the instances differ\n", what);
+            check_failures++;
+        }
+    }
+    cogmaster_destroy(b);
+}
+
+/* A Graphics I instance whose sprite scan fills the slots, saved in the middle of an active line.
+   The attribute table (R5 is 0, so it is at the start of video memory) holds six groups of four
+   16x16 magnified sprites, group g from line 32 g, so every line of the picture matches exactly
+   four entries and none a fifth. Every colour byte has bits 6 to 4 set, which the chip ignores
+   and a game may write; the scan keeps only the early clock and the colour. */
+static cogmaster *legacy_sprite_instance(void)
+{
+    cogmaster *m = legacy_instance();
+    struct cogmaster__vdp *v = &m->vdp;
+    for (uint32_t i = 0u; i < 24u; i++) {
+        v->vram[4u * i] = (uint8_t)(32u * (i / 4u) - 1u);
+        v->vram[4u * i + 1u] = (uint8_t)(20u * i + 7u);
+        v->vram[4u * i + 2u] = (uint8_t)(0x10u + 4u * i);
+        v->vram[4u * i + 3u] = (uint8_t)(0x70u | ((i & 1u) != 0u ? 0x80u : 0u) | (1u + (i & 7u)));
+    }
+    v->vram[96] = 0xD0u;
+    cogmaster__bus_out(m, 0xBFu, 0x43u);
+    cogmaster__bus_out(m, 0xBFu, 0x81u);
+    run_frames(m, 2u);
+    for (uint32_t i = 0u; i < 20000u && (m->bus.line < 20u || m->bus.line >= 150u); i++) {
+        cogmaster__z80_step(m);
+    }
+    CHECK(m->bus.line >= 20u && m->bus.line < 150u);
+    CHECK_EQ_U64(cogmaster__vdp_class(m), COGMASTER__VDP_LEGACY);
+    CHECK_EQ_U64(fault_of(m).present, 0u);
+    CHECK_EQ_U64(v->sprite_legacy, 1u);
+    CHECK_EQ_U64(v->sprite_size, 1u);
+    CHECK_EQ_U64(v->sprite_zoom, 1u);
+    CHECK_EQ_U64(v->sprite_count, 4u);
+    CHECK_EQ_U64(v->sprite_overflow, 0u);
+    for (uint32_t i = 0u; i < 4u; i++) {
+        CHECK((v->vram[4u * (4u * (v->sprite_line / 32u) + i) + 3u] & 0x70u) == 0x70u);
+        CHECK_EQ_U64(v->sprite[i].attr & 0x70u, 0u);
+        CHECK(v->sprite[i].attr != 0u);
+    }
+    return m;
+}
+
+/* A state taken in Graphics I saves and reloads byte for byte: with no sprite selected and no
+   overflow, with four slots filled by the scan from a table whose colour bytes have bits 6 to 4 set
+   (the scan clears them, so the state loads), with four selected 16x16 slots and a fifth match,
+   and with a fifth sprite latched for the status read, so every field a legacy scan writes is in
+   the record. */
+static void test_legacy_roundtrip(void)
+{
+    cogmaster *a = legacy_instance();
+    CHECK_EQ_U64(a->vdp.sprite_count, 0u);
+    CHECK_EQ_U64(a->vdp.sprite_overflow, 0u);
+    legacy_round_trip("a Graphics I picture without sprites", a, 0x1Fu);
+    cogmaster_destroy(a);
+
+    a = legacy_sprite_instance();
+    legacy_round_trip("a Graphics I picture with scanned sprites", a, 0x1Fu);
+    cogmaster_destroy(a);
+
+    a = legacy_instance();
+    set_legacy_slots(a, 1u);
+    legacy_round_trip("four 16x16 slots and a fifth match", a, 0x1Fu);
+    cogmaster_destroy(a);
+
+    a = legacy_instance();
+    set_legacy_slots(a, 0u);
+    a->vdp.status = (uint8_t)(a->vdp.status | 0x40u);
+    a->vdp.fifth_index = 4u;
+    legacy_round_trip("a latched fifth sprite", a, 4u);
+    cogmaster_destroy(a);
+}
+
+/* The same fields as a mode 4 scan with an overflow leaves them: eight slots of rows 0 to 7, no
+   colour byte, a ninth Y match. */
+static void set_mode4_slots(cogmaster *m)
+{
+    struct cogmaster__vdp *v = &m->vdp;
+    v->sprite_legacy = 0u;
+    v->sprite_size = 0u;
+    v->sprite_count = 8u;
+    v->sprite_scanned = 9u;
+    v->sprite_overflow = 1u;
+    v->fifth_index = 31u;
+    for (uint32_t i = 0u; i < 8u; i++) {
+        v->sprite[i].x = (uint8_t)(20u * i);
+        v->sprite[i].tile = (uint8_t)(2u * i);
+        v->sprite[i].row = (uint8_t)i;
+        v->sprite[i].attr = 0u;
+    }
+}
+
+/* A field to set in a copy of the saved bytes. The sprite slots repeat their field names, so nth
+   is the slot, from 0. */
+struct patch {
+    const char *name;
+    size_t nth;
+    uint64_t v;
+};
+
+struct bounds_case {
+    const char *what;
+    int refused;
+    size_t count;
+    struct patch set[4];
+};
+
+static const struct cogmaster__state_field *nth_field(size_t n, const char *name, size_t nth)
+{
+    for (size_t i = 0; i < n; i++) {
+        if (strcmp(fields[i].name, name) == 0 && nth-- == 0u) {
+            return &fields[i];
+        }
+    }
+    fprintf(stderr, "no state field named %s\n", name);
+    check_failures++;
+    return NULL;
+}
+
+/* Sets the patched fields in a copy of good, each inside its own bounds or not as the case says,
+   and requires target to refuse the bytes with nothing changed, or a fresh instance of the same
+   image to load them. */
+static void load_patched(const char *what, const struct patch *set, size_t count, int refused,
+                         size_t n, cogmaster *target, size_t size, size_t target_size)
+{
+    memcpy(bad, good, size);
+    for (size_t i = 0; i < count; i++) {
+        const struct cogmaster__state_field *fd = nth_field(n, set[i].name, set[i].nth);
+        if (fd == NULL) {
+            return;
+        }
+        put_le(bad + fd->offset, set[i].v, fd->width);
+    }
+    cogmaster__state_seal(bad, size);
+    if (refused) {
+        expect_refused(what, target, size, target_size);
+        return;
+    }
+    cogmaster *fresh = make_image(img_loop);
+    if (cogmaster__state_load(fresh, bad, size) != COGMASTER_STATUS_OK) {
+        fprintf(stderr, "%s: refused\n", what);
+        check_failures++;
+    }
+    cogmaster_destroy(fresh);
+}
+
+static void run_bounds_cases(const struct bounds_case *cases_in, size_t count, size_t n,
+                             cogmaster *target, size_t size, size_t target_size)
+{
+    for (size_t i = 0; i < count; i++) {
+        const struct bounds_case *c = &cases_in[i];
+        load_patched(c->what, c->set, c->count, c->refused, n, target, size, target_size);
+    }
+}
+
+/* Each case changes the base state: Graphics I or II with 8x8 sprites, four selected slots of
+   rows 0, 2, 4 and 6 with the early clock bit and a colour, a fifth match at SAT index 5 after
+   six SAT reads, nothing latched and bit 6 clear. A refused case breaks one rule of what a scan
+   of the class can leave, and its neighbour on the allowed side loads. */
+static const struct bounds_case legacy_cases[] = {
+    {"row 16 with 16x16 sprites", 1, 2, {{"sprite_size", 0u, 1u}, {"sprite_row", 0u, 16u}}},
+    {"row 8 with 8x8 sprites", 1, 1, {{"sprite_row", 0u, 8u}}},
+    {"row 8 in the last selected slot with 8x8 sprites", 1, 1, {{"sprite_row", 3u, 8u}}},
+    {"five selected slots", 1, 2, {{"sprite_count", 0u, 5u}, {"sprite_overflow", 0u, 0u}}},
+    {"colour byte with bit 4 set", 1, 1, {{"sprite_attr", 0u, 0x10u}}},
+    {"colour byte with bit 6 set in the last selected slot", 1, 1, {{"sprite_attr", 3u, 0x40u}}},
+    {"colour byte above 0x8F", 1, 1, {{"sprite_attr", 0u, 0x90u}}},
+    {"fifth match with three selected slots", 1, 1, {{"sprite_count", 0u, 3u}}},
+    {"fifth match after four SAT reads", 1, 1, {{"sprite_scanned", 0u, 4u}}},
+    {"fifth match above 32", 1, 1, {{"sprite_overflow", 0u, 33u}}},
+    {"33 SAT reads", 1, 2, {{"sprite_scanned", 0u, 33u}, {"sprite_overflow", 0u, 0u}}},
+    {"fifth index 32", 1, 1, {{"vdp_fifth_index", 0u, 32u}}},
+    {"fifth index 30 with bit 6 clear", 1, 1, {{"vdp_fifth_index", 0u, 30u}}},
+    {"sprite class 2", 1, 1, {{"sprite_legacy", 0u, 2u}}},
+    {"sprite size 2", 1, 1, {{"sprite_size", 0u, 2u}}},
+    {"row 15 with 16x16 sprites", 0, 2, {{"sprite_size", 0u, 1u}, {"sprite_row", 0u, 15u}}},
+    {"row 7 with 8x8 sprites", 0, 1, {{"sprite_row", 0u, 7u}}},
+    {"four selected slots", 0, 1, {{"sprite_count", 0u, 4u}}},
+    {"colour byte 0x8F", 0, 1, {{"sprite_attr", 0u, 0x8Fu}}},
+    {"fifth match 32 after five SAT reads",
+     0,
+     2,
+     {{"sprite_overflow", 0u, 32u}, {"sprite_scanned", 0u, 5u}}},
+    {"32 SAT reads", 0, 2, {{"sprite_scanned", 0u, 32u}, {"sprite_overflow", 0u, 0u}}},
+    {"fifth index 31 with bit 6 clear", 0, 1, {{"vdp_fifth_index", 0u, 31u}}},
+    {"a slot past the count holding the other class's bytes",
+     0,
+     2,
+     {{"sprite_row", 4u, 15u}, {"sprite_attr", 4u, 0x7Fu}}},
+};
+
+/* The same for mode 4, whose bounds the loader keeps: eight slots, rows 0 to 7, no colour byte. */
+static const struct bounds_case mode4_cases[] = {
+    {"mode 4 colour byte 1", 1, 1, {{"sprite_attr", 0u, 1u}}},
+    {"mode 4 row 8", 1, 1, {{"sprite_row", 0u, 8u}}},
+    {"mode 4 overflow 2", 1, 1, {{"sprite_overflow", 0u, 2u}}},
+    {"mode 4 nine slots", 1, 1, {{"sprite_count", 0u, 9u}}},
+    {"mode 4 65 SAT reads", 1, 1, {{"sprite_scanned", 0u, 65u}}},
+    {"mode 4 eight slots with row 7", 0, 1, {{"sprite_row", 0u, 7u}}},
+    {"mode 4 sprite list of 64 SAT reads", 0, 1, {{"sprite_scanned", 0u, 64u}}},
+    {"mode 4 five slots, a legacy slot past the count",
+     0,
+     4,
+     {{"sprite_count", 0u, 5u},
+      {"sprite_overflow", 0u, 0u},
+      {"sprite_row", 7u, 15u},
+      {"sprite_attr", 7u, 0x8Fu}}},
+};
+
+/* The loader refuses a sprite field set no scan of the saved class can leave, accepts the
+   neighbour of each bound, and keeps the mode 4 bounds; the record sweep then runs over a state
+   with legacy sprite fields. */
+static void test_legacy_sprite_bounds(void)
+{
+    cogmaster *src = legacy_instance();
+    cogmaster *target = make_image(img_loop);
+    run_frames(target, 1u);
+    set_legacy_slots(src, 0u);
+    size_t size = save(src, good);
+    size_t target_size = save(target, before);
+    size_t n = record(src);
+    const struct cogmaster__state_field *status = field(n, "vdp_status");
+    if (size != 0u && target_size != 0u && n != 0u && status != NULL) {
+        run_bounds_cases(legacy_cases, sizeof legacy_cases / sizeof legacy_cases[0], n, target,
+                         size, target_size);
+        /* Bit 6 set: any index up to 31 is a latched one. */
+        const struct patch latched[] = {
+            {"vdp_status", 0u, get_le(good + status->offset, 1u) | 0x40u},
+            {"vdp_fifth_index", 0u, 30u}};
+        load_patched("fifth index 30 with bit 6 set", latched, 2u, 0, n, target, size, target_size);
+        set_mode4_slots(src);
+        CHECK_EQ_U64(save(src, good), size);
+        run_bounds_cases(mode4_cases, sizeof mode4_cases / sizeof mode4_cases[0], n, target, size,
+                         target_size);
+        set_legacy_slots(src, 1u);
+        sweep(src, target, 0);
+    }
+    cogmaster_destroy(src);
+    cogmaster_destroy(target);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
@@ -1344,6 +1674,8 @@ static const struct {
     {"fault.reset_clears", test_fault_reset_clears},
     {"fault.state_round_trip", test_fault_state_round_trip},
     {"state.frame_counter", test_frame_counter},
+    {"state.legacy_roundtrip", test_legacy_roundtrip},
+    {"state.legacy_sprite_bounds", test_legacy_sprite_bounds},
     {"state.mapper", test_state_mapper},
     {"state.record_sweep", test_record_sweep},
     {"state.rejects_header", test_rejects_header},

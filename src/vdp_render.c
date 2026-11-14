@@ -1,5 +1,6 @@
-/* Mode 4 tiles and monotonic raster intervals. Hardware rules and the
-   selected latch model are sourced in docs/hardware/video.md. */
+/* Mode 4 tiles, the per-call dispatch and monotonic raster intervals. Hardware rules and the
+   selected latch model are sourced in docs/hardware/video.md; Graphics I and II are in
+   vdp_legacy.c. */
 #include <string.h>
 #include "internal.h"
 
@@ -7,12 +8,18 @@ static uint16_t vdp_colour(const cogmaster *m, uint32_t index)
 {
     if (cogmaster__native_gg(m))
         return (uint16_t)(m->vdp.cram[index * 2u] | ((uint16_t)m->vdp.cram[index * 2u + 1u] << 8));
-    uint8_t c = m->vdp.cram[index];
-    return (uint16_t)(((c & 3u) * 5u) | (((c >> 2) & 3u) * 5u << 4) | (((c >> 4) & 3u) * 5u << 8));
+    return cogmaster__vdp_rgb444(m->vdp.cram[index]);
 }
 
+/* The backdrop is the legacy palette entry R7 & 15 only while the display is on in Graphics I or
+   II; everywhere else, and with the display off, it is the colour RAM entry 16 + (R7 & 15), so a
+   game that boots with the power-on registers (Graphics I, display off) shows what it always
+   showed. Model: docs/hardware/video.md. */
 uint16_t cogmaster__vdp_backdrop(const cogmaster *m)
 {
+    if (m->vdp.display != 0u && cogmaster__vdp_class(m) == COGMASTER__VDP_LEGACY) {
+        return cogmaster__legacy_colour(m, m->vdp.reg[7] & 15u);
+    }
     return vdp_colour(m, 16u + (m->vdp.reg[7] & 15u));
 }
 
@@ -49,40 +56,21 @@ uint32_t cogmaster__vdp_sprite_address(const cogmaster *m, uint32_t tile, uint32
     return address;
 }
 
-/* The mode select nibble M4 M3 M2 M1: M4 and M2 in register 0 bits 2 and 1, M3 and M1 in
-   register 1 bits 3 and 4 (SMS-VDP section 2.5). */
-static uint32_t vdp_mode(const cogmaster *m)
-{
-    const uint8_t *r = m->vdp.reg;
-    return ((uint32_t)(r[0] & 4u) << 1) | ((r[1] & 8u) >> 1) | (r[0] & 2u) | ((r[1] & 16u) >> 4);
-}
-
-/* Legacy and invalid text combinations have no renderer. Extended heights
-   on the 315-5124 also select invalid text (SMS-VDP section 2.5). */
-static int vdp_supported(const cogmaster *m)
-{
-    uint32_t mode = vdp_mode(m);
-    if (cogmaster__profile(m).vdp_masks) {
-        return mode == 8u || mode == 10u || mode == 12u;
-    }
-    return mode >= 8u && mode != 9u && mode != 13u;
-}
-
 /* The one condition under which render_until records a fault. The Light Phaser's sensor asks it
    before rendering ahead so that it never records the first fault, which is saved state, at a
    position the program would not have. */
 int cogmaster__vdp_render_blocked(const cogmaster *m)
 {
-    return m->vdp.display != 0u && !vdp_supported(m);
+    return m->vdp.display != 0u && cogmaster__vdp_class(m) == COGMASTER__VDP_BLOCKED;
 }
 
-/* Palette index plus priority; zero retains its colour without priority. */
-uint32_t cogmaster__vdp_background(const cogmaster *m, uint32_t x, uint32_t y)
+/* The mode 4 background dot: palette index plus priority; zero retains its colour without
+   priority. The caller has already established that the mode is mode 4. */
+static uint32_t vdp_tile(const cogmaster *m, uint32_t x, uint32_t y)
 {
     const struct cogmaster__vdp *v = &m->vdp;
     uint32_t scroll = (v->reg[0] & 0x40u) != 0u && y < 16u ? 0u : v->hscroll;
-    if (!v->display || !vdp_supported(m) || ((v->reg[0] & 0x20u) != 0u && x < 8u) ||
-        x < (scroll & 7u)) {
+    if (!v->display || ((v->reg[0] & 0x20u) != 0u && x < 8u) || x < (scroll & 7u)) {
         return 16u + (v->reg[7] & 15u);
     }
     uint32_t sx = (x + 256u - scroll) & 255u;
@@ -112,15 +100,33 @@ uint32_t cogmaster__vdp_background(const cogmaster *m, uint32_t x, uint32_t y)
            ((attr & 0x1000u) != 0u && index != 0u ? COGMASTER__VDP_PRIORITY : 0u);
 }
 
-/* Y+1, negative F0..FF, D0 termination, eight retained slots and the
-   ninth Y match: SMS-VDP section 3, docs/hardware/video.md. */
+/* The background dot of mode 4 as a palette index; the other modes have no tiles here (Graphics I
+   and II draw whole spans in vdp_legacy.c) and give the colour RAM backdrop entry. */
+uint32_t cogmaster__vdp_background(const cogmaster *m, uint32_t x, uint32_t y)
+{
+    if (cogmaster__vdp_class(m) != COGMASTER__VDP_MODE4) {
+        return 16u + (m->vdp.reg[7] & 15u);
+    }
+    return vdp_tile(m, x, y);
+}
+
+/* The sprites of one line under the class of the registers now: Graphics I and II scan their own
+   table (vdp_legacy.c), every other class the mode 4 one. sprite_legacy records which, so that a
+   class change after the scan is noticed (render_until) and a saved state names its slots' class.
+   Mode 4: Y+1, negative F0..FF, D0 termination, eight retained slots and the ninth Y match:
+   SMS-VDP section 3, docs/hardware/video.md. */
 void cogmaster__vdp_sprite_scan(cogmaster *m, uint32_t line)
 {
+    if (cogmaster__vdp_class(m) == COGMASTER__VDP_LEGACY) {
+        cogmaster__legacy_sprite_scan(m, line);
+        return;
+    }
     struct cogmaster__vdp *v = &m->vdp;
     v->sprite_line = (uint8_t)line;
     v->sprite_count = 0u;
     v->sprite_scanned = 0u;
     v->sprite_overflow = 0u;
+    v->sprite_legacy = 0u;
     v->sprite_zoom = v->reg[1] & 1u;
     v->sprite_shift = (uint8_t)((v->reg[0] >> 3) & 1u);
     uint32_t height = (v->reg[1] & 2u) != 0u ? 16u : 8u;
@@ -148,6 +154,7 @@ void cogmaster__vdp_sprite_scan(cogmaster *m, uint32_t line)
         v->sprite[slot].x = v->vram[cogmaster__vdp_sat_address(m, 128u + 2u * i)];
         v->sprite[slot].tile = (uint8_t)tile;
         v->sprite[slot].row = (uint8_t)(row & 7u);
+        v->sprite[slot].attr = 0u;
     }
 }
 
@@ -191,17 +198,63 @@ void cogmaster__vdp_render_until(cogmaster *m, uint32_t line, uint32_t x)
                                          : line * COGMASTER__FIELD_W +
                                                (x > COGMASTER__FIELD_W ? COGMASTER__FIELD_W : x);
     uint32_t at = m->render_line * COGMASTER__FIELD_W + m->render_x;
-    if (at < end && m->vdp.display && !vdp_supported(m)) {
-        cogmaster__bus_fault(m, (uint16_t)vdp_mode(m), COGMASTER_FAULT_DEVICE_VDP,
+    if (at >= end) {
+        return;
+    }
+    /* The registers do not change inside one call, so the class is decided once. A sprite list
+       scanned under the other class (a register write between the scan at tick 600 of the line
+       before and now switched between mode 4 and Graphics I or II) is scanned again for the
+       current line under this one: one compare per call, none per dot. */
+    uint32_t cls = cogmaster__vdp_class(m);
+    if (cls != COGMASTER__VDP_BLOCKED && m->vdp.sprite_line == m->render_line &&
+        m->vdp.sprite_legacy != (uint8_t)(cls == COGMASTER__VDP_LEGACY)) {
+        cogmaster__vdp_sprite_scan(m, m->render_line);
+    }
+    if (m->vdp.display && cls == COGMASTER__VDP_BLOCKED) {
+        cogmaster__bus_fault(m, (uint16_t)cogmaster__vdp_mode(m), COGMASTER_FAULT_DEVICE_VDP,
                              COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE);
+        /* Not drawn: the backdrop, with the sprite lists still scanned per line. */
+        uint16_t backdrop = cogmaster__vdp_backdrop(m);
+        while (at < end) {
+            if (m->vdp.sprite_line != m->render_line) {
+                cogmaster__vdp_sprite_scan(m, m->render_line);
+            }
+            m->field[m->render_line][m->render_x] = backdrop;
+            at++;
+            if (++m->render_x == COGMASTER__FIELD_W) {
+                m->render_x = 0u;
+                m->render_line++;
+            }
+        }
+        return;
+    }
+    if (m->vdp.display && cls == COGMASTER__VDP_LEGACY) {
+        /* One span per line: the part of the line between the cursor and the end of the call. */
+        while (at < end) {
+            if (m->vdp.sprite_line != m->render_line) {
+                cogmaster__vdp_sprite_scan(m, m->render_line);
+            }
+            uint32_t x1 = m->render_x + (end - at);
+            if (x1 > COGMASTER__FIELD_W) {
+                x1 = COGMASTER__FIELD_W;
+            }
+            cogmaster__legacy_span(m, m->render_line, m->render_x, x1);
+            at += x1 - m->render_x;
+            if (x1 == COGMASTER__FIELD_W) {
+                m->render_x = 0u;
+                m->render_line++;
+            } else {
+                m->render_x = x1;
+            }
+        }
+        return;
     }
     while (at < end) {
         if (m->vdp.sprite_line != m->render_line) {
             cogmaster__vdp_sprite_scan(m, m->render_line);
         }
-        uint32_t colour = cogmaster__vdp_background(m, m->render_x, m->render_line);
-        if (m->vdp.display && vdp_supported(m) &&
-            !((m->vdp.reg[0] & 0x20u) != 0u && m->render_x < 8u)) {
+        uint32_t colour = vdp_tile(m, m->render_x, m->render_line);
+        if (m->vdp.display && !((m->vdp.reg[0] & 0x20u) != 0u && m->render_x < 8u)) {
             uint32_t sprite = vdp_sprite_pixel(m, m->render_x);
             if (sprite != 0u && (colour & COGMASTER__VDP_PRIORITY) == 0u) {
                 colour = sprite;
@@ -209,7 +262,7 @@ void cogmaster__vdp_render_until(cogmaster *m, uint32_t line, uint32_t x)
         }
         /* Selected model: a ninth Y match asserts at the line's first
            enabled active dot, regardless of opacity or X (video.md). */
-        if (m->render_x == 0u && m->vdp.display && vdp_supported(m) && m->vdp.sprite_overflow) {
+        if (m->render_x == 0u && m->vdp.display && m->vdp.sprite_overflow) {
             m->vdp.status |= 0x40u;
         }
         m->field[m->render_line][m->render_x] = vdp_colour(m, colour & 31u);

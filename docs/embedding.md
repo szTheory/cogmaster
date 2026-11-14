@@ -59,6 +59,7 @@ API version 13 appends `COGMASTER_DEVICE_LIGHT_PHASER`, with behaviour revision 
 API version 14 appends `bios` and `bios_size` to `cogmaster_media` (72 bytes), with behaviour revision 16 and state format 16, so older state bytes are refused.
 Behaviour revision 17 refuses the Sega Graphic Board dump, which read as a plain pad before, so state bytes saved at revision 16 are refused.
 Behaviour revision 18 makes the unsupported-video-mode fault record the mode select nibble in `addr` and stops recording writes to the unused bits of `$FFFC`, writes to a cartridge address that is no register, reads of ports `$00`–`$3F` nothing drives, and writes to ports nothing decodes, as faults, so state bytes saved at revision 17 are refused.
+Behaviour revision 19 draws Graphics I and II on the Master System video profiles instead of recording the unsupported-video-mode fault, and state format 17 widens the saved sprite slots, so state bytes saved at revision 18 are refused.
 
 ## Getting it
 
@@ -321,8 +322,8 @@ on it. Any other `kind` returns `COGMASTER_STATUS_ERR_ARGUMENT`; a reset before 
 ## Faults
 
 `cogmaster_get_fault` fills a `cogmaster_fault` with the first fault the core recorded since the last load or
-reset: an access to an unmapped address or port, a mapper value out of range, or an undefined
-opcode. Only the first is kept; later ones are ignored until the next load or reset.
+reset: a cartridge or RAM address that port `$3E` took off the bus, a mapper value out of range, an undefined
+opcode, or an unsupported video mode. Only the first is kept; later ones are ignored until the next load or reset.
 The record is part of the instance's saved state.
 
 | Field | Meaning |
@@ -343,7 +344,7 @@ The record is part of the instance's saved state.
 | 3 | `COGMASTER_FAULT_KIND_ROM_WRITE` | no longer recorded: a write to `$0000`–`$BFFF` that is no register and no enabled cartridge RAM changes nothing; the constant stays |
 | 4 | `COGMASTER_FAULT_KIND_MAPPER_RANGE` | a bank number at or past the end of an image whose page count is not a power of two |
 | 5 | `COGMASTER_FAULT_KIND_ED_UNDEFINED` | the CPU ran an opcode after `$ED` that the Z80 does not define, as an 8 T-state no-operation; `opcode` is that second byte and `pc` the address of the `$ED` |
-| 6 | `COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE` | an enabled display selects an unsupported TMS or invalid text mode; output is backdrop and frame delivery stays bounded |
+| 6 | `COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE` | an enabled display selects text, multicolour, a mixed mode, an invalid text mode, or a legacy mode on native Game Gear video; output is backdrop and frame delivery stays bounded |
 
 | `device` | Constant | Meaning |
 |---|---|---|
@@ -352,7 +353,7 @@ The record is part of the instance's saved state.
 | 2 | `COGMASTER_FAULT_DEVICE_CART` | the cartridge |
 | 3 | `COGMASTER_FAULT_DEVICE_RAM` | work RAM |
 | 4 | `COGMASTER_FAULT_DEVICE_MAPPER` | the cartridge's mapper |
-| 5 | `COGMASTER_FAULT_DEVICE_CTRL` | the memory and I/O control ports `$3E` and `$3F` |
+| 5 | `COGMASTER_FAULT_DEVICE_CTRL` | no longer recorded since behaviour revision 18: nothing faults on the control ports `$3E` and `$3F`; the constant stays |
 | 6 | `COGMASTER_FAULT_DEVICE_VDP` | the video display processor |
 
 `addr` is the full 16-bit bus address; for `IN A,(n)` and `OUT (n),A` that is A × 256 + n. For kind 6 it holds
@@ -477,7 +478,7 @@ Every public name, for reference: the opaque instance `cogmaster`; the types `co
 `COGMASTER_MACHINE_SMS2`, `COGMASTER_MACHINE_GG`, `COGMASTER_REGION_AUTO`, `COGMASTER_REGION_EXPORT`,
 `COGMASTER_REGION_JAPAN`, `COGMASTER_FM_AUTO`, `COGMASTER_FM_OFF`, `COGMASTER_FM_ON`, `COGMASTER_TV_AUTO`, `COGMASTER_TV_NTSC`, `COGMASTER_TV_PAL`, `COGMASTER_STOP_FRAME`, `COGMASTER_FRAME_FULL_FIELD`,
 `COGMASTER_RESET_SOFT`, `COGMASTER_RESET_POWER`, `COGMASTER_BOARD_ROM_ONLY`, `COGMASTER_BOARD_SEGA`,
-`COGMASTER_BOARD_CODEMASTERS`, `COGMASTER_SPACE_BUS`, the five `COGMASTER_FAULT_KIND_*` and six `COGMASTER_FAULT_DEVICE_*` values
+`COGMASTER_BOARD_CODEMASTERS`, `COGMASTER_SPACE_BUS`, the six `COGMASTER_FAULT_KIND_*` and seven `COGMASTER_FAULT_DEVICE_*` values
 above, the nine `COGMASTER_STATUS_*` values above and the
 version macros above.
 

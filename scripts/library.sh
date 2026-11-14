@@ -27,6 +27,15 @@ umask 077
 # The tracked ledger, page and catalog are overridable so tests never touch tracked files.
 ledger=${COGMASTER_LEDGER:-$root/tests/compat/ledger.csv}
 page=${COGMASTER_PAGE:-$root/docs/compatibility.md}
+# Fault prevented: a ledger stamped with a commit id that does not describe the tree the run measured. dirty means a tracked file
+# outside .planning differs from HEAD. Only a run against the tracked ledger refuses, because the synthetic and diagnose tests
+# run this script in the real tree with stand-in ledgers.
+dirty=
+git -C "$root" diff --quiet HEAD -- . ':(exclude).planning' 2>/dev/null || dirty=+dirty
+if [ "$1" = run ] && [ -n "$dirty" ] && [ "$ledger" = "$root/tests/compat/ledger.csv" ]; then
+  echo 'library: run refuses to stamp core= from a tree with tracked changes outside .planning; commit or stash them first' >&2
+  exit 2
+fi
 COGMASTER_CATALOG=${COGMASTER_CATALOG:-$root/tests/compat/catalog.tsv}
 # Fault prevented: a judge that reads its catalog and reasons from the working directory, which the owner may run from anywhere.
 export COGMASTER_CATALOG
@@ -46,9 +55,9 @@ if [ "$1" = diagnose ]; then
   trap 'exit 130' INT
   trap 'exit 143' TERM
   trap 'exit 129' HUP
-  # core is the first 7 characters of the commit id; dirty means a tracked file outside .planning differs from HEAD.
+  # core is the first 7 characters of the commit id, with the dirty mark computed above.
   core=$(git -C "$root" rev-parse HEAD | cut -c1-7)
-  git -C "$root" diff --quiet HEAD -- . ':(exclude).planning' || core=$core+dirty
+  core=$core$dirty
   behaviour=$(awk '/^#define COGMASTER_BEHAVIOUR_REVISION / {print $3}' "$root/include/cogmaster.h")
   # Fault prevented: totals computed from a ledger split on commas inside titles, or from no ledger at all. The ledger is read only
   # through its own parser.

@@ -58,3 +58,35 @@ foreach(case IN ITEMS shapes wrap_clip zoom sms1_zoom priority gg_slots interval
   cogmaster_add_test(NAME vdp.sprites.${case} COMMAND cogmaster-test-sprites ${case}
     LABELS portable vdp TIMEOUT 10)
 endforeach()
+
+# Fault prevented: an oracle for the Graphics I and II draw that disagrees with hand-computed dots, status
+# inputs or sprite rows, so that every later renderer comparison would be a comparison with a wrong answer.
+# The renderer cases compare the in-process picture with it.
+# Timeout: 10 s floor; the oracle case scans the field eleven times and runs in about a second, provisional.
+add_executable(cogmaster-test-legacy ${CMAKE_CURRENT_LIST_DIR}/test_legacy.c)
+target_include_directories(cogmaster-test-legacy PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(cogmaster-test-legacy PRIVATE cogmaster::cogmaster)
+set_target_properties(cogmaster-test-legacy PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
+cogmaster_warnings(cogmaster-test-legacy)
+foreach(case IN ITEMS oracle
+    # Fault prevented: a Graphics I or II dot, palette entry or backdrop that differs from the oracle,
+    # which a picture that merely looks plausible would hide.
+    g1 g2 palette backdrop
+    # Fault prevented: a mask, row limit, interval split, mode switch, bring-up or hostile input that
+    # moves a dot, repaints an emitted one or makes a call unbounded.
+    masks rows intervals switch bringup hostile
+    # Fault prevented: a legacy sprite drawn from the mode 4 tables, rows or colours (a wrong pattern
+    # address, row, colour, position or priority over the background), a wrong quadrant, zoom, early
+    # clock, terminator, Y wrap, fifth-sprite index or coincidence rule, a fifth-sprite index lost to
+    # a status read before its flag asserts, or a class change that keeps the old sprite list.
+    sprites.basic sprites.sizes sprites.zoom sprites.early_clock sprites.terminator sprites.y_wrap
+    sprites.fifth sprites.fifth_carry sprites.collision sprites.class_switch sprites.status_low)
+  cogmaster_add_test(NAME vdp.legacy.${case} COMMAND cogmaster-test-legacy ${case}
+    LABELS portable vdp TIMEOUT 10)
+endforeach()
+# Fault prevented: a mode that should still fault drawing silently, or recording the wrong fault.
+foreach(case IN ITEMS text multicolour mixed invalid_text native_gg)
+  cogmaster_add_test(NAME vdp.unsupported.${case} COMMAND cogmaster-test-legacy ${case}
+    LABELS portable vdp TIMEOUT 10)
+endforeach()

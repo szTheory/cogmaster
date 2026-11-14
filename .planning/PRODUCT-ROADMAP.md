@@ -43,24 +43,62 @@ Shipped 2026-11-13 with 10 of 10 requirements, audit status tech_debt and no gap
 
 **Unresolved debt carried into the next milestone** (none blocking): stale fault-vocabulary lines in `docs/audio.md`, `docs/embedding.md` and `docs/runner.md`; the reg-0 board question (needs new evidence); the owner's batched hand-offs (SEED-010 judges, SEED-009 thresholds); the rest of SEED-015 and SEED-007 (ledger rows, review leftovers); BIOS follow-ups (SEED-011), the hash-less audio predicate (SEED-012) and PAL and Japanese FM follow-ups (SEED-014).
 
-## Immediate — none
+## Immediate — recommended, awaiting owner approval: v2.2 "Legacy video modes"
 
-No milestone is in progress and no scope is owner-approved. **Preferred next step:** promote the TMS9918 legacy video modes (SEED-006), because they are now the evidence-backed cause of 46 of the 49 remaining default-profile `fail` rows (graphics1 13, graphics2 33, no M4=1 row), and the same modes carry SG-1000 and SC-3000 titles. **Alternatives weighed:** v3.0 states and movies (the next horizon below), the browser build (SEED-008), and a small ledger and documentation tune-up (SEED-015, SEED-007 and the v2.1 audit's stale-doc items) that can ride inside any milestone. Nothing moves into Immediate until the owner approves scope at `/gsd-new-milestone`.
+Nothing is owner-approved yet. The recommendation below comes from a nine-lens fan-out plus an adversarial pass on
+2026-11-13 (product, VDP, SG-1000 machine, states and movies, browser/ports/tools, verification and CI, debt, sibling
+lessons, legal and security); the reasoning is in `.planning/research/NEXT-MILESTONE.md`.
 
-## Mid — v3.0 "States and movies" (SEED-002), v4.0 "Measured accuracy" (SEED-003)
+**Headline (player-visible):** cartridges that use the TMS9918 Graphics I and II modes, mostly Korean MSX-style ports
+and a few Western Sega-mapper carts, draw their real picture in RetroArch instead of a blank or wrong one. Most of
+the 46 failing default-profile rows that wait on these modes (graphics1 13, graphics2 33, no M4=1 row) should leave
+the unsupported-mode leaf; fewer than 46 will flip, because earlier rounds sent 5 to 8 percent of rows on to a next
+fault and a static correct picture still fails the `distinct >= 2` boots predicate.
 
-v3.0: fixed-size validated save states, rewind and run-ahead claims in the libretro `.info` behind their
-tests, an own movie format with BizHawk and Dega import, Playstead continuation. **Trigger:** v2.0 shipped, or
-Playstead's `sms`/`gg` integration needs continuation first.
+- **Riders, the first plan of phase 16** (a docs-only PR would cut no release, so they ride inside the phase): the false `docs/audio.md:77` and stale
+  `docs/embedding.md` lines, the library run path refusing a dirty tree for the `core=` stamp, `curl --retry` on the
+  assembler fetch.
+- **Phase 16 `feat(vdp)`**: Graphics I and II (modes 0000 and 0010) on SMS1, SMS2 and Game Gear in SMS video, in a new
+  `src/vdp_legacy.c`, one dispatch per line, fixed TMS palette, 4-slot legacy sprite engine, mode-aware backdrop.
+  Behaviour revision 19 and state format 17 (the saved sprite slots lack colour, early-clock and a 0..15 row, so the
+  layout does change). Closed-form pixel oracles and owned WLA-DX fixtures written first, including one that enters
+  Graphics II after frame 600; draft PR early to read the perf gate. The fault stays for text, multicolour, the mixes,
+  the invalid text modes and native Game Gear.
+- **Phase 17 `fix(compat)`**: after the release merges, run the library on `main` so the ledger stamp is an ancestor of
+  `main`, merge through the ratchet, re-derive timeouts, prune the dead diagnose vocabulary (`pclass`, `wclass`,
+  `where=port`, `rom_write`, `vdpmode`) once, and sweep the docs.
+- **Out of v2.2:** text and multicolour (only if `diagnose` shows 5 or more rows landing there), the SG-1000 machine, the
+  SC-3000, multicarts.
+
+**Alternatives weighed and why they lost:** states first (largest universal gap, but its trigger has not fired on
+evidence and every behaviour revision already refuses older states, so doing modes first costs no migration);
+modes plus the SG-1000 machine in one milestone (two unrelated risks, the SG-1000 "pass" is weaker still); the
+browser build (rule 2 is settled by DEC.68, but it is sequenced after states); a standalone tune-up phase (the debt is 2 to 3 hours and
+lands in files the feature edits).
+
+## Mid — v3.0 "States and rewind", v3.1 "SG-1000", v4.0 "Measured accuracy" (SEED-002, SEED-006, SEED-003)
+
+v3.0 (pre-committed as the milestone after v2.2): a public `cogmaster_state_*` API (API 15), libretro
+serialize and unserialize with `savestate_features`, rewind and run-ahead behind an in-process harness, and the
+`SYSTEM_RAM` memory export (a read-only mirror serves achievements; cheat writes need a new accessor, so it is
+a phase item, not a rider). First fix the open review items IN-07, IN-02, IN-06 and IN-04 and add the missing
+`fuzz.state` target, and run a spike on dropping the `field` buffers from the blob (a state measures about 317 KB,
+not the 28 KiB in ARCHITECTURE). No movie format and no freeze of the state layout. **Trigger:** v2.2 shipped.
+v3.1: the SG-1000 and SG-1000 II machine as a thin profile (209 of 214 pinned entries should boot under the boots
+check; the ledger grows from 1,986 to 2,200 rows). **Trigger:** modes shipped, or the owner asks for an SG-1000
+image to run; promotable ahead of v3.0 at low rework cost.
 v4.0: diagnostic ROMs run on the owner's consoles settle the fitted VDP and PSG constants; nightly oracle
 lanes against released binaries; the per-dot VDP model only where a measured case needs it. **Trigger:** a
 stable failing set in the ledger that documentation does not explain.
 
-## Long — v5.0 "Tools" (SEED-004), v6.0 "Everywhere" (SEED-005), the browser (SEED-008), SG-1000 (SEED-006)
+## Long — browser, movies, v5.0 "Tools" (SEED-004), v6.0 "Everywhere" (SEED-005)
 
-Hooks, debugger views, ROM-hacker aids, Python and Gymnasium bindings; handheld and console ports and the
-libretro buildbot; the WebAssembly page; the SG-1000/SC-3000 profile. **Triggers:** a user ask or a met
-instructions-per-frame budget; each seed names its own.
+The browser (SEED-008): the library as a zero-import wasm module with a hash test in the repo and the page in a
+sibling repo that pins the release asset (DEC.68, owner decision 2026-11-13: rule 2 and DEC.01 stay unchanged). Movies (SEED-002's second
+half): an own format only when a named consumer exists; BizHawk import needs an inflate seed and stays out of the
+reference sources (use the TASVideos format pages). Hooks, debugger views, `ctypes` docs rather than PyPI or npm
+packages; handheld ports and a libretro buildbot listing only after save states exist. **Triggers:** a user ask or
+a met instructions-per-frame budget; each seed names its own.
 
 ## Decision log
 
@@ -71,3 +109,4 @@ instructions-per-frame budget; each seed names its own.
 | 2026-11-10 | v1.0 shipped and archived; horizons unchanged, nothing yet moved into Immediate | The order of v2.0 and later was not re-ranked: no new evidence at close, and the next scope needs owner approval at `/gsd-new-milestone` |
 | 2026-11-12 | v2.0 shipped and archived; v3.0 stays next in order, nothing moved into Immediate | The owner's own-library run, not a new milestone, is what removes `is_experimental`; no new evidence re-ranks states and movies, the browser or SG-1000, and the next scope needs owner approval at `/gsd-new-milestone` |
 | 2026-11-13 | v2.1 shipped and archived; SEED-006 becomes the preferred next step, nothing moved into Immediate | The Phase 14 outcomes show 46 of the 49 remaining failing rows need the legacy modes, which is the trigger SEED-006 names ("already needed for an SMS title in the ledger"); the other horizons were not re-ranked and the next scope needs owner approval at `/gsd-new-milestone` |
+| 2026-11-13 | v2.2 "Legacy video modes" recommended for Immediate; v3.0 re-scoped to "States and rewind" and pre-committed as the milestone after it; the SG-1000 machine moved to v3.1; movies and the browser moved to Long | A nine-lens fan-out and an adversarial pass ranked Graphics I and II first on hard evidence and low risk. Player value alone favours states, so the order is the owner's to swap. Movies have no named consumer, and the owner settled the browser question as DEC.68 (the library as wasm here, the page in a sibling repo). Awaiting owner approval at `/gsd-new-milestone` |

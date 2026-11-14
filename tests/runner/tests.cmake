@@ -92,6 +92,33 @@ if(CMAKE_SCRIPT_MODE_FILE)
         message(FATAL_ERROR "playing matrix missing ${row}")
       endif()
     endforeach()
+    # Every Graphics I and II image has its row on each Master System profile at the frame count its
+    # picture is judged at, the late image on the Master System 2 only, so a silent omission fails.
+    foreach(spec IN ITEMS g1:20 g2:20 g2_masked:20 g2_switch:30)
+      string(REPLACE ":" ";" spec "${spec}")
+      list(GET spec 0 legacy_variant)
+      list(GET spec 1 legacy_frames)
+      foreach(legacy_profile IN ITEMS sms sms1 gg-sms)
+        set(row "playing legacy_modes_${legacy_variant}.sms ${legacy_profile} ntsc-u legacy")
+        if(NOT hashes MATCHES "(^|\n)${row} frame ${legacy_frames} sha256 [0-9a-f]+\n")
+          message(FATAL_ERROR "playing matrix missing ${row} frame ${legacy_frames}")
+        endif()
+      endforeach()
+    endforeach()
+    set(row "playing legacy_modes_g2_late.sms sms ntsc-u legacy")
+    if(NOT hashes MATCHES "(^|\n)${row} frame 620 sha256 [0-9a-f]+\n")
+      message(FATAL_ERROR "playing matrix missing ${row} frame 620")
+    endif()
+    # The sprite image has two pictures on each Master System profile: the magnified 16 by 16 scenario
+    # at frame 15 and the held last scenario at frame 47.
+    foreach(legacy_frames IN ITEMS 15 47)
+      foreach(legacy_profile IN ITEMS sms sms1 gg-sms)
+        set(row "playing legacy_sprites.sms ${legacy_profile} ntsc-u legacy")
+        if(NOT hashes MATCHES "(^|\n)${row} frame ${legacy_frames} sha256 [0-9a-f]+\n")
+          message(FATAL_ERROR "playing matrix missing ${row} frame ${legacy_frames}")
+        endif()
+      endforeach()
+    endforeach()
     # The V and Pause fixtures print and judge their records on both TVs, and the Pause images also run
     # as device rows on PAL (one frame per line of the script).
     foreach(row IN ITEMS "mailbox vdp_vtable_192.sms ntsc ntsc-u" "mailbox vdp_vtable_224.sms pal pal"
@@ -1019,8 +1046,9 @@ if(CMAKE_SCRIPT_MODE_FILE)
     # address of the ED prefix as pc and of the second byte as addr.
     expect_exit(0 "^fault frame=[0-9]+ line=[0-9]+ dot=[0-9]+ pc=[$]0000 op=[$]00 addr=[$]0001 width=8 dev=cpu kind=ed_undefined\n$"
       ${SEEDS}/ed-00.sms --frames 10 --trace first-fault)
-    # Enable display without Mode 4: the VDP fault must keep its public names.
-    string(ASCII 243 62 64 211 191 62 129 211 191 118 code)
+    # Enable display with the text bit and without Mode 4 (register 1 = $50, nibble 1), which has
+    # no renderer: the VDP fault must keep its public names.
+    string(ASCII 243 62 80 211 191 62 129 211 191 118 code)
     string(REPEAT "v" 1014 padding)
     set(rom "${SEEDS}/../unsupported-video.sms")
     file(WRITE "${rom}" "${code}${padding}")
@@ -1608,13 +1636,13 @@ set(runner_fixtures "")
 if(COGMASTER_FIXTURES)
   set(runner_fixtures -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures)
 endif()
-# Timeout: 107 s; 2 x 53.07 s (be32 lane), slowest of 6 runs, run 43115877197.
+# Timeout: 130 s; 2 x 64.72 s (be32 lane), slowest of 1 run (9 lanes), run 43562888383.
 cogmaster_add_test(NAME runner.hashes_file
   COMMAND ${CMAKE_COMMAND} -DCASE=hash_matrix -DRUN=$<TARGET_FILE:cogmaster-run>
     "-DEMULATOR=${runner_emulator}" -DOUT=${PROJECT_BINARY_DIR} ${runner_fixtures}
     -DHASHES=${runner_hashes} -DPINS=${PROJECT_SOURCE_DIR}/tests/audio
     -P ${CMAKE_CURRENT_LIST_FILE}
-  LABELS runner portable TIMEOUT 107)
+  LABELS runner portable TIMEOUT 130)
 
 # Fault prevented: a comparison that passes lanes which differ, or a lane
 # that silently drops out. Two files one hex digit apart must fail, and two

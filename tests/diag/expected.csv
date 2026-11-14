@@ -344,3 +344,25 @@ pause_nmi_240,01:n_at_first_nmi,pal,00CD-00CF,derived,SMS-SYSTEM section 7 close
 pause_nmi_240,02:v_at_first_nmi,pal,00FF,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
 pause_nmi_240,03:nmi_after_first_edge,pal,0001,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
 pause_nmi_240,04:nmi_final,pal,0002,derived,SMS-SYSTEM section 7 closed form from the listing cycle counts
+legacy_sprites,01:single_8x8,*,009F,derived,legacy_status in tests/fixtures/legacy.c from TI TMS9918A manual 2.3.3: a lone sprite sets only the frame flag
+legacy_sprites,02:size_16x16,*,009F,derived,legacy_status in tests/fixtures/legacy.c from TI TMS9918A manual 2.3.3: a lone 16 by 16 sprite sets only the frame flag
+legacy_sprites,03:magnified_8x8,*,009F,derived,legacy_status in tests/fixtures/legacy.c from TI TMS9918A manual 2.3.3: magnification sets no flag
+legacy_sprites,04:magnified_16x16,*,009F,derived,legacy_status in tests/fixtures/legacy.c from TI TMS9918A manual 2.3.3: a magnified 16 by 16 sprite sets no flag
+legacy_sprites,05:early_clock,*,009F,derived,legacy_status in tests/fixtures/legacy.c from TI TMS9918A manual 2.3.3: the early clock bit moves dots and sets no flag (model: R0 bit 3 is ignored)
+legacy_sprites,06:end_of_list,*,009F,derived,legacy_status in tests/fixtures/legacy.c from TI TMS9918A manual 2.3.3: Y D0 ends the list so the sprite after it does not exist
+legacy_sprites,07:y_ff,*,009F,derived,legacy_status in tests/fixtures/legacy.c from TI TMS9918A manual 2.3.3: Y FF starts on line 0 and sets no flag (model: negative from E0)
+legacy_sprites,08:y_e8_magnified_16x16,*,009F,derived,legacy_status in tests/fixtures/legacy.c from TI TMS9918A manual 2.3.3: a 32 line sprite at Y E8 sets no flag (model: negative from E0)
+legacy_sprites,09:y_e0_magnified_16x16,*,009F,derived,legacy_status in tests/fixtures/legacy.c from TI TMS9918A manual 2.3.3: a 32 line sprite at Y E0 sets no flag (model: negative from E0)
+legacy_sprites,0A:five_on_a_line,*,00C4,derived,legacy_status in tests/fixtures/legacy.c from TI TMS9918A manual 2.3.3: the fifth sprite on a line sets bit 6 and its index (model: index in bits 4 to 0)
+legacy_sprites,0B:overflow_two_lines,*,00C9,derived,legacy_status in tests/fixtures/legacy.c from TI TMS9918A manual 2.3.3: the first line in raster order latches the fifth index (model: first wins until a read)
+legacy_sprites,0C:overlap_opaque,*,00BF,derived,legacy_status in tests/fixtures/legacy.c from TI TMS9918A manual 2.3.3: overlapping pattern bits set bit 5
+legacy_sprites,0D:overlap_colour0,*,00BF,derived,legacy_status in tests/fixtures/legacy.c from TI TMS9918A manual 2.3.3: colour 0 sprites still collide (model: pattern bits decide)
+legacy_sprites,0E:touching,*,009F,derived,legacy_status in tests/fixtures/legacy.c from TI TMS9918A manual 2.3.3: touching edges share no dot so bit 5 stays clear
+legacy_sprites,0F:overlap_off_left_edge,*,009F,derived,legacy_status in tests/fixtures/legacy.c from TI TMS9918A manual 2.3.3: an overlap only left of dot 0 sets nothing (model: dots 0 to 255 only)
+legacy_sprites,10:after_terminator,*,009F,derived,legacy_status in tests/fixtures/legacy.c from TI TMS9918A manual 2.3.3: sprites after the end of list never collide
+legacy_sprites,11:fifth_overlaps,*,00C4,derived,legacy_status in tests/fixtures/legacy.c from TI TMS9918A manual 2.3.3: a fifth sprite is not drawn so it cannot collide (model)
+legacy_sprites,12:four_on_a_line,*,009F,derived,legacy_status in tests/fixtures/legacy.c from TI TMS9918A manual 2.3.3: four on a line is no overflow
+legacy_sprites,13:magnified_overlap,*,00BF,derived,legacy_status in tests/fixtures/legacy.c from TI TMS9918A manual 2.3.3: doubled sprites overlap (model: plain doubling)
+legacy_sprites,14:tail_status,*,001F,derived,legacy_status in tests/fixtures/legacy.c from TI TMS9918A manual 2.3.3: no sprite flag is set before dot 0 of the next line
+legacy_sprites,15:tail_hcount,*,0000-0013,derived,TAIL_HCOUNT_LO and TAIL_HCOUNT_HI in tests/fixtures/legacy.c from the H counter table in docs/hardware/video.md (model: timing)
+legacy_sprites,16:tail_frame_status,*,00C4,derived,legacy_status in tests/fixtures/legacy.c from TI TMS9918A manual 2.3.3: the fifth index survives a status read in the tail of the line before (model)

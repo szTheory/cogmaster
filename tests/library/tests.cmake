@@ -253,7 +253,11 @@ esac
     message(FATAL_ERROR "missing library directory must fail configure")
   endif()
   if(NOT CMAKE_CROSSCOMPILING)
+    # Stand-in ledger and page, so the run never reads or writes the tracked ledger, which a run refuses from a dirty tree.
+    file(WRITE "${OUT}/standin/ledger.csv" "${standin_ledger}")
+    file(WRITE "${OUT}/standin/page.md" "${standin_page}")
     execute_process(COMMAND "${CMAKE_COMMAND}" -E env "COGMASTER_ROM_DIR=${OUT}/empty"
+      "COGMASTER_LEDGER=${OUT}/standin/ledger.csv" "COGMASTER_PAGE=${OUT}/standin/page.md"
       "COGMASTER_LIBRARY_OUT=${OUT}/workflow-results" "${CMAKE_COMMAND}" --workflow --preset library
       WORKING_DIRECTORY "${ROOT}" RESULT_VARIABLE rc OUTPUT_VARIABLE text ERROR_VARIABLE err)
     file(READ "${OUT}/workflow-results/results.csv" results)

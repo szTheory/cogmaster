@@ -16,7 +16,7 @@ static void release(void *u, void *p, size_t n)
     (void)n;
     free(p);
 }
-static cogmaster *make_profile(uint32_t machine)
+static cogmaster *make_video(uint32_t machine, uint32_t video)
 {
     cogmaster_config cfg = {0};
     cfg.size = sizeof cfg;
@@ -30,6 +30,7 @@ static cogmaster *make_profile(uint32_t machine)
     media.image = image;
     media.image_size = sizeof image;
     media.machine = machine;
+    media.video_mode = video;
     CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
     m->vdp.reg[0] = 4u;
     m->vdp.reg[1] = 0x40u;
@@ -41,6 +42,10 @@ static cogmaster *make_profile(uint32_t machine)
     m->vdp.reg[4] = 7u;
     m->vdp.reg[5] = 0x7Fu;
     return m;
+}
+static cogmaster *make_profile(uint32_t machine)
+{
+    return make_video(machine, COGMASTER_VIDEO_AUTO);
 }
 static cogmaster *make(void)
 {
@@ -384,35 +389,78 @@ static void sms1_state(void)
     }
     cogmaster_destroy(m);
 }
+/* What the renderer does with each mode select nibble on each video profile, as literals and never
+   computed by the classifier it checks. Columns: Master System 1, Master System 2, Game Gear in
+   Master System video mode, native Game Gear. '4' draws mode 4, 'L' draws Graphics I or II and
+   records nothing, 'F' records the unsupported-video-mode fault. The nibble is M4 M3 M2 M1: R0
+   bit 2, R1 bit 3, R0 bit 1, R1 bit 4. */
+static const char mode_table[16][5] = {
+    "LLLF", /* 0 Graphics I */
+    "FFFF", /* 1 text */
+    "LLLF", /* 2 Graphics II */
+    "FFFF", /* 3 text with Graphics II */
+    "FFFF", /* 4 multicolour */
+    "FFFF", /* 5 */
+    "FFFF", /* 6 */
+    "FFFF", /* 7 */
+    "4444", /* 8 mode 4 */
+    "FFFF", /* 9 mode 4 bit with text: invalid */
+    "4444", /* 10 mode 4 */
+    "F444", /* 11 invalid text on the Master System 1 only */
+    "4444", /* 12 mode 4 */
+    "FFFF", /* 13 invalid text */
+    "F444", /* 14 invalid text on the Master System 1 only */
+    "F444", /* 15 invalid text on the Master System 1 only */
+};
 static void unsupported(void)
 {
-    for (uint32_t machine = 1u; machine <= 3u; machine += 2u) {
+    static const uint32_t machines[4] = {COGMASTER_MACHINE_SMS1, COGMASTER_MACHINE_SMS2,
+                                         COGMASTER_MACHINE_GG, COGMASTER_MACHINE_GG};
+    static const uint32_t videos[4] = {COGMASTER_VIDEO_AUTO, COGMASTER_VIDEO_AUTO,
+                                       COGMASTER_VIDEO_SMS, COGMASTER_VIDEO_AUTO};
+    for (uint32_t profile = 0u; profile < 4u; profile++) {
         for (uint32_t mode = 0u; mode < 16u; mode++) {
-            int valid = machine == 3u ? (mode == 8u || mode == 10u || mode == 12u)
-                                      : (mode >= 8u && mode != 9u && mode != 13u);
-            cogmaster *m = make_profile(machine);
-            m->vdp.reg[0] = (uint8_t)(((mode & 8u) >> 1) | (mode & 2u));
-            m->vdp.reg[1] = (uint8_t)(0x40u | ((mode & 4u) << 1) | ((mode & 1u) << 4));
-            cogmaster_run_result r = {0};
-            r.size = sizeof r;
-            CHECK_EQ_U64(cogmaster_run_frame(m, &r), COGMASTER_STATUS_OK);
-            cogmaster_fault f = {0};
-            f.size = sizeof f;
-            if (valid) {
-                /* A supported mode records nothing. */
+            char want = mode_table[mode][profile];
+            for (uint32_t display = 0u; display < 2u; display++) {
+                cogmaster *m = make_video(machines[profile], videos[profile]);
+                m->vdp.reg[0] = (uint8_t)(((mode & 8u) >> 1) | (mode & 2u));
+                m->vdp.reg[1] = (uint8_t)((display != 0u ? 0x40u : 0u) | ((mode & 4u) << 1) |
+                                          ((mode & 1u) << 4));
+                m->vdp.display = (uint8_t)display;
+                /* The native Game Gear reads 12-bit colour RAM words: entry 19 is bytes 38 and 39.
+                 */
+                m->vdp.cram[38] = 0xABu;
+                m->vdp.cram[39] = 0x05u;
+                /* The Light Phaser's check agrees with the renderer before anything is rendered. */
+                CHECK_EQ_U64(cogmaster__vdp_render_blocked(m), display != 0u && want == 'F');
+                cogmaster_run_result r = {0};
+                r.size = sizeof r;
+                CHECK_EQ_U64(cogmaster_run_frame(m, &r), COGMASTER_STATUS_OK);
+                cogmaster_fault f = {0};
+                f.size = sizeof f;
                 CHECK_EQ_U64(cogmaster_get_fault(m, &f), COGMASTER_STATUS_OK);
-                CHECK_EQ_U64(f.present, 0u);
+                if (display == 0u || want != 'F') {
+                    /* A drawn mode, or no picture at all, records nothing. */
+                    CHECK_EQ_U64(f.present, 0u);
+                    if (display == 0u) {
+                        /* Colour RAM backdrop, entry 16 + 3, whatever the mode. */
+                        CHECK_EQ_HEX(m->field[0][0], profile == 3u ? 0x5ABu : 0xF00u);
+                    } else if (want == 'L') {
+                        /* All video memory is zero: the legacy backdrop, palette entry 3 (fixed
+                           table 0F0 on the Master System, colour RAM entry 19 on the Game Gear). */
+                        CHECK_EQ_HEX(m->field[0][0], profile == 2u ? 0xF00u : 0x0F0u);
+                    }
+                    cogmaster_destroy(m);
+                    continue;
+                }
+                CHECK(r.overshoot_ticks < 69u);
+                CHECK_EQ_HEX(m->field[0][0], profile == 3u ? 0x5ABu : 0xF00u);
+                CHECK_EQ_U64(f.present, 1u);
+                CHECK_EQ_U64(f.device, COGMASTER_FAULT_DEVICE_VDP);
+                CHECK_EQ_U64(f.kind, COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE);
+                CHECK_EQ_HEX(f.addr, mode);
                 cogmaster_destroy(m);
-                continue;
             }
-            CHECK(r.overshoot_ticks < 69u);
-            CHECK_EQ_HEX(m->field[0][0], 0xF00u);
-            CHECK_EQ_U64(cogmaster_get_fault(m, &f), COGMASTER_STATUS_OK);
-            CHECK_EQ_U64(f.present, 1u);
-            CHECK_EQ_U64(f.device, COGMASTER_FAULT_DEVICE_VDP);
-            CHECK_EQ_U64(f.kind, COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE);
-            CHECK_EQ_HEX(f.addr, mode);
-            cogmaster_destroy(m);
         }
     }
 }

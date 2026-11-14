@@ -6,9 +6,11 @@
              mode), ROM CRC-32, body CRC-32,
              frame, ticks, the FM unit, the boot mode, the BIOS CRC-32, 6 reserved zero bytes
      body    the counters, the first-fault record, the Z80, the beam and the
-             frame deadline, the VDP with its 16 KiB of VRAM, the 8 KiB of
-             work RAM, then the board, the mapper registers, on the Sega
-             EEPROM board the chip's command state, and the cartridge RAM
+             frame deadline, the VDP with its 16 KiB of VRAM and, appended
+             after it, the sprite class, the sprite size and the latched
+             fifth sprite, the 8 KiB of work RAM, then the board, the mapper
+             registers, on the Sega EEPROM board the chip's command state,
+             and the cartridge RAM
              (none, 128 bytes, 8 KiB or 32 KiB, fixed by the image),
              then the I/O ports, the synthesiser (cadence phase, ring
              slots, integrator, DC estimate, levels) and the PSG (step
@@ -56,7 +58,7 @@ static const uint8_t state_magic[8] = {0x8Au, 0x43u, 0x47u, 0x4Du, 0x0Du, 0x0Au,
 _Static_assert(sizeof(struct cogmaster__counters) == 40u, "counters changed: update counters_io");
 _Static_assert(sizeof(struct cogmaster__z80) == 38u, "z80 changed: update z80_io");
 _Static_assert(sizeof(struct cogmaster__bus) == 40u, "bus changed: update bus_io");
-_Static_assert(sizeof(struct cogmaster__vdp) == 16510u, "vdp changed: update vdp_io");
+_Static_assert(sizeof(struct cogmaster__vdp) == 16520u, "vdp changed: update vdp_io");
 _Static_assert(sizeof(struct cogmaster__mapper) == 12u, "mapper changed: update mapper_io");
 _Static_assert(sizeof(struct cogmaster__eeprom) == 8u, "eeprom changed: update eeprom_io");
 _Static_assert(sizeof(struct cogmaster__io) == 11u, "io changed: update io_io");
@@ -280,12 +282,21 @@ static uint8_t vdp_io(struct cogmaster__sio *io, struct cogmaster__vdp *v, uint8
     cogmaster__sio_check(io, count <= scanned);
     cogmaster__sio_u8(io, "sprite_zoom", &v->sprite_zoom, 0u, 1u);
     cogmaster__sio_u8(io, "sprite_shift", &v->sprite_shift, 0u, 1u);
-    uint8_t overflow = cogmaster__sio_u8(io, "sprite_overflow", &v->sprite_overflow, 0u, 1u);
-    cogmaster__sio_check(io, !overflow || (count == 8u && scanned >= 9u));
+    /* Two meanings: in mode 4 a 0 or 1 flag, in Graphics I and II 0 or the fifth match's SAT index
+       plus 1 (1 to 32). The field takes the wider range; the class check below narrows it. */
+    uint8_t overflow = cogmaster__sio_u8(io, "sprite_overflow", &v->sprite_overflow, 0u, 32u);
+    /* Rows and colour bytes are bounded for the selected slots only: a slot past the count keeps
+       what an earlier scan of the other class left, and nothing reads it. */
+    uint8_t row_max = 0u, attr_or = 0u;
     for (uint32_t i = 0u; i < 8u; i++) {
         cogmaster__sio_u8(io, "sprite_x", &v->sprite[i].x, 0u, UINT8_MAX);
         cogmaster__sio_u8(io, "sprite_tile", &v->sprite[i].tile, 0u, UINT8_MAX);
-        cogmaster__sio_u8(io, "sprite_row", &v->sprite[i].row, 0u, 7u);
+        uint8_t row = cogmaster__sio_u8(io, "sprite_row", &v->sprite[i].row, 0u, 15u);
+        uint8_t attr = cogmaster__sio_u8(io, "sprite_attr", &v->sprite[i].attr, 0u, 0x8Fu);
+        if (i < count) {
+            row_max = row > row_max ? row : row_max;
+            attr_or |= attr;
+        }
     }
     cogmaster__sio_u8(io, "cram_latch", &v->cram_latch, 0u, UINT8_MAX);
     for (uint32_t i = 0; i < COGMASTER__CRAM_SIZE; i++) {
@@ -294,6 +305,21 @@ static uint8_t vdp_io(struct cogmaster__sio *io, struct cogmaster__vdp *v, uint8
     for (uint32_t i = 0; i < COGMASTER__VRAM_SIZE; i++) {
         cogmaster__sio_u8(io, "vdp_vram", &v->vram[i], 0u, UINT8_MAX);
     }
+    uint8_t legacy = cogmaster__sio_u8(io, "sprite_legacy", &v->sprite_legacy, 0u, 1u);
+    uint8_t size = cogmaster__sio_u8(io, "sprite_size", &v->sprite_size, 0u, 1u);
+    uint8_t fifth = cogmaster__sio_u8(io, "vdp_fifth_index", &v->fifth_index, 0u, 31u);
+    /* The class the last scan ran in picks the bounds: Graphics I and II hold at most 4 slots of
+       8 or 16 rows, 32 SAT reads and a colour byte of the early clock and a colour; mode 4 holds 8
+       slots of 8 rows, 64 reads and no colour byte. An overflow needs the slots full and one read
+       beyond them in either class. With bit 6 clear nothing is latched (SMS-VDP section 7). */
+    cogmaster__sio_check(io, count <= (legacy ? 4u : 8u));
+    cogmaster__sio_check(io, scanned <= (legacy ? 32u : 64u));
+    cogmaster__sio_check(io, row_max <= (legacy && size ? 15u : 7u));
+    cogmaster__sio_check(io, legacy ? (attr_or & 0x70u) == 0u : attr_or == 0u);
+    cogmaster__sio_check(io, overflow <= (legacy ? 32u : 1u));
+    cogmaster__sio_check(
+        io, !overflow || (legacy ? count == 4u && scanned >= 5u : count == 8u && scanned >= 9u));
+    cogmaster__sio_check(io, (status & 0x40u) != 0u || fifth == 31u);
     cogmaster__sio_check(io, (status & ~STATE_VDP_FLAGS) == 0u);
     cogmaster__sio_check(io, int_line ==
                                  (((status >> 7) & (r1 >> 5) & 1u) | (pending & (r0 >> 4) & 1u)));

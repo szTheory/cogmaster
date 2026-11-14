@@ -27,6 +27,7 @@
    Programs at $0000, 32 KiB with no header unless noted:
      di-halt.sms  di-halt.gg  jr-self.sms  in-a-00.sms  ld-8000.sms
      ed-00.sms  be-hammer.sms  fffc-writes.sms (64 KiB, Sega board)
+     legacy-display.sms (Graphics I on, then counting bytes written to video memory)
    An EEPROM clock stream for fuzz_eeprom.c: eeprom-clocks.bin */
 /* Boot ROM images for fuzz_bios.c, each 8192 bytes unless noted:
      bios-owned.bin (DI, jump to itself, then a pseudo-random body)
@@ -208,6 +209,13 @@ static void programs(void)
     static const uint8_t render_hammer[] = {
         0xF3u, 0x3Eu, 4u,    0xD3u, 0xBFu, 0x3Eu, 0x80u, 0xD3u, 0xBFu, 0x3Eu, 0x40u, 0xD3u, 0xBFu,
         0x3Eu, 0x81u, 0xD3u, 0xBFu, 0xD3u, 0xBFu, 0xD3u, 0xBEu, 0x3Cu, 0xC3u, 17u,   0u};
+    /* Graphics I with the display on (R0 $00, R1 $C0, mode nibble 0), then video memory written
+       from $0000 for ever with a counting byte: the name, pattern, colour and sprite tables all
+       read it, so every line scans a table of counting bytes. No HALT ends the loop. */
+    static const uint8_t legacy_display[] = {0xF3u, 0x3Eu, 0x00u, 0xD3u, 0xBFu, 0x3Eu, 0x80u, 0xD3u,
+                                             0xBFu, 0x3Eu, 0xC0u, 0xD3u, 0xBFu, 0x3Eu, 0x81u, 0xD3u,
+                                             0xBFu, 0x3Eu, 0x00u, 0xD3u, 0xBFu, 0x3Eu, 0x40u, 0xD3u,
+                                             0xBFu, 0xD3u, 0xBEu, 0x3Cu, 0x18u, 0xFBu};
     /* Each Sega register in turn: $FFFC = 0, $FFFD = 1, $FFFE = 2, $FFFF = 3. */
     static const uint8_t fffc[] = {0x3Eu, 0x00u, 0x32u, 0xFCu, 0xFFu, 0x3Cu, 0x32u,
                                    0xFDu, 0xFFu, 0x3Cu, 0x32u, 0xFEu, 0xFFu, 0x3Cu,
@@ -226,6 +234,7 @@ static void programs(void)
         {"ed-00.sms", ed_00, sizeof ed_00, 32u * KIB},
         {"be-hammer.sms", be_hammer, sizeof be_hammer, 32u * KIB},
         {"render-hammer.sms", render_hammer, sizeof render_hammer, 32u * KIB},
+        {"legacy-display.sms", legacy_display, sizeof legacy_display, 32u * KIB},
         {"fffc-writes.sms", fffc, sizeof fffc, 64u * KIB},
     };
     for (size_t i = 0; i < sizeof list / sizeof list[0]; i++) {

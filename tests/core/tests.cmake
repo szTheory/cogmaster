@@ -46,15 +46,19 @@ set_target_properties(cogmaster-test-state PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/tests)
 cogmaster_warnings(cogmaster-test-state)
 
+# Fault prevented: a legacy-mode state that does not save and reload to the same bytes, so a
+# field the legacy sprite scan writes is missing from the record; and a loader that accepts a
+# legacy slot set no scan can produce, or refuses one it can.
 foreach(case IN ITEMS state.round_trip state.record_sweep state.rejects_header state.frame_counter
-    state.mapper
+    state.legacy_roundtrip state.legacy_sprite_bounds state.mapper
     fault.empty_after_create fault.first_wins fault.reset_clears fault.state_round_trip
     api.error_changes_nothing)
   # Timeout: 10 s floor; 2 x 0.26 s, slowest of 2 runs, run 39376644025, provisional.
-  # The two cases that run a whole sweep take 4.0 s and 1.6 s here with sound on
+  # The cases that run a whole sweep take 4.0 s, 1.6 s and 1.2 s here with sound on
   # (macOS x64 timed out at 10 s, run 42713186331), so they get 60 s, provisional.
   set(state_timeout 10)
-  if(case STREQUAL "state.record_sweep" OR case STREQUAL "state.mapper")
+  if(case STREQUAL "state.record_sweep" OR case STREQUAL "state.mapper"
+      OR case STREQUAL "state.legacy_sprite_bounds")
     set(state_timeout 60)
   endif()
   cogmaster_add_test(NAME core.${case}

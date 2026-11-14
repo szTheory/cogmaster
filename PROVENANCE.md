@@ -43,8 +43,8 @@ IDs resolve in §10.
 ## 2. Upstream audit (LICENSE and file headers read at the pin, 2026-10-18)
 | Source @ pin | Licence at the pin | Usable |
 |---|---|---|
-| ares `9408cb43d494` [PV.02] | Root `LICENSE`: ISC for ares (© 2004–2025 ares team, Near et al.), followed by the notices of bundled third-party libraries (sljit BSD-2, others); source files carry no per-file header | ISC: `ares/ms/**` (cpu, vdp, psg, opll, cartridge, controller, expansion, system), `ares/component/processor/z80/**`, `ares/component/audio/*`. Third-party directories under `thirdparty/` keep their own licences and are not used |
-| MAME `1d7a454ed79e` [PV.01] | Whole: GPL-2.0; each file: its own header; `hash/`: CC0 | BSD-3 (headers read): `src/mame/sega/sms.cpp`, `sms.h`, `sms_m.cpp`, `src/devices/video/315_5124.cpp/.h`, `src/devices/sound/sn76496.cpp/.h`, `src/devices/sound/ymopl.cpp` and `ymopl.h` and `3rdparty/ymfm/src/ymfm_opl.*` (BSD-3, at the pin), `src/devices/bus/sega8/*` and `src/devices/bus/sms_ctrl/*` (check each header before reading past it). CC0: `hash/sms.xml`, `hash/gamegear.xml`, `hash/sg1000.xml` |
+| ares `9408cb43d494` [PV.02] | Root `LICENSE`: ISC for ares (© 2004–2025 ares team, Near et al.), followed by the notices of bundled third-party libraries (sljit BSD-2, others); source files carry no per-file header | ISC: `ares/ms/**` (cpu, vdp, psg, opll, cartridge, controller, expansion, system), `ares/component/processor/z80/**`, `ares/component/video/tms9918/**`, `ares/component/audio/*`. Third-party directories under `thirdparty/` keep their own licences and are not used |
+| MAME `1d7a454ed79e` [PV.01] | Whole: GPL-2.0; each file: its own header; `hash/`: CC0 | BSD-3 (headers read): `src/mame/sega/sms.cpp`, `sms.h`, `sms_m.cpp`, `src/devices/video/315_5124.cpp/.h`, `src/devices/video/tms9928a.cpp/.h` (headers read at the pin), `src/devices/sound/sn76496.cpp/.h`, `src/devices/sound/ymopl.cpp` and `ymopl.h` and `3rdparty/ymfm/src/ymfm_opl.*` (BSD-3, at the pin), `src/devices/bus/sega8/*` and `src/devices/bus/sms_ctrl/*` (check each header before reading past it). CC0: `hash/sms.xml`, `hash/gamegear.xml`, `hash/sg1000.xml` |
 | ymfm `81aec25ccbb9` [PV.03] | BSD-3, © 2021 Aaron Giles | `src/ymfm_opl.*` (YM2413 is in the OPL family file), `ymfm.h`, `ymfm_fm.*` |
 | emu2413 `a1d5120903b7` [PV.15] | `LICENSE`: MIT, © 2001-2019 Mitsutaka Okazaki; `emu2413.c` and `emu2413.h` headers: © 2026 Mitsutaka Okazaki, no other terms; the commit answers 200 from the GitHub commits API on 2026-11-09 | MIT: `emu2413.c` and `emu2413.h` only (the YM2413 model; the rate converter, VRC7 and YMF281B tables are not used) |
 | SingleStepTests z80 `ebe1875d48f3` [PV.04] | MIT | `v1/*.json` vectors (data) |
@@ -82,8 +82,9 @@ frame, audio-transition, PCM and state hashes must match on all six platforms. T
 | Synth kernel table (phase 4) | nesturbator @`9f9386c661f6` `src/synth.c`, the 32 x 16 Q15 table only | MIT, same owner | nothing in the table; the ring, mixer, interpolation and DC blocker are own code | commit-body line (§5a) | if a later rate or the spectral test needs another table (D-03 fallback) | the integer spectral test and the PCM hash pins |
 | Hash databases | MAME `hash/sms.xml`, `gamegear.xml`, `sg1000.xml` @`1d7a454ed79e`, converted by our own generator | CC0 | compact binary table of SHA-1 → mapper/region/size facts | notices section (CC0 asks nothing; attribution given anyway) | n/a | the generator's round-trip test |
 
-Read, never copied: ares `ms/vdp`, `ms/psg`, `ms/cartridge`; MAME `315_5124.cpp`, `sn76496.cpp`, `sega8/*`,
-`sms_ctrl/*`.
+Read, never copied: ares `ms/vdp`, `ms/psg`, `ms/cartridge`, `component/video/tms9918`; MAME `315_5124.cpp`,
+`tms9928a.cpp`, `sn76496.cpp`, `sega8/*`, `sms_ctrl/*`. The legacy video renderer (`src/vdp_legacy.c`) is own code
+written from the TMS9918A documents and the disagreements recorded in `docs/hardware/video.md`; it has no seed row.
 
 ## 5. Notices
 **(a) Source files.** Own files carry no header; the repository LICENSE covers them. Code taken from muhtari or
@@ -142,8 +143,8 @@ claim; the asset policy handles that side by keeping game and firmware bytes out
 ## 10. Sources
 | ID | Tier | Source (URL) | Pin or access date | Supports |
 |---|---|---|---|---|
-| PV.01 | T1 | github.com/mamedev/mame: `COPYING`, file headers of `src/mame/sega/sms.cpp` (BSD-3, holders Pol, MacDonald, Rosenhauer, Oliver, Luong, Priuli, Land), `src/devices/video/315_5124.cpp` (BSD-3, Pol, Land), `hash/sms.xml` L4 (`license:CC0-1.0`) | `1d7a454ed79e` | whole GPL, per-file BSD-3, `hash/` CC0 |
-| PV.02 | T1 | github.com/ares-emulator/ares `LICENSE` (ISC text read here (tested)); GitHub API reports NOASSERTION because the file also carries bundled libraries' notices; `ares/ms/`, `ares/component/processor/z80/` directory listings | `9408cb43d494` | ISC scope |
+| PV.01 | T1 | github.com/mamedev/mame: `COPYING`, file headers of `src/mame/sega/sms.cpp` (BSD-3, holders Pol, MacDonald, Rosenhauer, Oliver, Luong, Priuli, Land), `src/devices/video/315_5124.cpp` (BSD-3, Pol, Land), `src/devices/video/tms9928a.cpp` and `.h` (BSD-3, header line 1, holders Young, Woods, Giles, Pol, hap), `hash/sms.xml` L4 (`license:CC0-1.0`) | `1d7a454ed79e` | whole GPL, per-file BSD-3, `hash/` CC0 |
+| PV.02 | T1 | github.com/ares-emulator/ares `LICENSE` (ISC text read here (tested)); GitHub API reports NOASSERTION because the file also carries bundled libraries' notices; `ares/ms/`, `ares/component/processor/z80/`, `ares/component/video/tms9918/` directory listings | `9408cb43d494` | ISC scope |
 | PV.03 | T1 | github.com/aaronsgiles/ymfm `LICENSE`, `src/` listing | `81aec25ccbb9` | BSD-3; OPLL lives in `ymfm_opl.*` |
 | PV.04 | T1 | github.com/SingleStepTests/z80 `LICENSE`, `README.md` | `ebe1875d48f3` | MIT; vector format |
 | PV.05 | T1 | github.com/szTheory/nesturbator `PROVENANCE.md`, `THIRD-PARTY-NOTICES.md`, git authors | `9f9386c661f6` | same-owner seeds |

@@ -107,15 +107,26 @@ struct cogmaster__vdp {
     uint8_t line_counter, line_pending; /* R10 reload counter and independent IE1 source */
     uint8_t hcounter, hheld;            /* captured TH count; live until first capture */
     uint8_t hscroll, vscroll, display;  /* line / frame / line latches, docs/hardware/video.md */
-    /* Selected line slots; pattern bytes remain live until each dot emits. */
+    /* Selected line slots; pattern bytes remain live until each dot emits. attr is the SAT colour
+       byte of a Graphics I or II sprite (bit 7 the early clock, bits 3-0 the colour) and 0 in
+       mode 4. */
     struct {
-        uint8_t x, tile, row;
+        uint8_t x, tile, row, attr;
     } sprite[8];
     uint8_t sprite_line, sprite_count, sprite_scanned;
+    /* sprite_overflow is a 0 or 1 flag in mode 4 (an overflow is pending for the line). In Graphics
+       I and II it is 0 when the line has no fifth match and otherwise the SAT index of the fifth
+       match plus 1 (1 to 32), which the line's first dot copies into fifth_index. */
     uint8_t sprite_zoom, sprite_shift, sprite_overflow;
     uint8_t cram[COGMASTER__CRAM_SIZE];
     uint8_t cram_latch;
     uint8_t vram[COGMASTER__VRAM_SIZE];
+    /* Appended after vram so the colour and video RAM offsets of a saved state stay where they
+       were. sprite_legacy is the mode class at scan time (1 for Graphics I and II) and sprite_size
+       the Graphics I and II sprite size then (0 for 8x8, 1 for 16x16), so a save after a mid-line
+       switch still loads. fifth_index is the SAT index of the first fifth sprite latched since the
+       last status read, 31 when nothing is latched. */
+    uint8_t sprite_legacy, sprite_size, fifth_index;
 };
 
 /* The VDP's ports after the bus has decoded an address. */
@@ -460,6 +471,37 @@ static inline struct cogmaster__profile cogmaster__profile(const cogmaster *m)
     return p;
 }
 
+/* The mode select nibble M4 M3 M2 M1: M4 and M2 in register 0 bits 2 and 1, M3 and M1 in
+   register 1 bits 3 and 4 (SMS-VDP section 2.5). */
+static inline uint32_t cogmaster__vdp_mode(const cogmaster *m)
+{
+    const uint8_t *r = m->vdp.reg;
+    return ((uint32_t)(r[0] & 4u) << 1) | ((r[1] & 8u) >> 1) | (r[0] & 2u) | ((r[1] & 16u) >> 4);
+}
+
+/* What the renderer does with the mode select nibble. Mode 4 is the nibble with M4 set; the
+   315-5124 also treats the extended heights as invalid text, so only 8, 10 and 12 draw there
+   (SMS-VDP section 2.5). The Graphics I and II nibbles, 0 and 2, are LEGACY everywhere except the
+   native Game Gear LCD, which has no such modes. Every other nibble is BLOCKED. */
+enum { COGMASTER__VDP_MODE4, COGMASTER__VDP_LEGACY, COGMASTER__VDP_BLOCKED };
+static inline uint32_t cogmaster__vdp_class(const cogmaster *m)
+{
+    uint32_t mode = cogmaster__vdp_mode(m);
+    int mode4 = cogmaster__profile(m).vdp_masks ? (mode == 8u || mode == 10u || mode == 12u)
+                                                : (mode >= 8u && mode != 9u && mode != 13u);
+    if (mode4) {
+        return COGMASTER__VDP_MODE4;
+    }
+    return (mode == 0u || mode == 2u) && !cogmaster__native_gg(m) ? COGMASTER__VDP_LEGACY
+                                                                  : COGMASTER__VDP_BLOCKED;
+}
+
+/* The six-bit CRAM colour as RGB444: each two-bit channel c becomes 5c (0, 5, 10, 15). */
+static inline uint16_t cogmaster__vdp_rgb444(uint32_t c)
+{
+    return (uint16_t)(((c & 3u) * 5u) | (((c >> 2) & 3u) * 5u << 4) | (((c >> 4) & 3u) * 5u << 8));
+}
+
 /* The public layouts, pinned on every target. P is the pointer size; on
    64-bit targets a pointer after a leading size field starts at P, leaving 4
    alignment bytes. */
@@ -714,6 +756,11 @@ void cogmaster__vdp_render_until(cogmaster *m, uint32_t line, uint32_t x);
 /* Whether a render now would record an unsupported-mode fault: the display is on and the mode has
    no renderer. The sensor leaves the renderer to its own schedule then. */
 int cogmaster__vdp_render_blocked(const cogmaster *m);
+/* Graphics I and II: the dots [x0, x1) of one line (background and sprites), the sprite scan of a
+   line, and palette entry n of those modes (src/vdp_legacy.c). */
+void cogmaster__legacy_span(cogmaster *m, uint32_t line, uint32_t x0, uint32_t x1);
+void cogmaster__legacy_sprite_scan(cogmaster *m, uint32_t line);
+uint16_t cogmaster__legacy_colour(const cogmaster *m, uint32_t nibble);
 #define COGMASTER__VDP_PRIORITY 32u
 uint32_t cogmaster__vdp_background(const cogmaster *m, uint32_t x, uint32_t y);
 uint32_t cogmaster__vdp_pattern_address(const cogmaster *m, uint32_t address);

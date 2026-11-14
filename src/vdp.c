@@ -46,6 +46,13 @@
    choice 2.A). */
 #define VDP_STATUS_FRAME 0x80u
 #define VDP_STATUS_LOW 0x1Fu
+#define VDP_STATUS_FLAGS 0xE0u
+#define VDP_STATUS_OVERFLOW 0x40u
+
+/* fifth_index when no fifth sprite is latched: bits 4-0 then read as 1s. On a TMS9918 the SAT index
+   of the fifth sprite on a line shows in bits 4-0 while bit 6 is set (SMS-VDP section 7); that the
+   first one latched stays until a status read is a selected model. Mode 4 never latches one. */
+#define VDP_FIFTH_NONE 31u
 
 /* R1 bit 5, IE0: the frame interrupt reaches /INT (SMS-VDP section 2.4). */
 #define VDP_R1_IE0 0x20u
@@ -96,6 +103,9 @@ void cogmaster__vdp_reset(cogmaster *m, int power)
     v->sprite_zoom = 0u;
     v->sprite_shift = 0u;
     v->sprite_overflow = 0u;
+    v->sprite_legacy = 0u;
+    v->sprite_size = 0u;
+    v->fifth_index = VDP_FIFTH_NONE;
     memset(&m->completed, 0, sizeof m->completed);
     m->completed.height = 192u;
     m->completed.crop =
@@ -286,8 +296,9 @@ void cogmaster__vdp_latch_h(cogmaster *m)
     cogmaster__vdp_latch_h_at(m, m->bus.t);
 }
 
-/* A status read returns the flags with the low bits set, then clears the
-   flags and the control latch and releases /INT (SMS-VDP section 2.6). */
+/* A status read returns the flags with the low bits set (the latched fifth sprite's index while
+   bit 6 is set, 31 otherwise), then clears the flags, the latched index and the control latch and
+   releases /INT (SMS-VDP section 2.6). */
 static uint8_t vdp_status_read(cogmaster *m)
 {
     /* Events at this tick precede the read: include its current active dot,
@@ -297,8 +308,10 @@ static uint8_t vdp_status_read(cogmaster *m)
         cogmaster__vdp_render_until(m, m->bus.line, m->bus.t / 2u + 1u);
     }
     struct cogmaster__vdp *v = &m->vdp;
-    uint8_t s = (uint8_t)(v->status | VDP_STATUS_LOW);
+    uint8_t low = (v->status & VDP_STATUS_OVERFLOW) != 0u ? v->fifth_index : VDP_STATUS_LOW;
+    uint8_t s = (uint8_t)((v->status & VDP_STATUS_FLAGS) | low);
     v->status = 0u;
+    v->fifth_index = VDP_FIFTH_NONE;
     v->line_pending = 0u;
     v->latch = 0u;
     vdp_irq(m);

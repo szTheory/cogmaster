@@ -27,19 +27,28 @@ legacy TMS9918 video modes the core does not render (SEED-006) and 3 show no fau
 (`.planning/v2.1-MILESTONE-AUDIT.md`, archived with the milestone) found 10 of 10 requirements satisfied, status
 tech_debt and no blockers.
 
-## Next Milestone Goals
+## Current Milestone: v2.2 Legacy video modes
 
-After v2.1, none of it a gate:
+**Goal:** Cartridges that use the TMS9918 Graphics I and II modes draw their real picture instead of faulting, so most
+of the 46 default-profile `fail` rows that wait on these modes leave the unsupported-mode leaf.
 
-- The legacy video modes (SEED-006) cause 46 of the 49 remaining default-profile `fail` rows; the board question for the reg-0
-  cartridges (11 to 12 rows at the baseline, none failing now) needs new evidence before it is more than a seed.
-- The pad, Light Phaser and BIOS judges (SEED-010) and the scan-threshold measurement (SEED-009) can ride in the next
-  owner sitting.
-- The rest of SEED-015 and SEED-007 (ledger rows, review leftovers), and the v2.1 documentation debt listed in the
-  audit (stale fault-vocabulary lines in `docs/audio.md`, `docs/embedding.md` and `docs/runner.md`).
-- Later horizons (states and movies, measured accuracy, tools, ports, the browser, SG-1000) stay seeds in
-  `.planning/seeds/` and horizons in `.planning/PRODUCT-ROADMAP.md`; each needs the owner's approval at
-  `/gsd-new-milestone`.
+**Target features:**
+- Graphics I and II rendering on the Master System and Game Gear (SMS video) profiles, in its own module with a fixed
+  TMS palette and the 4-slot legacy sprite engine, dispatched once per line so mode 4 and every hash pin stay put
+  (behaviour revision 19, state format 17).
+- Text, multicolour, the mixed modes, the invalid text modes and native Game Gear keep their fault, with the reason stated.
+- The library re-run through the unchanged ratchet, the dead diagnose vocabulary pruned once, the false and stale doc
+  lines fixed, and a milestone-close clean-state check script.
+
+The scope comes from the 2026-11-13 fan-out (`.planning/research/NEXT-MILESTONE.md`), approved by the owner the same day.
+The browser question is settled as DEC.68 (the library as wasm here, the page in a sibling repository, after v3.0).
+
+## Later Horizons
+
+In order, none of it a gate (`.planning/PRODUCT-ROADMAP.md` holds triggers and reasons): v3.0 States and rewind (public
+state API, libretro save states, rewind, run-ahead and a `SYSTEM_RAM` export); v3.1 the SG-1000 machine; then the browser
+module, movies (only with a named consumer), measured accuracy (needs the owner's hardware), tools and ports. The pad,
+Light Phaser and BIOS judges (SEED-010) and the scan thresholds (SEED-009) can ride in any owner sitting.
 
 ## Core Value
 
@@ -65,13 +74,18 @@ MIT-licensed C library that any host can embed.
 - ✓ The failing default-profile rows have a known cause: `cogmaster-run --diagnose` and `sh scripts/library.sh diagnose` print counts, kinds and catalog titles only, a canary scan with five negative controls proves nothing from a dump leaks, and 205 failing rows (of 209 in the ledger) are grouped by cause in `13-CAUSE-GROUPS.md`; no ledger row moved — v2.1 (Phase 13)
 - ✓ Every cause group of 5 or more failing rows is fixed or closed with a stated reason: the `$FFFC` unused-bit writes, writes to non-register ROM addresses and undriven or undecoded port accesses no longer record a fault, the legacy video modes are closed as not emulated by design, the boots check is shown sound, and the diagnose reads 205 failing rows down to 49 with none outside the ledger; behaviour revision 18 and no hash pin moved — v2.1 (Phase 14)
 - ✓ The owner's library re-run merged through the unchanged ratchet (285 rows from `fail` to `pass`, none lost), the page equals its regeneration, and the asan, build, be32, bench and bench-wasm32 timeouts were re-derived from a fresh 40-run read in one workflow commit — v2.1 (Phase 15)
+- ✓ Graphics I and II draw on the Master System 1, Master System 2 and Game Gear in Master System video mode with the legacy sprite rules, closed-form oracles written before the renderer, a state format 17 and behaviour revision 19, the other legacy modes keeping their fault, no shipped pin moved and the per-frame gate green; the fault-vocabulary docs, the dirty-tree refusal and the download retry rode along — v2.2 (Phase 16)
 
 ### Active
 
-None defined. The next milestone's requirements are written at `/gsd-new-milestone`. Deferred candidates from v2.1:
-LEDG-06 (a catalog `video` column for the 50 Game Gear entries MAME runs in Master System mode), LEDG-07 (per-alias
-`supported` and a reason for `partial` entries) and PAD-08 (the pad, Light Phaser and BIOS judges and the scan
-thresholds on the owner's hardware).
+<!-- Current scope: milestone v2.2. Full text in REQUIREMENTS.md. -->
+
+- [ ] **RUN-03, RUN-04**: the library re-run merges through the ratchet and the compatibility page equals its regeneration
+- [ ] **TUNE-15 to TUNE-17**: the diagnose vocabulary prune, re-derived timeouts and a milestone-close clean-state check
+
+Deferred candidates: LEDG-06 (a catalog `video` column for the 50 Game Gear entries MAME runs in Master System mode),
+LEDG-07 (per-alias `supported` and a reason for `partial` entries), PAD-08 (the pad, Light Phaser and BIOS judges and the
+scan thresholds on the owner's hardware), and text and multicolour modes (only if the diagnose shows 5 or more rows landing there).
 
 ### Out of Scope
 
@@ -187,4 +201,4 @@ After each milestone:
 3. Lessons are exported to `.planning/LESSONS.md`.
 
 ---
-*Last updated: 2026-11-13 after v2.1 milestone*
+*Last updated: 2026-11-14 after Phase 16*

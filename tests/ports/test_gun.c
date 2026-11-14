@@ -882,11 +882,13 @@ static void test_order(void)
 }
 
 /* A video mode the renderer rejects, with the display on: the first fault is recorded where the
-   renderer's own schedule puts it, with a gun aimed and polled and without. */
+   renderer's own schedule puts it, with a gun aimed and polled and without. Text is mode select
+   nibble 1: R0 bits 1 and 2 clear and R1 bit 4 set, which no profile draws. */
 static cogmaster *fault_run(int gun)
 {
     cogmaster *m = picture(192u, COGMASTER_REGION_EXPORT);
     m->vdp.reg[0] = 0u;
+    m->vdp.reg[1] = (uint8_t)((m->vdp.reg[1] & ~0x08u) | 0x10u);
     m->vdp.display = 1u;
     const int32_t axis[4] = {100, 3, 0, 0};
     CHECK_EQ_U64(send(m, gun ? PHASER : COGMASTER_DEVICE_PAD, COGMASTER_DEVICE_PAD, 0u, 0u, axis),

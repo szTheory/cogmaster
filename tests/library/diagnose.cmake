@@ -101,9 +101,9 @@ if(CASE STREQUAL main)
   diag_standin()
   string(REPEAT v 32768 halt)
   file(WRITE "${OUT}/halt.sms" "${halt}${bytes_canary}")  # a short tail past a power of two is not a copier-header size
-  string(ASCII 243 62 64 211 191 62 129 211 191 118 mode0_code)  # DI; LD A,$40; OUT ($BF),A; LD A,$81; OUT ($BF),A; HALT
+  string(ASCII 243 62 80 211 191 62 129 211 191 118 mode0_code)  # DI; LD A,$50; OUT ($BF),A; LD A,$81; OUT ($BF),A; HALT
   string(REPEAT "v" 1014 mode0_pad)
-  file(WRITE "${OUT}/mode0.sms" "${mode0_code}${mode0_pad}")  # the display on with mode select 0: an unsupported video mode fault
+  file(WRITE "${OUT}/mode0.sms" "${mode0_code}${mode0_pad}")  # the display on with mode select 1 (text): an unsupported video mode fault
   set(images "never.sms|${OUT}/halt.sms|unknown|-|Synthetic never draws" "pass.sms|${FIXTURES}/boot_to_play.sms|unknown|-|Synthetic pass"
     "port.sms|${SEEDS}/ed-00.sms|unknown|-|Synthetic port fault" "static.sms|${SEEDS}/static-display.sms|unknown|-|Synthetic static"
     "mode0.sms|${OUT}/mode0.sms|unknown|-|Synthetic mode zero"
@@ -157,7 +157,7 @@ if(CASE STREQUAL main)
     "diag-group: leaf=dark_no_fault.never_draws rows=1" "diag-group: leaf=fault_no_display.ed_undefined.cpu rows=1"
     "diag-group: leaf=static_no_fault.frozen rows=1" "diag-group: leaf=input_mismatch rows=0"
     "leaf=fault_no_display.ed_undefined.cpu pcslot=0 rows=1" "leaf=fault_no_display.ed_undefined.cpu where=cpu rows=1"
-    "vdpmode=graphics1:sms:none rows=1"
+    "vdpmode=text:sms:none rows=1"
     "candidates=7 attempted=5 evaluated=5 malformed=0 malformed_io=0 uncatalogued=1 skipped_excluded=1 noprofile=0 unsupported=0 infrastructure_error=0 title_withheld=0"
     "judged=5 run_fail=4 " "groups_total=4 fail_total=4" "diag-other: pass mapper=none first_change=")
   if(diag_out MATCHES "Synthetic (pass|skipped)")

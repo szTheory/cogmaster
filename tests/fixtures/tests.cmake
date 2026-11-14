@@ -207,6 +207,51 @@ if(CMAKE_SCRIPT_MODE_FILE)
         message(FATAL_ERROR "content host exit ${rc}: ${out} ${err}")
       endif()
     endif()
+  elseif(CASE STREQUAL "legacy")
+    # A Graphics I or II image against the closed-form oracle (legacy.c), for VARIANT on PROFILE
+    # (sms1, sms2 or gg_sms, the Game Gear in Master System video mode) after FRAMES frames. The oracle
+    # compares every dot through the public API; with RUNNER the runner's --hash must also contain the
+    # oracle's digest, so a renderer and the digest it prints are judged by one independent answer.
+    # WRONG swaps in a digest that cannot match, so the comparison must refuse it. For the sprite image
+    # COMPARE is all (every scenario, on both frames it is on screen, in one run) and SCENARIO names the
+    # scenario whose picture the runner hash at FRAMES must equal; the other images leave both unset.
+    if(NOT COMPARE)
+      set(COMPARE ${FRAMES})
+    endif()
+    if(PROFILE STREQUAL "sms1")
+      set(oracle_profile sms1)
+      set(machine sms1)
+    elseif(PROFILE STREQUAL "sms2")
+      set(oracle_profile sms2)
+      set(machine sms)
+    elseif(PROFILE STREQUAL "gg_sms")
+      set(oracle_profile gg)
+      set(machine gg)
+    else()
+      message(FATAL_ERROR "legacy: unknown PROFILE '${PROFILE}'")
+    endif()
+    execute_process(COMMAND ${EMULATOR} ${ORACLE} ${IMAGE} ${VARIANT} ${oracle_profile} compare ${COMPARE}
+      RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+    if(NOT rc STREQUAL "0")
+      message(FATAL_ERROR "legacy image mismatch: ${VARIANT} on ${PROFILE}, compare ${COMPARE}, exit ${rc}: ${out}${err}")
+    endif()
+    if(RUNNER)
+      execute_process(COMMAND ${EMULATOR} ${ORACLE} ${IMAGE} ${VARIANT} ${oracle_profile} digest ${SCENARIO}
+        RESULT_VARIABLE rc OUTPUT_VARIABLE want ERROR_VARIABLE err)
+      string(STRIP "${want}" want)
+      if(NOT rc STREQUAL "0" OR NOT want MATCHES "^[0-9a-f]+$")
+        message(FATAL_ERROR "legacy oracle digest: exit ${rc}: ${want}${err}")
+      endif()
+      if(WRONG)
+        set(want "deliberately-wrong-pixel-digest")
+      endif()
+      execute_process(COMMAND ${EMULATOR} ${RUN} ${IMAGE} --machine ${machine} --video-mode sms
+          --region ntsc-u --frames ${FRAMES} --hash
+        RESULT_VARIABLE rc OUTPUT_VARIABLE out ERROR_VARIABLE err)
+      if(NOT rc STREQUAL "0" OR NOT out MATCHES "${want}")
+        message(FATAL_ERROR "legacy runner hash mismatch: ${VARIANT} on ${PROFILE}, exit ${rc}, ${out} ${err}")
+      endif()
+    endif()
   elseif(CASE STREQUAL "audio")
     # The runner hashes FRAMES frames of the image's sound for MACHINE (sms or gg); the in-process
     # host must deliver the same PCM through each way a frontend registers its audio callbacks.
@@ -667,6 +712,31 @@ foreach(spec IN ITEMS bios_probe:sms:PROBE=1 bios_shape:bin:FULL=1 bios_shape_ba
     DEPENDS ${fixtures_src}/bios_shape.asm ${fixtures_src}/bios_shape.link VERBATIM)
   list(APPEND fixtures_images ${image})
 endforeach()
+# One function builds every Graphics I and II image from two sources, as vdp_lines builds its three: the
+# image name, the source (legacy_modes or legacy_sprites) and the -D define that picks the variant. Each
+# image gets its own link file, because the linker names the object it reads.
+function(fixtures_legacy_image name source define)
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${fixtures_src}/${source}.link)
+  file(READ ${fixtures_src}/${source}.link legacy_link)
+  string(REPLACE "${source}.o" "${name}.o" legacy_link "${legacy_link}")
+  set(image ${COGMASTER_FIXTURES_DIR}/${name}.sms)
+  file(GENERATE OUTPUT ${COGMASTER_FIXTURES_DIR}/${name}.link CONTENT "${legacy_link}")
+  add_custom_command(OUTPUT ${image}
+    COMMAND ${COGMASTER_WLA_Z80} -q -D ${define} -o ${COGMASTER_FIXTURES_DIR}/${name}.o ${source}.asm
+    COMMAND ${CMAKE_COMMAND} -E chdir ${COGMASTER_FIXTURES_DIR}
+      ${COGMASTER_WLALINK} -r ${name}.link ${image}
+    WORKING_DIRECTORY ${fixtures_src}
+    DEPENDS ${fixtures_src}/${source}.asm ${fixtures_src}/${source}.link
+      ${fixtures_src}/header.inc ${fixtures_src}/mailbox.inc VERBATIM)
+  list(APPEND fixtures_images ${image})
+  set(fixtures_images ${fixtures_images} PARENT_SCOPE)
+endfunction()
+fixtures_legacy_image(legacy_modes_g1 legacy_modes V_G1=1)
+fixtures_legacy_image(legacy_modes_g2 legacy_modes V_G2=1)
+fixtures_legacy_image(legacy_modes_g2_masked legacy_modes V_G2_MASKED=1)
+fixtures_legacy_image(legacy_modes_g2_late legacy_modes V_G2_LATE=1)
+fixtures_legacy_image(legacy_modes_g2_switch legacy_modes V_G2_SWITCH=1)
+fixtures_legacy_image(legacy_sprites legacy_sprites V_SPRITES=1)
 add_custom_target(cogmaster-fixtures ALL DEPENDS ${fixtures_images})
 
 add_executable(cogmaster-test-lines ${CMAKE_CURRENT_LIST_DIR}/lines.c
@@ -681,6 +751,14 @@ target_include_directories(cogmaster-test-play PRIVATE ${PROJECT_SOURCE_DIR}/run
 target_link_libraries(cogmaster-test-play PRIVATE cogmaster::cogmaster)
 cogmaster_warnings(cogmaster-test-play)
 
+# The closed-form oracle for the Graphics I and II images: it prints the expected digest and compares
+# a run with it. A later test registers the comparisons; this one checks the oracle itself.
+add_executable(cogmaster-test-legacy-fixture ${CMAKE_CURRENT_LIST_DIR}/legacy.c
+  ${PROJECT_SOURCE_DIR}/runner/sha256.c)
+target_include_directories(cogmaster-test-legacy-fixture PRIVATE ${PROJECT_SOURCE_DIR}/runner)
+target_link_libraries(cogmaster-test-legacy-fixture PRIVATE cogmaster::cogmaster)
+cogmaster_warnings(cogmaster-test-legacy-fixture)
+
 # Fault prevented: guest-only rendering regressions across both TV standards and every height.
 foreach(tv IN ITEMS ntsc pal)
   foreach(height IN ITEMS 192 224 240)
@@ -689,6 +767,15 @@ foreach(tv IN ITEMS ntsc pal)
       LABELS fixtures portable TIMEOUT 10)
   endforeach()
 endforeach()
+
+# Fault prevented: an oracle that disagrees with hand-computed pixels or status bytes, which would make
+# every later comparison against it a comparison with a wrong answer, and a legacy_sprites row of
+# tests/diag/expected.csv that is typed by hand instead of computed by legacy_status.
+# Timeout: 10 s floor; 2 x 0.12 s, slowest of 1 run (9 lanes), run 43562888383.
+cogmaster_add_test(NAME fixtures.legacy.oracle
+  COMMAND cogmaster-test-legacy-fixture - all all literals
+    ${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+  LABELS fixtures portable TIMEOUT 10)
 
 string(REPLACE ";" "$<SEMICOLON>" fixtures_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
 
@@ -802,6 +889,50 @@ string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
 # Fault prevented: a digest comparator accepting one changed expected pixel.
 cogmaster_add_test(NAME fixtures.boot_to_play.wrong_hash
   COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=native frame mismatch"
+    -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
+  LABELS fixtures portable TIMEOUT 10)
+
+# Fault prevented: a legacy renderer that disagrees with the closed-form oracle on a dot of a Graphics I
+# or II image, on any of the three profiles, or a runner hash that differs from the oracle digest. Each
+# row is <variant>:<frames>:<profiles that also compare the runner hash>; the static images are complete
+# from frame 17 (Graphics I from frame 3), the late image from frame 616 (16 load frames and 600 counted
+# ones), and the switch image is judged at the frame its switch line is pinned for, by dot, not by hash.
+# Timeout: 10 s floor for the static and switch images, 2 x 0.51 s; 29 s for the late image, 2 x 14.02 s
+# (g2_late.sms2 on be32), slowest of 1 run (9 lanes), run 43562888383.
+foreach(spec IN ITEMS g1:20:all g2:20:all g2_masked:20:all g2_late:620:sms2 g2_switch:30:none)
+  string(REPLACE ":" ";" spec "${spec}")
+  list(GET spec 0 legacy_variant)
+  list(GET spec 1 legacy_frames)
+  list(GET spec 2 legacy_runner)
+  set(legacy_timeout 10)
+  if(legacy_variant STREQUAL "g2_late")
+    set(legacy_timeout 29)
+  endif()
+  foreach(legacy_profile IN ITEMS sms1 sms2 gg_sms)
+    set(legacy_flag "")
+    if(legacy_runner STREQUAL "all" OR legacy_runner STREQUAL legacy_profile)
+      set(legacy_flag -DRUNNER=1)
+    endif()
+    cogmaster_add_test(NAME fixtures.legacy_modes.${legacy_variant}.${legacy_profile}
+      COMMAND ${CMAKE_COMMAND} -DCASE=legacy -DNAME=legacy_modes_${legacy_variant}
+        -DVARIANT=${legacy_variant} -DPROFILE=${legacy_profile} -DFRAMES=${legacy_frames} ${legacy_flag}
+        -DIMAGE=${COGMASTER_FIXTURES_DIR}/legacy_modes_${legacy_variant}.sms
+        -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+        -DORACLE=$<TARGET_FILE:cogmaster-test-legacy-fixture> -DRUN=$<TARGET_FILE:cogmaster-run>
+        "-DEMULATOR=${fixtures_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
+      LABELS fixtures portable TIMEOUT ${legacy_timeout})
+  endforeach()
+endforeach()
+set(cmd ${CMAKE_COMMAND} -DCASE=legacy -DNAME=legacy_modes_g1 -DVARIANT=g1 -DPROFILE=sms2
+  -DFRAMES=20 -DRUNNER=1 -DWRONG=1
+  -DIMAGE=${COGMASTER_FIXTURES_DIR}/legacy_modes_g1.sms
+  -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+  -DORACLE=$<TARGET_FILE:cogmaster-test-legacy-fixture> -DRUN=$<TARGET_FILE:cogmaster-run>
+  "-DEMULATOR=${fixtures_inner_emulator}" -P ${CMAKE_CURRENT_LIST_FILE})
+string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+# Fault prevented: a legacy digest comparator accepting a digest that no frame has.
+cogmaster_add_test(NAME fixtures.legacy_modes.wrong_hash
+  COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=1 "-DREGEX=legacy runner hash mismatch"
     -P ${PROJECT_SOURCE_DIR}/tests/cmake/expect_fail.cmake
   LABELS fixtures portable TIMEOUT 10)
 
@@ -1015,6 +1146,42 @@ foreach(tv IN ITEMS ntsc pal)
         -DOUT=${fixtures_out}/vdp_lines.${tv}.${height}.txt -P ${CMAKE_CURRENT_LIST_FILE}
       LABELS fixtures portable TIMEOUT 10)
   endforeach()
+endforeach()
+
+# Fault prevented: a legacy sprite engine that draws a wrong dot in any of the 20 scenarios, on either of
+# the two frames each is on screen, on any of the three profiles, or a runner hash of the last scenario's
+# picture (frame 47, then held) that differs from the oracle's digest. One run steps through the whole list
+# and compares every dot through the public API; the runner hash is a second, independent judgement of the
+# same picture. The status records are judged by the mailbox tests below.
+# Timeout: 10 s floor; 2 x 1.24 s (sms2 on be32), slowest of 1 run (9 lanes), run 43562888383.
+foreach(legacy_profile IN ITEMS sms1 sms2 gg_sms)
+  cogmaster_add_test(NAME fixtures.legacy_sprites.${legacy_profile}
+    COMMAND ${CMAKE_COMMAND} -DCASE=legacy -DNAME=legacy_sprites -DVARIANT=sprites
+      -DPROFILE=${legacy_profile} -DCOMPARE=all -DSCENARIO=20 -DFRAMES=47 -DRUNNER=1
+      -DIMAGE=${COGMASTER_FIXTURES_DIR}/legacy_sprites.sms
+      -DEXPECTED=${PROJECT_SOURCE_DIR}/tests/built/expected.txt
+      -DORACLE=$<TARGET_FILE:cogmaster-test-legacy-fixture> -DRUN=$<TARGET_FILE:cogmaster-run>
+      "-DEMULATOR=${fixtures_emulator}" -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures portable TIMEOUT 10)
+endforeach()
+# Fault prevented: sprite status flags that are measured by the guest but never judged: the fifth sprite
+# flag with its index, the coincidence flag, the end-of-list Y value, the early clock, both sizes and
+# magnification, and the tail read of a line, where the fifth index must survive a status read between the
+# scan of the line and its first dot. Every record is judged against its row in tests/diag/expected.csv,
+# which legacy_status computes, on the Master System 1, the Master System 2 and the Game Gear in Master
+# System video mode.
+# Timeout: 10 s floor; 2 x 0.44 s (the three profiles), slowest of 1 run (9 lanes), run 43562888383.
+foreach(spec IN ITEMS sms1:sms1 sms2:sms gg_sms:gg)
+  string(REPLACE ":" ";" spec "${spec}")
+  list(GET spec 0 legacy_profile)
+  list(GET spec 1 legacy_machine)
+  cogmaster_add_test(NAME fixtures.legacy_sprites.mailbox.${legacy_profile}
+    COMMAND ${CMAKE_COMMAND} ${fixtures_mailbox} -DNAME=legacy_sprites -DMACHINE=${legacy_machine}
+      -DVIDEO=sms -DREGION=ntsc-u -DPROFILE=${legacy_profile}
+      -DIMAGE=${COGMASTER_FIXTURES_DIR}/legacy_sprites.sms -DFRAMES=200
+      -DCSV=${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
+      -DOUT=${fixtures_out}/legacy_sprites.${legacy_profile}.txt -P ${CMAKE_CURRENT_LIST_FILE}
+    LABELS fixtures portable TIMEOUT 10)
 endforeach()
 
 # Fault prevented: V counter records that are measured but never judged, an expectation table with a

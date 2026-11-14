@@ -54,6 +54,7 @@ cogmaster_add_test(NAME docs.budgets
 
 include(${CMAKE_CURRENT_LIST_DIR}/budget_cases.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/firmware_release_cases.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/tooling_cases.cmake)
 
 # quality.json holds the ceilings and floors; the real file is checked against
 # the two inventories' line counts. Each control is a fixture limit one step

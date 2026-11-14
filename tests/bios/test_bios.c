@@ -975,7 +975,7 @@ static void test_hostile(void)
 #define EQ_STEP_BOUND 40000u
 #define EQ_SHORT_BOUND 1000u
 #define EQ_COMPARED_NAMES 88u
-#define EQ_EXCLUDED_NAMES 69u
+#define EQ_EXCLUDED_NAMES 73u
 #define EQ_REQUIRED_NAMES 16u
 #define EQ_WINDOW_FIRST 0x100u
 #define EQ_WINDOW_LAST 0x1FFu
@@ -1146,6 +1146,7 @@ static const struct eq_exclusion eq_excluded[] = {
     {"vdp_line_counter", why_beam},
     {"vdp_line_pending", why_beam},
     {"vdp_status", why_beam},
+    {"vdp_fifth_index", why_beam},
     {"vdp_addr", why_port},
     {"vdp_code", why_port},
     {"vdp_first", why_port},
@@ -1156,12 +1157,15 @@ static const struct eq_exclusion eq_excluded[] = {
     {"z80_q", why_cpu},
     {"render_line", why_out},
     {"render_x", why_out},
+    {"sprite_attr", why_out},
     {"sprite_count", why_out},
+    {"sprite_legacy", why_out},
     {"sprite_line", why_out},
     {"sprite_overflow", why_out},
     {"sprite_row", why_out},
     {"sprite_scanned", why_out},
     {"sprite_shift", why_out},
+    {"sprite_size", why_out},
     {"sprite_tile", why_out},
     {"sprite_x", why_out},
     {"sprite_zoom", why_out},

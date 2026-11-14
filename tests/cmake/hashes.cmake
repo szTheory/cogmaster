@@ -15,6 +15,21 @@ function(hashes_judge file records rom profile)
   include("${hashes_dir}/mailbox.cmake")
 endfunction()
 
+# Fault prevented: a playing row whose frame count is hard-coded in the call, so a row for a longer
+# image (the Graphics II image that switches after 600 frames) cannot exist, or a row printed from a run
+# that printed another frame than the one the row names. Runs the image for <frames> frames and appends
+# "playing <file> <profile> <region> <variant> frame <frames> sha256 <hex>" to the caller's lines; the
+# arguments after the frame count (an --input script) go to the runner unchanged.
+function(hashes_playing filename image profile machine video region variant frames)
+  execute_process(COMMAND ${EMULATOR} "${RUN}" "${image}" --machine ${machine}
+    --video-mode ${video} --region ${region} --frames ${frames} --hash ${ARGN}
+    OUTPUT_VARIABLE frame ERROR_VARIABLE err RESULT_VARIABLE rc)
+  if(NOT rc STREQUAL "0" OR NOT frame MATCHES "^frame ${frames} sha256 [0-9a-f]+\n")
+    message(FATAL_ERROR "playing ${filename}/${profile}/${region}/${variant}: exit ${rc}: ${frame}${err}")
+  endif()
+  set(lines "${lines}playing ${filename} ${profile} ${region} ${variant} ${frame}" PARENT_SCOPE)
+endfunction()
+
 if(MODE STREQUAL "write")
   # Fault prevented: a lane's output silently not compared. Writes
   # <OUT>/hashes.txt with the frame 60 hash line of the Master System card
@@ -85,14 +100,49 @@ if(MODE STREQUAL "write")
                 endif()
                 set(input --input "${OUT}/tests/${script}.input")
               endif()
-              execute_process(COMMAND ${EMULATOR} "${RUN}" "${image}" --machine ${machine}
-                --video-mode ${video} --region ${region} --frames 14 --hash ${input}
-                OUTPUT_VARIABLE frame ERROR_VARIABLE err RESULT_VARIABLE rc)
-              if(NOT rc STREQUAL "0" OR NOT frame MATCHES "^frame 14 sha256 [0-9a-f]+\n")
-                message(FATAL_ERROR "playing ${filename}/${profile}/${region}/${variant}: exit ${rc}: ${frame}${err}")
-              endif()
-              string(APPEND lines "playing ${filename} ${profile} ${region} ${variant} ${frame}")
+              hashes_playing(${filename} "${image}" ${profile} ${machine} ${video} ${region} ${variant} 14
+                ${input})
             endforeach()
+          endforeach()
+        endforeach()
+      endif()
+      # Fault prevented: a Graphics I or II picture that differs between lanes, or a lane that stops
+      # drawing a legacy mode. Each image is run for the frames its picture is complete after (the
+      # static images from frame 17, the switch image at the frame its switch line is pinned for, the
+      # late image after its switch at frame 616), on the three Master System profiles and the export
+      # NTSC console only; the late image runs on the Master System 2 alone, for it is 620 frames.
+      # The pixels are judged against the closed-form oracle by tests/fixtures, so these rows only
+      # have to agree across lanes.
+      if(name MATCHES "^legacy_modes_(g1|g2|g2_masked|g2_late|g2_switch)$")
+        set(legacy_frames 20)
+        set(legacy_profiles sms:sms sms1:sms1 gg-sms:gg)
+        if(name STREQUAL "legacy_modes_g2_switch")
+          set(legacy_frames 30)
+        elseif(name STREQUAL "legacy_modes_g2_late")
+          set(legacy_frames 620)
+          set(legacy_profiles sms:sms)
+        endif()
+        foreach(legacy_profile IN LISTS legacy_profiles)
+          string(REPLACE ":" ";" legacy_profile "${legacy_profile}")
+          list(GET legacy_profile 0 legacy_label)
+          list(GET legacy_profile 1 legacy_machine)
+          hashes_playing(${filename} "${image}" ${legacy_label} ${legacy_machine} sms ntsc-u legacy
+            ${legacy_frames})
+        endforeach()
+      endif()
+      # Fault prevented: a legacy sprite picture that differs between lanes. Two pictures of the sprite
+      # image: the magnified 16 by 16 scenario (frame 15) and the last scenario, which the image holds
+      # from frame 47, on the three Master System profiles and the export NTSC console only. The
+      # pixels are judged against the closed-form oracle by tests/fixtures, so these rows only have to
+      # agree across lanes.
+      if(name STREQUAL "legacy_sprites")
+        foreach(legacy_frames IN ITEMS 15 47)
+          foreach(legacy_profile IN ITEMS sms:sms sms1:sms1 gg-sms:gg)
+            string(REPLACE ":" ";" legacy_profile "${legacy_profile}")
+            list(GET legacy_profile 0 legacy_label)
+            list(GET legacy_profile 1 legacy_machine)
+            hashes_playing(${filename} "${image}" ${legacy_label} ${legacy_machine} sms ntsc-u legacy
+              ${legacy_frames})
           endforeach()
         endforeach()
       endif()
