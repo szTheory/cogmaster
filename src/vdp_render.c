@@ -110,15 +110,23 @@ uint32_t cogmaster__vdp_background(const cogmaster *m, uint32_t x, uint32_t y)
     return vdp_tile(m, x, y);
 }
 
-/* Y+1, negative F0..FF, D0 termination, eight retained slots and the
-   ninth Y match: SMS-VDP section 3, docs/hardware/video.md. */
+/* The sprites of one line under the class of the registers now: Graphics I and II scan their own
+   table (vdp_legacy.c), every other class the mode 4 one. sprite_legacy records which, so that a
+   class change after the scan is noticed (render_until) and a saved state names its slots' class.
+   Mode 4: Y+1, negative F0..FF, D0 termination, eight retained slots and the ninth Y match:
+   SMS-VDP section 3, docs/hardware/video.md. */
 void cogmaster__vdp_sprite_scan(cogmaster *m, uint32_t line)
 {
+    if (cogmaster__vdp_class(m) == COGMASTER__VDP_LEGACY) {
+        cogmaster__legacy_sprite_scan(m, line);
+        return;
+    }
     struct cogmaster__vdp *v = &m->vdp;
     v->sprite_line = (uint8_t)line;
     v->sprite_count = 0u;
     v->sprite_scanned = 0u;
     v->sprite_overflow = 0u;
+    v->sprite_legacy = 0u;
     v->sprite_zoom = v->reg[1] & 1u;
     v->sprite_shift = (uint8_t)((v->reg[0] >> 3) & 1u);
     uint32_t height = (v->reg[1] & 2u) != 0u ? 16u : 8u;
@@ -146,6 +154,7 @@ void cogmaster__vdp_sprite_scan(cogmaster *m, uint32_t line)
         v->sprite[slot].x = v->vram[cogmaster__vdp_sat_address(m, 128u + 2u * i)];
         v->sprite[slot].tile = (uint8_t)tile;
         v->sprite[slot].row = (uint8_t)(row & 7u);
+        v->sprite[slot].attr = 0u;
     }
 }
 

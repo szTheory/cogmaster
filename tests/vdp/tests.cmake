@@ -75,7 +75,10 @@ foreach(case IN ITEMS oracle
     g1 g2 palette backdrop
     # Fault prevented: a mask, row limit, interval split, mode switch, bring-up or hostile input that
     # moves a dot, repaints an emitted one or makes a call unbounded.
-    masks rows intervals switch bringup hostile)
+    masks rows intervals switch bringup hostile
+    # Fault prevented: a legacy sprite drawn from the mode 4 tables, rows or colours (a wrong pattern
+    # address, row, colour, position or priority over the background), or one that moves the status.
+    sprites.basic)
   cogmaster_add_test(NAME vdp.legacy.${case} COMMAND cogmaster-test-legacy ${case}
     LABELS portable vdp TIMEOUT 10)
 endforeach()

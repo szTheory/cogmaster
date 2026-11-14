@@ -659,6 +659,7 @@ vdp.legacy.masks	portable,vdp
 vdp.legacy.oracle	portable,vdp
 vdp.legacy.palette	portable,vdp
 vdp.legacy.rows	portable,vdp
+vdp.legacy.sprites.basic	portable,vdp
 vdp.legacy.switch	portable,vdp
 vdp.pause_nmi	portable,vdp
 vdp.port_decode	portable,vdp

@@ -756,9 +756,10 @@ void cogmaster__vdp_render_until(cogmaster *m, uint32_t line, uint32_t x);
 /* Whether a render now would record an unsupported-mode fault: the display is on and the mode has
    no renderer. The sensor leaves the renderer to its own schedule then. */
 int cogmaster__vdp_render_blocked(const cogmaster *m);
-/* Graphics I and II: the background dots [x0, x1) of one line, and palette entry n of those modes
-   (src/vdp_legacy.c). */
+/* Graphics I and II: the dots [x0, x1) of one line (background and sprites), the sprite scan of a
+   line, and palette entry n of those modes (src/vdp_legacy.c). */
 void cogmaster__legacy_span(cogmaster *m, uint32_t line, uint32_t x0, uint32_t x1);
+void cogmaster__legacy_sprite_scan(cogmaster *m, uint32_t line);
 uint16_t cogmaster__legacy_colour(const cogmaster *m, uint32_t nibble);
 #define COGMASTER__VDP_PRIORITY 32u
 uint32_t cogmaster__vdp_background(const cogmaster *m, uint32_t x, uint32_t y);

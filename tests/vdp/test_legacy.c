@@ -878,6 +878,151 @@ static void hostile(void)
     }
 }
 
+/* ---- legacy sprites, the renderer driven in process and compared with oracle_sprites ---- */
+
+/* R5 $7F puts the attribute table at $3F80 (32 entries of four bytes to the end of video memory);
+   R6 = 1 puts the sprite generator at $0800, clear of the Graphics I scene's tables. The frame
+   flag is bit 7 of the status after a frame. */
+#define SAT_BASE 0x3F80u
+#define GENERATOR_R6 1u
+#define STATUS_FRAME 0x80u
+#define STATUS_FIFTH 0x40u
+#define STATUS_COINCIDENCE 0x20u
+
+/* The status a program reads at a tick of a line; the read clears the flags. */
+static uint8_t status_at(cogmaster *m, uint32_t line, uint32_t tick)
+{
+    m->bus.line = line;
+    m->bus.t = tick;
+    m->bus.at = m->ticks;
+    return cogmaster__bus_in(m, 0xBFu);
+}
+
+/* The generated sprite patterns of oracle_sprites, by name and row. */
+static void sprite_patterns(cogmaster *m, uint32_t r6)
+{
+    for (uint32_t n = 0u; n < 256u; n++)
+        for (uint32_t r = 0u; r < 8u; r++)
+            put(m, ((r6 & 7u) << 11) + 8u * n + r, pattern_byte(n, r));
+}
+
+/* The scene's attribute table, the last entry written first: the list is the table order, not the
+   order a program wrote it in. Y $D0 follows the last entry, which ends the list. */
+static void sprite_table(cogmaster *m, const struct scene *s)
+{
+    if (s->count < 32u)
+        put(m, SAT_BASE + 4u * s->count, 0xD0u);
+    for (uint32_t i = s->count; i-- > 0u;) {
+        put(m, SAT_BASE + 4u * i, s->e[i].y);
+        put(m, SAT_BASE + 4u * i + 1u, s->e[i].x);
+        put(m, SAT_BASE + 4u * i + 2u, s->e[i].name);
+        put(m, SAT_BASE + 4u * i + 3u, s->e[i].attr);
+    }
+}
+
+/* A frame of the scene on a blank background, or on the Graphics I scene. r0 is R0, whose bit 3
+   must change nothing. */
+static cogmaster *sprite_frame(enum profile p, const struct scene *s, int on_g1, uint32_t r0)
+{
+    cogmaster *m = make(p);
+    if (on_g1)
+        scene_g1(m, 0x0Eu, 0x80u, 0x00u);
+    sprite_patterns(m, GENERATOR_R6);
+    sprite_table(m, s);
+    m->vdp.reg[6] = GENERATOR_R6;
+    regs(m, r0, 0x40u | s->r1, 0x0Eu, 0x80u, 0x00u);
+    return m;
+}
+
+/* The dot the oracles give: the sprite colour where there is one, the background otherwise. */
+static uint16_t sprite_expect(enum profile p, const struct scene *s, int on_g1, uint32_t x,
+                              uint32_t y)
+{
+    uint32_t colour = oracle_sprites(s, y, x).colour;
+    if (colour != 0u)
+        return oracle_palette(p, colour);
+    return on_g1 ? oracle_g1(p, x, y) : oracle_palette(p, BACKDROP_NIBBLE);
+}
+
+/* The dots of lines 0 to 191 that differ from the oracles; the first is printed. */
+static uint32_t sprite_mismatches(const cogmaster *m, enum profile p, const struct scene *s,
+                                  int on_g1)
+{
+    uint32_t bad = 0u;
+    for (uint32_t y = 0u; y < FIELD_H; y++) {
+        for (uint32_t x = 0u; x < FIELD_W; x++) {
+            uint16_t want = sprite_expect(p, s, on_g1, x, y);
+            if (m->field[y][x] != want && bad++ == 0u)
+                fprintf(stderr, "profile %d (%u,%u) is %03x, expected %03x\n", (int)p, x, y,
+                        m->field[y][x], want);
+        }
+    }
+    return bad;
+}
+
+/* The SAT index of the fifth Y match on the line, or -1. Every match counts, drawn or not. */
+static int fifth_match(const struct scene *s, uint32_t line)
+{
+    int span = ((s->r1 & 2u) != 0u ? 16 : 8) * ((s->r1 & 1u) != 0u ? 2 : 1), matches = 0;
+    for (uint32_t i = 0u; i < s->count && i < 32u && s->e[i].y != 0xD0u; i++) {
+        int top = s->e[i].y >= 0xE0u ? (int)s->e[i].y - 255 : (int)s->e[i].y + 1;
+        if ((int)line >= top && (int)line < top + span && ++matches == 5)
+            return (int)i;
+    }
+    return -1;
+}
+
+/* The status the oracles give at the end of a frame: the frame flag, the coincidence of any line,
+   and the fifth sprite flag with the index of the first fifth match in raster order, or 31. */
+static uint32_t scene_status(const struct scene *s)
+{
+    uint32_t coincidence = 0u;
+    int fifth = -1;
+    for (uint32_t line = 0u; line < FIELD_H; line++) {
+        if (fifth < 0)
+            fifth = fifth_match(s, line);
+        coincidence |= line_coincidence(s, line);
+    }
+    return STATUS_FRAME | (coincidence != 0u ? STATUS_COINCIDENCE : 0u) |
+           (fifth >= 0 ? STATUS_FIFTH | (uint32_t)fifth : 0x1Fu);
+}
+
+/* Colour 5 of the scenes: fixed entry 5 is F00; colour RAM entry 21 is (13 * 21 + 5) & 63 = 22 =
+   010110, blue 1, green 1, red 2: 55A. */
+static const uint16_t colour5[PROFILE_COUNT] = {0xF00, 0xF00, 0x55A};
+
+/* One 8 by 8 sprite over Graphics I, on three profiles, as a solid sprite and as a patterned one
+   (name 12, colour 13: its rows differ and its colour has bit 3 set): every dot of every line
+   equals the oracles (the sprite on its eight lines and eight dots, the background elsewhere),
+   nothing is a fault, and the status holds the frame flag alone. The solid sprite's corners are
+   the hand-computed colour 5. */
+static void sprites_basic(void)
+{
+    static const struct scene patterned = {0u, 1u, {{39, 100, 12, 13}}};
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+        for (uint32_t k = 0u; k < 2u; k++) {
+            const struct scene *s = k == 0u ? &lone : &patterned;
+            cogmaster *m = sprite_frame(p, s, 1, 0x00u);
+            run(m);
+            CHECK_EQ_U64(sprite_mismatches(m, p, s, 1), 0u);
+            CHECK_EQ_U64(m->fault_present, 0u);
+            /* Not vacuous: the picture without the sprite has other dots on its lines. */
+            uint32_t differ = 0u;
+            for (uint32_t y = 40u; y < 48u; y++)
+                for (uint32_t x = 100u; x < 108u; x++)
+                    differ += m->field[y][x] != oracle_g1(p, x, y);
+            CHECK(differ >= (k == 0u ? 32u : 8u));
+            CHECK_EQ_HEX(status_at(m, 192u, 608u), 0x9Fu);
+            CHECK_EQ_HEX(scene_status(s), 0x9Fu);
+            if (k == 0u) {
+                CHECK_EQ_HEX(m->field[40][100], colour5[p]);
+                CHECK_EQ_HEX(m->field[47][107], colour5[p]);
+            }
+            cogmaster_destroy(m);
+        }
+    }
+}
+
 /* ---- the modes that still record the unsupported-video-mode fault ---- */
 
 /* Master System 1, Master System 2, Game Gear in Master System video mode and native Game Gear. */
@@ -1075,6 +1220,8 @@ int main(int argc, char **argv)
         bringup();
     else if (strcmp(argv[1], "hostile") == 0)
         hostile();
+    else if (strcmp(argv[1], "sprites.basic") == 0)
+        sprites_basic();
     else if (strcmp(argv[1], "text") == 0)
         unsupported_text();
     else if (strcmp(argv[1], "multicolour") == 0)

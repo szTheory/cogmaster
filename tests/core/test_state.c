@@ -1428,15 +1428,59 @@ static void legacy_round_trip(const char *what, cogmaster *a, uint8_t expect_low
     cogmaster_destroy(b);
 }
 
+/* A Graphics I instance whose sprite scan fills the slots, saved in the middle of an active line.
+   The attribute table (R5 is 0, so it is at the start of video memory) holds six groups of four
+   16x16 magnified sprites, group g from line 32 g, so every line of the picture matches exactly
+   four entries and none a fifth. Every colour byte has bits 6 to 4 set, which the chip ignores
+   and a game may write; the scan keeps only the early clock and the colour. */
+static cogmaster *legacy_sprite_instance(void)
+{
+    cogmaster *m = legacy_instance();
+    struct cogmaster__vdp *v = &m->vdp;
+    for (uint32_t i = 0u; i < 24u; i++) {
+        v->vram[4u * i] = (uint8_t)(32u * (i / 4u) - 1u);
+        v->vram[4u * i + 1u] = (uint8_t)(20u * i + 7u);
+        v->vram[4u * i + 2u] = (uint8_t)(0x10u + 4u * i);
+        v->vram[4u * i + 3u] = (uint8_t)(0x70u | ((i & 1u) != 0u ? 0x80u : 0u) | (1u + (i & 7u)));
+    }
+    v->vram[96] = 0xD0u;
+    cogmaster__bus_out(m, 0xBFu, 0x43u);
+    cogmaster__bus_out(m, 0xBFu, 0x81u);
+    run_frames(m, 2u);
+    for (uint32_t i = 0u; i < 20000u && (m->bus.line < 20u || m->bus.line >= 150u); i++) {
+        cogmaster__z80_step(m);
+    }
+    CHECK(m->bus.line >= 20u && m->bus.line < 150u);
+    CHECK_EQ_U64(cogmaster__vdp_class(m), COGMASTER__VDP_LEGACY);
+    CHECK_EQ_U64(fault_of(m).present, 0u);
+    CHECK_EQ_U64(v->sprite_legacy, 1u);
+    CHECK_EQ_U64(v->sprite_size, 1u);
+    CHECK_EQ_U64(v->sprite_zoom, 1u);
+    CHECK_EQ_U64(v->sprite_count, 4u);
+    CHECK_EQ_U64(v->sprite_overflow, 0u);
+    for (uint32_t i = 0u; i < 4u; i++) {
+        CHECK((v->vram[4u * (4u * (v->sprite_line / 32u) + i) + 3u] & 0x70u) == 0x70u);
+        CHECK_EQ_U64(v->sprite[i].attr & 0x70u, 0u);
+        CHECK(v->sprite[i].attr != 0u);
+    }
+    return m;
+}
+
 /* A state taken in Graphics I saves and reloads byte for byte: with no sprite selected and no
-   overflow, with four selected 16x16 slots and a fifth match, and with a fifth sprite latched
-   for the status read, so every field a legacy scan writes is in the record. */
+   overflow, with four slots filled by the scan from a table whose colour bytes have bits 6 to 4 set
+   (the scan clears them, so the state loads), with four selected 16x16 slots and a fifth match,
+   and with a fifth sprite latched for the status read, so every field a legacy scan writes is in
+   the record. */
 static void test_legacy_roundtrip(void)
 {
     cogmaster *a = legacy_instance();
     CHECK_EQ_U64(a->vdp.sprite_count, 0u);
     CHECK_EQ_U64(a->vdp.sprite_overflow, 0u);
     legacy_round_trip("a Graphics I picture without sprites", a, 0x1Fu);
+    cogmaster_destroy(a);
+
+    a = legacy_sprite_instance();
+    legacy_round_trip("a Graphics I picture with scanned sprites", a, 0x1Fu);
     cogmaster_destroy(a);
 
     a = legacy_instance();
