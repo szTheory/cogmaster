@@ -70,11 +70,85 @@ R6 bit 2 supplies sprite A13; bits 1/0 gate A12/A11, or tile bits 7/6.
 SMS2/GG ignore these mask bits. The address helpers are shared by tile
 fetches and the sprite pipeline. Source: the register diagrams linked above.
 
-Legacy TMS modes and invalid text modes render deterministic backdrop and
-record `COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE` on the VDP, while the
-CPU still returns at the fixed frame deadline. The fault's address holds the mode select nibble
-M4 M3 M2 M1 (SMS-VDP section 2.5). SMS1 only supports Mode 4
-combinations 1000, 1010 and 1100; its extended-height combinations are invalid.
+Graphics I (mode select nibble 0000) and Graphics II (0010) render on
+`COGMASTER_MACHINE_SMS1`, `COGMASTER_MACHINE_SMS2` and the Game Gear in
+Master System video mode. These notes name a mode by that nibble, M4 M3 M2 M1
+(SMS-VDP section 2.5), or by R0 and R1 bits, never by TI's M numbers, which
+number the same bits from the other end (TI's M3 is R0 bit 1, SMS Power's M2).
+With the display enabled, any other mode renders deterministic backdrop and
+records `COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE` on the VDP, while the
+CPU still returns at the fixed frame deadline: text (0001), multicolour (0100),
+the mixed modes (0011, 0101, 0110, 0111), the invalid text modes (1001 and 1101
+everywhere; 1011, 1110 and 1111 on the 315-5124, which supports only the Mode 4
+combinations 1000, 1010 and 1100), and both legacy nibbles on native Game Gear
+video, which has no such modes. The fault's address holds the nibble.
+
+Both legacy modes are 192 lines of 32×24 cells with no scroll: R8, R9 and R0
+bits 5–7 change nothing, so there is no left-column mask, and a line from 192
+on shows the backdrop, which keeps a mid-frame switch from a 224 or 240-line
+Mode 4 picture inside the name table. R1 bit 6 clear shows the backdrop alone.
+Registers are constant inside one renderer call and a register write renders up
+to its own dot first, so a switch is dot-exact. Every address wraps at 16 KiB
+and none of the Mode 4 helpers (the 315-5124 masks of R2, R5 and R6) applies.
+Graphics I reads the name at `(R2 & 15) << 10 | row << 5 | column`, the
+pattern at `(R4 & 7) << 11 | name << 3 | line & 7` and the colour byte at
+`R3 << 6 | name >> 3`; a set pattern bit shows its high nibble and a clear bit
+its low nibble, and nibble 0 shows the backdrop, R7's low nibble. Graphics II
+forms the index `idx = (line >> 6) << 8 | name`, reads the pattern at
+`(R4 & 4) << 11 | idx << 3 | line & 7` and the colour byte at
+`(R3 & $80) << 6 | idx << 3 | line & 7`. Sources: preparation SMS-VDP
+section 7; the TMS9918A notes on SMS Power, `tms9918a.txt`, read from a
+web.archive.org capture (the source of the unmasked addresses the in-process
+oracle uses); TI's TMS9918A data manual, section 2.4.1 and table 3-2.
+
+Graphics II masks are a selected model. On the 315-5124, R4 bits 1–0 and R3
+bits 6–0 limit the index: the pattern uses `idx & ((R4 & 3) << 8 | $FF)` and the
+colour `idx & ((R3 & $7F) << 3 | 7)`. The Master System 2 and the Game Gear in
+Master System mode do not mask. The sources disagree three ways: msvdp says no
+mask on the Master System 2 and Game Gear; MAME's `315_5124.cpp` masks on every
+revision; ares applies R4 bits to both tables through address bits 11 and 12.
+MAME's `tms9928a.cpp` also couples R3 into the pattern index on the TMS9918A
+family; that is not adopted, since nothing shows the Sega chips do it. Every
+source agrees on R3 $FF with R4 $03 and R3 $7F with R4 $07, the values games
+write, so the model rarely shows. Colours are a model too: the Master System 1
+and 2 show a fixed table of sixteen six-bit values ($00 $00 $08 $0C $10 $30 $01
+$3C $02 $03 $05 $0F $04 $33 $15 $3F) through the CRAM two-bit expansion (SMS
+Power palette page), the Game Gear in Master System mode shows CRAM entry 16 + n
+(msvdp, SMS Power and MAME; ares uses the fixed table there), and no source
+measures either against a console. The backdrop is a legacy palette entry, R7's
+low nibble, only while the display is on in a legacy mode. With the display off
+it is CRAM entry 16 + that nibble as in Mode 4, where MAME and ares show the TMS
+colour. The deviation is bounded and pin-safe: the power-on registers select
+Graphics I with the display off, so a TMS backdrop there would repaint the boot
+frames of every Mode 4 game; a legacy game's frames before it enables the
+display show the CRAM backdrop on a Master System.
+
+Legacy sprites are a model as well. The table holds 32 entries of four bytes
+(Y, X, name, colour byte) at `(R5 & 127) << 7`, the patterns are at
+`(R6 & 7) << 11`, R1 bit 1 selects 16×16 (name & $FC, then top left, bottom
+left, top right, bottom right) and R1 bit 0 doubles every dot both ways, plain
+doubling on every profile: the 315-5124 slot rule of Mode 4 does not apply.
+Colour 0 is transparent, a lower index wins and a sprite always covers the
+background. `$D0` in a Y byte ends the list at every height. A Y of $E0 or more
+is negative (the top line is Y − 255, otherwise Y + 1); MAME's `tms9928a.cpp`
+tests above $E0, MAME's `315_5124.cpp` $F0 or more and ares $E0 or more, which
+differ only for a sprite 32 lines high with Y from $E0 to $EF, and TI's manual
+range fits above $E0 and $E0 or more alike. Colour byte bit 7 is the early
+clock (X minus 32); R0 bit 3 is ignored here (MAME and ares; msvdp says it also
+shifts by eight, which stays open). Four sprites fit a line. The fifth Y match,
+counted even for a transparent or off-screen sprite, sets status bit 6 at the
+first dot of its line, and its table index stays in bits 4–0, the first winning
+until a status read; with bit 6 clear they read $1F, as in Mode 4, whereas
+Young's notes and MAME's `tms9928a.cpp` give the last entry processed. Coincidence,
+bit 5, follows the pattern bits, so a colour 0 sprite collides (TI's manual and
+Young; MAME's `315_5124.cpp` counts opaque dots, ares a dot over an earlier
+opaque sprite), only on dots 0–255 and not for a sprite after `$D0` or dropped
+as fifth. A line from 192 on draws no sprite and sets no flag. These models are
+revisited with the SG-1000 machine. A fixture proves fidelity to these notes,
+not to silicon. Sources: preparation SMS-VDP section 7, TI's data manual
+section 2.4.5, the TMS9918A notes `tms9918a.txt` section 4, and MAME's
+`tms9928a.cpp` and `315_5124.cpp` and ares's `tms9918` files, read at the pins
+in PROVENANCE.
 
 Sprites share the same cursor. At tick 600 the SAT is scanned for the next
 active line: at most 64 entries and eight retained Y matches. The selected
