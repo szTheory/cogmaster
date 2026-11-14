@@ -374,6 +374,8 @@ policy.no_title_table.self_test.hook	policy
 policy.no_title_table.self_test.strarray	policy
 policy.no_title_table.self_test.strings	policy
 policy.notices	policy
+policy.pins.permanent	policy
+policy.pins.retry	policy
 policy.quality	policy
 policy.quality.base_absent	policy
 policy.quality.ceiling	policy
@@ -384,6 +386,9 @@ policy.quality.missing_key	policy
 policy.quality.new_reason	policy
 policy.quality.reused_reason	policy
 policy.quality.tightened	policy
+policy.wla_fetch.hash	policy
+policy.wla_fetch.permanent	policy
+policy.wla_fetch.transient	policy
 ports.devices.clamp	portable,ports
 ports.devices.device_switch	portable,ports
 ports.devices.hammer	portable,ports

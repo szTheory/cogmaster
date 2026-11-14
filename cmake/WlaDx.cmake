@@ -5,19 +5,45 @@
 # tarball must match the row's SHA-256 before it is unpacked. WLA-DX is
 # GPL-2.0-or-later and runs only as a tool: its source is unpacked under the
 # build tree and never copied into this repository (PROVENANCE.md section 1).
+# A transient network error (curl codes 6, 7, 18, 28, 35, 52, 55 and 56) is
+# retried up to three attempts, so one dropped connection does not fail a
+# configure; any other error, and a digest mismatch, fails on its first attempt.
 #
 # include()d, it sets COGMASTER_WLA_Z80 and COGMASTER_WLALINK. Run as a script
-# it only downloads and verifies, which the negative control uses:
-#   cmake -DURL=<url> -DSHA256=<hex> -DOUT=<file> -P WlaDx.cmake
+# it only downloads and verifies, which the negative controls use:
+#   cmake -DURL=<url> -DSHA256=<hex> -DOUT=<file> [-DRETRY_DELAY=<s>] -P WlaDx.cmake
 
-# Downloads url to out and fails configure unless its SHA-256 is sha256.
+# Downloads url to out and fails configure unless its SHA-256 is sha256. The
+# digest is checked once, after the last attempt, so a partial file is never
+# accepted: file(DOWNLOAD) with EXPECTED_HASH stops the script itself on a
+# mismatch and its STATUS result would never be read.
 function(cogmaster__wla_download url sha256 out)
-  file(DOWNLOAD "${url}" "${out}" EXPECTED_HASH SHA256=${sha256} STATUS status)
-  list(GET status 0 code)
+  set(delay 2)
+  if(NOT "${RETRY_DELAY}" STREQUAL "")
+    set(delay ${RETRY_DELAY})
+  endif()
+  set(transient 6 7 18 28 35 52 55 56)
+  foreach(attempt RANGE 1 3)
+    set(tried ${attempt})
+    message(STATUS "wla-dx: attempt ${attempt} of 3")
+    file(DOWNLOAD "${url}" "${out}" STATUS status)
+    list(GET status 0 code)
+    if(code EQUAL 0 OR NOT code IN_LIST transient OR attempt EQUAL 3)
+      break()
+    endif()
+    file(REMOVE "${out}")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E sleep ${delay})
+  endforeach()
   if(NOT code EQUAL 0)
     list(GET status 1 text)
     file(REMOVE "${out}")
-    message(FATAL_ERROR "wla-dx: download of ${url} failed: ${text}")
+    message(FATAL_ERROR "wla-dx: download of ${url} failed after attempt ${tried} of 3: ${text}")
+  endif()
+  file(SHA256 "${out}" got)
+  string(TOLOWER "${sha256}" want)
+  if(NOT got STREQUAL want)
+    file(REMOVE "${out}")
+    message(FATAL_ERROR "wla-dx: hash mismatch after attempt ${tried} of 3: ${url} is ${got}, the pin is ${want}")
   endif()
 endfunction()
 

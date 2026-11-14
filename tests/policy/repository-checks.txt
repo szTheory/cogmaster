@@ -39,6 +39,7 @@ behavior|tests/policy/claims_cases.cmake|Builds fixture trees from the real file
 behavior|tests/policy/e2e_cases.cmake|Constructs hosted helper boundary fixtures and registers behavior assertions for CI and hygiene
 behavior|tests/policy/firmware_window_cases.cmake|Builds a self-authored dump, planted windows and throwaway repositories and registers the window scan controls without implementing scan policy
 behavior|tests/policy/firmware_release_cases.cmake|Constructs owned firmware-scan fixtures and registers controls without implementing scan policy
+behavior|tests/policy/tooling_cases.cmake|Builds throwaway repositories, fake download tools and local URLs and registers the fetch-retry and dirty-tree controls without implementing policy
 behavior|tests/compat/tests.cmake|Executes quoted parser and runner predicate integrations and compares their observable outputs and generated documentation
 check|scripts/compat-common.sh|Shared bounded quoted ledger normalization and deterministic public documentation generation
 behavior|tests/compat/exit.cmake|Computes the exit verdict from the ledger, catalog, pin counts and quality floors and ties the libretro flag to it; it judges no compatibility itself
