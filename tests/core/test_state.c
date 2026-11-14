@@ -1382,8 +1382,10 @@ static void set_legacy_slots(cogmaster *m, uint8_t size)
 }
 
 /* Saves a, loads the bytes into a fresh instance of the same image and saves again: the two
-   buffers are equal, and two more frames of each leave them equal. */
-static void legacy_round_trip(const char *what, cogmaster *a)
+   buffers are equal. A status read of each then returns the same byte with expect_low in bits 4
+   to 0 (the latched fifth sprite's index while bit 6 is set, 31 otherwise: SMS-VDP section 7) and
+   resets the index, and two more frames of each leave the saved bytes equal. */
+static void legacy_round_trip(const char *what, cogmaster *a, uint8_t expect_low)
 {
     size_t size = save(a, good);
     cogmaster *b = make_image(img_loop);
@@ -1407,6 +1409,13 @@ static void legacy_round_trip(const char *what, cogmaster *a)
             fprintf(stderr, "%s: the loaded instance holds other sprite fields\n", what);
             check_failures++;
         }
+        uint8_t read_a = cogmaster__bus_in(a, 0xBFu);
+        uint8_t read_b = cogmaster__bus_in(b, 0xBFu);
+        CHECK_EQ_U64(read_a, read_b);
+        CHECK_EQ_U64(read_a & 0x1Fu, expect_low);
+        CHECK_EQ_U64(a->vdp.fifth_index, 31u);
+        CHECK_EQ_U64(b->vdp.fifth_index, 31u);
+        CHECK_EQ_U64(cogmaster__bus_in(a, 0xBFu) & 0x5Fu, 0x1Fu);
         run_frames(a, 2u);
         run_frames(b, 2u);
         CHECK_EQ_U64(save(a, good), size);
@@ -1427,19 +1436,19 @@ static void test_legacy_roundtrip(void)
     cogmaster *a = legacy_instance();
     CHECK_EQ_U64(a->vdp.sprite_count, 0u);
     CHECK_EQ_U64(a->vdp.sprite_overflow, 0u);
-    legacy_round_trip("a Graphics I picture without sprites", a);
+    legacy_round_trip("a Graphics I picture without sprites", a, 0x1Fu);
     cogmaster_destroy(a);
 
     a = legacy_instance();
     set_legacy_slots(a, 1u);
-    legacy_round_trip("four 16x16 slots and a fifth match", a);
+    legacy_round_trip("four 16x16 slots and a fifth match", a, 0x1Fu);
     cogmaster_destroy(a);
 
     a = legacy_instance();
     set_legacy_slots(a, 0u);
     a->vdp.status = (uint8_t)(a->vdp.status | 0x40u);
     a->vdp.fifth_index = 4u;
-    legacy_round_trip("a latched fifth sprite", a);
+    legacy_round_trip("a latched fifth sprite", a, 4u);
     cogmaster_destroy(a);
 }
 
