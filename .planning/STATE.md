@@ -5,16 +5,16 @@ milestone_name: Legacy video modes
 current_phase: 16
 current_phase_name: Graphics I and II draw
 status: executing
-stopped_at: Completed 16-01-PLAN.md
-last_updated: "2026-11-14T03:13:02.979Z"
+stopped_at: Completed 16-02-PLAN.md
+last_updated: "2026-11-14T03:55:07.281Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 16 execution started
-state_head: b8b74e3c19e6cca8d7a9f25adbbfbc0b1b29aff8
+state_head: 80e5fe9cc09c033e509407e5b5450f865037ec6c
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 9
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-13)
 ## Current Position
 
 Phase: 16 (Graphics I and II draw) — EXECUTING
-Plan: 2 of 9
+Plan: 3 of 9
 Status: Ready to execute
 Last activity: 2026-11-13 — Phase 16 execution started
 
@@ -245,6 +245,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 15 P01 | 7 min | 3 tasks | 4 files |
 | Phase 15 P02 | 10min | 2 tasks | 8 files |
 | Phase 16 P01 | 13 min | 3 tasks | 13 files |
+| Phase 16 P02 | 42 min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -277,6 +278,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 15]: Plan 15-02: the ship body names workflows by display name (CI, Nightly, Digest), never by file name; the title stays fix(compat) for a patch release
 - [Phase 16]: 16-CONTEXT: branch phase/16-graphics-i-and-ii-draw cut from the milestone-branch tip, not origin/main, because the four milestone docs commits are not on main (rule 10 deviation as in 13-01; owner may override); Graphics II masks are a selected model (SMS1 masks, SMS2 and GG-in-SMS-mode do not), legacy backdrop gated on display, state format 17 and behaviour revision 19, draft PR right after the dispatch skeleton
 - [Phase 16]: 16-01: the nine rider controls are ci-lane tests with no platform guard; policy.pins.retry runs through expect_fail with CODE 0 because a pass expression makes CTest ignore the exit status; the library dirty-tree refusal is gated on the tracked ledger and the synthetic workflow step now uses a stand-in ledger so a dirty tree still passes — Rule 5 has no hygiene exception, ci-msvc shares ci.txt, and the plan's own test list needed the exit status checked
+- [Phase 16]: 16-02: each legacy_sprites scenario programs its own R7 so a picture names its scenario and a compare one frame off fails; the tail H counter row is 0000-0013 because ticks 600 to 683 wrap through the H counter jump, with the status read 45 ticks before the H read; every sprite status row is computed by legacy_status in tests/fixtures/legacy.c and re-derived by fixtures.legacy.oracle; g2_late switches at host frame 616 (16 load frames plus 600 counted), g2_switch switches in line 48, sprite scenario k is the completed picture at frame 9 + 2 (k - 1)
 
 ### Pending Todos
 
@@ -451,6 +453,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-13 | Discuss phase 16 (gsd-discuss-phase 16); five research agents plus an adversarial pass against the code, 33 decisions, no owner prompts (standing fan-out instruction) | Claude Code | claude-sonnet-5-5 |
 | 2026-11-13 | Plan phase 16 (gsd-plan-phase 16); researcher, planner and checker subagents, nine plans in nine sequential waves after two revision rounds (16 issues, then 3 warnings, then 3 text fixes applied by the orchestrator at the cap), decision coverage 33 of 33, all 11 requirements claimed; D-26 order refined (state 17 before sprites) and recorded in CONTEXT; no owner prompts (standing instruction) | Claude Code | claude-sonnet-5-5 (planner claude-opus-5-5, checker claude-haiku-5-5) |
 | 2026-11-14 | Execute phase 16 plan 16-01 (gsd-execute-phase 16); riders: assembler and pin download retries, library dirty-tree refusal, fault-vocabulary docs, nine ci-lane controls; 3 tasks, 4 commits, cmake --workflow --preset ci 685 of 685 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-14 | Execute phase 16 plan 16-02 (gsd-execute-phase 16); base hashes file (173 lines), six owned Graphics I and II images, closed-form and in-process oracles, 22 derived sprite-status rows with a calibrated tail read; 3 tasks, 3 commits, cmake --workflow --preset ci 687 of 687 | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -480,8 +483,8 @@ Items acknowledged and deferred, most recent first (v2.1 closed SEED-016 as done
 
 ## Session Continuity
 
-Last session: 2026-11-14T03:13:02.942Z
-Stopped at: Completed 16-01-PLAN.md
+Last session: 2026-11-14T03:55:07.151Z
+Stopped at: Completed 16-02-PLAN.md
 Resume file: None
 Milestone v2.1 pull requests: #40, #42 and #44 (phases 13 to 15) and releases #41, #43 and #45 (v0.14.0 to v0.14.2)
 
