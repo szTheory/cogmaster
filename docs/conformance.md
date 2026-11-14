@@ -403,6 +403,30 @@ rows with profile `gg`. The records:
 
 The H counter latch and the Pause movies are not in this fixture yet.
 
+### The legacy video fixtures
+
+`legacy_modes.asm` loads a generated picture and idles; five `-D` switches build `legacy_modes_g1` (Graphics I),
+`legacy_modes_g2` (Graphics II, R3 $FF and R4 $03, so no register bit limits the tables), `legacy_modes_g2_masked`
+(R3 $9F and R4 $00, where a model that masks the table index differs), `legacy_modes_g2_late` (Mode 4 for 600
+frames, then Graphics II) and `legacy_modes_g2_switch` (a line interrupt writes Graphics II in the middle of a
+line, and Mode 4 returns in vertical blank). The oracle, `tests/fixtures/legacy.c`, is a closed form in the
+tile-index domain and computes no video memory address. `fixtures.legacy_modes.<image>.<profile>` compares every
+dot through the public API on the Master System 1, the Master System 2 and the Game Gear in Master System video
+mode, and the runner's frame hash against the oracle's digest; `fixtures.legacy_modes.wrong_hash` shows the
+comparison fails for a digest no frame has. The static images are judged at frame 20 and the late image at 620.
+The switch image is checked dot by dot against both closed forms, and the line the write lands on is pinned at
+frame 30 by the hash of its 256 dots.
+
+`legacy_sprites` runs 20 sprite scenarios, two frames each, on a Graphics I backdrop whose R7 names the scenario:
+the sizes, magnification, the early clock, the end-of-list Y, Y at $E0 and $E8, five on a line, overlap, colour 0
+and two overflow lines, the last read in the middle of a line. After each the guest reads the status once into the
+mailbox (22 records). `fixtures.legacy_sprites.<profile>` steps 48 frames, compares every dot of every scenario on
+both frames it is on screen and checks the runner's hash at frame 47; `fixtures.legacy_sprites.mailbox.<profile>`
+judges the records against the `legacy_sprites` rows of `tests/diag/expected.csv`, which the oracle computes and
+`fixtures.legacy.oracle` recomputes, so no row is typed by hand. The in-process `vdp.legacy.*` cases cover the
+eleven R3 and R4 pairs of the Graphics II masks, the sprite rules and hostile video memory. These tests prove
+fidelity to the selected models of the [video notes](hardware/video.md), not to silicon.
+
 ## Video geometry and timing fixture
 
 `vdp_lines` is assembled three times from the same owned source, as

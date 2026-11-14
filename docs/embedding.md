@@ -59,6 +59,7 @@ API version 13 appends `COGMASTER_DEVICE_LIGHT_PHASER`, with behaviour revision 
 API version 14 appends `bios` and `bios_size` to `cogmaster_media` (72 bytes), with behaviour revision 16 and state format 16, so older state bytes are refused.
 Behaviour revision 17 refuses the Sega Graphic Board dump, which read as a plain pad before, so state bytes saved at revision 16 are refused.
 Behaviour revision 18 makes the unsupported-video-mode fault record the mode select nibble in `addr` and stops recording writes to the unused bits of `$FFFC`, writes to a cartridge address that is no register, reads of ports `$00`–`$3F` nothing drives, and writes to ports nothing decodes, as faults, so state bytes saved at revision 17 are refused.
+Behaviour revision 19 draws Graphics I and II on the Master System video profiles instead of recording the unsupported-video-mode fault, and state format 17 widens the saved sprite slots, so state bytes saved at revision 18 are refused.
 
 ## Getting it
 
@@ -343,7 +344,7 @@ The record is part of the instance's saved state.
 | 3 | `COGMASTER_FAULT_KIND_ROM_WRITE` | no longer recorded: a write to `$0000`–`$BFFF` that is no register and no enabled cartridge RAM changes nothing; the constant stays |
 | 4 | `COGMASTER_FAULT_KIND_MAPPER_RANGE` | a bank number at or past the end of an image whose page count is not a power of two |
 | 5 | `COGMASTER_FAULT_KIND_ED_UNDEFINED` | the CPU ran an opcode after `$ED` that the Z80 does not define, as an 8 T-state no-operation; `opcode` is that second byte and `pc` the address of the `$ED` |
-| 6 | `COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE` | an enabled display selects an unsupported TMS or invalid text mode; output is backdrop and frame delivery stays bounded |
+| 6 | `COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE` | an enabled display selects text, multicolour, a mixed mode, an invalid text mode, or a legacy mode on native Game Gear video; output is backdrop and frame delivery stays bounded |
 
 | `device` | Constant | Meaning |
 |---|---|---|

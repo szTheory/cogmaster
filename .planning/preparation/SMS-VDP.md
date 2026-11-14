@@ -2,7 +2,7 @@
 title: "SMS-VDP: revisions, registers, mode 4 pipeline, timing, geometry, palettes, legacy modes"
 summary: "What vdp.c must do: the 315-5124/5246/5378 differences games rely on, every register bit, the control port and read-ahead buffer, status flags, the mode 4 line pipeline, sprite rules, H/V counters, line and frame interrupt timing, VRAM access limits, display geometry, SMS and GG palettes, the GG window, TMS9918 legacy modes, test ROMs and the accuracy model."
 read_when: "Before writing or changing vdp.c, the frame format, interrupt timing, the palette helpers or the GG profile, or when a game's picture, flicker or raster effect diverges."
-updated: 2026-10-18
+updated: 2026-11-14
 ---
 
 # SMS-VDP
@@ -17,7 +17,7 @@ updated: 2026-10-18
 | Clocks, line timeline, H and V counters, line/frame interrupt timing, mid-line writes, VRAM access limits | 4 |
 | Visible area, borders, aspect ratio, frame rates, frame format | 5 |
 | SMS and GG CRAM, GG window, GG in SMS mode, output pixel format | 6 |
-| TMS9918 legacy modes on the SMS and GG (later seed) | 7 |
+| TMS9918 legacy modes on the SMS and GG (Graphics I and II render; the models and what faults) | 7 |
 | Hard games, test ROMs and their licences, divergences users notice | 8 |
 | Accuracy model (tick, per-line with catch-up, when per-dot) | 9 |
 | Open questions and the phases that settle them | 10 |
@@ -184,11 +184,14 @@ The literal intervals imply subtract 6 above physical line 218/234 (NTSC 192/224
 
 **Choice 6.A (output format).** Recommendation: the core emits one `uint16_t` RGB444 (`0BBBBGGGGRRRR`) per dot, the GG native format, into which SMS 6-bit colours are expanded exactly as the GG does in SMS mode (lossless, reversible); this is the hash domain. A host helper outside the hash converts RGB444 to RGB888 through a selectable level table (SMS1, SMS2, MD-in-SMS-mode, GG linear), seeded from MAME's BSD-3 tables with notice. Strongest alternative: emit CRAM indices plus a per-frame CRAM snapshot (fails on mid-frame CRAM writes). Would change if: a host needs per-dot palette indices for rewind or ROM-hacking tools; then add a debug sideband.
 
-## 7. TMS9918 legacy modes (later seed; facts recorded now)
-- Modes on the SMS: 0 Graphics I (32x24 cells, pattern table + 32-entry colour table), 1 Text (40x24 of 6x8, two colours, no sprites, no border select), 2 Graphics II (three 2 KB thirds with per-row colours), 3 Multicolor (64x48 of 4x4 blocks), plus the four undocumented mixes [VDP.13][VDP.22]. All use the fixed palette of §6.4 on the SMS, CRAM 16–31 on the GG, nothing on the MD [VDP.01][VDP.10].
-- Sprites: 32 entries × 4 bytes (Y, X, pattern, colour with EC bit 7 = 32 px left), 8x8 or 16x16, zoom, 4 per line; the fifth sets the overflow flag (TMS "5S") and its index in bits 4–0 on a real TMS; $D0 terminates unconditionally [VDP.21][VDP.06][VDP.07]. ares/MiSTer treat Y ≥ $E0 as negative in these modes.
-- Graphics II address masking (reg 3 bits 6–0 and reg 4 bits 1–0 AND the character code) exists on a real TMS and on the SMS1; SMS2 and GG do not mask [VDP.21][VDP.01].
-- Reg 0 bit 3 (EC) shifts TMS sprites too [VDP.01]. Mode 3 is used by no Sega title [VDP.13].
+## 7. TMS9918 legacy modes (Graphics I and II render from behaviour revision 19; every choice here is a model)
+- **What renders and what faults.** Graphics I (mode select nibble 0000) and Graphics II (0010) render on the SMS1, the SMS2 and the GG in SMS video mode: 192 lines of 32x24 cells, no scroll, no left-column mask, the fixed palette of §6.4 on the SMS and CRAM 16–31 on the GG, nothing on the MD [VDP.01][VDP.10][VDP.13][VDP.27]. Text (0001), multicolour (0100), the four mixes, the invalid text modes (§2.5) and both legacy nibbles on native GG video record the unsupported-video-mode fault; its address holds the nibble. Mode 3 is used by no Sega title [VDP.13]. Modes are written as the nibble or as R0 and R1 bits, because TI numbers the same bits from the other end (TI's M3 is R0 bit 1, SMS Power's M2) [VDP.26][VDP.13].
+- **Table addresses.** Graphics I: names at `(R2 & 15) << 10`, patterns at `(R4 & 7) << 11`, colours at `R3 << 6` with one colour byte per eight names. Graphics II: patterns at `(R4 & 4) << 11` and colours at `(R3 & $80) << 6`, indexed by the third of the screen (line / 64) and the name, one byte per entry and line [VDP.26: 2.4.1 and table 3-2][VDP.28][VDP.21][VDP.27]. The in-process oracle takes the unmasked addresses from Young's notes [VDP.28] and the TI manual, a different document from the one the renderer's comments cite.
+- **Graphics II masks (corrected).** An earlier version of this note said MAME contradicts msvdp on the SMS2 and the GG. Read from the BSD-3 files at the pin [VDP.05][VDP.21]: `315_5124.cpp` masks the Graphics II index on every revision it models (colour mask `((R3 & $7F) << 3) | 7`, pattern mask `((R4 & 3) << 8) | $FF`) and has one Graphics II routine for all of them, so "the SMS2 and the GG do not mask" is msvdp's statement alone [VDP.01], not the TMS file's; `tms9928a.cpp` has masks of its own for the TMS9918A family and on the 99 family also couples R3 into the pattern index; ares applies R4 bits to both tables through address bits 11 and 12 and computes a colour mask it never uses [VDP.27]. Young's notes give the TMS9918A rule: R4 bits 1–0 and R3 bits 6–0 AND the character number [VDP.28]. Selected model: the SMS1 masks as MAME's 315-5124 does, the SMS2 and the GG in SMS mode do not (msvdp), and the R3 coupling is not adopted. All sources agree on R3 $FF with R4 $03 and R3 $7F with R4 $07, the values games write, so the choice rarely shows.
+- **Sprites.** 32 entries × 4 bytes (Y, X, name, colour byte), 8x8 or 16x16 (name & $FC, quadrants TL, BL, TR, BR), zoom, 4 per line, colour 0 transparent, lower index first, always above the background [VDP.26][VDP.28][VDP.21][VDP.27]. Selected models, with their disagreeing sources in docs/hardware/video.md: a Y of $E0 or more is negative (ares; MAME's `tms9928a.cpp` tests above $E0 and its `315_5124.cpp` $F0 or more; the TI manual's range, read through OCR noise, fits above $E0 and $E0 or more alike), and $D0 ends the list in every height (all sources); the fifth match sets 5S at the first dot of its line and its index stays until a status read, the first winning, with bits 4–0 reading $1F while 5S is clear (Young and MAME's TMS file read the last entry processed instead); coincidence follows the pattern bits, so a colour 0 sprite collides, on dots 0–255 only (MAME's 315-5124 file counts opaque dots, ares only a dot over an earlier opaque sprite); magnification is plain doubling on every profile, so the SMS1 slot rule of §3.6 does not apply.
+- **Early clock.** Attribute bit 7 is the early clock (X minus 32). R0 bit 3 is ignored in legacy modes (MAME and ares); msvdp §15 says it shifts by 8 as well, which stays open [VDP.01]. This replaces the earlier statement that R0 bit 3 also moves the legacy sprites.
+- **Backdrop.** Colour nibble 0 shows R7's low nibble. With the display off, and in every other mode, the backdrop stays the CRAM backdrop of §6.1, where MAME and ares show the TMS colour; the power-on registers select Graphics I with the display off, so this bounded deviation keeps the boot frames of mode 4 games where they were.
+- **What would reopen these.** The SG-1000 machine (the colour 0 collision, the fifth-sprite number, R0 bit 3) or a hardware capture. The models are written up in docs/hardware/video.md and their fixtures in docs/conformance.md; a fixture proves fidelity to these notes, not to silicon.
 - Titles: F-16 Fighting Falcon (SMS) runs in a TMS mode and shows black on the MD (msvdp lists it as "F-15") [VDP.01]; SG-1000 cards and the Mark III's SG-1000 compatibility are the main consumers.
 
 ## 8. Hard cases and test ROMs
@@ -228,7 +231,7 @@ The literal intervals imply subtract 6 above physical line 218/234 (NTSC 192/224
 - **Interrupt and latch positions** (§4.2): Charles 607/608 mclk vs MiSTer x = 485–488 vs MAME hpos 21–28; differences of a few mclk matter only for H-counter-polling code. Phase: VDP timing; default Charles.
 - **Overflow and collision outside the active area** (§3.5, 3.7): MAME and MiSTer gate differently. Phase: sprites; default "active lines only, display on".
 - **Access-slot model** (§4.8): no SMS schedule is published. Phase: later seed.
-- **TMS modes on SMS vs GG** (§7): seed; needs the TMS9918A datasheet text (fetched only as a scanned PDF here).
+- **TMS modes on SMS vs GG** (§7): settled as models, Graphics I and II draw on the SMS1, SMS2 and GG in SMS mode and every other legacy mode faults; text and multicolour stay unemulated. The SG-1000 machine (the colour 0 collision, the fifth-sprite number, R0 bit 3) or a hardware capture would reopen the sprite and mask choices; MODE-09 would add text and multicolour.
 - SMS Power pages and forums returned 503 during this pass; forum facts [VDP.17][VDP.18][VDP.19] come from search excerpts and should be re-read at the pin before a phase relies on an exact number.
 
 ## Sources
@@ -255,9 +258,11 @@ The literal intervals imply subtract 6 above physical line 218/234 (NTSC 192/224
 | VDP.18 | T4 | smspower.org/forums/19415-OffScreenSpriteCollisionDetectionBehaviour | search excerpt, 2026-10-18 | no off-screen collision, VDPTEST artefact |
 | VDP.19 | T2 | smspower.org/Homebrew/SMSVDPTest-SMS; mametesters.org/view.php?id=6053 | search excerpt / accessed 2026-10-18 | VDPTEST v1.31, FluBBa, 2009, MAME pass |
 | VDP.20 | T3, facts only | github.com/sverx/SMSTestSuite `main.c`, README (no LICENSE) | pushed 2026-08-31 | zoom-collision detection, twin-ASIC 26-cycle test, test list |
-| VDP.21 | T3 | github.com/mamedev/mame `src/devices/video/tms9928a.cpp` (BSD-3) | master, accessed 2026-10-18 | TMS status bits, mode decode, masking, sprite rules, palette |
+| VDP.21 | T3 | github.com/mamedev/mame `src/devices/video/tms9928a.cpp` and `.h` (BSD-3, header checked) | 1d7a454ed79e | TMS status bits, mode decode, masking, sprite rules (Y above $E0, first fifth index kept), palette |
 | VDP.22 | T2 | en.wikipedia.org/wiki/TMS9918 | accessed 2026-10-18 | mode layouts, variants |
 | VDP.23 | T4 | gendev.spritesmind.net/forum/viewtopic.php?p=37865 | accessed 2026-10-18 | H counter $00–$E9 jump to $93 (SMS-derived) |
 | VDP.24 | T4 | msx.org forum threads on TMS VRAM access timing (8 µs / 2 µs, 28 vs 14 T-state loops) | accessed 2026-10-18 | TMS access limits (secondhand of the datasheet) |
 | VDP.25 | T2 | smspower.org/Development/VDPProgrammingTechniques | accessed 2026-10-18 | VBlank budget, GG line-interrupt windows |
-| VDP.26 | T1 | TI TMS9918A/9928A/9929A datasheet (cs.columbia.edu/~sedwards/papers/TMS9918.pdf) | fetched as a scanned PDF, text not extracted | marked (unverified) where cited |
+| VDP.26 | T1 | TI TMS9918A/9928A/9929A Video Display Processors Data Manual, Nov 1982 (bitsavers mirror at mirrorservice.org, `components/ti/TMS9900/TMS9918A_TMS9928A_TMS9929A_Video_Display_Processors_Data_Manual_Nov82.pdf`; first cited as cs.columbia.edu/~sedwards/papers/TMS9918.pdf) | re-read 2026-11-13 with pdftotext | usable text layer for prose, so not only a scan; tables are OCR-noisy (hex such as 1A00 reads lAOO) and a number is checked against the page image before it is relied on; sections 2.2.1, 2.2.2, 2.3.2, 2.3.3, 2.4.1, 2.4.5, table 3-2 |
+| VDP.27 | T3 | github.com/ares-emulator/ares `ares/component/video/tms9918/*` (ISC, LICENSE checked) | 9408cb43d494, re-verified 2026-11-13 | TMS background, sprite and palette rules: Y at or above $E0 negative, R4 bits applied to both Graphics II tables, asymmetric coincidence |
+| VDP.28 | T2 | Sean Young, "Texas Instruments TMS9918A VDP" v0.4.2 (`smspower.org/uploads/Development/tms9918a.txt`), read from the capture https://web.archive.org/web/20260307023015/https://www.smspower.org/uploads/Development/tms9918a.txt | accessed 2026-11-13 (the direct host answered 503) | licence not stated; read for facts, no text copied; Graphics I and II table addresses and the masks the in-process oracle uses |
