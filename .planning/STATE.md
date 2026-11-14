@@ -5,16 +5,16 @@ milestone_name: Legacy video modes
 current_phase: 16
 current_phase_name: Graphics I and II draw
 status: executing
-stopped_at: Completed 16-05-PLAN.md
-last_updated: "2026-11-14T04:50:20.875Z"
+stopped_at: Completed 16-06-PLAN.md
+last_updated: "2026-11-14T05:07:11.599Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 16 execution started
-state_head: 521294a81bf1ce24117094a4698ea0001a0de5cd
+state_head: d4977f3106370721307e41e00ebd925081f417cc
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 9
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-13)
 ## Current Position
 
 Phase: 16 (Graphics I and II draw) — EXECUTING
-Plan: 6 of 9
+Plan: 7 of 9
 Status: Ready to execute
 Last activity: 2026-11-13 — Phase 16 execution started
 
@@ -249,6 +249,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 16 P03 | 14 min | 3 tasks | 6 files |
 | Phase 16 P04 | 20 min | 2 tasks | 10 files |
 | Phase 16 P05 | 13 min | 3 tasks | 6 files |
+| Phase 16 P06 | 13 min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -288,6 +289,8 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 16]: 16-04: release.firmware_scan read the 262656 byte macOS arm64 libcogmaster.a as a copier-headered image (a size rule on a static library); the per-cell colour refactor moved it to 262024 and the scan is left for the owner or a later plan (deferred-items.md); hygiene.tree timed out at 60 s only while unrelated processes held the load at 30 to 40 and passes with COGMASTER_TIMEOUT_SCALE=4
 - [Phase 16]: 16-05: the static legacy images are judged at frame 20 (Graphics II is complete from frame 17, Graphics I from 3) and g2_late at frame 620 (its switch is at host frame 616); the g2_switch line is pinned at frame 30 by the SHA-256 of its 256 RGB444 words after every dot was checked against the two closed forms (mode 4 before dot 119 or 120, Graphics II from there), and compare refuses another frame for that image
 - [Phase 16]: 16-05: hashes_playing takes the frame count so the 13 legacy_modes playing rows (sms, sms1, gg-sms at 20 or 30 frames, g2_late on sms at 620) sit beside the unchanged 14 frame rows; they add 890 frames to runner.hashes_file (not 826), the head hashes file is 192 lines against 173 with comm -23 empty, and the 107 s timeout and the g2_late test timeouts are left for plan 09 to re-derive from a hosted run
+- [Phase 16]: 16-06: the loader bounds rows and colour bytes of the slots below sprite_count only and takes the class from sprite_legacy (the class at scan time), because a legacy scan followed by a mode 4 scan leaves legacy colour bytes and 16-row values in the slots past the new count and nothing reads them; a latched fifth index with status bit 6 clear is refused in both classes
+- [Phase 16]: 16-06: behaviour revision 19 and state format 17 land before the sprite engine (the record, the 16520 pin, the status read low bits, 73 classified fields); tests/core/test_core.c held a literal 18 beside the header macro that the plan's list missed, and core.state.legacy_sprite_bounds runs a whole record sweep so it takes the provisional 60 s tier; MODE-05 stays out of requirements-completed until plan 09
 
 ### Pending Todos
 
@@ -465,6 +468,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-14 | Execute phase 16 plan 16-02 (gsd-execute-phase 16); base hashes file (173 lines), six owned Graphics I and II images, closed-form and in-process oracles, 22 derived sprite-status rows with a calibrated tail read; 3 tasks, 3 commits, cmake --workflow --preset ci 687 of 687 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-14 | Execute phase 16 plan 16-03 (gsd-execute-phase 16); mode class decided once per render call with every shipped pin unchanged (subset compare exit 0), four faulting seeds moved to the text and multicolour nibbles, branch pushed once and draft PR 47 opened, hosted perf job PASS (boot_to_play 12288947 to 9893026 instructions per frame); 3 tasks, 3 commits, cmake --workflow --preset ci 687 of 687 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-14 | Execute phase 16 plan 16-05 (gsd-execute-phase 16); every legacy_modes image equal to the closed-form oracle on three profiles through the API and the runner hash (16 fixtures.legacy_modes tests), g2_switch line pinned by hash after the dots were checked, 13 legacy rows in the hashes file from a frame-count parameter with the subset compare exit 0; 3 tasks, 3 commits, nothing pushed, cmake --workflow --preset ci 718 of 718 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-14 | Execute phase 16 plan 16-06 (gsd-execute-phase 16); state format 17 and behaviour revision 19: widened sprite slots and three fields after vram (pin 16520), the status read low bits with the latched fifth index, class-dependent loader bounds on the selected slots, byte-equal legacy round trip and 32 bounds sub-cases with 11 loader mutations controlled, 73 classified fields, subset compare exit 0, core.info literal 18 fixed; 2 tasks, 4 commits, nothing pushed, cmake --workflow --preset ci 720 of 720 | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -494,8 +498,8 @@ Items acknowledged and deferred, most recent first (v2.1 closed SEED-016 as done
 
 ## Session Continuity
 
-Last session: 2026-11-14T04:50:20.834Z
-Stopped at: Completed 16-05-PLAN.md
+Last session: 2026-11-14T05:07:11.548Z
+Stopped at: Completed 16-06-PLAN.md
 Resume file: None
 Milestone v2.1 pull requests: #40, #42 and #44 (phases 13 to 15) and releases #41, #43 and #45 (v0.14.0 to v0.14.2)
 
