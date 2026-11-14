@@ -4,16 +4,16 @@ milestone: v2.2
 milestone_name: Legacy video modes
 current_phase: 17
 current_phase_name: Re-run, merge and clean state
-status: planning
+status: executing
 stopped_at: Phase 17 context gathered
-last_updated: "2026-11-14T15:54:55.509Z"
+last_updated: "2026-11-14T17:08:38.627Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 16 complete, transitioned to Phase 17
-state_head: a720da076268cde01fb91a0bb8f263e100741c76
+state_head: 7a3445ec9dfea524bbbb5c631ecfc0b1e57bdfd4
 progress:
   total_phases: 2
   completed_phases: 1
-  total_plans: 9
+  total_plans: 13
   completed_plans: 9
   percent: 50
 ---
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-11-14)
 
 ## Current Position
 
-Phase: 17 — Re-run, merge and clean state
+Phase: 17 (Re-run, merge and clean state) — READY TO EXECUTE
 Plan: Not started
-Status: Ready to plan
+Status: Ready to execute
 Last activity: 2026-11-14 — Phase 16 complete, transitioned to Phase 17
 
 Progress: [█████░░░░░] 50%
@@ -483,6 +483,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-14 | Execute phase 16 close-out (gsd-execute-phase 16); nine plans summarized, code review 0 critical, 3 warnings and 4 info left open in 16-REVIEW-DISPOSITION.md, verifier passed 14 of 14 with all 11 requirement IDs satisfied, phase marked complete; draft PR 47 still open with the last two commits unpushed | Claude Code | claude-sonnet-5-5 (reviewer and verifier claude-sonnet-5-5) |
 | 2026-11-14 | Ship phase 16 (gsd-ship 16); PR #47 marked ready with the existing Conventional Commit title and a rebuilt body, auto squash merge set from a shell, CI run on head 8858ac7 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-14 | Discuss phase 17 (gsd-discuss-phase 17); four research agents (prune scope, timeouts, milestone-close script, re-run sequencing) plus an adversarial pass against the code, 18 decisions, no owner prompts (standing fan-out instruction); branch phase/17-re-run-merge-and-clean-state cut from origin/main at 0a97075 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-14 | Plan phase 17 (gsd-plan-phase 17); research skipped on purpose (the discuss fan-out locked the code-level choices), four sequential plans (diagnose prune, milestone-close script, owner run and carry, timeouts last), plan checker passed on its third pass with 0 blockers after two revisions and the last warning fixed inline, 18 of 18 decisions and 5 of 5 requirement IDs covered | Claude Code | claude-sonnet-5-5 (planner claude-opus-5-5, checker claude-haiku-5-5) |
 
 ## Deferred Items
 

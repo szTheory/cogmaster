@@ -121,7 +121,20 @@ before a milestone-close pull request.
   3. The diagnose vocabulary nothing raises any more is removed in one change, the diagnose line shape changes once, and the diagnose tests and `docs/runner.md` agree with the new shape
   4. The be32, diagnose-test and hygiene tree-check timeouts are re-derived by the twice-the-slowest rule from live runs, each with its run IDs, in one workflow commit, and `hygiene.timeout_comments` passes
   5. A milestone-close check script reports open pull requests, main CI on the latest commit, the latest release and its release pull request, and a clean work tree on `main`, exits non-zero when any is off (a test with a dirty-tree control proves it), and is described in `docs/maintaining.md` as a check to run, not a release gate; `cmake --workflow --preset ci` exits 0 on the phase head
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+**Wave 1**
+- [ ] 17-01-PLAN.md — Diagnose prune: `diagnose 2`, 30-field line, reducer, tests and docs agree; TUNE-15 wording keeps `vdpmode` (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 17-02-PLAN.md — Milestone-close check script with a fake-gh case loop and dirty-tree controls, maintainer docs, one live run on clean `main` (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 17-03-PLAN.md — Push plans 01 and 02, owner session: judge on a worktree of the phase base, carry ledger and page, diagnose counts (wave 3, owner checkpoint)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 17-04-PLAN.md — Re-derive drifted timeouts from a 40-run read in one last workflow commit, ship hand-off (wave 4)
 **Note**: RUN-03 follows Phase 15's RUN-01 pattern: the owner passes `COGMASTER_ROM_DIR` in the shell where the agent runs the judge, the agent reads counts only, and nothing from the dumps is committed. Which of `pclass`, `wclass`, `where=port`, `rom_write` and `vdpmode` are dead is confirmed at the discuss step against the Phase 16 code (text and multicolour rows still fault, so `vdpmode` may still be raised), and the order of the prune and the owner's run is chosen there so the diagnose counts come from one line shape. `ci.yml` is edited once, in the last push of the phase.
 
 ## Progress
@@ -136,4 +149,4 @@ before a milestone-close pull request.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 16. Graphics I and II draw | 9/9 | Complete    | 2026-11-14 |
-| 17. Re-run, merge and clean state | 0/TBD | Not started | - |
+| 17. Re-run, merge and clean state | 0/4 | Planned | - |
