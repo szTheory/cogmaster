@@ -365,6 +365,10 @@ policy.firmware_scan.whole	policy
 policy.lessons_unique	policy
 policy.lessons_unique.empty	policy
 policy.lessons_unique.self_test	policy
+policy.library_dirty.clean	policy
+policy.library_dirty.planning	policy
+policy.library_dirty.refuses	policy
+policy.library_dirty.untracked	policy
 policy.no_skip	policy
 policy.no_skip.self_test	policy
 policy.no_title_table	policy

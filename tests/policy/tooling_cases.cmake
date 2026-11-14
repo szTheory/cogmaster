@@ -95,3 +95,61 @@ function(tooling_pins variant)
 endfunction()
 tooling_pins(retry)
 tooling_pins(permanent)
+
+# Fault prevented: a library run that stamps core= from a tree that is not a commit, and a refusal that fires on a
+# .planning edit, an untracked file or a clean tree. Four throwaway repositories, one per case so parallel runs share
+# nothing, each committed clean and holding the script, its helper, a header-only ledger at the tracked path, a tracked
+# file and a tracked .planning file. The change is applied at test time after a reset, so a rerun is not polluted by what
+# an earlier run wrote. The controls pass when the run was not refused; it may fail later for lack of a real library,
+# which is not what they assert.
+# Timeout: 60 s, provisional; a run over an empty directory starts a handful of shell and cmake processes, which take
+# seconds on Windows; local measurement, no hosted run yet.
+set(tooling_empty ${tooling}/empty)
+file(MAKE_DIRECTORY ${tooling_empty})
+file(STRINGS ${PROJECT_SOURCE_DIR}/tests/compat/ledger.csv tooling_header LIMIT_COUNT 1)
+set(tooling_dirty_run [=[
+cd "$1" && [ -d .git ] || exit 1
+git checkout -q -- .
+rm -rf build new.txt
+if [ "$2" = refuses ]
+then echo changed >> notes.txt
+fi
+if [ "$2" = planning ]
+then echo changed >> .planning/x
+fi
+if [ "$2" = untracked ]
+then echo new > new.txt
+fi
+sh scripts/library.sh run
+rc=$?
+echo "library exit $rc"
+exit "$rc"
+]=])
+function(tooling_dirty case)
+  set(repo ${tooling}/dirty_${case})
+  file(COPY ${PROJECT_SOURCE_DIR}/scripts/library.sh ${PROJECT_SOURCE_DIR}/scripts/compat-common.sh DESTINATION ${repo}/scripts)
+  file(CONFIGURE OUTPUT ${repo}/tests/compat/ledger.csv CONTENT "${tooling_header}\n" @ONLY NEWLINE_STYLE UNIX)
+  file(CONFIGURE OUTPUT ${repo}/notes.txt CONTENT "notes\n" @ONLY NEWLINE_STYLE UNIX)
+  file(CONFIGURE OUTPUT ${repo}/.planning/x CONTENT "plan\n" @ONLY NEWLINE_STYLE UNIX)
+  execute_process(COMMAND ${GIT_EXECUTABLE} init -q WORKING_DIRECTORY ${repo} COMMAND_ERROR_IS_FATAL ANY)
+  execute_process(COMMAND ${GIT_EXECUTABLE} config core.autocrlf false WORKING_DIRECTORY ${repo} COMMAND_ERROR_IS_FATAL ANY)
+  execute_process(COMMAND ${GIT_EXECUTABLE} add -A WORKING_DIRECTORY ${repo} COMMAND_ERROR_IS_FATAL ANY)
+  execute_process(COMMAND ${CMAKE_COMMAND} -E env ${tooling_id} ${GIT_EXECUTABLE} -c commit.gpgsign=false commit -qm base
+    WORKING_DIRECTORY ${repo} COMMAND_ERROR_IS_FATAL ANY)
+  # The default, tracked ledger path must be the one in use, and results stay under the repository's own build directory.
+  set(cmd ${CMAKE_COMMAND} -E env --unset=COGMASTER_LEDGER --unset=COGMASTER_PAGE --unset=COGMASTER_CATALOG
+    --unset=COGMASTER_LIBRARY_OUT COGMASTER_ROM_DIR=${tooling_empty} ${tooling_sh} -c "${tooling_dirty_run}" sh ${repo} ${case})
+  if(case STREQUAL refuses)
+    string(REPLACE ";" "$<SEMICOLON>" cmd "${cmd}")
+    cogmaster_add_test(NAME policy.library_dirty.refuses
+      COMMAND ${CMAKE_COMMAND} "-DCMD=${cmd}" -DCODE=2 "-DREGEX=tracked changes outside[ \n]+[.]planning" -P ${tooling_expect}
+      LABELS policy TIMEOUT 60)
+  else()
+    cogmaster_add_test(NAME policy.library_dirty.${case} COMMAND ${cmd} LABELS policy TIMEOUT 60)
+    set_tests_properties(policy.library_dirty.${case} PROPERTIES
+      PASS_REGULAR_EXPRESSION "library exit [0-9]+" FAIL_REGULAR_EXPRESSION "tracked changes outside")
+  endif()
+endfunction()
+foreach(tooling_case IN ITEMS refuses planning untracked clean)
+  tooling_dirty(${tooling_case})
+endforeach()
