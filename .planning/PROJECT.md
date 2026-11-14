@@ -74,16 +74,14 @@ MIT-licensed C library that any host can embed.
 - ✓ The failing default-profile rows have a known cause: `cogmaster-run --diagnose` and `sh scripts/library.sh diagnose` print counts, kinds and catalog titles only, a canary scan with five negative controls proves nothing from a dump leaks, and 205 failing rows (of 209 in the ledger) are grouped by cause in `13-CAUSE-GROUPS.md`; no ledger row moved — v2.1 (Phase 13)
 - ✓ Every cause group of 5 or more failing rows is fixed or closed with a stated reason: the `$FFFC` unused-bit writes, writes to non-register ROM addresses and undriven or undecoded port accesses no longer record a fault, the legacy video modes are closed as not emulated by design, the boots check is shown sound, and the diagnose reads 205 failing rows down to 49 with none outside the ledger; behaviour revision 18 and no hash pin moved — v2.1 (Phase 14)
 - ✓ The owner's library re-run merged through the unchanged ratchet (285 rows from `fail` to `pass`, none lost), the page equals its regeneration, and the asan, build, be32, bench and bench-wasm32 timeouts were re-derived from a fresh 40-run read in one workflow commit — v2.1 (Phase 15)
+- ✓ Graphics I and II draw on the Master System 1, Master System 2 and Game Gear in Master System video mode with the legacy sprite rules, closed-form oracles written before the renderer, a state format 17 and behaviour revision 19, the other legacy modes keeping their fault, no shipped pin moved and the per-frame gate green; the fault-vocabulary docs, the dirty-tree refusal and the download retry rode along — v2.2 (Phase 16)
 
 ### Active
 
 <!-- Current scope: milestone v2.2. Full text in REQUIREMENTS.md. -->
 
-- [ ] **MODE-01 to MODE-08**: Graphics I and II render with owned fixtures and closed-form pixels, legacy sprites, the other
-  modes keep their fault, no pin moves, the perf gate stays green, and the hardware notes and provenance rows are written
 - [ ] **RUN-03, RUN-04**: the library re-run merges through the ratchet and the compatibility page equals its regeneration
-- [ ] **TUNE-12 to TUNE-17**: stale doc lines, the dirty-tree stamp, the assembler fetch retry, the diagnose vocabulary
-  prune, re-derived timeouts and a milestone-close clean-state check
+- [ ] **TUNE-15 to TUNE-17**: the diagnose vocabulary prune, re-derived timeouts and a milestone-close clean-state check
 
 Deferred candidates: LEDG-06 (a catalog `video` column for the 50 Game Gear entries MAME runs in Master System mode),
 LEDG-07 (per-alias `supported` and a reason for `partial` entries), PAD-08 (the pad, Light Phaser and BIOS judges and the
@@ -203,4 +201,4 @@ After each milestone:
 3. Lessons are exported to `.planning/LESSONS.md`.
 
 ---
-*Last updated: 2026-11-13 after starting milestone v2.2*
+*Last updated: 2026-11-14 after Phase 16*

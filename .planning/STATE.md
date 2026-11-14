@@ -22,10 +22,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-11-13)
+See: .planning/PROJECT.md (updated 2026-11-14)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 16 — Graphics I and II draw
+**Current focus:** Phase 17 — Re-run, merge and clean state
 
 ## Current Position
 
@@ -480,6 +480,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-14 | Execute phase 16 plan 16-06 (gsd-execute-phase 16); state format 17 and behaviour revision 19: widened sprite slots and three fields after vram (pin 16520), the status read low bits with the latched fifth index, class-dependent loader bounds on the selected slots, byte-equal legacy round trip and 32 bounds sub-cases with 11 loader mutations controlled, 73 classified fields, subset compare exit 0, core.info literal 18 fixed; 2 tasks, 4 commits, nothing pushed, cmake --workflow --preset ci 720 of 720 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-14 | Execute phase 16 plan 16-08 (gsd-execute-phase 16); legacy_sprites image equal to the sprite oracle on three profiles (pixels on every scenario and both frames, runner hash, 22 mailbox records with the tail read), six cross-lane hash rows, sprite bounds under hostile input and a legacy program seed, second push d7da071 to fba1e24 with hosted run 43562888383 green, perf PASS (10089912 against base 12288947, no allow line), be32 runner.hashes_file 64.72 s; 3 tasks, 3 commits, MODE-03 and MODE-06 complete, ctest ci 737 of 737 | Claude Code | claude-sonnet-5-5 |
 | 2026-11-14 | Execute phase 16 plan 16-09 (gsd-execute-phase 16); legacy video notes in docs/hardware/video.md with every choice a model and its disagreeing sources, SMS-VDP section 7 rewritten with the MAME attribution corrected, PROVENANCE rows for MAME tms9928a and ares tms9918 (both pins 200), embedding and conformance guides within the cap, runner.hashes_file 130 s and the g2_late tests 29 s from run 43562888383, third push fba1e24 to 6e8984e with hosted run 43564813364 green (CI required success, perf PASS 10089912 against base 12288947, no allow line); 3 tasks, 3 commits, MODE-02, MODE-04, MODE-05, MODE-07 and MODE-08 complete, ctest ci 737 of 737, hygiene 84 of 84, subset compare empty | Claude Code | claude-sonnet-5-5 |
+| 2026-11-14 | Execute phase 16 close-out (gsd-execute-phase 16); nine plans summarized, code review 0 critical, 3 warnings and 4 info left open in 16-REVIEW-DISPOSITION.md, verifier passed 14 of 14 with all 11 requirement IDs satisfied, phase marked complete; draft PR 47 still open with the last two commits unpushed | Claude Code | claude-sonnet-5-5 (reviewer and verifier claude-sonnet-5-5) |
 
 ## Deferred Items
 
@@ -517,4 +518,4 @@ Milestone v2.1 pull requests: #40, #42 and #44 (phases 13 to 15) and releases #4
 ## Operator Next Steps
 
 
-- v2.2 roadmap written (phases 16 and 17); after the owner approves it, run /gsd-discuss-phase 16
+- Phase 16 executed and verified; next is /gsd-ship 16 (push the last two commits, mark PR 47 ready, then gh pr merge --auto --squash from a shell)
