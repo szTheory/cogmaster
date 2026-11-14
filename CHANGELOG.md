@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/szTheory/cogmaster/compare/v0.14.2...v0.15.0) (2026-11-14)
+
+
+### Features
+
+* **vdp:** draw Graphics I and II on the Master System video profiles ([#47](https://github.com/szTheory/cogmaster/issues/47)) ([5b5767c](https://github.com/szTheory/cogmaster/commit/5b5767c6561c93836f042f9e6b67ec99057b4937))
+
 ## [0.14.2](https://github.com/szTheory/cogmaster/compare/v0.14.1...v0.14.2) (2026-11-13)
 
 
