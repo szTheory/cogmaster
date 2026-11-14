@@ -5,11 +5,11 @@ milestone_name: Legacy video modes
 current_phase: 17
 current_phase_name: Re-run, merge and clean state
 status: planning
-stopped_at: Phase 16 complete, ready to plan Phase 17
-last_updated: "2026-11-14T06:58:45.011Z"
+stopped_at: Phase 17 context gathered
+last_updated: "2026-11-14T15:54:55.509Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 16 complete, transitioned to Phase 17
-state_head: bfd122369f087f9b2a6097686d2d2355a05d0efc
+state_head: a720da076268cde01fb91a0bb8f263e100741c76
 progress:
   total_phases: 2
   completed_phases: 1
@@ -482,6 +482,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-14 | Execute phase 16 plan 16-09 (gsd-execute-phase 16); legacy video notes in docs/hardware/video.md with every choice a model and its disagreeing sources, SMS-VDP section 7 rewritten with the MAME attribution corrected, PROVENANCE rows for MAME tms9928a and ares tms9918 (both pins 200), embedding and conformance guides within the cap, runner.hashes_file 130 s and the g2_late tests 29 s from run 43562888383, third push fba1e24 to 6e8984e with hosted run 43564813364 green (CI required success, perf PASS 10089912 against base 12288947, no allow line); 3 tasks, 3 commits, MODE-02, MODE-04, MODE-05, MODE-07 and MODE-08 complete, ctest ci 737 of 737, hygiene 84 of 84, subset compare empty | Claude Code | claude-sonnet-5-5 |
 | 2026-11-14 | Execute phase 16 close-out (gsd-execute-phase 16); nine plans summarized, code review 0 critical, 3 warnings and 4 info left open in 16-REVIEW-DISPOSITION.md, verifier passed 14 of 14 with all 11 requirement IDs satisfied, phase marked complete; draft PR 47 still open with the last two commits unpushed | Claude Code | claude-sonnet-5-5 (reviewer and verifier claude-sonnet-5-5) |
 | 2026-11-14 | Ship phase 16 (gsd-ship 16); PR #47 marked ready with the existing Conventional Commit title and a rebuilt body, auto squash merge set from a shell, CI run on head 8858ac7 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-14 | Discuss phase 17 (gsd-discuss-phase 17); four research agents (prune scope, timeouts, milestone-close script, re-run sequencing) plus an adversarial pass against the code, 18 decisions, no owner prompts (standing fan-out instruction); branch phase/17-re-run-merge-and-clean-state cut from origin/main at 0a97075 | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -511,12 +512,12 @@ Items acknowledged and deferred, most recent first (v2.1 closed SEED-016 as done
 
 ## Session Continuity
 
-Last session: 2026-11-14T06:20:16.700Z
-Stopped at: Phase 16 complete, ready to plan Phase 17
-Resume file: None
+Last session: 2026-11-14T15:54:55.425Z
+Stopped at: Phase 17 context gathered
+Resume file: .planning/phases/17-re-run-merge-and-clean-state/17-CONTEXT.md
 Milestone v2.1 pull requests: #40, #42 and #44 (phases 13 to 15) and releases #41, #43 and #45 (v0.14.0 to v0.14.2)
 
 ## Operator Next Steps
 
 
-- Phase 16 shipped as PR #47 (ready, auto squash merge set); after it merges, confirm the release pull request is green, then /gsd-discuss-phase 17
+- Phase 16 shipped (PR #47, release v0.15.0, release run green). Phase 17 context is gathered; next: `/clear` then `/gsd-plan-phase 17`. The owner session in 17-CONTEXT D-04 (library judge in a worktree, then diagnose) comes after the code work, at execute.
