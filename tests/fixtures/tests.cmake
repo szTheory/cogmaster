@@ -687,6 +687,11 @@ function(fixtures_legacy_image name source define)
   set(fixtures_images ${fixtures_images} PARENT_SCOPE)
 endfunction()
 fixtures_legacy_image(legacy_modes_g1 legacy_modes V_G1=1)
+fixtures_legacy_image(legacy_modes_g2 legacy_modes V_G2=1)
+fixtures_legacy_image(legacy_modes_g2_masked legacy_modes V_G2_MASKED=1)
+fixtures_legacy_image(legacy_modes_g2_late legacy_modes V_G2_LATE=1)
+fixtures_legacy_image(legacy_modes_g2_switch legacy_modes V_G2_SWITCH=1)
+fixtures_legacy_image(legacy_sprites legacy_sprites V_SPRITES=1)
 add_custom_target(cogmaster-fixtures ALL DEPENDS ${fixtures_images})
 
 add_executable(cogmaster-test-lines ${CMAKE_CURRENT_LIST_DIR}/lines.c
@@ -718,11 +723,13 @@ foreach(tv IN ITEMS ntsc pal)
   endforeach()
 endforeach()
 
-# Fault prevented: an oracle that disagrees with hand-computed pixels, which would make every later
-# comparison against it a comparison with a wrong answer.
+# Fault prevented: an oracle that disagrees with hand-computed pixels or status bytes, which would make
+# every later comparison against it a comparison with a wrong answer, and a legacy_sprites row of
+# tests/diag/expected.csv that is typed by hand instead of computed by legacy_status.
 # Timeout: 10 s floor; the literal check runs in well under a second, provisional.
 cogmaster_add_test(NAME fixtures.legacy.oracle
   COMMAND cogmaster-test-legacy-fixture - all all literals
+    ${PROJECT_SOURCE_DIR}/tests/diag/expected.csv
   LABELS fixtures portable TIMEOUT 10)
 
 string(REPLACE ";" "$<SEMICOLON>" fixtures_emulator "${CMAKE_CROSSCOMPILING_EMULATOR}")
