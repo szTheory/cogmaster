@@ -69,6 +69,7 @@ add_library(cogmaster STATIC
   src/synth.c
   src/testcard.c
   src/vdp.c
+  src/vdp_legacy.c
   src/vdp_render.c
   src/z80.c
   src/z80_cb.c

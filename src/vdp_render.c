@@ -1,5 +1,6 @@
-/* Mode 4 tiles and monotonic raster intervals. Hardware rules and the
-   selected latch model are sourced in docs/hardware/video.md. */
+/* Mode 4 tiles, the per-call dispatch and monotonic raster intervals. Hardware rules and the
+   selected latch model are sourced in docs/hardware/video.md; Graphics I and II are in
+   vdp_legacy.c. */
 #include <string.h>
 #include "internal.h"
 
@@ -10,8 +11,15 @@ static uint16_t vdp_colour(const cogmaster *m, uint32_t index)
     return cogmaster__vdp_rgb444(m->vdp.cram[index]);
 }
 
+/* The backdrop is the legacy palette entry R7 & 15 only while the display is on in Graphics I or
+   II; everywhere else, and with the display off, it is the colour RAM entry 16 + (R7 & 15), so a
+   game that boots with the power-on registers (Graphics I, display off) shows what it always
+   showed. Model: docs/hardware/video.md. */
 uint16_t cogmaster__vdp_backdrop(const cogmaster *m)
 {
+    if (m->vdp.display != 0u && cogmaster__vdp_class(m) == COGMASTER__VDP_LEGACY) {
+        return cogmaster__legacy_colour(m, m->vdp.reg[7] & 15u);
+    }
     return vdp_colour(m, 16u + (m->vdp.reg[7] & 15u));
 }
 
@@ -53,7 +61,7 @@ uint32_t cogmaster__vdp_sprite_address(const cogmaster *m, uint32_t tile, uint32
    position the program would not have. */
 int cogmaster__vdp_render_blocked(const cogmaster *m)
 {
-    return m->vdp.display != 0u && cogmaster__vdp_class(m) != COGMASTER__VDP_MODE4;
+    return m->vdp.display != 0u && cogmaster__vdp_class(m) == COGMASTER__VDP_BLOCKED;
 }
 
 /* The mode 4 background dot: palette index plus priority; zero retains its colour without
@@ -92,7 +100,8 @@ static uint32_t vdp_tile(const cogmaster *m, uint32_t x, uint32_t y)
            ((attr & 0x1000u) != 0u && index != 0u ? COGMASTER__VDP_PRIORITY : 0u);
 }
 
-/* The background dot for any mode: only mode 4 has tiles to draw. */
+/* The background dot of mode 4 as a palette index; the other modes have no tiles here (Graphics I
+   and II draw whole spans in vdp_legacy.c) and give the colour RAM backdrop entry. */
 uint32_t cogmaster__vdp_background(const cogmaster *m, uint32_t x, uint32_t y)
 {
     if (cogmaster__vdp_class(m) != COGMASTER__VDP_MODE4) {
@@ -185,7 +194,7 @@ void cogmaster__vdp_render_until(cogmaster *m, uint32_t line, uint32_t x)
     }
     /* The registers do not change inside one call, so the class is decided once. */
     uint32_t cls = cogmaster__vdp_class(m);
-    if (m->vdp.display && cls != COGMASTER__VDP_MODE4) {
+    if (m->vdp.display && cls == COGMASTER__VDP_BLOCKED) {
         cogmaster__bus_fault(m, (uint16_t)cogmaster__vdp_mode(m), COGMASTER_FAULT_DEVICE_VDP,
                              COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE);
         /* Not drawn: the backdrop, with the sprite lists still scanned per line. */
@@ -199,6 +208,27 @@ void cogmaster__vdp_render_until(cogmaster *m, uint32_t line, uint32_t x)
             if (++m->render_x == COGMASTER__FIELD_W) {
                 m->render_x = 0u;
                 m->render_line++;
+            }
+        }
+        return;
+    }
+    if (m->vdp.display && cls == COGMASTER__VDP_LEGACY) {
+        /* One span per line: the part of the line between the cursor and the end of the call. */
+        while (at < end) {
+            if (m->vdp.sprite_line != m->render_line) {
+                cogmaster__vdp_sprite_scan(m, m->render_line);
+            }
+            uint32_t x1 = m->render_x + (end - at);
+            if (x1 > COGMASTER__FIELD_W) {
+                x1 = COGMASTER__FIELD_W;
+            }
+            cogmaster__legacy_span(m, m->render_line, m->render_x, x1);
+            at += x1 - m->render_x;
+            if (x1 == COGMASTER__FIELD_W) {
+                m->render_x = 0u;
+                m->render_line++;
+            } else {
+                m->render_x = x1;
             }
         }
         return;

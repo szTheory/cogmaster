@@ -11,7 +11,9 @@
    for Y at or past $E0, the colour 0 collision and the fifth sprite index. A fixture proves
    fidelity to these notes, not to silicon. */
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
+#include "internal.h"
 #include "../check.h"
 
 enum profile { PROFILE_SMS1, PROFILE_SMS2, PROFILE_GG, PROFILE_COUNT };
@@ -336,6 +338,273 @@ static const struct sprite_case sprite_cases[] = {
     {&doubled, 61u, 110u, 5u, 1u},
 };
 
+/* ---- the renderer, driven in process and compared with the oracles above ---- */
+
+static void *alloc(void *u, size_t n)
+{
+    (void)u;
+    return malloc(n);
+}
+static void release(void *u, void *p, size_t n)
+{
+    (void)u;
+    (void)n;
+    free(p);
+}
+
+/* An instance with the oracle's colour RAM (entries 0 to 31, six-bit values; the Game Gear in
+   Master System video mode reads 16 + n from the same bytes), R7 low nibble 11 and a sprite table
+   at $3F00 whose first Y is $D0, so that no sprite exists. Every video memory byte is zero until a
+   case loads a scene. */
+static cogmaster *make_video(uint32_t machine, uint32_t video)
+{
+    cogmaster_config cfg = {0};
+    cfg.size = sizeof cfg;
+    cfg.allocator.alloc = alloc;
+    cfg.allocator.free = release;
+    cogmaster *m = NULL;
+    CHECK_EQ_U64(cogmaster_create(&cfg, &m), COGMASTER_STATUS_OK);
+    static const uint8_t image[1024] = {0xF3, 0x76};
+    cogmaster_media media = {0};
+    media.size = sizeof media;
+    media.image = image;
+    media.image_size = sizeof image;
+    media.machine = machine;
+    media.video_mode = video;
+    CHECK_EQ_U64(cogmaster_load(m, &media), COGMASTER_STATUS_OK);
+    for (uint32_t i = 0u; i < 32u; i++)
+        m->vdp.cram[i] = (uint8_t)cram_value(i);
+    m->vdp.reg[5] = 0x7Fu;
+    m->vdp.reg[7] = BACKDROP_NIBBLE;
+    m->vdp.vram[0x3F00] = 0xD0u;
+    return m;
+}
+static cogmaster *make(enum profile p)
+{
+    static const uint32_t machine[PROFILE_COUNT] = {COGMASTER_MACHINE_SMS1, COGMASTER_MACHINE_SMS2,
+                                                    COGMASTER_MACHINE_GG};
+    return make_video(machine[p], p == PROFILE_GG ? COGMASTER_VIDEO_SMS : COGMASTER_VIDEO_AUTO);
+}
+
+/* R0 to R4 as a game would write them, and the display latch that the next line would take from R1
+   bit 6. */
+static void regs(cogmaster *m, uint32_t r0, uint32_t r1, uint32_t r2, uint32_t r3, uint32_t r4)
+{
+    m->vdp.reg[0] = (uint8_t)r0;
+    m->vdp.reg[1] = (uint8_t)r1;
+    m->vdp.reg[2] = (uint8_t)r2;
+    m->vdp.reg[3] = (uint8_t)r3;
+    m->vdp.reg[4] = (uint8_t)r4;
+    m->vdp.display = (uint8_t)((r1 >> 6) & 1u);
+}
+static void run(cogmaster *m)
+{
+    CHECK_EQ_U64(cogmaster_run_frame(m, NULL), COGMASTER_STATUS_OK);
+}
+static void put(cogmaster *m, uint32_t at, uint32_t value)
+{
+    m->vdp.vram[at & 0x3FFFu] = (uint8_t)value;
+}
+
+/* The scenes of the oracles, placed at the table addresses the registers select (TI TMS9918A manual
+   2.4.1 and table 3-2: Graphics I names at (R2 & 15) << 10, patterns at (R4 & 7) << 11, colours at
+   (R3 << 6) & $3FFF; Graphics II patterns at (R4 & 4) << 11 and colours at (R3 & $80) << 6). The
+   oracle never sees an address; this is the only place the two meet. */
+static void scene_names(cogmaster *m, uint32_t r2)
+{
+    for (uint32_t row = 0u; row < 24u; row++)
+        for (uint32_t col = 0u; col < 32u; col++)
+            put(m, ((r2 & 15u) << 10) + 32u * row + col, scene_name(col, row));
+}
+static void scene_g1(cogmaster *m, uint32_t r2, uint32_t r3, uint32_t r4)
+{
+    scene_names(m, r2);
+    for (uint32_t t = 0u; t < 256u; t++)
+        for (uint32_t r = 0u; r < 8u; r++)
+            put(m, ((r4 & 7u) << 11) + 8u * t + r, (7u * t + 29u * r) & 255u);
+    for (uint32_t g = 0u; g < 32u; g++)
+        put(m, (r3 << 6) + g, ((5u * g + 1u) & 15u) << 4 | ((3u * g) & 15u));
+}
+static void scene_g2(cogmaster *m, uint32_t r2, uint32_t r3, uint32_t r4)
+{
+    scene_names(m, r2);
+    for (uint32_t idx = 0u; idx < 768u; idx++) {
+        for (uint32_t r = 0u; r < 8u; r++) {
+            put(m, ((r4 & 4u) << 11) + 8u * idx + r, g2_pattern(idx, r));
+            put(m, ((r3 & 0x80u) << 6) + 8u * idx + r, g2_colour(idx, r));
+        }
+    }
+}
+
+static uint16_t expect(enum profile p, int g2, uint32_t r3, uint32_t r4, uint32_t x, uint32_t y)
+{
+    return g2 ? oracle_g2(p, r3, r4, x, y) : oracle_g1(p, x, y);
+}
+
+/* The dots of lines y0 to y1 - 1 that differ from the oracle; the first is printed. */
+static uint32_t mismatches(const cogmaster *m, enum profile p, int g2, uint32_t r3, uint32_t r4,
+                           uint32_t y0, uint32_t y1)
+{
+    uint32_t bad = 0u;
+    for (uint32_t y = y0; y < y1; y++) {
+        for (uint32_t x = 0u; x < FIELD_W; x++) {
+            uint16_t want = expect(p, g2, r3, r4, x, y);
+            if (m->field[y][x] != want && bad++ == 0u)
+                fprintf(stderr, "profile %d R3 %02x R4 %02x (%u,%u) is %03x, expected %03x\n",
+                        (int)p, r3, r4, x, y, m->field[y][x], want);
+        }
+    }
+    return bad;
+}
+
+/* Graphics I with the scene at two layouts: the tables low in memory and names high, and the
+   colour table at the top of memory, where the 14-bit address mask matters. */
+static void g1(void)
+{
+    static const uint32_t layout[2][3] = {{0x0Eu, 0x80u, 0x00u}, {0x03u, 0xFFu, 0x03u}};
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+        for (size_t k = 0u; k < 2u; k++) {
+            cogmaster *m = make(p);
+            scene_g1(m, layout[k][0], layout[k][1], layout[k][2]);
+            regs(m, 0x00u, 0x40u, layout[k][0], layout[k][1], layout[k][2]);
+            run(m);
+            CHECK_EQ_U64(mismatches(m, p, 0, 0u, 0u, 0u, FIELD_H), 0u);
+            CHECK_EQ_U64(m->fault_present, 0u);
+            if (k == 0u) {
+                for (size_t i = 0u; i < sizeof g1_cases / sizeof g1_cases[0]; i++)
+                    if (g1_cases[i].profile == p)
+                        CHECK_EQ_HEX(m->field[g1_cases[i].y][g1_cases[i].x], g1_cases[i].want);
+            }
+            cogmaster_destroy(m);
+        }
+        /* Empty edge: all video memory zero is pattern 0 and colour byte 0, so every dot of lines 0
+           to 191 is the backdrop, whatever the registers point at. */
+        cogmaster *m = make(p);
+        regs(m, 0x00u, 0x40u, 0x0Eu, 0x80u, 0x00u);
+        run(m);
+        uint32_t bad = 0u;
+        for (uint32_t y = 0u; y < FIELD_H; y++)
+            for (uint32_t x = 0u; x < FIELD_W; x++)
+                bad += m->field[y][x] != oracle_palette(p, BACKDROP_NIBBLE);
+        CHECK_EQ_U64(bad, 0u);
+        CHECK_EQ_U64(m->fault_present, 0u);
+        cogmaster_destroy(m);
+    }
+}
+
+/* One Graphics II frame with the scene at the tables R3 and R4 select, compared with the oracle on
+   every dot and with the hand-computed literals for that profile and pair. */
+static cogmaster *g2_frame(enum profile p, uint32_t r3, uint32_t r4)
+{
+    cogmaster *m = make(p);
+    scene_g2(m, 0x0Eu, r3, r4);
+    regs(m, 0x02u, 0x40u, 0x0Eu, r3, r4);
+    run(m);
+    CHECK_EQ_U64(mismatches(m, p, 1, r3, r4, 0u, FIELD_H), 0u);
+    CHECK_EQ_U64(m->fault_present, 0u);
+    for (size_t i = 0u; i < sizeof g2_cases / sizeof g2_cases[0]; i++) {
+        const struct dot_case *c = &g2_cases[i];
+        if (c->profile == p && c->r3 == r3 && c->r4 == r4)
+            CHECK_EQ_HEX(m->field[c->y][c->x], c->want);
+    }
+    return m;
+}
+
+static void g2(void)
+{
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+        cogmaster *m = g2_frame(p, 0xFFu, 0x03u);
+        /* Adjacency: line 63 ends the first third and line 64 starts the second, line 127 and line
+           128 the second and third. The oracle matched above; here the lines are also shown not to
+           be the picture of the third before them, so a third taken from the wrong line fails. */
+        static const uint32_t edges[2][2] = {{63u, 64u}, {127u, 128u}};
+        for (size_t k = 0u; k < 2u; k++) {
+            uint32_t from_before = 0u;
+            for (uint32_t x = 0u; x < FIELD_W; x++)
+                from_before +=
+                    m->field[edges[k][1]][x] != oracle_g2(p, 0xFFu, 0x03u, x, edges[k][0]);
+            CHECK(from_before > 0u);
+            CHECK_EQ_U64(mismatches(m, p, 1, 0xFFu, 0x03u, edges[k][0], edges[k][1] + 1u), 0u);
+        }
+        cogmaster_destroy(m);
+        /* Empty edge: a colour byte of zero shows the backdrop for a set bit and for a clear bit.
+           Entry 0 row 0 has all bits set and entry 1 row 0 none; entry 2 row 0 keeps its generated
+           colour byte as the control. */
+        m = make(p);
+        scene_g2(m, 0x0Eu, 0xFFu, 0x03u);
+        put(m, 0x0000u, 0xFFu);
+        put(m, 0x2000u, 0x00u);
+        put(m, 0x0008u, 0x00u);
+        put(m, 0x2008u, 0x00u);
+        regs(m, 0x02u, 0x40u, 0x0Eu, 0xFFu, 0x03u);
+        run(m);
+        for (uint32_t x = 0u; x < 16u; x++)
+            CHECK_EQ_HEX(m->field[0][x], oracle_palette(p, BACKDROP_NIBBLE));
+        CHECK(m->field[0][16] != oracle_palette(p, BACKDROP_NIBBLE));
+        cogmaster_destroy(m);
+    }
+}
+
+/* The sixteen palette entries, by function against the literal table and the oracle, and on screen:
+   cell n of line 0 is a solid tile whose colour byte is n in both nibbles. */
+static void palette(void)
+{
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+        cogmaster *m = make(p);
+        for (uint32_t n = 0u; n < 16u; n++)
+            CHECK_EQ_HEX(cogmaster__legacy_colour(m, n), oracle_palette(p, n));
+        for (size_t i = 0u; i < sizeof palette_cases / sizeof palette_cases[0]; i++)
+            if (palette_cases[i].profile == p)
+                CHECK_EQ_HEX(cogmaster__legacy_colour(m, palette_cases[i].nibble),
+                             palette_cases[i].want);
+        for (uint32_t n = 0u; n < 16u; n++) {
+            put(m, 0x3800u + n, 8u * n);
+            for (uint32_t r = 0u; r < 8u; r++)
+                put(m, 8u * (8u * n) + r, 0xFFu);
+            put(m, 0x2000u + n, n << 4 | n);
+        }
+        regs(m, 0x00u, 0x40u, 0x0Eu, 0x80u, 0x00u);
+        run(m);
+        for (uint32_t n = 0u; n < 16u; n++)
+            for (uint32_t x = 8u * n; x < 8u * n + 8u; x++)
+                CHECK_EQ_HEX(m->field[0][x], oracle_palette(p, n == 0u ? BACKDROP_NIBBLE : n));
+        cogmaster_destroy(m);
+    }
+}
+
+/* The backdrop of a picture: the legacy palette entry R7 & 15 while the display is on in Graphics I
+   or II, the colour RAM entry 16 + (R7 & 15) with the display off, in mode 4 and in a mode that
+   faults. Both the function and the frame descriptor value take the same colour. */
+static void backdrop(void)
+{
+    struct config {
+        uint32_t r0, r1, legacy;
+    };
+    static const struct config configs[] = {{0x00u, 0x40u, 1u},
+                                            {0x02u, 0x40u, 1u},
+                                            {0x00u, 0x00u, 0u},
+                                            {0x04u, 0x40u, 0u},
+                                            {0x00u, 0x50u, 0u}};
+    static const uint32_t r7s[] = {BACKDROP_NIBBLE, 0xA3u, 0x00u};
+    for (enum profile p = PROFILE_SMS1; p < PROFILE_COUNT; p++) {
+        for (size_t k = 0u; k < sizeof configs / sizeof configs[0]; k++) {
+            for (size_t j = 0u; j < sizeof r7s / sizeof r7s[0]; j++) {
+                cogmaster *m = make(p);
+                regs(m, configs[k].r0, configs[k].r1, 0x0Eu, 0x80u, 0x00u);
+                m->vdp.reg[7] = (uint8_t)r7s[j];
+                run(m);
+                uint32_t n = r7s[j] & 15u;
+                uint16_t want =
+                    configs[k].legacy != 0u ? oracle_palette(p, n) : rgb444(cram_value(16u + n));
+                CHECK_EQ_HEX(cogmaster__vdp_backdrop(m), want);
+                CHECK_EQ_HEX(m->completed.backdrop, want);
+                CHECK(m->completed.backdrop <= 0xFFFu);
+                cogmaster_destroy(m);
+            }
+        }
+    }
+}
+
 static void oracle(void)
 {
     for (size_t i = 0u; i < sizeof palette_cases / sizeof palette_cases[0]; i++) {
@@ -412,6 +681,14 @@ int main(int argc, char **argv)
         return 2;
     if (strcmp(argv[1], "oracle") == 0)
         oracle();
+    else if (strcmp(argv[1], "g1") == 0)
+        g1();
+    else if (strcmp(argv[1], "g2") == 0)
+        g2();
+    else if (strcmp(argv[1], "palette") == 0)
+        palette();
+    else if (strcmp(argv[1], "backdrop") == 0)
+        backdrop();
     else
         return 2;
     CHECK_DONE();
