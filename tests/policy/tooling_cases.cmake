@@ -178,6 +178,13 @@ do
 done
 case $p in
   repos/o/r/commits/main) git rev-parse HEAD ;;
+  repos/o/r/commits/v*) echo success ;;
+  repos/o/r/commits/*) case $c in red_ci) echo failure ;; pending) echo in_progress ;; *) echo success ;; esac ;;
+  repos/o/r/pulls?*) [ "$c" = open_pr ] && echo 1 || echo 0 ;;
+  repos/o/r/releases/latest) [ "$c" = release_tag ] && echo v0.0.9 || echo v0.1.0 ;;
+  repos/o/r/releases) [ "$c" != draft ] || echo 123 ;;
+  repos/o/r/compare/*) [ "$c" = unreleased ] && echo 2 || echo 0 ;;
+  search/issues*) [ "$c" = release_pr ] && echo 1 || echo 0 ;;
   *) exit 1 ;;
 esac
 exit 0
@@ -209,6 +216,14 @@ check() {
 check baseline 0 '^close-check: all ok$'
 check tracked 1 '^tree +off'
 check untracked 1 '^tree +off'
+check open_pr 1 '^open-prs +off'
+check red_ci 1 '^main-ci +off'
+check release_tag 1 '^release +off'
+check draft 1 '^release +off'
+check release_pr 1 '^release-pr +off'
+check unreleased 1 '^unreleased +off'
+check pending 2 '^main-ci +unknown' 'close-check: 0 off, 1 unknown'
+check offline 2 '^open-prs +unknown' 'close-check: 0 off,'
 exit "$fail"
 ]=])
 set(tooling_close_repo ${tooling_close}/repo)
