@@ -315,12 +315,16 @@ static void sweep(cogmaster *src, cogmaster *target, int fm_only)
     CHECK(swept >= 30u);
     CHECK_EQ_U64(ram, 8192);
     static const char *const named[] = {
-        "z80_pc",       "z80_sp",          "z80_wz",       "z80_im",    "z80_idx",   "z80_halted",
-        "z80_int_line", "z80_nmi_pending", "bus_deadline", "bus_at",    "bus_line",  "bus_t",
-        "bus_vdp_at",   "vdp_reg",         "vdp_status",   "vdp_latch", "vdp_code",  "vdp_addr",
-        "vdp_buffer",   "vdp_pause",       "vdp_cram",     "vdp_vram",  "machine",   "region",
-        "tv",           "io_mem_ctrl",     "io_ctrl",      "io_gg",     "bus_op_pc", "bus_op",
-        "fm_unit",      "synth_phase",     "boot",         "bios_crc32"};
+        "z80_pc",       "z80_sp",         "z80_wz",       "z80_im",
+        "z80_idx",      "z80_halted",     "z80_int_line", "z80_nmi_pending",
+        "bus_deadline", "bus_at",         "bus_line",     "bus_t",
+        "bus_vdp_at",   "vdp_reg",        "vdp_status",   "vdp_latch",
+        "vdp_code",     "vdp_addr",       "vdp_buffer",   "vdp_pause",
+        "vdp_cram",     "vdp_vram",       "machine",      "region",
+        "tv",           "io_mem_ctrl",    "io_ctrl",      "io_gg",
+        "bus_op_pc",    "bus_op",         "fm_unit",      "synth_phase",
+        "boot",         "bios_crc32",     "sprite_attr",  "sprite_legacy",
+        "sprite_size",  "vdp_fifth_index"};
     for (size_t i = 0; i < sizeof named / sizeof named[0]; i++) {
         (void)field(n, named[i]);
     }
@@ -1439,6 +1443,174 @@ static void test_legacy_roundtrip(void)
     cogmaster_destroy(a);
 }
 
+/* The same fields as a mode 4 scan with an overflow leaves them: eight slots of rows 0 to 7, no
+   colour byte, a ninth Y match. */
+static void set_mode4_slots(cogmaster *m)
+{
+    struct cogmaster__vdp *v = &m->vdp;
+    v->sprite_legacy = 0u;
+    v->sprite_size = 0u;
+    v->sprite_count = 8u;
+    v->sprite_scanned = 9u;
+    v->sprite_overflow = 1u;
+    v->fifth_index = 31u;
+    for (uint32_t i = 0u; i < 8u; i++) {
+        v->sprite[i].x = (uint8_t)(20u * i);
+        v->sprite[i].tile = (uint8_t)(2u * i);
+        v->sprite[i].row = (uint8_t)i;
+        v->sprite[i].attr = 0u;
+    }
+}
+
+/* A field to set in a copy of the saved bytes. The sprite slots repeat their field names, so nth
+   is the slot, from 0. */
+struct patch {
+    const char *name;
+    size_t nth;
+    uint64_t v;
+};
+
+struct bounds_case {
+    const char *what;
+    int refused;
+    size_t count;
+    struct patch set[4];
+};
+
+static const struct cogmaster__state_field *nth_field(size_t n, const char *name, size_t nth)
+{
+    for (size_t i = 0; i < n; i++) {
+        if (strcmp(fields[i].name, name) == 0 && nth-- == 0u) {
+            return &fields[i];
+        }
+    }
+    fprintf(stderr, "no state field named %s\n", name);
+    check_failures++;
+    return NULL;
+}
+
+/* Sets the patched fields in a copy of good, each inside its own bounds or not as the case says,
+   and requires target to refuse the bytes with nothing changed, or a fresh instance of the same
+   image to load them. */
+static void load_patched(const char *what, const struct patch *set, size_t count, int refused,
+                         size_t n, cogmaster *target, size_t size, size_t target_size)
+{
+    memcpy(bad, good, size);
+    for (size_t i = 0; i < count; i++) {
+        const struct cogmaster__state_field *fd = nth_field(n, set[i].name, set[i].nth);
+        if (fd == NULL) {
+            return;
+        }
+        put_le(bad + fd->offset, set[i].v, fd->width);
+    }
+    cogmaster__state_seal(bad, size);
+    if (refused) {
+        expect_refused(what, target, size, target_size);
+        return;
+    }
+    cogmaster *fresh = make_image(img_loop);
+    if (cogmaster__state_load(fresh, bad, size) != COGMASTER_STATUS_OK) {
+        fprintf(stderr, "%s: refused\n", what);
+        check_failures++;
+    }
+    cogmaster_destroy(fresh);
+}
+
+static void run_bounds_cases(const struct bounds_case *cases_in, size_t count, size_t n,
+                             cogmaster *target, size_t size, size_t target_size)
+{
+    for (size_t i = 0; i < count; i++) {
+        const struct bounds_case *c = &cases_in[i];
+        load_patched(c->what, c->set, c->count, c->refused, n, target, size, target_size);
+    }
+}
+
+/* Each case changes the base state: Graphics I or II with 8x8 sprites, four selected slots of
+   rows 0, 2, 4 and 6 with the early clock bit and a colour, a fifth match at SAT index 5 after
+   six SAT reads, nothing latched and bit 6 clear. A refused case breaks one rule of what a scan
+   of the class can leave, and its neighbour on the allowed side loads. */
+static const struct bounds_case legacy_cases[] = {
+    {"row 16 with 16x16 sprites", 1, 2, {{"sprite_size", 0u, 1u}, {"sprite_row", 0u, 16u}}},
+    {"row 8 with 8x8 sprites", 1, 1, {{"sprite_row", 0u, 8u}}},
+    {"row 8 in the last selected slot with 8x8 sprites", 1, 1, {{"sprite_row", 3u, 8u}}},
+    {"five selected slots", 1, 2, {{"sprite_count", 0u, 5u}, {"sprite_overflow", 0u, 0u}}},
+    {"colour byte with bit 4 set", 1, 1, {{"sprite_attr", 0u, 0x10u}}},
+    {"colour byte with bit 6 set in the last selected slot", 1, 1, {{"sprite_attr", 3u, 0x40u}}},
+    {"colour byte above 0x8F", 1, 1, {{"sprite_attr", 0u, 0x90u}}},
+    {"fifth match with three selected slots", 1, 1, {{"sprite_count", 0u, 3u}}},
+    {"fifth match after four SAT reads", 1, 1, {{"sprite_scanned", 0u, 4u}}},
+    {"fifth match above 32", 1, 1, {{"sprite_overflow", 0u, 33u}}},
+    {"33 SAT reads", 1, 2, {{"sprite_scanned", 0u, 33u}, {"sprite_overflow", 0u, 0u}}},
+    {"fifth index 32", 1, 1, {{"vdp_fifth_index", 0u, 32u}}},
+    {"fifth index 30 with bit 6 clear", 1, 1, {{"vdp_fifth_index", 0u, 30u}}},
+    {"sprite class 2", 1, 1, {{"sprite_legacy", 0u, 2u}}},
+    {"sprite size 2", 1, 1, {{"sprite_size", 0u, 2u}}},
+    {"row 15 with 16x16 sprites", 0, 2, {{"sprite_size", 0u, 1u}, {"sprite_row", 0u, 15u}}},
+    {"row 7 with 8x8 sprites", 0, 1, {{"sprite_row", 0u, 7u}}},
+    {"four selected slots", 0, 1, {{"sprite_count", 0u, 4u}}},
+    {"colour byte 0x8F", 0, 1, {{"sprite_attr", 0u, 0x8Fu}}},
+    {"fifth match 32 after five SAT reads",
+     0,
+     2,
+     {{"sprite_overflow", 0u, 32u}, {"sprite_scanned", 0u, 5u}}},
+    {"32 SAT reads", 0, 2, {{"sprite_scanned", 0u, 32u}, {"sprite_overflow", 0u, 0u}}},
+    {"fifth index 31 with bit 6 clear", 0, 1, {{"vdp_fifth_index", 0u, 31u}}},
+    {"a slot past the count holding the other class's bytes",
+     0,
+     2,
+     {{"sprite_row", 4u, 15u}, {"sprite_attr", 4u, 0x7Fu}}},
+};
+
+/* The same for mode 4, whose bounds the loader keeps: eight slots, rows 0 to 7, no colour byte. */
+static const struct bounds_case mode4_cases[] = {
+    {"mode 4 colour byte 1", 1, 1, {{"sprite_attr", 0u, 1u}}},
+    {"mode 4 row 8", 1, 1, {{"sprite_row", 0u, 8u}}},
+    {"mode 4 overflow 2", 1, 1, {{"sprite_overflow", 0u, 2u}}},
+    {"mode 4 nine slots", 1, 1, {{"sprite_count", 0u, 9u}}},
+    {"mode 4 65 SAT reads", 1, 1, {{"sprite_scanned", 0u, 65u}}},
+    {"mode 4 eight slots with row 7", 0, 1, {{"sprite_row", 0u, 7u}}},
+    {"mode 4 sprite list of 64 SAT reads", 0, 1, {{"sprite_scanned", 0u, 64u}}},
+    {"mode 4 five slots, a legacy slot past the count",
+     0,
+     4,
+     {{"sprite_count", 0u, 5u},
+      {"sprite_overflow", 0u, 0u},
+      {"sprite_row", 7u, 15u},
+      {"sprite_attr", 7u, 0x8Fu}}},
+};
+
+/* The loader refuses a sprite field set no scan of the saved class can leave, accepts the
+   neighbour of each bound, and keeps the mode 4 bounds; the record sweep then runs over a state
+   with legacy sprite fields. */
+static void test_legacy_sprite_bounds(void)
+{
+    cogmaster *src = legacy_instance();
+    cogmaster *target = make_image(img_loop);
+    run_frames(target, 1u);
+    set_legacy_slots(src, 0u);
+    size_t size = save(src, good);
+    size_t target_size = save(target, before);
+    size_t n = record(src);
+    const struct cogmaster__state_field *status = field(n, "vdp_status");
+    if (size != 0u && target_size != 0u && n != 0u && status != NULL) {
+        run_bounds_cases(legacy_cases, sizeof legacy_cases / sizeof legacy_cases[0], n, target,
+                         size, target_size);
+        /* Bit 6 set: any index up to 31 is a latched one. */
+        const struct patch latched[] = {
+            {"vdp_status", 0u, get_le(good + status->offset, 1u) | 0x40u},
+            {"vdp_fifth_index", 0u, 30u}};
+        load_patched("fifth index 30 with bit 6 set", latched, 2u, 0, n, target, size, target_size);
+        set_mode4_slots(src);
+        CHECK_EQ_U64(save(src, good), size);
+        run_bounds_cases(mode4_cases, sizeof mode4_cases / sizeof mode4_cases[0], n, target, size,
+                         target_size);
+        set_legacy_slots(src, 1u);
+        sweep(src, target, 0);
+    }
+    cogmaster_destroy(src);
+    cogmaster_destroy(target);
+}
+
 static const struct {
     const char *name;
     void (*run)(void);
@@ -1450,6 +1622,7 @@ static const struct {
     {"fault.state_round_trip", test_fault_state_round_trip},
     {"state.frame_counter", test_frame_counter},
     {"state.legacy_roundtrip", test_legacy_roundtrip},
+    {"state.legacy_sprite_bounds", test_legacy_sprite_bounds},
     {"state.mapper", test_state_mapper},
     {"state.record_sweep", test_record_sweep},
     {"state.rejects_header", test_rejects_header},
