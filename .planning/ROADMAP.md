@@ -56,7 +56,7 @@ bound, not a target: a row also needs a changing picture to pass the boots check
 fault. Acceptance rests on owned fixtures and closed-form oracles, not on the flipped-row count. Two phases, each ending
 in a release; the scope and its reasoning are in `.planning/research/NEXT-MILESTONE.md`.
 
-- [ ] **Phase 16: Graphics I and II draw** - The legacy renderer and its sprites on the Master System video profiles, with every shipped pin unchanged; the doc and tooling riders land as the first plan (release type `feat`)
+- [x] **Phase 16: Graphics I and II draw** - The legacy renderer and its sprites on the Master System video profiles, with every shipped pin unchanged; the doc and tooling riders land as the first plan (release type `feat`) (completed 2026-11-14)
 - [ ] **Phase 17: Re-run, merge and clean state** - The library re-run on `main` merged through the ratchet, the dead diagnose vocabulary pruned, timeouts re-derived and a milestone-close clean-state check (release type `fix(compat)`)
 
 ## Phase Details
@@ -76,7 +76,7 @@ the dirty-tree stamp and the assembler fetch retry land first, inside this phase
   3. The base-versus-head hashes comparison is equal for every shipped frame, audio and state pin; behaviour revision 19 and state format 17 are recorded; a legacy-mode state round trip is byte-equal and a state whose legacy sprite slots break the new bounds is refused; the fixture that enters Graphics II after frame 600 and the mid-frame mode-switch fixture each have a pinned hash, and the mode 4 bring-up fixtures hash as before
   4. The instructions-per-frame gate reports green with no new allow line, first read from a draft pull request opened before the phase is complete; the legacy-mode hardware notes are rewritten from sources with the note that MAME contradicts corrected and the open model choices (Graphics II masks, sprite Y threshold, colour-0 collision) stated with their reasons, the permissive files consulted have provenance rows, and the docs byte-cap check passes
   5. The docs state the current fault vocabulary (`docs/audio.md`, `docs/embedding.md` and `docs/runner.md` corrected) and the docs checks pass; the library run path refuses or marks a tree with tracked changes outside `.planning`, proven by a test with a dirty-tree control; the tool fetch script retries a transient DNS or TLS error and a test shows a permanent failure still fails; `cmake --workflow --preset ci` exits 0 on the phase head
-**Plans**: 9/9 plans executed
+**Plans**: 9/9 plans complete
 
 Plans:
 **Wave 1**
@@ -135,5 +135,5 @@ before a milestone-close pull request.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 16. Graphics I and II draw | 9/9 | In Progress | - |
+| 16. Graphics I and II draw | 9/9 | Complete    | 2026-11-14 |
 | 17. Re-run, merge and clean state | 0/TBD | Not started | - |

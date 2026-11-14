@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Legacy video modes
-current_phase: 16
-current_phase_name: Graphics I and II draw
-status: verifying
-stopped_at: Completed 16-09-PLAN.md
-last_updated: "2026-11-14T06:20:16.732Z"
-last_activity: 2026-11-13
-last_activity_desc: Phase 16 execution started
-state_head: 323ad14241954c4e47050b6956d0caaee660688a
+current_phase: 17
+current_phase_name: Re-run, merge and clean state
+status: planning
+stopped_at: Phase 16 complete, ready to plan Phase 17
+last_updated: "2026-11-14T06:58:45.011Z"
+last_activity: 2026-11-14
+last_activity_desc: Phase 16 complete, transitioned to Phase 17
+state_head: bfd122369f087f9b2a6097686d2d2355a05d0efc
 progress:
   total_phases: 2
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 9
   completed_plans: 9
-  percent: 0
+  percent: 50
 ---
 
 # Project State
@@ -29,18 +29,18 @@ See: .planning/PROJECT.md (updated 2026-11-13)
 
 ## Current Position
 
-Phase: 16 (Graphics I and II draw) — EXECUTING
-Plan: 9 of 9
-Status: Phase complete — ready for verification
-Last activity: 2026-11-13 — Phase 16 execution started
+Phase: 17 — Re-run, merge and clean state
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-14 — Phase 16 complete, transitioned to Phase 17
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█████░░░░░] 50%
 
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 171
+- Total plans completed: 180
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -63,6 +63,7 @@ Progress: [░░░░░░░░░░] 0%
 | 13 | 5 | - | - |
 | 14 | 8 | - | - |
 | 15 | 2 | - | - |
+| 16 | 9 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -509,7 +510,7 @@ Items acknowledged and deferred, most recent first (v2.1 closed SEED-016 as done
 ## Session Continuity
 
 Last session: 2026-11-14T06:20:16.700Z
-Stopped at: Completed 16-09-PLAN.md
+Stopped at: Phase 16 complete, ready to plan Phase 17
 Resume file: None
 Milestone v2.1 pull requests: #40, #42 and #44 (phases 13 to 15) and releases #41, #43 and #45 (v0.14.0 to v0.14.2)
 
