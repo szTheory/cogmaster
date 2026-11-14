@@ -61,12 +61,17 @@ static void legacy_cell(const cogmaster *m, int graphics2, uint32_t x, uint32_t 
     }
 }
 
+/* The colour a colour byte nibble shows: nibble 0 is the backdrop, the low nibble of R7. */
+static uint16_t legacy_dot(const cogmaster *m, uint32_t nibble)
+{
+    return cogmaster__legacy_colour(m, nibble != 0u ? nibble : (uint32_t)(m->vdp.reg[7] & 15u));
+}
+
 /* Dots [x0, x1) of one line, x1 at most the field width. A set pattern bit shows the high nibble of
-   the colour byte, a clear one the low nibble, and nibble 0 shows the backdrop, the low nibble of
-   R7. Lines from 192 on show the backdrop alone: a mode 4 picture that latched 224 or 240 lines can
-   hand over to these modes in mid-frame. Model: the backdrop of a legacy picture is a palette
-   entry of the legacy palette while the display is on, and the colour RAM backdrop while it is
-   off (cogmaster__vdp_backdrop). */
+   the colour byte, a clear one the low nibble. Lines from 192 on show the backdrop alone: a mode 4
+   picture that latched 224 or 240 lines can hand over to these modes in mid-frame. Model: the
+   backdrop of a legacy picture is a palette entry of the legacy palette while the display is on,
+   and the colour RAM backdrop while it is off (cogmaster__vdp_backdrop). */
 void cogmaster__legacy_span(cogmaster *m, uint32_t line, uint32_t x0, uint32_t x1)
 {
     const struct cogmaster__vdp *v = &m->vdp;
@@ -78,18 +83,15 @@ void cogmaster__legacy_span(cogmaster *m, uint32_t line, uint32_t x0, uint32_t x
         }
         return;
     }
-    uint16_t colours[16];
-    for (uint32_t n = 0u; n < 16u; n++) {
-        colours[n] = cogmaster__legacy_colour(m, n);
-    }
-    colours[0] = colours[v->reg[7] & 15u];
     int graphics2 = (v->reg[0] & 2u) != 0u;
     uint32_t pattern = 0u, colour = 0u;
+    uint16_t set = 0u, clear = 0u;
     for (uint32_t x = x0; x < x1; x++) {
         if (x == x0 || (x & 7u) == 0u) {
             legacy_cell(m, graphics2, x, line, &pattern, &colour);
+            set = legacy_dot(m, colour >> 4);
+            clear = legacy_dot(m, colour & 15u);
         }
-        uint32_t set = (pattern >> (7u - (x & 7u))) & 1u;
-        dots[x] = colours[set != 0u ? colour >> 4 : colour & 15u];
+        dots[x] = ((pattern >> (7u - (x & 7u))) & 1u) != 0u ? set : clear;
     }
 }
