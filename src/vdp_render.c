@@ -201,8 +201,15 @@ void cogmaster__vdp_render_until(cogmaster *m, uint32_t line, uint32_t x)
     if (at >= end) {
         return;
     }
-    /* The registers do not change inside one call, so the class is decided once. */
+    /* The registers do not change inside one call, so the class is decided once. A sprite list
+       scanned under the other class (a register write between the scan at tick 600 of the line
+       before and now switched between mode 4 and Graphics I or II) is scanned again for the
+       current line under this one: one compare per call, none per dot. */
     uint32_t cls = cogmaster__vdp_class(m);
+    if (cls != COGMASTER__VDP_BLOCKED && m->vdp.sprite_line == m->render_line &&
+        m->vdp.sprite_legacy != (uint8_t)(cls == COGMASTER__VDP_LEGACY)) {
+        cogmaster__vdp_sprite_scan(m, m->render_line);
+    }
     if (m->vdp.display && cls == COGMASTER__VDP_BLOCKED) {
         cogmaster__bus_fault(m, (uint16_t)cogmaster__vdp_mode(m), COGMASTER_FAULT_DEVICE_VDP,
                              COGMASTER_FAULT_KIND_UNSUPPORTED_VIDEO_MODE);
