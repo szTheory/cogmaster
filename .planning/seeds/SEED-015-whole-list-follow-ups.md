@@ -91,6 +91,18 @@ half its timeout, and write the finding here or in a phase note, never only in a
   rewrite bullet above are now one paragraph in `docs/maintaining.md`, while that section's critical-path sentence (macOS
   builds, then the rehearsal) is still the stale line the milestone audit named. The jobs left with stale run IDs (wasm32,
   retroarch, perf, hygiene, nofp) satisfy the rule against the fresh read and were not edited.
+- **Phase 17 timeout read** (deferred by the Phase 17 context, nothing acted on in that phase; the read is the last 40
+  successful `ci` runs, newest 43664171483, recorded in `.planning/phases/17-re-run-merge-and-clean-state/17-RUN-EVIDENCE.md`).
+  Numbers near their limits: `runner.diagnose` under qemu took 450.48 s of a 589 s be32 job (run 43514870188; the slowest
+  be32 job is 609 s, run 43458609482), and it also runs on eight other lanes where the slowest unscaled reading is 179.23 s
+  (macos-x64, run 43460663238), so check whether the be32 hashes depend on it before trimming it or running it only where
+  its hashes matter. `library.synthetic` 118.76 s against its 160 s limit (run 43462502049), `compat.ratchet` 87.36 s
+  against 142 s (run 43664171483), `compat.public_update` 61.77 s against 104 s (run 43514913934) and `compat.csv` 25.61 s
+  against 45 s (run 43516150370); these are the slowest readings over all lanes and the lane was not read, so a re-derive
+  needs a per-lane read (the scaled lanes divide by their scale). The `build` job is at exactly 2.0x (360 s against its 720 s
+  limit, run 43525961902) and the wasm32 job has a thin margin (141 s against 300 s, run 43341636921). `hygiene.tree` timed out
+  once at its new 75 s limit on a local host whose load average was near 69 (34 s alone) against a hosted slowest of 37.32 s
+  (run 43562888383): a loaded local machine is not a reason to raise it.
 - **Rejected with data, do not reopen without new numbers:** a cost ordering of the be32 tests, dropping the libretro
   host tests, caching, and path-filtering the `edited` filter. The phase's CI review measured each and found no saving
   that kept the checks it removes.
