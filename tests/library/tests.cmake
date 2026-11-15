@@ -291,6 +291,17 @@ endif()
   if(NOT rc STREQUAL "0")
     message(FATAL_ERROR "local wrapper must read literal dotenv directory without executing it")
   endif()
+  # A linked worktree has no dotenv of its own and must read the one in the main checkout.
+  execute_process(COMMAND git add CMakeLists.txt CMakePresets.json WORKING_DIRECTORY "${dotenv}" COMMAND_ERROR_IS_FATAL ANY)
+  execute_process(COMMAND git -c user.name=test -c user.email= commit -q -m fixture
+    WORKING_DIRECTORY "${dotenv}" COMMAND_ERROR_IS_FATAL ANY)
+  execute_process(COMMAND git worktree add -q --detach "${OUT}/dotenv-linked" WORKING_DIRECTORY "${dotenv}" COMMAND_ERROR_IS_FATAL ANY)
+  execute_process(COMMAND "${CMAKE_COMMAND}" -E env --unset=COGMASTER_ROM_DIR
+    sh "${ROOT}/scripts/library.sh" WORKING_DIRECTORY "${OUT}/dotenv-linked"
+    RESULT_VARIABLE rc OUTPUT_VARIABLE text ERROR_VARIABLE err)
+  if(NOT rc STREQUAL "0")
+    message(FATAL_ERROR "local wrapper in a linked worktree must read the dotenv of the main checkout")
+  endif()
   return()
 endif()
 if(COGMASTER_FIXTURES)

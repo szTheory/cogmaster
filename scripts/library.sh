@@ -3,9 +3,12 @@
 set -eu
 export LC_ALL=C
 root=$(git rev-parse --show-toplevel)
-if [ -z "${COGMASTER_ROM_DIR-}" ] && [ -f "$root/.env.local" ]; then
+# Fault prevented: a judge run in a detached worktree of main finding no library, because the dotenv sits in the main checkout.
+envfile=$root/.env.local
+[ -f "$envfile" ] || envfile=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)")/.env.local
+if [ -z "${COGMASTER_ROM_DIR-}" ] && [ -f "$envfile" ]; then
   # Treat the dotenv value as literal data, never source executable shell from it.
-  COGMASTER_ROM_DIR=$(sed -n 's/^COGMASTER_ROM_DIR=//p' "$root/.env.local")
+  COGMASTER_ROM_DIR=$(sed -n 's/^COGMASTER_ROM_DIR=//p' "$envfile")
   export COGMASTER_ROM_DIR
 fi
 case ${1-} in run | diagnose) ;; *) exec cmake --workflow --preset library ;; esac
