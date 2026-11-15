@@ -13,35 +13,26 @@ collection of physical cartridges.
 
 ## Current State
 
-**v0.14.2 is shipped** (milestone v2.1 "Fewer failing cartridges", phases 13 to 15, releases v0.14.0 to v0.14.2; before it
-v2.0 "The whole library", phases 5 to 12, releases v0.5.0 to v0.13.0). The public surface is API 14, behaviour revision
-18 and state format 16. The core plays Sega, Codemasters and Korean-board cartridges (Korean `$A000`, Hicom, Zemina,
-Nemesis, `korean_nb` and 4 PAK), keeps battery and 93C46 EEPROM saves across restarts, supports the Sports Pad, Paddle,
-3-D glasses and Light Phaser, boots from the user's own BIOS dump on request, and runs the PAL and Japanese FM profiles.
-The compatibility ledger holds a row with an honest status for every Master System and Game Gear entry at the MAME pin.
-The v2.1 diagnostic found why a third of the checked cartridges failed: routine cartridge writes and unused port
-accesses were recorded as faults, and the boots check itself is sound. With those faults dropped, the default-profile
-failing rows went from 205 to 49 in the diagnose, 285 ledger rows flipped from `fail` to `pass` with none lost, and the
-page now reads pass 1029, fail 96, unknown 832, unsupported 5 and skipped 24 over 1,986 rows. Of the rows still failing, 46 use
-legacy TMS9918 video modes the core does not render (SEED-006) and 3 show no fault and no picture change. The v2.1 audit
-(`.planning/v2.1-MILESTONE-AUDIT.md`, archived with the milestone) found 10 of 10 requirements satisfied, status
-tech_debt and no blockers.
+**v0.15.1 is shipped** (milestone v2.2 "Legacy video modes", phases 16 and 17, releases v0.15.0 and v0.15.1; before it
+v2.1 "Fewer failing cartridges", phases 13 to 15, releases v0.14.0 to v0.14.2, and v2.0 "The whole library", phases 5 to
+12, releases v0.5.0 to v0.13.0). The public surface is API 14, behaviour revision 19 and state format 17. The core plays
+Sega, Codemasters and Korean-board cartridges (Korean `$A000`, Hicom, Zemina, Nemesis, `korean_nb` and 4 PAK), keeps
+battery and 93C46 EEPROM saves across restarts, supports the Sports Pad, Paddle, 3-D glasses and Light Phaser, boots from
+the user's own BIOS dump on request, and runs the PAL and Japanese FM profiles. The compatibility ledger holds a row with
+an honest status for every Master System and Game Gear entry at the MAME pin.
+v2.2 made the TMS9918 Graphics I and II modes draw on the Master System 1, Master System 2 and Game Gear in Master System
+video mode, with the legacy sprite rules (four per line, 8x8 and 16x16, magnification, the fifth-sprite flag and the
+coincidence flag). Text, multicolour, the mixed and invalid modes and native Game Gear video keep their fault, with the
+reason stated in `docs/hardware/video.md`. No shipped frame, audio or state pin moved. The owner's library re-run merged
+through the unchanged ratchet under a stamp that is an ancestor of `main`: 87 rows moved from `fail` to `pass`, none was
+lost, and the page reads pass 1116, fail 9, unknown 832, unsupported 5 and skipped 24 over 1,986 rows. Of the 9 failing
+rows, 5 are NTSC rows counted by cause in the diagnose and 4 are PAL rows. The v2.2 audit
+(`.planning/milestones/v2.2-MILESTONE-AUDIT.md`) found 16 of 16 requirements satisfied, status tech_debt and no blockers.
 
-## Current Milestone: v2.2 Legacy video modes
+## Next Milestone
 
-**Goal:** Cartridges that use the TMS9918 Graphics I and II modes draw their real picture instead of faulting, so most
-of the 46 default-profile `fail` rows that wait on these modes leave the unsupported-mode leaf.
-
-**Target features:**
-- Graphics I and II rendering on the Master System and Game Gear (SMS video) profiles, in its own module with a fixed
-  TMS palette and the 4-slot legacy sprite engine, dispatched once per line so mode 4 and every hash pin stay put
-  (behaviour revision 19, state format 17).
-- Text, multicolour, the mixed modes, the invalid text modes and native Game Gear keep their fault, with the reason stated.
-- The library re-run through the unchanged ratchet, the dead diagnose vocabulary pruned once, the false and stale doc
-  lines fixed, and a milestone-close clean-state check script.
-
-The scope comes from the 2026-11-13 fan-out (`.planning/research/NEXT-MILESTONE.md`), approved by the owner the same day.
-The browser question is settled as DEC.68 (the library as wasm here, the page in a sibling repository, after v3.0).
+Not started. The recommended order is v3.0 States and rewind, then v3.1 the SG-1000 machine
+(`.planning/PRODUCT-ROADMAP.md`); the owner approves the scope at `/gsd-new-milestone`.
 
 ## Later Horizons
 
@@ -75,13 +66,13 @@ MIT-licensed C library that any host can embed.
 - ✓ Every cause group of 5 or more failing rows is fixed or closed with a stated reason: the `$FFFC` unused-bit writes, writes to non-register ROM addresses and undriven or undecoded port accesses no longer record a fault, the legacy video modes are closed as not emulated by design, the boots check is shown sound, and the diagnose reads 205 failing rows down to 49 with none outside the ledger; behaviour revision 18 and no hash pin moved — v2.1 (Phase 14)
 - ✓ The owner's library re-run merged through the unchanged ratchet (285 rows from `fail` to `pass`, none lost), the page equals its regeneration, and the asan, build, be32, bench and bench-wasm32 timeouts were re-derived from a fresh 40-run read in one workflow commit — v2.1 (Phase 15)
 - ✓ Graphics I and II draw on the Master System 1, Master System 2 and Game Gear in Master System video mode with the legacy sprite rules, closed-form oracles written before the renderer, a state format 17 and behaviour revision 19, the other legacy modes keeping their fault, no shipped pin moved and the per-frame gate green; the fault-vocabulary docs, the dirty-tree refusal and the download retry rode along — v2.2 (Phase 16)
+- ✓ The library re-run on `main` merged through the unchanged ratchet under a stamp that is an ancestor of `main` (87 rows from `fail` to `pass`, none lost, page equal to its regeneration), the dead diagnose vocabulary was pruned once (`diagnose 2`), the drifted timeouts were re-derived in one workflow commit, and `scripts/milestone-close.sh` reports the clean state of the repository — v2.2 (Phase 17)
 
 ### Active
 
-<!-- Current scope: milestone v2.2. Full text in REQUIREMENTS.md. -->
+<!-- No milestone is active. The next milestone's requirements are defined at /gsd-new-milestone. -->
 
-- [x] **RUN-03, RUN-04**: the library re-run merges through the ratchet and the compatibility page equals its regeneration
-- [x] **TUNE-15 to TUNE-17**: the diagnose vocabulary prune, re-derived timeouts and a milestone-close clean-state check
+(None yet — defined at the next milestone.)
 
 Deferred candidates: LEDG-06 (a catalog `video` column for the 50 Game Gear entries MAME runs in Master System mode),
 LEDG-07 (per-alias `supported` and a reason for `partial` entries), PAD-08 (the pad, Light Phaser and BIOS judges and the
@@ -124,6 +115,13 @@ scan thresholds on the owner's hardware), and text and multicolour modes (only i
   docs, dead port-class vocabulary in `runner/diag_class.h`, `requirements-completed` missing for FIX-01 and FIX-03 in
   the Phase 14 SUMMARYs, a ledger stamp that names a pre-squash commit still reachable on GitHub, and an unverified
   dirty-tree check on the `core=` stamp in `scripts/library.sh`.
+- **Shipped v2.2** (2 phases, 13 plans, 16 of 16 requirements; releases v0.15.0 and v0.15.1 in two days): 9,738 lines of
+  C in `src/`, 743 tests in the `ci` workflow, API 14, behaviour revision 19, state format 17. The milestone audit found
+  no gaps and recorded tech debt (`.planning/milestones/v2.2-MILESTONE-AUDIT.md`): a false comment about the saved
+  state offsets in `src/internal.h` and `src/state.c` (WR-01), a legacy overflow record the loader accepts that no scan
+  can leave (WR-02), no download timeout in `cmake/WlaDx.cmake` and `scripts/fetch-pin.sh` (WR-03), `milestone-close.sh`
+  at 103 lines classed as operation, a firmware scan that can read a static library of exactly 262,656 bytes as a
+  firmware image, and a stale reasoning comment on the `runner.diagnose` timeout.
 - **How releases are tried.** The owner installs the libretro core into RetroArch (Metal build) on an Apple
   Silicon Mac with the README's one line and plays a cartridge dump from their own collection.
 - **Reference material** (`.planning/preparation/`, index in `README.md` there): `SMS-SYSTEM.md` (clocks, memory,
@@ -184,7 +182,9 @@ scan thresholds on the owner's hardware), and text and multicolour modes (only i
 | Owner hand-offs are batched, `not_run` and never a gate; a requirement that named one is amended in the phase that builds what CI can prove | Rule 6: the owner verifies nothing by default | ✓ Good — 14 requirements amended with their code, 0 blockers at the audit, every VERIFICATION `human_needed: false` (v2.0) |
 | A routine cartridge write or an access to a port nothing decodes is not a fault; the first-fault rule keeps only events the hardware documents as errors | A third of the checked cartridges failed the boots check on writes real games make, and the sourced notes name no fault for them | ✓ Good — the diagnose reads 205 failing rows down to 49 with none outside the ledger and no pin moved; the undecoded-port write rests on the absence of a documented fault (v2.1, Phase 14) |
 | The boots check (a displayed picture that is not blank, and no first fault within 600 frames) stays as it is | The diagnostic found no cart the check rejects while it runs correctly; moving the cap would migrate every ledger row | ✓ Good — 3 no-fault failing rows remain, each closed by its own evidence (v2.1, Phase 14) |
-| Legacy TMS9918 video modes stay not emulated, so the rows that use them stay `fail` | The core renders mode 4 only; a pass would claim a rendering it does not do | — Pending SEED-006; 46 rows (40 and 6 in the two leaves) wait on it (v2.1, Phase 14) |
+| Legacy TMS9918 video modes stay not emulated, so the rows that use them stay `fail` | The core renders mode 4 only; a pass would claim a rendering it does not do | ✓ Superseded for Graphics I and II by the next row; text, multicolour and the mixed modes keep this rule (v2.1, Phase 14; v2.2) |
+| Graphics I and II draw in their own module, chosen once per render call, with a fixed TMS palette, the four-slot legacy sprite engine and oracles written before the renderer | Mode 4 output must stay byte-identical and the instruction gate green; an oracle written after the code would only agree with it | ✓ Good — every shipped hash equal base versus head, the instruction gate 19.5 percent lower, revision 19 and state format 17, 87 ledger rows moved from `fail` to `pass` (v2.2, Phases 16 and 17) |
+| The clean-state check is a script that reports and never gates a release; ledger ancestry is a manual command | Rule 8: no invented ceremony; a check with no recurring value is run once and recorded | — Pending owner judgment on its size: 103 lines, classed as operation because counted as a check it would exceed the repository-check budget (v2.2, Phase 17) |
 
 The full list with sources is `.planning/preparation/DECISIONS.md`.
 
@@ -201,4 +201,4 @@ After each milestone:
 3. Lessons are exported to `.planning/LESSONS.md`.
 
 ---
-*Last updated: 2026-11-15 after Phase 17*
+*Last updated: 2026-11-15 after v2.2 milestone*

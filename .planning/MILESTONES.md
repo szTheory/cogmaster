@@ -1,5 +1,45 @@
 # Milestones
 
+## v2.2 Legacy video modes (Shipped: 2026-11-15)
+
+**Phases completed:** 2 phases, 13 plans, 35 tasks (the archive tool's count from summary front matter)
+
+**Delivered:** Cartridges that use the TMS9918 Graphics I and II modes draw their real picture on the Master System 1, Master System 2 and Game Gear in Master System video mode, with the legacy sprite rules, instead of recording the unsupported-video-mode fault. Text, multicolour, the mixed and invalid modes and native Game Gear video keep their fault with the reason stated. No shipped frame, audio or state pin moved. The owner's library re-run merged through the unchanged ratchet under a stamp that is an ancestor of `main`: 87 rows moved from `fail` to `pass` with none lost, and the page reads pass 1116, fail 9, unknown 832, unsupported 5 and skipped 24 over 1,986 rows. Released as v0.15.0 and v0.15.1 (PRs #47 to #50).
+
+**Stats:**
+- Requirements: 16 of 16 satisfied (MODE 8, RUN 2, TUNE 6); audit status tech_debt, no gaps, 6 of 6 connections wired and 3 of 3 flows complete
+- Timeline: 2 days, 2026-11-13 (v2.1 close f8c0f4e) to 2026-11-15 (release 0.15.1 and the audit); 4 commits on main, two phase pull requests (#47, #49) each followed by a release pull request (#48, #50)
+- Files changed in the range: 109, with 16,446 insertions and 1,576 deletions (git diff --shortstat f8c0f4e HEAD); `src` and `include` only: 6 files, 402 insertions and 50 deletions
+- Code: 9,738 lines of C in `src/` (9,386 at the v2.1 close); 743 tests in the `ci` workflow (681 at the v2.1 close)
+- Public surface: API 14 unchanged, behaviour revision 18 to 19, state format 16 to 17 (the saved sprite slots gained a colour byte, a sprite class, a size and the latched fifth sprite index); every shipped frame, audio and state hash unchanged
+- Git range: f8c0f4e to 2582035
+
+**Known verification overrides:** 3 newly acknowledged, 16 carried forward from a prior close (see STATE.md Deferred Items). Closeout type: override_closeout. The three items are the Phase 16 deferred-items entries 16-01, 16-03 and 16-04 (the `hygiene.tree` 60 s limit under a loaded machine, and `release.firmware_scan` reading a static library of exactly 262,656 bytes as a firmware image), all listed as tech debt in the milestone audit. Phase 16's verification reads stale because Phase 17 changed ten covered files on purpose (docs, `scripts/library.sh`, the inventories and the diagnose tests); the audit recorded it as accepted, not re-verified, and the verified checks still pass.
+
+**Tech debt carried forward** (from the milestone audit, `.planning/milestones/v2.2-MILESTONE-AUDIT.md`):
+- False and stale text: the comment above `sprite_legacy` in `src/internal.h` and the matching one in `src/state.c` say the saved-state offsets stay where they were, but each sprite slot gained an attribute byte and the offsets moved by 8 (review WR-01); the `runner.diagnose` timeout comment carries a stale reasoning line; `docs/runner.md` line 434 and `runner/diag_class.h` do not say that graphics1 and graphics2 now occur only on native Game Gear video and mode4 never prints.
+- Loader and tooling edges seeded in SEED-015: the state loader accepts a legacy overflow record no real scan can leave (WR-02); no download timeout in `cmake/WlaDx.cmake` and `scripts/fetch-pin.sh` (WR-03); `release.firmware_scan` can read a static library of exactly 262,656 bytes as a firmware image; the library reducer is exercised end to end only for `vdpmode=text`; no ctest runs a legacy fixture through `cogmaster-run --machine gg --video-mode gg`.
+- Owner judgment: `scripts/milestone-close.sh` is 103 lines, not the 45 to 60 planned, and stays green only because `tests/policy/repository-checks.txt` classes it as operation (counted as a check it would exceed the repository-check budget, 990 against 973).
+- Wording: MODE-02 and success criterion 1 name one fixture per register 3 and 4 mask combination through the runner, while eleven pairs run in process under the closed-form oracle and two ROM images run through the runner (decision D-22); TUNE-15 says `rom_write` is removed but it stays in the name tables as a public constant.
+- Provenance: the remote branch `milestone/v2.2-legacy-video-modes` holds the pre-squash kickoff commits (not an ancestor of `main`).
+
+**Key accomplishments:**
+- Transient-error retries for the pinned assembler and tool downloads, an early refusal of a library run from a dirty tree, and the current fault vocabulary in four docs, with nine ci-lane controls
+- Six pinned Graphics I and II images, a closed-form pixel oracle and an in-process oracle with literal self-checks, and 22 sprite-status rows computed by one named rule, all committed before any renderer exists
+- One classifier decides the video mode class once per render call with Mode 4 output byte-identical and the instruction gate 19.5 percent lower, the four seeds that faulted on Graphics I or II moved to the text and multicolour nibbles, and the draft pull request is open with a green perf job
+- Graphics I and II now draw through render_until with a fixed or colour RAM palette and a display-gated backdrop, equal to the oracles on three profiles, while text, multicolour, the mixed and invalid modes and native Game Gear keep the fault and no shipped hash moved
+- Every Graphics I and II image now equals the closed-form oracle on three profiles through the public API and the runner hash, the mid-line switch is pinned by a line hash after its dots were checked, and the cross-lane hashes file carries 13 legacy rows from a frame-count parameter with no shipped pin moved
+- The VDP record now saves the legacy sprite fields (widened slots with a colour byte, sprite class, sprite size and the latched fifth sprite index) under state format 17 and behaviour revision 19, with class-dependent loader bounds and a byte-equal Graphics I round trip, before any sprite engine writes them
+- Graphics I and II sprites (32 entries into four slots, 8x8 and 16x16, magnification, early clock, colour 0 transparent, fifth sprite flag with its index carried across a status read, datasheet coincidence) with the class-change rescan, eleven in-process cases against the plan 02 oracle on three profiles, and the mode 4 engine and every shipped pin untouched
+- The legacy_sprites image equals the closed-form sprite oracle on every scenario and both frames it is on screen, and every status record (the tail read included) equals its derived row, on three profiles; six cross-lane hash rows, sprite-state bounds under hostile input and a legacy program seed landed, and the second push has a green hosted run with the perf gate PASS and be32 runner.hashes_file at 64.72 s
+- The legacy video notes say which modes render and which fault and call every selected choice a model with its disagreeing sources, the MAME attribution is corrected from a read of the BSD-3 file, the provenance file names the permissive files consulted at pins that answer 200, the hashes-file and late-image timeouts are twice the slowest hosted lane, and the third push has a green hosted run with the perf gate PASS and no allow line
+- The `--diagnose` line drops its two dead class words and the port value of `where`, moves to token `diagnose 2` with 30 record fields, and `scripts/library.sh`, three test files and two docs agree with it.
+- `scripts/milestone-close.sh` reads open pull requests, `CI required` on `main` and on the latest tag, the manifest against the latest release and its drafts, a merged release pull request still pending, the work tree and unreleased `feat`/`fix`/`perf` commits, prints one row each, and exits 0, 1 or 2; a fake-gh test with eleven cases proves every exit status, and one live run on clean `main` printed six ok rows.
+- The library judge ran once in a detached worktree of the phase base, its ratchet-ok result was carried by `git apply` into one commit, and the ledger and page now stamp `0a97075`, an ancestor of `origin/main`: 87 rows moved from fail to pass (fail 96 to 9, pass 1029 to 1116), no pass row was lost, and the diagnose on the ledger head counts the 5 failing NTSC rows by cause.
+- A green dispatched run on the ledger head was the sample, a fresh read of the last 40 successful runs re-derived every limit by the twice-the-slowest rule in one workflow commit (`33bbfc2`): the rehearsal job rose from 13 to 14 minutes, `library.diagnose` from 206 to 289 s and `hygiene.tree` from 60 to 75 s, nothing was lowered, and `cmake --workflow --preset ci` and `--preset hygiene` exit 0 on it.
+
+---
+
 ## v2.1 Fewer failing cartridges (Shipped: 2026-11-13)
 
 **Phases completed:** 3 phases, 15 plans, 36 tasks (the archive tool's count from summary front matter)
