@@ -5,16 +5,16 @@ milestone_name: Legacy video modes
 current_phase: 17
 current_phase_name: Re-run, merge and clean state
 status: executing
-stopped_at: Plan 17-03 Task 1 done (pushed, CI green on 1b8d446, worktree ready); waiting for owner session with COGMASTER_ROM_DIR exported
-last_updated: "2026-11-15T00:49:43.973Z"
+stopped_at: Completed 17-03-PLAN.md
+last_updated: "2026-11-15T01:38:23.458Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 17 execution started
-state_head: 2d75ac8652b6eb3004a7dc6db6b81ebcbf8acda3
+state_head: 6aa2ebdc6fa773511fc8efa73a853622698e800e
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
   percent: 50
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-14)
 ## Current Position
 
 Phase: 17 (Re-run, merge and clean state) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-11-14 — Phase 17 execution started
 
@@ -256,6 +256,7 @@ Progress: [█████░░░░░] 50%
 | Phase 16 P09 | 21 min | 3 tasks | 7 files |
 | Phase 17 P01 | 5 min | 2 tasks | 9 files |
 | Phase 17 P02 | 10 min | 3 tasks | 6 files |
+| Phase 17 P03 | 70min | 4 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -304,6 +305,8 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 16]: 16-09: runner.hashes_file is 130 s (2 x 64.72 s on be32, run 43562888383) and the three g2_late tests 29 s (2 x 14.02 s); core.state.legacy_sprite_bounds keeps its 60 s tier; the third push 6e8984e has hosted run 43564813364 green with CI required success, perf PASS (10089912 against base 12288947, no allow line), ci workflow 737 of 737, hygiene 84 of 84, subset compare empty (173 base lines, 198 head); MODE-02, MODE-04, MODE-05, MODE-07 and MODE-08 complete; the pull request stays a draft for /gsd-ship — Plan 16-09 rationale: every reference consulted for a model choice has a traceable row, fixtures are read as fidelity to the notes and never to silicon, and the timeouts are twice a measured hosted lane
 - [Phase 17]: 17-01: the runner token is diagnose 2 and the reducer needs 30 fields, so a stale runner reads as malformed; vdpmode (mode4 canary) and faddr stay, the name tables keep the ROM-write and controller names, and TUNE-15's text now keeps vdpmode with its raise site in src/vdp_render.c
 - [Phase 17]: 17-02: milestone-close.sh prints six rows (open-prs, main-ci, release, release-pr, tree, unreleased) and exits 0, 1 or 2; every gh read is v=$(gh ...) || v=unknown on one line, and policy.milestone_close drives eleven cases over a throwaway repository and a fake gh that answers filtered text and refuses unknown paths; the live run on clean main printed six ok rows, exit 0
+- [Phase 17]: Plan 17-03: the judge ran once at the phase base in a detached worktree, so the ledger stamp 0a97075 is an ancestor of origin/main; the ledger and page were carried by git apply and compared with cmp, never edited
+- [Phase 17]: Plan 17-03: scripts/library.sh falls back to the main checkout's dotenv through the common git directory when run from a linked worktree (d2b8605), with a test case
 
 ### Pending Todos
 
@@ -518,8 +521,8 @@ Items acknowledged and deferred, most recent first (v2.1 closed SEED-016 as done
 
 ## Session Continuity
 
-Last session: 2026-11-15T00:49:43.825Z
-Stopped at: Plan 17-03 Task 1 done (pushed, CI green on 1b8d446, worktree ready); waiting for owner session with COGMASTER_ROM_DIR exported
+Last session: 2026-11-15T01:38:23.358Z
+Stopped at: Completed 17-03-PLAN.md
 Resume file: .planning/phases/17-re-run-merge-and-clean-state/17-CONTEXT.md
 Milestone v2.1 pull requests: #40, #42 and #44 (phases 13 to 15) and releases #41, #43 and #45 (v0.14.0 to v0.14.2)
 

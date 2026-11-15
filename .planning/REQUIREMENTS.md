@@ -23,8 +23,8 @@ a promise: a row also needs a changing picture to pass the boots check, and some
 
 ### Library run
 
-- [ ] **RUN-03**: After the phase 16 release merges, the library judge is re-run on `main` over the owner's library, so the ledger stamp names a commit that is an ancestor of `main`, and the rows that left `fail` are merged by pull request through the unchanged ratchet with no `pass` row lost
-- [ ] **RUN-04**: The compatibility page and its counts equal its regeneration from the merged ledger, `compat.exit` stays green, and the rows that still fail are counted by cause in the diagnose
+- [x] **RUN-03**: After the phase 16 release merges, the library judge is re-run on `main` over the owner's library, so the ledger stamp names a commit that is an ancestor of `main`, and the rows that left `fail` are merged by pull request through the unchanged ratchet with no `pass` row lost
+- [x] **RUN-04**: The compatibility page and its counts equal its regeneration from the merged ledger, `compat.exit` stays green, and the rows that still fail are counted by cause in the diagnose
 
 ### Debt and tooling
 
@@ -79,8 +79,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MODE-06 | Phase 16 | Complete |
 | MODE-07 | Phase 16 | Complete |
 | MODE-08 | Phase 16 | Complete |
-| RUN-03 | Phase 17 | Pending |
-| RUN-04 | Phase 17 | Pending |
+| RUN-03 | Phase 17 | Complete |
+| RUN-04 | Phase 17 | Complete |
 | TUNE-12 | Phase 16 | Complete |
 | TUNE-13 | Phase 16 | Complete |
 | TUNE-14 | Phase 16 | Complete |
