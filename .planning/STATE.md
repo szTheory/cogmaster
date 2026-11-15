@@ -4,17 +4,17 @@ milestone: v2.2
 milestone_name: Legacy video modes
 current_phase: 17
 current_phase_name: Re-run, merge and clean state
-status: executing
-stopped_at: Completed 17-03-PLAN.md
-last_updated: "2026-11-15T01:38:23.458Z"
+status: verifying
+stopped_at: Completed 17-04-PLAN.md
+last_updated: "2026-11-15T02:07:27.233Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 17 execution started
-state_head: 6aa2ebdc6fa773511fc8efa73a853622698e800e
+state_head: e7ac5e5e98e335acc78b736fedaec5a258d8a37e
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
   percent: 50
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-11-14)
 
 Phase: 17 (Re-run, merge and clean state) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-14 — Phase 17 execution started
 
 Progress: [█████░░░░░] 50%
@@ -257,6 +257,7 @@ Progress: [█████░░░░░] 50%
 | Phase 17 P01 | 5 min | 2 tasks | 9 files |
 | Phase 17 P02 | 10 min | 3 tasks | 6 files |
 | Phase 17 P03 | 70min | 4 tasks | 6 files |
+| Phase 17 P04 | 29min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -307,6 +308,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 17]: 17-02: milestone-close.sh prints six rows (open-prs, main-ci, release, release-pr, tree, unreleased) and exits 0, 1 or 2; every gh read is v=$(gh ...) || v=unknown on one line, and policy.milestone_close drives eleven cases over a throwaway repository and a fake gh that answers filtered text and refuses unknown paths; the live run on clean main printed six ok rows, exit 0
 - [Phase 17]: Plan 17-03: the judge ran once at the phase base in a detached worktree, so the ledger stamp 0a97075 is an ancestor of origin/main; the ledger and page were carried by git apply and compared with cmp, never edited
 - [Phase 17]: Plan 17-03: scripts/library.sh falls back to the main checkout's dotenv through the common git directory when run from a linked worktree (d2b8605), with a test case
+- [Phase 17]: Plan 17-04: the rehearsal job rose from 13 to 14 minutes, library.diagnose from 206 to 289 s and hygiene.tree from 60 to 75 s from a fresh 40-run read (sample: dispatched run 43664171483 on the ledger head); runner.diagnose holds at 633 s because limits are compared with unscaled lane seconds (largest 179.23 s on macos-x64, the 450.48 s reading is the be32 lane under a scale of 8); one workflow commit 33bbfc2, nothing lowered, nothing pushed after it
 
 ### Pending Todos
 
@@ -522,8 +524,8 @@ Items acknowledged and deferred, most recent first (v2.1 closed SEED-016 as done
 
 ## Session Continuity
 
-Last session: 2026-11-15T01:38:23.358Z
-Stopped at: Completed 17-03-PLAN.md
+Last session: 2026-11-15T02:07:27.115Z
+Stopped at: Completed 17-04-PLAN.md
 Resume file: .planning/phases/17-re-run-merge-and-clean-state/17-CONTEXT.md
 Milestone v2.1 pull requests: #40, #42 and #44 (phases 13 to 15) and releases #41, #43 and #45 (v0.14.0 to v0.14.2)
 
