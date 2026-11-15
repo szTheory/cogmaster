@@ -201,3 +201,17 @@ record for the next tune-up or ledger work (`.planning/v2.0-MILESTONE-AUDIT.md`)
   four fuzz targets and omits eeprom and pad; `ASSET_POLICY.md` says compat-update projects only existing ledger cases and
   that local runs read the BIOS folder "recognised by digest" (only the window scan does); `tests/perf/allow.txt` names
   phases in a file that outlived them; the quality floors (669, 627) sit 2 below the inventories.
+
+## Phase 17 code review
+
+Findings from `17-REVIEW.md`, all tooling or test code, so seeds (rule 7). Detail and line numbers are in the review.
+
+- `perf` job timeout comment re-derived to 2 x 106 s while the value stays 6 minutes; by the `docs/testing.md` rule it would be 4 or 5. `hygiene.timeout_comments` only checks at least twice S.
+- `scripts/milestone-close.sh` `release-pr` row: fold `incomplete_results` into the `--jq` filter so a timed-out search reads unknown, not ok.
+- `scripts/library.sh` dotenv lookup: `git rev-parse --path-format=absolute` needs git 2.31 or newer. Use `git worktree list --porcelain` only when the dotenv is missing, so an exported variable never depends on it.
+- `tests/library/tests.cmake` linked-worktree fixture: add `-c commit.gpgsign=false` like the sibling fixtures.
+- `scripts/milestone-close.sh` is classed `operation` in `tests/policy/repository-checks.txt` at 103 lines; counted as a check it would be 990 lines against a limit of 973. Owner judgment.
+- Close check controls missing for red CI on the release tag, a branch other than `main`, and a local head that differs from remote `main`.
+- Windows path conversion guard covers only the `git show` call; the `search/issues?q=repo:...` argument has the same shape (unconfirmed).
+- `scripts/hygiene.sh` and `scripts/firmware-window.sh` read `./.env.local` only, so in a linked worktree the firmware-window privacy scan does nothing.
+- `policy.milestone_close` runs about 330 processes; its 60 s limit is tight if Windows is 40 times slower than the 1.4 s local run.
