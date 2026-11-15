@@ -3,19 +3,18 @@ gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Legacy video modes
 current_phase: 17
-current_phase_name: Re-run, merge and clean state
-status: verifying
-stopped_at: Completed 17-04-PLAN.md
-last_updated: "2026-11-15T02:07:27.233Z"
+status: completed
+stopped_at: Phase 17 complete — all phases complete
+last_updated: "2026-11-15T02:34:31.663Z"
 last_activity: 2026-11-14
-last_activity_desc: Phase 17 execution started
-state_head: e7ac5e5e98e335acc78b736fedaec5a258d8a37e
+last_activity_desc: Phase 17 complete
+state_head: 89febfd2c88fc2e64ef52473b6887c52382c1253
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 13
   completed_plans: 13
-  percent: 50
+  percent: 100
 ---
 
 # Project State
@@ -29,18 +28,18 @@ See: .planning/PROJECT.md (updated 2026-11-14)
 
 ## Current Position
 
-Phase: 17 (Re-run, merge and clean state) — EXECUTING
-Plan: 4 of 4
-Status: Phase complete — ready for verification
-Last activity: 2026-11-14 — Phase 17 execution started
+Phase: 17
+Plan: Not started
+Status: All phases complete
+Last activity: 2026-11-14 — Phase 17 complete
 
-Progress: [█████░░░░░] 50%
+Progress: [██████████] 100%
 
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 180
+- Total plans completed: 184
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -64,6 +63,7 @@ Progress: [█████░░░░░] 50%
 | 14 | 8 | - | - |
 | 15 | 2 | - | - |
 | 16 | 9 | - | - |
+| 17 | 4 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -525,7 +525,7 @@ Items acknowledged and deferred, most recent first (v2.1 closed SEED-016 as done
 ## Session Continuity
 
 Last session: 2026-11-15T02:07:27.115Z
-Stopped at: Completed 17-04-PLAN.md
+Stopped at: Phase 17 complete — all phases complete
 Resume file: .planning/phases/17-re-run-merge-and-clean-state/17-CONTEXT.md
 Milestone v2.1 pull requests: #40, #42 and #44 (phases 13 to 15) and releases #41, #43 and #45 (v0.14.0 to v0.14.2)
 

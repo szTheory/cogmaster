@@ -57,7 +57,7 @@ fault. Acceptance rests on owned fixtures and closed-form oracles, not on the fl
 in a release; the scope and its reasoning are in `.planning/research/NEXT-MILESTONE.md`.
 
 - [x] **Phase 16: Graphics I and II draw** - The legacy renderer and its sprites on the Master System video profiles, with every shipped pin unchanged; the doc and tooling riders land as the first plan (release type `feat`) (completed 2026-11-14)
-- [ ] **Phase 17: Re-run, merge and clean state** - The library re-run on `main` merged through the ratchet, the dead diagnose vocabulary pruned, timeouts re-derived and a milestone-close clean-state check (release type `fix(compat)`)
+- [x] **Phase 17: Re-run, merge and clean state** - The library re-run on `main` merged through the ratchet, the dead diagnose vocabulary pruned, timeouts re-derived and a milestone-close clean-state check (release type `fix(compat)`) (completed 2026-11-14)
 
 ## Phase Details
 
@@ -121,7 +121,7 @@ before a milestone-close pull request.
   3. The diagnose vocabulary nothing raises any more is removed in one change, the diagnose line shape changes once, and the diagnose tests and `docs/runner.md` agree with the new shape
   4. The be32, diagnose-test and hygiene tree-check timeouts are re-derived by the twice-the-slowest rule from live runs, each with its run IDs, in one workflow commit, and `hygiene.timeout_comments` passes
   5. A milestone-close check script reports open pull requests, main CI on the latest commit, the latest release and its release pull request, and a clean work tree on `main`, exits non-zero when any is off (a test with a dirty-tree control proves it), and is described in `docs/maintaining.md` as a check to run, not a release gate; `cmake --workflow --preset ci` exits 0 on the phase head
-**Plans:** 4/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 **Wave 1**
@@ -149,4 +149,4 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 16. Graphics I and II draw | 9/9 | Complete    | 2026-11-14 |
-| 17. Re-run, merge and clean state | 4/4 | In Progress | - |
+| 17. Re-run, merge and clean state | 4/4 | Complete    | 2026-11-14 |
