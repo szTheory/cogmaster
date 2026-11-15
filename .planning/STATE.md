@@ -5,11 +5,11 @@ milestone_name: Legacy video modes
 current_phase: 17
 current_phase_name: Re-run, merge and clean state
 status: executing
-stopped_at: Completed 17-02-PLAN.md
-last_updated: "2026-11-14T17:34:07.659Z"
+stopped_at: Plan 17-03 Task 1 done (pushed, CI green on 1b8d446, worktree ready); waiting for owner session with COGMASTER_ROM_DIR exported
+last_updated: "2026-11-15T00:49:43.973Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 17 execution started
-state_head: 968a3f508d612bbfeb0281defad1908d4e1ae894
+state_head: 2d75ac8652b6eb3004a7dc6db6b81ebcbf8acda3
 progress:
   total_phases: 2
   completed_phases: 1
@@ -517,8 +517,8 @@ Items acknowledged and deferred, most recent first (v2.1 closed SEED-016 as done
 
 ## Session Continuity
 
-Last session: 2026-11-14T17:34:07.525Z
-Stopped at: Completed 17-02-PLAN.md
+Last session: 2026-11-15T00:49:43.825Z
+Stopped at: Plan 17-03 Task 1 done (pushed, CI green on 1b8d446, worktree ready); waiting for owner session with COGMASTER_ROM_DIR exported
 Resume file: .planning/phases/17-re-run-merge-and-clean-state/17-CONTEXT.md
 Milestone v2.1 pull requests: #40, #42 and #44 (phases 13 to 15) and releases #41, #43 and #45 (v0.14.0 to v0.14.2)
 
