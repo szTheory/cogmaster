@@ -161,6 +161,51 @@ From `.planning/milestones/v2.1-MILESTONE-AUDIT.md` (status tech_debt, no gaps):
 
 ---
 
+## Milestone: v2.2 — Legacy video modes
+
+**Shipped:** 2026-11-15 (releases v0.15.0 and v0.15.1; phase PRs #47 and #49, release PRs #48 and #50, audit on `milestone/v2.2-close`)
+**Phases:** 2 | **Plans:** 13 | **Sessions:** 20 Runtime Log rows in STATE.md since the v2.2 start, this close included
+
+### What Was Built
+- Phase 16: Graphics I and II draw on the Master System 1, Master System 2 and Game Gear in Master System video mode, with the legacy sprite rules (four slots, 8x8 and 16x16, magnification, fifth-sprite and coincidence flags), behaviour revision 19 and state format 17; the fault-vocabulary docs, the dirty-tree refusal and the download retry rode along as plan 1 (v0.15.0).
+- Phase 17: the library re-run on `main` merged through the unchanged ratchet (87 rows from `fail` to `pass`, none lost, page pass 1116 and fail 9), the dead diagnose vocabulary pruned once (`diagnose 2`), the drifted timeouts re-derived in one workflow commit, and `scripts/milestone-close.sh` (v0.15.1).
+- 16 of 16 requirements, 743 tests in the `ci` workflow (681 at the v2.1 close); API 14 unchanged, behaviour revision 18 to 19, state format 16 to 17.
+
+### What Worked
+- Oracles before the renderer: six pinned images, a closed-form pixel oracle and 22 derived sprite-status rows were committed in plan 16-02, so the renderer in 16-04 and the sprite engine in 16-07 were judged against something that could not have been fitted to them.
+- One classifier per render call, with the mode 4 output compared byte for byte against base hashes captured first: no shipped pin moved and the instruction gate came out 19.5 percent lower.
+- A draft pull request opened after plan 16-03 gave the first hosted perf read before the phase was done, and the second and third pushes each had a green hosted run.
+- The ratchet again: the judge ran once in a detached worktree of the phase base, and the result was carried by `git apply` into one commit under a stamp that is an ancestor of `main`, which fixed the v2.1 pre-squash stamp problem.
+
+### What Was Inefficient
+- A comment on a persisted layout went false (review WR-01): the comments in `src/internal.h` and `src/state.c` still say the saved-state offsets stay where they were after the sprite slots grew by 8, and no check reads a comment.
+- The milestone-close script planned at 45 to 60 lines landed at 103 and stays green only by being classed as operation; the first dispatched run also found a Windows fault in it that the local run had not.
+- `release.firmware_scan` took a static library of exactly 262,656 bytes for a firmware image, a size rule applied to a file it was never meant to read; it hit by chance and is not fixed.
+- `hygiene.tree` sat at 58.1 s of its 60 s limit before Phase 17 raised it to 75 s, so two plans carried a near-miss note.
+- SUMMARY front matter drifted from the rule again: `requirements-completed` is empty in 16-02, 16-03, 16-06 and 16-07, and Phase 16's verification reads stale because Phase 17 changed ten files it covers on purpose.
+
+### Patterns Established
+- Write the oracle and the base hashes first, commit them, and only then write the code they judge.
+- Carry a judged ledger into the tree by `git apply` from a detached worktree of a known base, so the stamp names a commit that will survive the squash.
+- A check script that only reports (`milestone-close.sh`) is operation, not a gate; any size it gains is argued in `tests/policy/repository-checks.txt`.
+
+### Key Lessons
+1. A comment about a persisted layout is a claim no test reads; change the layout and the comment in one commit, or put the layout in a test (review WR-01).
+2. A scan that classifies files by size must exclude files it can identify by magic (`ar`), or a build can land on a size by chance (`release.firmware_scan`).
+3. Tooling plans underestimate by half: budget a script at twice its sketch, and dispatch it on the Windows lane before the phase ends.
+4. A phase that edits files an earlier phase's verification covers makes that report stale on purpose; record the acceptance in the audit instead of re-running the verifier (seen at v2.0, v2.1 and v2.2).
+
+### Cost Observations
+- Model mix by Runtime Log row: claude-sonnet-5-5 for most steps, with a claude-opus-5-5 planner and a claude-haiku-5-5 plan checker on the planning steps, and research, review and verifier subagents spawned per step.
+- Sessions: 20 Runtime Log rows, one GSD step per row.
+- Notable: token and dollar cost were not measured; no number is claimed.
+
+### Tech Debt Carried Forward
+From `.planning/milestones/v2.2-MILESTONE-AUDIT.md` (status tech_debt, no gaps):
+- The false comment on the saved-state offsets, the legacy overflow record the loader accepts, no download timeout in the assembler and tool fetch, `release.firmware_scan` on an exact-size archive, the stale `runner.diagnose` timeout comment, thin reducer coverage beyond `vdpmode=text`, and no ctest for a legacy fixture on native Game Gear through the runner (seeds in SEED-015).
+- Owner judgment: keep `milestone-close.sh` as operation with an honest reason, or trim it (103 lines).
+- Ledger stamp ancestry has no test, CI step or script row; it stays a manual command by design.
+
 ---
 
 ## Cross-Milestone Trends
@@ -172,6 +217,7 @@ From `.planning/milestones/v2.1-MILESTONE-AUDIT.md` (status tech_debt, no gaps):
 | v1.0 | 37 | 4 | One phase, one pull request and one release each; automation-first verification |
 | v2.0 | 84 | 8 | Fan-out discuss with an adversarial pass; draft pull request early for CI changes; owner hand-offs batched as seeds and kept out of the gates |
 | v2.1 | 22 | 3 | Measure first: a counts-only diagnostic grouped the failures, a sourced decision table and count gates decided each fix, and the ratchet judged the re-run |
+| v2.2 | 20 | 2 | Oracle first: pinned images, closed-form oracles and base hashes were committed before the renderer, and the ledger stamp was carried from a detached worktree so it stays an ancestor of `main` |
 
 ### Cumulative Quality
 
@@ -180,9 +226,10 @@ From `.planning/milestones/v2.1-MILESTONE-AUDIT.md` (status tech_debt, no gaps):
 | v1.0 | 399 | about 7,700 | 8 hosted lanes, byte-identical |
 | v2.0 | 671 | 9,403 in `src` | 8 hosted lanes, byte-identical; no earlier pin moved |
 | v2.1 | 681 | 9,386 in `src` | no hash pin moved (behaviour revision 18) |
+| v2.2 | 743 | 9,738 in `src` | no shipped hash pin moved (behaviour revision 19, state format 17); 13 legacy rows added to the cross-lane hashes file |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. Timeouts set before the code runs need a measurement afterwards, and the check must see the number, not only its comment (v1.0 lesson 1, v2.0 lesson 1 and the v2.1 phase 15 re-derivation of seven drifted timeouts: seen three times).
+1. Timeouts set before the code runs need a measurement afterwards, and the check must see the number, not only its comment (v1.0 lesson 1, v2.0 lesson 1, the v2.1 phase 15 re-derivation of seven drifted timeouts and the v2.2 phase 17 re-derivation of three more: seen four times).
 2. Triage review findings inside the phase that produced them (v1.0 lesson 2; v2.0 held it with one fix round per phase and no open untriaged finding; v2.1 skipped the Phase 14 code review, recorded as advisory).
 3. Not yet repeated across milestones: budgets raised in the plan that reaches them, the README moving with the scope, and a frozen digest of the original before a port.

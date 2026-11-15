@@ -2,38 +2,36 @@
 gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Legacy video modes
-current_phase: 17
-status: completed
-stopped_at: Phase 17 complete — all phases complete; next /gsd-ship 17
-last_updated: "2026-11-15T03:08:50.117Z"
-last_activity: 2026-11-14
-last_activity_desc: "Phase 17 shipped as PR #49"
-state_head: 0195c663d90d2f8e8b73e200ca57a93880945066
+status: Awaiting next milestone
+stopped_at: Milestone v2.2 complete and archived; next /gsd-ship for milestone/v2.2-close, then /gsd-new-milestone
+last_updated: "2026-11-15T13:40:58.626Z"
+last_activity: 2026-11-15
+last_activity_desc: Milestone v2.2 completed and archived
+state_head: 2582035592d988587c9e24d78e00883124c5ad25
 progress:
   total_phases: 2
   completed_phases: 2
   total_plans: 13
   completed_plans: 13
   percent: 100
+current_phase: 17
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-11-14)
+See: .planning/PROJECT.md (updated 2026-11-15)
 
 **Core value:** Master System and Game Gear games behave as they do on the console, identically on every platform, from a small MIT-licensed C library that any host can embed.
-**Current focus:** Phase 17 — Re-run, merge and clean state
+**Current focus:** Planning next milestone (v2.2 shipped as v0.15.0 and v0.15.1; recommended next: v3.0 States and rewind)
 
 ## Current Position
 
-Phase: 17
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-11-14 -- Phase 17 shipped as PR #49
-
-Progress: [██████████] 100%
+Phase: Milestone v2.2 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-11-15 — Milestone v2.2 completed and archived
 
 
 ## Performance Metrics
@@ -498,13 +496,17 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-15 | Execute phase 17 close-out (gsd-execute-phase 17); four plans summarized, a Windows fault in the milestone-close script found by the first dispatched run and fixed, the library dotenv found from a linked worktree (owner-authorised, with a test), code review 0 critical, 5 warnings and 4 info recorded as seeds in 17-REVIEW-DISPOSITION.md (all tooling code, rule 7), verifier passed 10 of 10 with all 5 requirement IDs satisfied, phase marked complete; the branch is 4 commits ahead of origin for the ship push | Claude Code | claude-sonnet-5-5 (reviewer and verifier claude-sonnet-5-5) |
 | 2026-11-14 | Ship phase 17 (gsd-ship 17); pushed the branch, opened PR #49 with a Conventional Commit title, no review requested | Claude Code | claude-sonnet-5-5 |
 | 2026-11-15 | Audit milestone v2.2 (gsd-audit-milestone); 16 of 16 requirements satisfied, integration checker found no blocker, status tech_debt, report in .planning/v2.2-MILESTONE-AUDIT.md, milestone-close check exit 0 on main at dddbb7e | Claude Code | claude-sonnet-5-5 |
+| 2026-11-15 | Complete milestone v2.2 (gsd-complete-milestone v2.2); 3 deferred items acknowledged, closeout override_closeout (Phase 16 verification stale because Phase 17 changed covered files on purpose, accepted as in v2.1), 16 of 16 requirements, PROJECT.md evolved, roadmap and requirements archived under .planning/milestones, no tag (release-please owns tags) | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
-Items acknowledged and deferred, most recent first (v2.1 closed SEED-016 as done and acknowledged nothing new; v2.0 rows are owner hand-offs and follow-ups from the milestone audit; none is a gate):
+Items acknowledged and deferred, most recent first (v2.2 acknowledged the three Phase 16 deferred-items entries, all listed as tech debt in its audit; v2.1 closed SEED-016 as done and acknowledged nothing new; v2.0 rows are owner hand-offs and follow-ups from the milestone audit; none is a gate):
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
+| deferred_items | 16/deferred-items.md: 16-01 `hygiene.tree` exceeds its 60 s limit when the hygiene lane runs in parallel | acknowledged (limit re-derived to 75 s in Phase 17) | 2026-11-15 | v2.2 |
+| deferred_items | 16/deferred-items.md: 16-03 `hygiene.tree` took 58.1 s of its 60 s limit | acknowledged (same item as 16-01) | 2026-11-15 | v2.2 |
+| deferred_items | 16/deferred-items.md: 16-04 `release.firmware_scan` reads a static library of exactly 262656 bytes as a firmware image | acknowledged (fix belongs to the scan: skip a file that starts with the `ar` magic) | 2026-11-15 | v2.2 |
 | seeds | SEED-016: why a third of the checked cartridges fail the boots check | done 2026-11-13 (v0.14.0 to v0.14.2), no longer carried | 2026-11-13 | v2.1 |
 | seeds | SEED-015: whole-list ledger, CI-speed and milestone audit follow-ups | dormant (next ledger or CI-speed work) | 2026-11-12 | v2.0 |
 | seeds | SEED-014: PAL and Japanese FM follow-ups | dormant | 2026-11-12 | v2.0 |
@@ -528,11 +530,12 @@ Items acknowledged and deferred, most recent first (v2.1 closed SEED-016 as done
 ## Session Continuity
 
 Last session: 2026-11-15T02:07:27.115Z
-Stopped at: Phase 17 complete — all phases complete
-Resume file: .planning/phases/17-re-run-merge-and-clean-state/17-CONTEXT.md
-Milestone v2.1 pull requests: #40, #42 and #44 (phases 13 to 15) and releases #41, #43 and #45 (v0.14.0 to v0.14.2)
+Stopped at: Milestone v2.2 complete and archived; next /gsd-ship for milestone/v2.2-close, then /gsd-new-milestone
+Resume file: None
+Milestone v2.2 pull requests: #47 and #49 (phases 16 and 17) and releases #48 and #50 (v0.15.0 and v0.15.1)
 
 ## Operator Next Steps
 
 
-- Phase 16 shipped (PR #47, release v0.15.0, release run green). Phase 17 context is gathered; next: `/clear` then `/gsd-plan-phase 17`. The owner session in 17-CONTEXT D-04 (library judge in a worktree, then diagnose) comes after the code work, at execute.
+
+- Start the next milestone with /gsd-new-milestone
