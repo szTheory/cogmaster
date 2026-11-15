@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.1](https://github.com/szTheory/cogmaster/compare/v0.15.0...v0.15.1) (2026-11-15)
+
+
+### Bug Fixes
+
+* **compat:** publish the library results judged on main and re-derive drifted timeouts ([#49](https://github.com/szTheory/cogmaster/issues/49)) ([ead0f6e](https://github.com/szTheory/cogmaster/commit/ead0f6e8145f40c970234a08e71405204fc2978b))
+
 ## [0.15.0](https://github.com/szTheory/cogmaster/compare/v0.14.2...v0.15.0) (2026-11-14)
 
 
