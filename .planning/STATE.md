@@ -5,10 +5,10 @@ milestone_name: Legacy video modes
 current_phase: 17
 status: completed
 stopped_at: Phase 17 complete — all phases complete; next /gsd-ship 17
-last_updated: "2026-11-15T02:34:31.663Z"
+last_updated: "2026-11-15T03:08:50.117Z"
 last_activity: 2026-11-14
-last_activity_desc: Phase 17 complete
-state_head: 89febfd2c88fc2e64ef52473b6887c52382c1253
+last_activity_desc: "Phase 17 shipped as PR #49"
+state_head: 0195c663d90d2f8e8b73e200ca57a93880945066
 progress:
   total_phases: 2
   completed_phases: 2
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-11-14)
 Phase: 17
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-11-14 — Phase 17 complete
+Last activity: 2026-11-14 -- Phase 17 shipped as PR #49
 
 Progress: [██████████] 100%
 
@@ -496,6 +496,7 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-15 | Execute phase 17 plan 17-03 (gsd-execute-phase 17); judge run once in a detached worktree of the phase base 0a97075 (ratchet ok, no pass row lost, 87 rows fail to pass), ledger and page carried by git apply and stamped 0a97075, an ancestor of origin/main, diagnose on the ledger head counts 5 failing rows by cause, fail total 9 on the ledger, dispatched ci runs green on 1b8d446 and d2b8605 (https://github.com/szTheory/cogmaster/actions/runs/43660745598), worktree removed, no pull request opened | Claude Code | claude-sonnet-5-5 |
 | 2026-11-15 | Execute phase 17 plan 17-04 (gsd-execute-phase 17); the ledger head 2cc8bb5 pushed once and a dispatched ci run on it green (https://github.com/szTheory/cogmaster/actions/runs/43664171483), 40-run read of job and test seconds, one workflow commit 33bbfc2 (rehearsal job 13 to 14 minutes, library.diagnose 206 to 289 s, hygiene.tree 60 to 75 s, runner.diagnose held at 633 s, every other timeout-minutes comment refreshed, no timeout lowered), hygiene and ci workflows exit 0 on it, ship hand-off and SEED-015 breadcrumb recorded, no pull request opened | Claude Code | claude-sonnet-5-5 |
 | 2026-11-15 | Execute phase 17 close-out (gsd-execute-phase 17); four plans summarized, a Windows fault in the milestone-close script found by the first dispatched run and fixed, the library dotenv found from a linked worktree (owner-authorised, with a test), code review 0 critical, 5 warnings and 4 info recorded as seeds in 17-REVIEW-DISPOSITION.md (all tooling code, rule 7), verifier passed 10 of 10 with all 5 requirement IDs satisfied, phase marked complete; the branch is 4 commits ahead of origin for the ship push | Claude Code | claude-sonnet-5-5 (reviewer and verifier claude-sonnet-5-5) |
+| 2026-11-14 | Ship phase 17 (gsd-ship 17); pushed the branch, opened PR #49 with a Conventional Commit title, no review requested | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
