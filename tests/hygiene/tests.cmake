@@ -5,9 +5,10 @@ include(${CMAKE_CURRENT_LIST_DIR}/../policy/firmware_window_cases.cmake)
 
 # Fault prevented: a personal path or address, an unlisted binary, a game
 # image or GPL text in any file git would track, ignored build output aside.
+# Timeout: 75 s; 2 x 37.32 s (hygiene), slowest of 40 runs, run 43562888383.
 cogmaster_add_test(NAME hygiene.tree
   COMMAND ${COGMASTER_SH} ${CMAKE_SOURCE_DIR}/scripts/hygiene.sh --tree
-  LABELS hygiene TIMEOUT 60)
+  LABELS hygiene TIMEOUT 75)
 
 # Fault prevented: a tree scan that passes whatever the tree holds. A
 # throwaway repository holds a copy of scripts/hygiene.sh and one untracked,

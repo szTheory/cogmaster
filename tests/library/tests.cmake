@@ -315,9 +315,9 @@ if(COGMASTER_FIXTURES)
   set(diag ${CMAKE_CURRENT_LIST_DIR}/diagnose.cmake)
   set(diag_args -DROOT=${PROJECT_SOURCE_DIR} -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures -DSEEDS=${PROJECT_BINARY_DIR}/tests/seeds
     -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${library_emulator}" -P ${diag})
-  # Timeout: 206 s; 2 x 102.97 s (macos-x64), slowest of 1 run, run 43334476928.
+  # Timeout: 289 s; 2 x 144.43 s (macos-x64), slowest of 24 runs, run 43460663238.
   cogmaster_add_test(NAME library.diagnose COMMAND ${CMAKE_COMMAND} -DCASE=main
-    -DOUT=${PROJECT_BINARY_DIR}/tests/library-diagnose/main ${diag_args} LABELS library TIMEOUT 206)
+    -DOUT=${PROJECT_BINARY_DIR}/tests/library-diagnose/main ${diag_args} LABELS library TIMEOUT 289)
   # Timeout: 35 s; 2 x 17.5 s (windows-arm64), slowest of 1 run, run 43334476928.
   cogmaster_add_test(NAME library.diagnose.taxonomy COMMAND ${CMAKE_COMMAND} -DCASE=taxonomy
     -DOUT=${PROJECT_BINARY_DIR}/tests/library-diagnose/taxonomy ${diag_args} LABELS library TIMEOUT 35)
