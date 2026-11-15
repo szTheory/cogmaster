@@ -51,7 +51,8 @@ else
   row main-ci "$(verdict "$w")" "CI required $w at $(short "$main")"
 fi
 
-m=$(git show origin/main:.release-please-manifest.json) || m=unknown
+# Fault prevented: a Windows shell rewriting origin/main:path into a ;-separated path list, which left the manifest unread.
+m=$(MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' git show origin/main:.release-please-manifest.json) || m=unknown
 ver=
 [ "$m" = unknown ] || ver=$(printf '%s\n' "$m" | sed -n 's/.*"\.":[[:space:]]*"\([^"]*\)".*/\1/p')
 want=unknown
