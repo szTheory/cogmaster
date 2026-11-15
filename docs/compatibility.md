@@ -9,7 +9,7 @@ A row names its setting: machine, region, tv, mapper, fm and the check with its 
 
 Rows: 1986. Evaluated coverage: 1125. Own fixtures: 4.
 
-- pass=1029 fail=96 infrastructure_error=0
+- pass=1116 fail=9 infrastructure_error=0
 - unevaluated: unknown=832 unsupported=5 skipped=24
 - pal rows judged: 512; fm=on rows judged: 53
 - predicates: frame=1 ram=1 mailbox=1 boots=1978 audio=5
@@ -20,34 +20,34 @@ Rows: 1986. Evaluated coverage: 1125. Own fixtures: 4.
 | Machine/mapper/status | Rows |
 |---|---:|
 | gg/sega/unknown | 755 |
-| sms/none/pass | 93 |
-| sms/sega/pass | 872 |
-| sms/none/fail | 42 |
+| sms/none/pass | 133 |
+| sms/sega/pass | 889 |
 | sms/sega/unknown | 33 |
 | sms/codemasters/pass | 8 |
 | gg/none/unknown | 7 |
-| sms/sega/fail | 22 |
 | sms/codemasters/skipped | 1 |
 | gg/compound/skipped | 7 |
-| sms/korean/pass | 8 |
+| sms/korean/pass | 12 |
 | gg/none/pass | 1 |
 | sms/compound/skipped | 12 |
 | gg/sega_eeprom/unknown | 7 |
 | sms/none/unknown | 14 |
 | gg/sega/pass | 27 |
-| sms/korean_nb/fail | 10 |
+| sms/korean_nb/pass | 10 |
 | gg/codemasters/unknown | 16 |
 | sms/hes_4pak/pass | 2 |
 | sms/unsupported/skipped | 1 |
 | gg/unsupported/skipped | 1 |
-| sms/zemina/fail | 16 |
+| sms/zemina/pass | 14 |
+| sms/sega/fail | 5 |
+| sms/zemina/fail | 2 |
 | sms/hicom/pass | 18 |
 | sms/unsupported/unsupported | 3 |
+| sms/none/fail | 2 |
 | gg/sega/skipped | 1 |
 | gg/unsupported/unsupported | 2 |
 | sms/none/skipped | 1 |
-| sms/korean/fail | 4 |
-| sms/nemesis/fail | 2 |
+| sms/nemesis/pass | 2 |
 
 ## Reasons
 
@@ -91,92 +91,59 @@ Rows: 1986. Evaluated coverage: 1125. Own fixtures: 4.
 
 | ID | Title | Profile | Status | Date |
 |---|---|---|---|---|
-| 021c05f23e7d | The Micro Xevious &#40;Korea&#41; | sms/export/ntsc/none fm=off boots@600 | fail | 2026-11-13 |
-| 021c05f23e7d | The Micro Xevious &#40;Korea&#41; | sms/export/pal/none fm=off boots@600 | fail | 2026-11-13 |
-| 07bc7896efc9 | Wimbledon &#40;Europe&#41; | sms/export/ntsc/sega fm=off boots@600 | fail | 2026-11-13 |
-| 07bc7896efc9 | Wimbledon &#40;Europe&#41; | sms/export/pal/sega fm=off boots@600 | fail | 2026-11-13 |
-| 0ddd7448f5bd | Loretta no Shouzou &#40;Japan&#41; | sms/japan/ntsc/sega fm=on boots@600 | fail | 2026-11-13 |
-| 202cc058ba46 | Xyzolog &#40;Korea&#41; | sms/export/ntsc/korean_nb fm=off boots@600 | fail | 2026-11-13 |
-| 202cc058ba46 | Xyzolog &#40;Korea&#41; | sms/export/pal/korean_nb fm=off boots@600 | fail | 2026-11-13 |
-| 26afbc7a049e | Gangcheol RoboCop &#40;Korea&#41; | sms/export/ntsc/sega fm=off boots@600 | fail | 2026-11-13 |
-| 26afbc7a049e | Gangcheol RoboCop &#40;Korea&#41; | sms/export/pal/sega fm=off boots@600 | fail | 2026-11-13 |
-| 2fb857fc59cc | Comic Bakery &#40;Korea&#41; | sms/export/ntsc/none fm=off boots@600 | fail | 2026-11-13 |
-| 2fb857fc59cc | Comic Bakery &#40;Korea&#41; | sms/export/pal/none fm=off boots@600 | fail | 2026-11-13 |
-| 3149e453387c | New Boggle Boggle 2 &#40;Korea&#41; | sms/export/ntsc/none fm=off boots@600 | fail | 2026-11-13 |
-| 3149e453387c | New Boggle Boggle 2 &#40;Korea&#41; | sms/export/pal/none fm=off boots@600 | fail | 2026-11-13 |
-| 31605352efae | Super Bioman 1 &#40;Korea&#41; | sms/export/ntsc/sega fm=off boots@600 | fail | 2026-11-13 |
-| 31605352efae | Super Bioman 1 &#40;Korea&#41; | sms/export/pal/sega fm=off boots@600 | fail | 2026-11-13 |
-| 49f9d62f121d | Street Master &#40;Korea&#41; | sms/export/ntsc/zemina fm=off boots@600 | fail | 2026-11-13 |
-| 49f9d62f121d | Street Master &#40;Korea&#41; | sms/export/pal/zemina fm=off boots@600 | fail | 2026-11-13 |
-| 4b0c286448bd | Nemesis 2 &#40;Korea&#41; | sms/export/ntsc/zemina fm=off boots@600 | fail | 2026-11-13 |
-| 4b0c286448bd | Nemesis 2 &#40;Korea&#41; | sms/export/pal/zemina fm=off boots@600 | fail | 2026-11-13 |
-| 4e35c8375aba | FA Tetris &#40;Korea&#41; | sms/export/ntsc/korean_nb fm=off boots@600 | fail | 2026-11-13 |
-| 4e35c8375aba | FA Tetris &#40;Korea&#41; | sms/export/pal/korean_nb fm=off boots@600 | fail | 2026-11-13 |
-| 507bfa2b21fd | Super Bubble Bobble &#40;Korea&#41; | sms/export/ntsc/none fm=off boots@600 | fail | 2026-11-13 |
-| 507bfa2b21fd | Super Bubble Bobble &#40;Korea&#41; | sms/export/pal/none fm=off boots@600 | fail | 2026-11-13 |
-| 55dd4aaa92de | Wimbledon II &#40;Europe, Brazil&#41; | sms/export/ntsc/sega fm=off boots@600 | fail | 2026-11-13 |
-| 55dd4aaa92de | Wimbledon II &#40;Europe, Brazil&#41; | sms/export/pal/sega fm=off boots@600 | fail | 2026-11-13 |
-| 564b1505fcbc | Bubble Bobble &#40;Korea, Clover&#41; | sms/export/ntsc/none fm=off boots@600 | fail | 2026-11-13 |
-| 564b1505fcbc | Bubble Bobble &#40;Korea, Clover&#41; | sms/export/pal/none fm=off boots@600 | fail | 2026-11-13 |
-| 592d60e50a63 | King &amp; Balloon &#40;Korea&#41; | sms/export/ntsc/none fm=off boots@600 | fail | 2026-11-13 |
-| 592d60e50a63 | King &amp; Balloon &#40;Korea&#41; | sms/export/pal/none fm=off boots@600 | fail | 2026-11-13 |
-| 5d4fbf3873af | Spider-Man - Return of the Sinister Six &#40;Europe, Brazil&#41; | sms/export/ntsc/sega fm=off boots@600 | fail | 2026-11-13 |
-| 5d4fbf3873af | Spider-Man - Return of the Sinister Six &#40;Europe, Brazil&#41; | sms/export/pal/sega fm=off boots@600 | fail | 2026-11-13 |
-| 5d65a308bb9e | Super Boy 3 &#40;Korea&#41; | sms/export/ntsc/zemina fm=off boots@600 | fail | 2026-11-13 |
-| 5d65a308bb9e | Super Boy 3 &#40;Korea&#41; | sms/export/pal/zemina fm=off boots@600 | fail | 2026-11-13 |
-| 5df1b4c00adb | F-1 Spirit - The way to Formula-1 &#40;Korea&#41; | sms/export/ntsc/zemina fm=off boots@600 | fail | 2026-11-13 |
-| 5df1b4c00adb | F-1 Spirit - The way to Formula-1 &#40;Korea&#41; | sms/export/pal/zemina fm=off boots@600 | fail | 2026-11-13 |
-| 6ce290d59f14 | Sky Jaguar &#40;Korea&#41; | sms/export/ntsc/none fm=off boots@600 | fail | 2026-11-13 |
-| 6ce290d59f14 | Sky Jaguar &#40;Korea&#41; | sms/export/pal/none fm=off boots@600 | fail | 2026-11-13 |
-| 7d67dd38fea5 | Back to the Future Part III &#40;Europe&#41; | sms/export/ntsc/sega fm=off boots@600 | fail | 2026-11-13 |
-| 7eb9e296b674 | Sky Jaguar &#40;Korea, Clover&#41; | sms/export/ntsc/none fm=off boots@600 | fail | 2026-11-13 |
-| 7eb9e296b674 | Sky Jaguar &#40;Korea, Clover&#41; | sms/export/pal/none fm=off boots@600 | fail | 2026-11-13 |
-
-+56 more fail rows; the rest is in [the ledger](../tests/compat/ledger.csv)
+| 5d4fbf3873af | Spider-Man - Return of the Sinister Six &#40;Europe, Brazil&#41; | sms/export/ntsc/sega fm=off boots@600 | fail | 2026-11-15 |
+| 5d4fbf3873af | Spider-Man - Return of the Sinister Six &#40;Europe, Brazil&#41; | sms/export/pal/sega fm=off boots@600 | fail | 2026-11-15 |
+| 5d65a308bb9e | Super Boy 3 &#40;Korea&#41; | sms/export/ntsc/zemina fm=off boots@600 | fail | 2026-11-15 |
+| 5d65a308bb9e | Super Boy 3 &#40;Korea&#41; | sms/export/pal/zemina fm=off boots@600 | fail | 2026-11-15 |
+| 7d67dd38fea5 | Back to the Future Part III &#40;Europe&#41; | sms/export/ntsc/sega fm=off boots@600 | fail | 2026-11-15 |
+| 8d85391d2e62 | Block Hole &#40;Korea&#41; | sms/export/ntsc/none fm=off boots@600 | fail | 2026-11-15 |
+| 8d85391d2e62 | Block Hole &#40;Korea&#41; | sms/export/pal/none fm=off boots@600 | fail | 2026-11-15 |
+| f1357505cbce | Sonic's Edusoft &#40;prototype&#41; | sms/export/ntsc/sega fm=off boots@600 | fail | 2026-11-15 |
+| f1357505cbce | Sonic's Edusoft &#40;prototype&#41; | sms/export/pal/sega fm=off boots@600 | fail | 2026-11-15 |
 
 ## Other evaluated rows
 
 | ID | Title | Profile | Status | Date |
 |---|---|---|---|---|
-| 0180c9b26c5a | Comical Machine Gun Joe &#40;Korea&#41; | sms/export/ntsc/none fm=off boots@600 | pass | 2026-11-13 |
-| 0180c9b26c5a | Comical Machine Gun Joe &#40;Korea&#41; | sms/export/pal/none fm=off boots@600 | pass | 2026-11-13 |
-| 0199c62afb5c | Chuck Rock &#40;Europe, Brazil&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-13 |
-| 0199c62afb5c | Chuck Rock &#40;Europe, Brazil&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-13 |
-| 021c6983fdab | Dragon Crystal &#40;Europe, Brazil&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-13 |
-| 021c6983fdab | Dragon Crystal &#40;Europe, Brazil&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-13 |
-| 0236c5239c92 | Dead Angle &#40;Europe, USA&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-13 |
-| 0236c5239c92 | Dead Angle &#40;Europe, USA&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-13 |
-| 0275f34127af | Missile Defense 3-D &#40;prototype&#41; | sms/export/ntsc/sega fm=off boots@600 port1=lphaser | pass | 2026-11-13 |
-| 0278cd120dc3 | Fantasy Zone &#40;World, v2&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-13 |
-| 0278cd120dc3 | Fantasy Zone &#40;World, v2&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-13 |
-| 02ebee891d88 | Spider-Man vs. The Kingpin &#40;Europe, USA, Brazil&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-13 |
-| 02ebee891d88 | Spider-Man vs. The Kingpin &#40;Europe, USA, Brazil&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-13 |
-| 038920e63437 | The Simpsons - Bart vs. The World &#40;Europe, Brazil&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-13 |
-| 038920e63437 | The Simpsons - Bart vs. The World &#40;Europe, Brazil&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-13 |
-| 051e72c8ffec | Strider &#40;Europe, USA, Brazil, Korea&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-13 |
-| 051e72c8ffec | Strider &#40;Europe, USA, Brazil, Korea&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-13 |
-| 051e74c499c6 | Ghost House &#40;Japan, MyCard&#41; | sms/export/ntsc/none fm=off boots@600 | pass | 2026-11-13 |
-| 051e74c499c6 | Ghost House &#40;Japan, MyCard&#41; | sms/export/pal/none fm=off boots@600 | pass | 2026-11-13 |
-| 05b4f23e33ad | Dinobasher Starring Bignose the Caveman &#40;Europe, prototype&# | sms/export/ntsc/codemasters fm=off boots@600 | pass | 2026-11-13 |
-| 05b4f23e33ad | Dinobasher Starring Bignose the Caveman &#40;Europe, prototype&# | sms/export/pal/codemasters fm=off boots@600 | pass | 2026-11-13 |
-| 064040452b6b | Operation Wolf &#40;Europe, Brazil&#41; | sms/export/ntsc/sega fm=off boots@600 port1=lphaser | pass | 2026-11-13 |
-| 06664daf208f | Parlour Games &#40;Europe, USA&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-13 |
-| 06664daf208f | Parlour Games &#40;Europe, USA&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-13 |
-| 075297d2f3a8 | E-SWAT - City Under Siege &#40;Europe, USA, easy version&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-13 |
-| 075297d2f3a8 | E-SWAT - City Under Siege &#40;Europe, USA, easy version&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-13 |
-| 07d8f300b3a3 | Baku Baku Animal &#40;Brazil&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-13 |
-| 07d8f300b3a3 | Baku Baku Animal &#40;Brazil&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-13 |
-| 07fcf297be4f | Phantasy Star &#40;Europe, USA, v3&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-13 |
-| 07fcf297be4f | Phantasy Star &#40;Europe, USA, v3&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-13 |
-| 0854e36d3bb0 | Battlemaniacs &#40;Brazil&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-13 |
-| 0854e36d3bb0 | Battlemaniacs &#40;Brazil&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-13 |
-| 08a3484e862a | Quartet &#40;Europe, USA&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-13 |
-| 08a3484e862a | Quartet &#40;Europe, USA&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-13 |
-| 08a79905767b | Ace of Aces &#40;Europe&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-13 |
-| 08a79905767b | Ace of Aces &#40;Europe&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-13 |
-| 08b4f5b8096b | Sensible Soccer &#40;Europe&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-13 |
-| 08b4f5b8096b | Sensible Soccer &#40;Europe&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-13 |
-| 08ec70a2cd98 | R-Type &#40;World&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-13 |
-| 08ec70a2cd98 | R-Type &#40;World&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-13 |
+| 0180c9b26c5a | Comical Machine Gun Joe &#40;Korea&#41; | sms/export/ntsc/none fm=off boots@600 | pass | 2026-11-15 |
+| 0180c9b26c5a | Comical Machine Gun Joe &#40;Korea&#41; | sms/export/pal/none fm=off boots@600 | pass | 2026-11-15 |
+| 0199c62afb5c | Chuck Rock &#40;Europe, Brazil&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-15 |
+| 0199c62afb5c | Chuck Rock &#40;Europe, Brazil&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-15 |
+| 021c05f23e7d | The Micro Xevious &#40;Korea&#41; | sms/export/ntsc/none fm=off boots@600 | pass | 2026-11-15 |
+| 021c05f23e7d | The Micro Xevious &#40;Korea&#41; | sms/export/pal/none fm=off boots@600 | pass | 2026-11-15 |
+| 021c6983fdab | Dragon Crystal &#40;Europe, Brazil&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-15 |
+| 021c6983fdab | Dragon Crystal &#40;Europe, Brazil&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-15 |
+| 0236c5239c92 | Dead Angle &#40;Europe, USA&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-15 |
+| 0236c5239c92 | Dead Angle &#40;Europe, USA&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-15 |
+| 0275f34127af | Missile Defense 3-D &#40;prototype&#41; | sms/export/ntsc/sega fm=off boots@600 port1=lphaser | pass | 2026-11-15 |
+| 0278cd120dc3 | Fantasy Zone &#40;World, v2&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-15 |
+| 0278cd120dc3 | Fantasy Zone &#40;World, v2&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-15 |
+| 02ebee891d88 | Spider-Man vs. The Kingpin &#40;Europe, USA, Brazil&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-15 |
+| 02ebee891d88 | Spider-Man vs. The Kingpin &#40;Europe, USA, Brazil&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-15 |
+| 038920e63437 | The Simpsons - Bart vs. The World &#40;Europe, Brazil&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-15 |
+| 038920e63437 | The Simpsons - Bart vs. The World &#40;Europe, Brazil&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-15 |
+| 051e72c8ffec | Strider &#40;Europe, USA, Brazil, Korea&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-15 |
+| 051e72c8ffec | Strider &#40;Europe, USA, Brazil, Korea&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-15 |
+| 051e74c499c6 | Ghost House &#40;Japan, MyCard&#41; | sms/export/ntsc/none fm=off boots@600 | pass | 2026-11-15 |
+| 051e74c499c6 | Ghost House &#40;Japan, MyCard&#41; | sms/export/pal/none fm=off boots@600 | pass | 2026-11-15 |
+| 05b4f23e33ad | Dinobasher Starring Bignose the Caveman &#40;Europe, prototype&# | sms/export/ntsc/codemasters fm=off boots@600 | pass | 2026-11-15 |
+| 05b4f23e33ad | Dinobasher Starring Bignose the Caveman &#40;Europe, prototype&# | sms/export/pal/codemasters fm=off boots@600 | pass | 2026-11-15 |
+| 064040452b6b | Operation Wolf &#40;Europe, Brazil&#41; | sms/export/ntsc/sega fm=off boots@600 port1=lphaser | pass | 2026-11-15 |
+| 06664daf208f | Parlour Games &#40;Europe, USA&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-15 |
+| 06664daf208f | Parlour Games &#40;Europe, USA&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-15 |
+| 075297d2f3a8 | E-SWAT - City Under Siege &#40;Europe, USA, easy version&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-15 |
+| 075297d2f3a8 | E-SWAT - City Under Siege &#40;Europe, USA, easy version&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-15 |
+| 07bc7896efc9 | Wimbledon &#40;Europe&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-15 |
+| 07bc7896efc9 | Wimbledon &#40;Europe&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-15 |
+| 07d8f300b3a3 | Baku Baku Animal &#40;Brazil&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-15 |
+| 07d8f300b3a3 | Baku Baku Animal &#40;Brazil&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-15 |
+| 07fcf297be4f | Phantasy Star &#40;Europe, USA, v3&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-15 |
+| 07fcf297be4f | Phantasy Star &#40;Europe, USA, v3&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-15 |
+| 0854e36d3bb0 | Battlemaniacs &#40;Brazil&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-15 |
+| 0854e36d3bb0 | Battlemaniacs &#40;Brazil&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-15 |
+| 08a3484e862a | Quartet &#40;Europe, USA&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-15 |
+| 08a3484e862a | Quartet &#40;Europe, USA&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-15 |
+| 08a79905767b | Ace of Aces &#40;Europe&#41; | sms/export/ntsc/sega fm=off boots@600 | pass | 2026-11-15 |
+| 08a79905767b | Ace of Aces &#40;Europe&#41; | sms/export/pal/sega fm=off boots@600 | pass | 2026-11-15 |
 
-+980 more other evaluated rows; the rest is in [the ledger](../tests/compat/ledger.csv)
++1067 more other evaluated rows; the rest is in [the ledger](../tests/compat/ledger.csv)

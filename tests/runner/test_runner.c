@@ -248,8 +248,8 @@ static void diag_class(void)
     CHECK(strcmp(cogmaster__diag_where(COGMASTER_FAULT_DEVICE_CART, 0x8000u), "slot2") == 0);
     CHECK(strcmp(cogmaster__diag_where(COGMASTER_FAULT_DEVICE_RAM, 0xC000u), "ram") == 0);
     CHECK(strcmp(cogmaster__diag_where(COGMASTER_FAULT_DEVICE_MAPPER, 0xFFFFu), "mapper") == 0);
-    CHECK(strcmp(cogmaster__diag_where(COGMASTER_FAULT_DEVICE_CTRL, 0x00u), "port") == 0);
-    CHECK(strcmp(cogmaster__diag_where(COGMASTER_FAULT_DEVICE_NONE, 0x00u), "port") == 0);
+    CHECK(strcmp(cogmaster__diag_where(COGMASTER_FAULT_DEVICE_CTRL, 0x00u), "unknown") == 0);
+    CHECK(strcmp(cogmaster__diag_where(COGMASTER_FAULT_DEVICE_NONE, 0x00u), "unknown") == 0);
     CHECK(strcmp(cogmaster__diag_where(COGMASTER_FAULT_DEVICE_CPU, 0x0000u), "cpu") == 0);
     CHECK(strcmp(cogmaster__diag_where(COGMASTER_FAULT_DEVICE_VDP, 0xBFu), "vdp") == 0);
     CHECK(strcmp(cogmaster__diag_where(7u, 0x00u), "unknown") == 0);
@@ -265,7 +265,7 @@ static void diag_class(void)
                  "text") == 0);
     CHECK(strcmp(cogmaster__diag_vdpmode(COGMASTER_FAULT_KIND_ED_UNDEFINED, 1u), "none") == 0);
     CHECK(strcmp(cogmaster__diag_vdpmode(0u, 1u), "none") == 0);
-    /* The other six words, at both ends of every range. */
+    /* The other four words, at both ends of every range. */
     static const struct {
         uint32_t kind, addr;
         const char *faddr;
@@ -288,38 +288,6 @@ static void diag_class(void)
         CHECK(strcmp(cogmaster__diag_size(sizes[i].bytes), sizes[i].size) == 0);
     }
     CHECK(strcmp(cogmaster__diag_size(49153u), "le64k") == 0);
-    static const struct {
-        uint32_t addr;
-        const char *wclass;
-    } wclasses[] = {
-        {0x0000u, "reg-0"},    {0x0001u, "reg-zm"},   {0x0003u, "reg-zm"}, {0x0004u, "lt100"},
-        {0x0050u, "lt100"},    {0x00FFu, "lt100"},    {0x0100u, "rom"},    {0x2000u, "rom"},
-        {0x3FFEu, "reg-4pak"}, {0x3FFFu, "rom"},      {0x4000u, "reg-cm"}, {0x7FFEu, "rom"},
-        {0x7FFFu, "reg-4pak"}, {0x8000u, "reg-cm"},   {0x9000u, "slot2"},  {0xA000u, "reg-korean"},
-        {0xBFFEu, "slot2"},    {0xBFFFu, "reg-4pak"}, {0xC000u, "high"},   {0xFFFFu, "high"}};
-    for (size_t i = 0; i < sizeof wclasses / sizeof wclasses[0]; i++)
-        CHECK(strcmp(cogmaster__diag_wclass(COGMASTER_FAULT_KIND_ROM_WRITE, wclasses[i].addr),
-                     wclasses[i].wclass) == 0);
-    CHECK(strcmp(cogmaster__diag_wclass(COGMASTER_FAULT_KIND_MAPPER_RANGE, 0x2000u), "none") == 0);
-    static const struct {
-        uint32_t kind, device, addr;
-        const char *pclass;
-    } pclasses[] = {
-        {COGMASTER_FAULT_KIND_UNMAPPED_READ, COGMASTER_FAULT_DEVICE_CTRL, 0x00u, "00-06"},
-        {COGMASTER_FAULT_KIND_UNMAPPED_READ, COGMASTER_FAULT_DEVICE_CTRL, 0x06u, "00-06"},
-        {COGMASTER_FAULT_KIND_UNMAPPED_READ, COGMASTER_FAULT_DEVICE_CTRL, 0x07u, "lt40"},
-        {COGMASTER_FAULT_KIND_UNMAPPED_WRITE, COGMASTER_FAULT_DEVICE_NONE, 0x3Eu, "3e-3f"},
-        {COGMASTER_FAULT_KIND_UNMAPPED_WRITE, COGMASTER_FAULT_DEVICE_NONE, 0x3Fu, "3e-3f"},
-        {COGMASTER_FAULT_KIND_UNMAPPED_READ, COGMASTER_FAULT_DEVICE_CTRL, 0x20u, "lt40"},
-        {COGMASTER_FAULT_KIND_UNMAPPED_READ, COGMASTER_FAULT_DEVICE_CTRL, 0x40u, "40-bf"},
-        {COGMASTER_FAULT_KIND_UNMAPPED_READ, COGMASTER_FAULT_DEVICE_CTRL, 0xBFu, "40-bf"},
-        {COGMASTER_FAULT_KIND_UNMAPPED_READ, COGMASTER_FAULT_DEVICE_CTRL, 0xC0u, "high"},
-        {COGMASTER_FAULT_KIND_UNMAPPED_READ, COGMASTER_FAULT_DEVICE_CTRL, 0x1F280u, "40-bf"},
-        {COGMASTER_FAULT_KIND_UNMAPPED_READ, COGMASTER_FAULT_DEVICE_CART, 0x0000u, "none"},
-        {COGMASTER_FAULT_KIND_ROM_WRITE, COGMASTER_FAULT_DEVICE_CTRL, 0x00u, "none"}};
-    for (size_t i = 0; i < sizeof pclasses / sizeof pclasses[0]; i++)
-        CHECK(strcmp(cogmaster__diag_pclass(pclasses[i].kind, pclasses[i].device, pclasses[i].addr),
-                     pclasses[i].pclass) == 0);
     CHECK(strcmp(cogmaster__diag_header(0u, 0u), "none") == 0);
     CHECK(strcmp(cogmaster__diag_header(0x7FF0u, 1u), "valid") == 0);
     CHECK(strcmp(cogmaster__diag_header(0x7FF0u, 0u), "bad") == 0);

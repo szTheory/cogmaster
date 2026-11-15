@@ -32,7 +32,7 @@ guarantees support. The existing protected-base ratchet still judges a PR.
 title, the cause group, the first non-blank frame, the first fault kind, device and PC, and the board chosen, then group counts
 and totals. The groups are fixed before any run. It never writes the ledger or the page, never prints an image byte, digest,
 file name or path, and keeps only `build/library/diag/diagnose.txt`. Under each group it counts the evidence classes of the
-runner line (video mode, mapper address, write address, port, size and header), as class words only, never a value.
+runner line (video mode, mapper address, size and header), as class words only, never a value.
 
 The [compatibility ledger](compatibility.md) reports accepted predicates, never general support.
 `runner.expect.predicates` exercises independent frame/RAM values, mismatch/usage/refusal/I/O
@@ -126,7 +126,7 @@ the Z80 vectors, the assembled fixtures and their mailbox, and fuzzing; testing 
 
 `cmake -DLEDGER=tests/compat/ledger.csv -DINFO=libretro/cogmaster_libretro.info.in -P tests/compat/exit.cmake` (or `ctest --preset ci -R compat.exit -V`) is the exit command. It refuses a ledger no parser reads, a reasonless `unsupported` or `skipped` row, a fixture `fail` and a count that drifts from the pin. It then judges three floors in `quality.json`: 20 cart images with a judged pass, one PAL row and one Japanese FM row. They show a real library run reached the ledger and are not a pass rate. A cart `fail` row prints and never blocks.
 
-A judged row's `core=` stamp names the commit the run judged. When a run judged a commit on a phase branch, a squash merge leaves that commit outside `main`, so fetch it with `git fetch origin pull/<n>/head`; its sources equal the merge commit's, and only the ledger, the page, the docs and the workflows differ. Judge a commit already on `main` where the run allows it.
+A judged row's `core=` stamp names the commit the run judged. When a run judged a commit on a phase branch, a squash merge leaves that commit outside `main`, so fetch it with `git fetch origin pull/<n>/head`; its sources equal the merge commit's, and only the ledger, the page, the docs and the workflows differ. To stamp a commit that is already on `main`, judge it through a detached worktree of `origin/main` and carry the ledger and page diff into the branch.
 
 ## Z80 vectors
 

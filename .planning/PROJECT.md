@@ -80,8 +80,8 @@ MIT-licensed C library that any host can embed.
 
 <!-- Current scope: milestone v2.2. Full text in REQUIREMENTS.md. -->
 
-- [ ] **RUN-03, RUN-04**: the library re-run merges through the ratchet and the compatibility page equals its regeneration
-- [ ] **TUNE-15 to TUNE-17**: the diagnose vocabulary prune, re-derived timeouts and a milestone-close clean-state check
+- [x] **RUN-03, RUN-04**: the library re-run merges through the ratchet and the compatibility page equals its regeneration
+- [x] **TUNE-15 to TUNE-17**: the diagnose vocabulary prune, re-derived timeouts and a milestone-close clean-state check
 
 Deferred candidates: LEDG-06 (a catalog `video` column for the 50 Game Gear entries MAME runs in Master System mode),
 LEDG-07 (per-alias `supported` and a reason for `partial` entries), PAD-08 (the pad, Light Phaser and BIOS judges and the
@@ -201,4 +201,4 @@ After each milestone:
 3. Lessons are exported to `.planning/LESSONS.md`.
 
 ---
-*Last updated: 2026-11-14 after Phase 16*
+*Last updated: 2026-11-15 after Phase 17*

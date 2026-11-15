@@ -3,19 +3,18 @@ gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Legacy video modes
 current_phase: 17
-current_phase_name: Re-run, merge and clean state
-status: planning
-stopped_at: Phase 16 complete, ready to plan Phase 17
-last_updated: "2026-11-14T06:58:45.011Z"
+status: completed
+stopped_at: Phase 17 complete — all phases complete; next /gsd-ship 17
+last_updated: "2026-11-15T03:08:50.117Z"
 last_activity: 2026-11-14
-last_activity_desc: Phase 16 complete, transitioned to Phase 17
-state_head: bfd122369f087f9b2a6097686d2d2355a05d0efc
+last_activity_desc: "Phase 17 shipped as PR #49"
+state_head: 0195c663d90d2f8e8b73e200ca57a93880945066
 progress:
   total_phases: 2
-  completed_phases: 1
-  total_plans: 9
-  completed_plans: 9
-  percent: 50
+  completed_phases: 2
+  total_plans: 13
+  completed_plans: 13
+  percent: 100
 ---
 
 # Project State
@@ -29,18 +28,18 @@ See: .planning/PROJECT.md (updated 2026-11-14)
 
 ## Current Position
 
-Phase: 17 — Re-run, merge and clean state
+Phase: 17
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-14 — Phase 16 complete, transitioned to Phase 17
+Status: All phases complete
+Last activity: 2026-11-14 -- Phase 17 shipped as PR #49
 
-Progress: [█████░░░░░] 50%
+Progress: [██████████] 100%
 
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 180
+- Total plans completed: 184
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -64,6 +63,7 @@ Progress: [█████░░░░░] 50%
 | 14 | 8 | - | - |
 | 15 | 2 | - | - |
 | 16 | 9 | - | - |
+| 17 | 4 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: —
@@ -254,6 +254,10 @@ Progress: [█████░░░░░] 50%
 | Phase 16 P07 | 18 min | 2 tasks | 8 files |
 | Phase 16 P08 | 23 min | 3 tasks | 8 files |
 | Phase 16 P09 | 21 min | 3 tasks | 7 files |
+| Phase 17 P01 | 5 min | 2 tasks | 9 files |
+| Phase 17 P02 | 10 min | 3 tasks | 6 files |
+| Phase 17 P03 | 70min | 4 tasks | 6 files |
+| Phase 17 P04 | 29min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -300,6 +304,11 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 - [Phase 16]: 16-08: the sprite image is judged by one compare-all run per profile (scenario k on frames 9 + 2 (k - 1) and 10 + 2 (k - 1)) and the runner hash of the last scenario at frame 47, which the image holds; the hashes file takes two pictures per profile (frames 15 and 47); vdp.legacy.hostile asserts the sprite bounds at every step and that the garbage reaches them; the second push (d7da071 to fba1e24) has hosted run 43562888383 green, perf boot_to_play head 10089912 base 12288947 PASS with no allow line, be32 runner.hashes_file 64.72 s; MODE-03 and MODE-06 complete, MODE-05 and MODE-07 wait for plan 09
 - [Phase 16]: 16-09: video.md and SMS-VDP section 7 call every legacy choice a model with its disagreeing sources and correct the MAME attribution (315_5124.cpp masks Graphics II on every revision, the SMS2 and Game Gear no-mask statement is msvdp's, tms9928a.cpp tests above $E0); the TI manual's range is not quoted because the page image was not checked; the Young notes row VDP.28 carries capture 20260307023015 found from the web/2026/ redirect; PROVENANCE names MAME tms9928a and ares tms9918 at pins 1d7a454ed79e and 9408cb43d494, both answering 200, with no seed row — Plan 16-09 rationale: every reference consulted for a model choice has a traceable row, fixtures are read as fidelity to the notes and never to silicon, and the timeouts are twice a measured hosted lane
 - [Phase 16]: 16-09: runner.hashes_file is 130 s (2 x 64.72 s on be32, run 43562888383) and the three g2_late tests 29 s (2 x 14.02 s); core.state.legacy_sprite_bounds keeps its 60 s tier; the third push 6e8984e has hosted run 43564813364 green with CI required success, perf PASS (10089912 against base 12288947, no allow line), ci workflow 737 of 737, hygiene 84 of 84, subset compare empty (173 base lines, 198 head); MODE-02, MODE-04, MODE-05, MODE-07 and MODE-08 complete; the pull request stays a draft for /gsd-ship — Plan 16-09 rationale: every reference consulted for a model choice has a traceable row, fixtures are read as fidelity to the notes and never to silicon, and the timeouts are twice a measured hosted lane
+- [Phase 17]: 17-01: the runner token is diagnose 2 and the reducer needs 30 fields, so a stale runner reads as malformed; vdpmode (mode4 canary) and faddr stay, the name tables keep the ROM-write and controller names, and TUNE-15's text now keeps vdpmode with its raise site in src/vdp_render.c
+- [Phase 17]: 17-02: milestone-close.sh prints six rows (open-prs, main-ci, release, release-pr, tree, unreleased) and exits 0, 1 or 2; every gh read is v=$(gh ...) || v=unknown on one line, and policy.milestone_close drives eleven cases over a throwaway repository and a fake gh that answers filtered text and refuses unknown paths; the live run on clean main printed six ok rows, exit 0
+- [Phase 17]: Plan 17-03: the judge ran once at the phase base in a detached worktree, so the ledger stamp 0a97075 is an ancestor of origin/main; the ledger and page were carried by git apply and compared with cmp, never edited
+- [Phase 17]: Plan 17-03: scripts/library.sh falls back to the main checkout's dotenv through the common git directory when run from a linked worktree (d2b8605), with a test case
+- [Phase 17]: Plan 17-04: the rehearsal job rose from 13 to 14 minutes, library.diagnose from 206 to 289 s and hygiene.tree from 60 to 75 s from a fresh 40-run read (sample: dispatched run 43664171483 on the ledger head); runner.diagnose holds at 633 s because limits are compared with unscaled lane seconds (largest 179.23 s on macos-x64, the 450.48 s reading is the be32 lane under a scale of 8); one workflow commit 33bbfc2, nothing lowered, nothing pushed after it
 
 ### Pending Todos
 
@@ -482,6 +491,12 @@ sources is `.planning/preparation/DECISIONS.md`; per-plan decisions are in the a
 | 2026-11-14 | Execute phase 16 plan 16-09 (gsd-execute-phase 16); legacy video notes in docs/hardware/video.md with every choice a model and its disagreeing sources, SMS-VDP section 7 rewritten with the MAME attribution corrected, PROVENANCE rows for MAME tms9928a and ares tms9918 (both pins 200), embedding and conformance guides within the cap, runner.hashes_file 130 s and the g2_late tests 29 s from run 43562888383, third push fba1e24 to 6e8984e with hosted run 43564813364 green (CI required success, perf PASS 10089912 against base 12288947, no allow line); 3 tasks, 3 commits, MODE-02, MODE-04, MODE-05, MODE-07 and MODE-08 complete, ctest ci 737 of 737, hygiene 84 of 84, subset compare empty | Claude Code | claude-sonnet-5-5 |
 | 2026-11-14 | Execute phase 16 close-out (gsd-execute-phase 16); nine plans summarized, code review 0 critical, 3 warnings and 4 info left open in 16-REVIEW-DISPOSITION.md, verifier passed 14 of 14 with all 11 requirement IDs satisfied, phase marked complete; draft PR 47 still open with the last two commits unpushed | Claude Code | claude-sonnet-5-5 (reviewer and verifier claude-sonnet-5-5) |
 | 2026-11-14 | Ship phase 16 (gsd-ship 16); PR #47 marked ready with the existing Conventional Commit title and a rebuilt body, auto squash merge set from a shell, CI run on head 8858ac7 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-14 | Discuss phase 17 (gsd-discuss-phase 17); four research agents (prune scope, timeouts, milestone-close script, re-run sequencing) plus an adversarial pass against the code, 18 decisions, no owner prompts (standing fan-out instruction); branch phase/17-re-run-merge-and-clean-state cut from origin/main at 0a97075 | Claude Code | claude-sonnet-5-5 |
+| 2026-11-14 | Plan phase 17 (gsd-plan-phase 17); research skipped on purpose (the discuss fan-out locked the code-level choices), four sequential plans (diagnose prune, milestone-close script, owner run and carry, timeouts last), plan checker passed on its third pass with 0 blockers after two revisions and the last warning fixed inline, 18 of 18 decisions and 5 of 5 requirement IDs covered | Claude Code | claude-sonnet-5-5 (planner claude-opus-5-5, checker claude-haiku-5-5) |
+| 2026-11-15 | Execute phase 17 plan 17-03 (gsd-execute-phase 17); judge run once in a detached worktree of the phase base 0a97075 (ratchet ok, no pass row lost, 87 rows fail to pass), ledger and page carried by git apply and stamped 0a97075, an ancestor of origin/main, diagnose on the ledger head counts 5 failing rows by cause, fail total 9 on the ledger, dispatched ci runs green on 1b8d446 and d2b8605 (https://github.com/szTheory/cogmaster/actions/runs/43660745598), worktree removed, no pull request opened | Claude Code | claude-sonnet-5-5 |
+| 2026-11-15 | Execute phase 17 plan 17-04 (gsd-execute-phase 17); the ledger head 2cc8bb5 pushed once and a dispatched ci run on it green (https://github.com/szTheory/cogmaster/actions/runs/43664171483), 40-run read of job and test seconds, one workflow commit 33bbfc2 (rehearsal job 13 to 14 minutes, library.diagnose 206 to 289 s, hygiene.tree 60 to 75 s, runner.diagnose held at 633 s, every other timeout-minutes comment refreshed, no timeout lowered), hygiene and ci workflows exit 0 on it, ship hand-off and SEED-015 breadcrumb recorded, no pull request opened | Claude Code | claude-sonnet-5-5 |
+| 2026-11-15 | Execute phase 17 close-out (gsd-execute-phase 17); four plans summarized, a Windows fault in the milestone-close script found by the first dispatched run and fixed, the library dotenv found from a linked worktree (owner-authorised, with a test), code review 0 critical, 5 warnings and 4 info recorded as seeds in 17-REVIEW-DISPOSITION.md (all tooling code, rule 7), verifier passed 10 of 10 with all 5 requirement IDs satisfied, phase marked complete; the branch is 4 commits ahead of origin for the ship push | Claude Code | claude-sonnet-5-5 (reviewer and verifier claude-sonnet-5-5) |
+| 2026-11-14 | Ship phase 17 (gsd-ship 17); pushed the branch, opened PR #49 with a Conventional Commit title, no review requested | Claude Code | claude-sonnet-5-5 |
 
 ## Deferred Items
 
@@ -511,12 +526,12 @@ Items acknowledged and deferred, most recent first (v2.1 closed SEED-016 as done
 
 ## Session Continuity
 
-Last session: 2026-11-14T06:20:16.700Z
-Stopped at: Phase 16 complete, ready to plan Phase 17
-Resume file: None
+Last session: 2026-11-15T02:07:27.115Z
+Stopped at: Phase 17 complete — all phases complete
+Resume file: .planning/phases/17-re-run-merge-and-clean-state/17-CONTEXT.md
 Milestone v2.1 pull requests: #40, #42 and #44 (phases 13 to 15) and releases #41, #43 and #45 (v0.14.0 to v0.14.2)
 
 ## Operator Next Steps
 
 
-- Phase 16 shipped as PR #47 (ready, auto squash merge set); after it merges, confirm the release pull request is green, then /gsd-discuss-phase 17
+- Phase 16 shipped (PR #47, release v0.15.0, release run green). Phase 17 context is gathered; next: `/clear` then `/gsd-plan-phase 17`. The owner session in 17-CONTEXT D-04 (library judge in a worktree, then diagnose) comes after the code work, at execute.

@@ -394,6 +394,7 @@ policy.library_dirty.clean	policy
 policy.library_dirty.planning	policy
 policy.library_dirty.refuses	policy
 policy.library_dirty.untracked	policy
+policy.milestone_close	policy
 policy.no_skip	policy
 policy.no_skip.self_test	policy
 policy.no_title_table	policy

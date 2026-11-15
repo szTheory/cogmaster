@@ -291,6 +291,17 @@ endif()
   if(NOT rc STREQUAL "0")
     message(FATAL_ERROR "local wrapper must read literal dotenv directory without executing it")
   endif()
+  # A linked worktree has no dotenv of its own and must read the one in the main checkout.
+  execute_process(COMMAND git add CMakeLists.txt CMakePresets.json WORKING_DIRECTORY "${dotenv}" COMMAND_ERROR_IS_FATAL ANY)
+  execute_process(COMMAND git -c user.name=test -c user.email= commit -q -m fixture
+    WORKING_DIRECTORY "${dotenv}" COMMAND_ERROR_IS_FATAL ANY)
+  execute_process(COMMAND git worktree add -q --detach "${OUT}/dotenv-linked" WORKING_DIRECTORY "${dotenv}" COMMAND_ERROR_IS_FATAL ANY)
+  execute_process(COMMAND "${CMAKE_COMMAND}" -E env --unset=COGMASTER_ROM_DIR
+    sh "${ROOT}/scripts/library.sh" WORKING_DIRECTORY "${OUT}/dotenv-linked"
+    RESULT_VARIABLE rc OUTPUT_VARIABLE text ERROR_VARIABLE err)
+  if(NOT rc STREQUAL "0")
+    message(FATAL_ERROR "local wrapper in a linked worktree must read the dotenv of the main checkout")
+  endif()
   return()
 endif()
 if(COGMASTER_FIXTURES)
@@ -304,9 +315,9 @@ if(COGMASTER_FIXTURES)
   set(diag ${CMAKE_CURRENT_LIST_DIR}/diagnose.cmake)
   set(diag_args -DROOT=${PROJECT_SOURCE_DIR} -DFIXTURES=${PROJECT_BINARY_DIR}/fixtures -DSEEDS=${PROJECT_BINARY_DIR}/tests/seeds
     -DRUN=$<TARGET_FILE:cogmaster-run> "-DEMULATOR=${library_emulator}" -P ${diag})
-  # Timeout: 206 s; 2 x 102.97 s (macos-x64), slowest of 1 run, run 43334476928.
+  # Timeout: 289 s; 2 x 144.43 s (macos-x64), slowest of 24 runs, run 43460663238.
   cogmaster_add_test(NAME library.diagnose COMMAND ${CMAKE_COMMAND} -DCASE=main
-    -DOUT=${PROJECT_BINARY_DIR}/tests/library-diagnose/main ${diag_args} LABELS library TIMEOUT 206)
+    -DOUT=${PROJECT_BINARY_DIR}/tests/library-diagnose/main ${diag_args} LABELS library TIMEOUT 289)
   # Timeout: 35 s; 2 x 17.5 s (windows-arm64), slowest of 1 run, run 43334476928.
   cogmaster_add_test(NAME library.diagnose.taxonomy COMMAND ${CMAKE_COMMAND} -DCASE=taxonomy
     -DOUT=${PROJECT_BINARY_DIR}/tests/library-diagnose/taxonomy ${diag_args} LABELS library TIMEOUT 35)

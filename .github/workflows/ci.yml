@@ -49,7 +49,7 @@ jobs:
   # release_inputs=true when a path the release pipeline reads changed.
   changes:
     runs-on: ubuntu-26.04
-    timeout-minutes: 5  # 5-minute floor (API); 2 x 8 s, slowest of 40 runs, run 39451067810
+    timeout-minutes: 5  # 5-minute floor (API); 2 x 13 s, slowest of 40 runs, run 43460716508
     permissions:
       contents: read
       pull-requests: read
@@ -80,7 +80,7 @@ jobs:
   # The image has clang-format-21, clang-tidy-21 and jq; configure finds them.
   hygiene:
     runs-on: ubuntu-26.04
-    timeout-minutes: 5  # 2 x 138 s, slowest of 40 runs, run 43082065462
+    timeout-minutes: 5  # 5-minute floor; 2 x 67 s, slowest of 40 runs, run 43169796348
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -95,7 +95,7 @@ jobs:
   title:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-26.04
-    timeout-minutes: 5  # 5-minute floor; 2 x 9 s, slowest of 13 runs, run 39455262847
+    timeout-minutes: 5  # 5-minute floor; 2 x 17 s, slowest of 19 runs, run 43460716508
     permissions:
       contents: read
       pull-requests: read
@@ -118,7 +118,7 @@ jobs:
     if: needs.changes.outputs.heavy == 'true'
     name: build (${{ matrix.os }}-${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 12  # 2 x 332 s, slowest of 37 runs, run 43460663238
+    timeout-minutes: 12  # 2 x 360 s, slowest of 36 runs, run 43525961902
     strategy:
       fail-fast: false
       matrix:
@@ -266,7 +266,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.heavy == 'true'
     runs-on: ubuntu-26.04
-    timeout-minutes: 9  # 2 x 243 s, slowest of 37 runs, run 43462502049
+    timeout-minutes: 9  # 2 x 248 s, slowest of 36 runs, run 43513035368
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -287,7 +287,7 @@ jobs:
     if: needs.changes.outputs.heavy == 'true'
     name: nofp (${{ matrix.runner }})
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 2  # 2 x 54 s (worst lane), slowest of 37 runs, run 39373821097
+    timeout-minutes: 2  # 2 x 53 s (worst lane), slowest of 36 runs, run 43158408243
     strategy:
       fail-fast: false
       matrix:
@@ -307,7 +307,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.heavy == 'true'
     runs-on: ubuntu-26.04
-    timeout-minutes: 21  # 2 x 609 s, slowest of 37 runs, run 43458609482
+    timeout-minutes: 21  # 2 x 609 s, slowest of 36 runs, run 43458609482
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -332,7 +332,7 @@ jobs:
     needs: [changes, build, be32, wasm32]
     if: needs.changes.outputs.heavy == 'true'
     runs-on: ubuntu-26.04
-    timeout-minutes: 5  # 5-minute floor; 2 x 9 s, slowest of 37 runs, run 42722509271
+    timeout-minutes: 5  # 5-minute floor; 2 x 18 s, slowest of 36 runs, run 43232709477
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -351,7 +351,7 @@ jobs:
     needs: [changes, build]
     if: needs.changes.outputs.heavy == 'true'
     runs-on: ubuntu-26.04
-    timeout-minutes: 5  # 5-minute floor (download); 2 x 67 s, slowest of 37 runs, run 42752737395
+    timeout-minutes: 5  # 5-minute floor (download); 2 x 141 s, slowest of 36 runs, run 43341636921
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -387,7 +387,7 @@ jobs:
     needs: [changes, build]
     if: needs.changes.outputs.heavy == 'true'
     runs-on: macos-15
-    timeout-minutes: 5  # 5-minute floor (download); 2 x 36 s, slowest of 1 run, run 42944763909
+    timeout-minutes: 5  # 5-minute floor (download); 2 x 62 s, slowest of 36 runs, run 43232709477
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -574,7 +574,7 @@ jobs:
     needs: changes
     if: ${{ !inputs.ref && needs.changes.outputs.heavy == 'true' && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-26.04
-    timeout-minutes: 6  # 2 x 151 s, slowest of 26 runs, run 42752770307
+    timeout-minutes: 6  # 2 x 106 s, slowest of 21 runs, run 43334476928
     env:
       HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       BASE_REF: ${{ github.event.pull_request.base.ref || 'main' }}
@@ -690,7 +690,7 @@ jobs:
       github.event.pull_request.user.login != 'dependabot[bot]' &&
       needs.changes.outputs.release_inputs == 'true'
     runs-on: ubuntu-26.04
-    timeout-minutes: 13  # 2 x 387 s, slowest of 4 runs, run 42721125470
+    timeout-minutes: 14  # 2 x 393 s, slowest of 2 runs, run 43513035368
     permissions:
       contents: write
       id-token: write
@@ -772,7 +772,7 @@ jobs:
     needs: rehearsal
     if: always() && needs.rehearsal.result != 'skipped'
     runs-on: ubuntu-26.04
-    timeout-minutes: 5  # 5-minute floor (API); 2 x 13 s, slowest of 4 runs, run 39451067810
+    timeout-minutes: 5  # 5-minute floor (API); 2 x 15 s, slowest of 2 runs, run 43164256628
     permissions:
       contents: write
     steps:
@@ -804,7 +804,7 @@ jobs:
     if: always()
     needs: [changes, hygiene, title, build, asan, nofp, be32, wasm32, hash-equality, retroarch, perf, rehearsal, cleanup]
     runs-on: ubuntu-26.04
-    timeout-minutes: 5  # 5-minute floor; 2 x 5 s, slowest of 40 runs, run 39515950108
+    timeout-minutes: 5  # 5-minute floor; 2 x 5 s, slowest of 40 runs, run 43460663238
     steps:
       - name: Every job succeeded or was skipped as allowed
         env:
