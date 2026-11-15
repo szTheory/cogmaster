@@ -4,7 +4,7 @@ milestone: v2.2
 milestone_name: Legacy video modes
 current_phase: 17
 status: completed
-stopped_at: Phase 17 complete — all phases complete
+stopped_at: Phase 17 complete — all phases complete; next /gsd-ship 17
 last_updated: "2026-11-15T02:34:31.663Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 17 complete
