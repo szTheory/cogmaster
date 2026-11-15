@@ -101,3 +101,43 @@ Run from the repository root of the main checkout after the carry; scratch files
 | compat tests | `cmake --preset ci`, `cmake --build --preset ci`, then `ctest --test-dir build/ci -R '^compat\.(exit\|whole_list\.fresh\|page_bound)$' --output-on-failure --no-tests=error` (3 of 3 passed) | 0 |
 | old base judge | `sh <base copy>/scripts/compat-ratchet.sh <base ledger> tests/compat/ledger.csv tests/compat/allow.txt <date> 19 19 build/ci/tests/compat-fixtures/results.csv`, base copies from `git show origin/main:`, behaviour revisions read and equal (19 and 19), printed `compat: protected comparison passed` | 0 |
 | fence | `git diff --quiet origin/main -- tests/compat/allow.txt quality.json src include` | 0 |
+
+## Diagnose counts
+
+Command: `unset COGMASTER_LIBRARY_OUT` then `sh scripts/library.sh diagnose`, run once from the repository root of the main checkout on the ledger commit (clean tree outside the planning directory), standard output to a scratch file; exit status 0; run length between 20 and 25 minutes. It stamps nothing and wrote no tracked file. The agent read only the header, the leaf group lines that have no sub-row, and the totals line.
+
+Header: core `7da9ccc`, behaviour 19. `git rev-parse --short=7 HEAD` at the time of the run was `7da9ccc`, equal, and the header carries no dirty mark, so the runner was rebuilt at the head with the new line shape.
+
+| leaf | rows |
+|------|------|
+| dark_no_fault.never_draws | 2 |
+| static_no_fault.frozen | 2 |
+| fault_alive.unsupported_video_mode.vdp | 1 |
+| input_mismatch | 0 |
+
+| total | value |
+|-------|-------|
+| judged | 573 |
+| run_fail | 5 |
+| ledger_fail | 5 |
+| matched | 5 |
+| ledger_fail_not_in_run | 0 |
+| ledger_fail_now_pass | 0 |
+| run_fail_not_in_ledger | 0 |
+| groups_total | 5 |
+| fail_total | 5 |
+
+The groups add up to the fail total (2 + 2 + 1 + 0 = 5), so every failing row has a cause group. Diagnose covers the first NTSC profile only: its 5 failing rows are the 5 `tv=ntsc` fail rows of the carried ledger, matched one to one, and the other 4 fail rows of the ledger are the PAL rows. `run_fail_not_in_ledger` is 0, so no further question arises for SEED-016.
+
+Input counts from the diagnose candidate line, for the record: candidates 696, attempted 573, evaluated 573, malformed 0, malformed_io 0, uncatalogued 82, skipped_excluded 30, noprofile 0, unsupported 11, infrastructure_error 0, title_withheld 0.
+
+## Local gates
+
+| gate | command | exit status |
+|------|---------|-------------|
+| worktree removed | `git worktree remove --force <worktree>`, then `git worktree prune`; the worktree is no longer listed | 0, 0 |
+| ci workflow on the ledger head | `cmake --workflow --preset ci` (738 of 738 tests, then 5 of 5) | 0 |
+| fence | `git diff --quiet origin/main...HEAD -- src include tests/compat/allow.txt quality.json` | 0 |
+| no pull request | `gh pr list --head phase/17-re-run-merge-and-clean-state --state open` returns 0 | 0 |
+
+Nothing was pushed after the ledger commit; plan 04 pushes this head before measuring.
